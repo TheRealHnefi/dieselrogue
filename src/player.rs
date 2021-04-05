@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode, Rltk};
 use specs::prelude::*;
-use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed, Map};
+use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed, Map, RunState};
 use std::cmp::{min, max};
 
 pub fn try_move_player(direction: Direction, ecs: &mut World) {
@@ -40,9 +40,11 @@ pub fn try_move_player(direction: Direction, ecs: &mut World) {
     }
 }
 
-pub fn player_input(game_state: &mut State, ctx: &mut Rltk) {
+pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
-        None => { }
+        None => {
+            return RunState::AwaitingInput
+        }
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 |
@@ -72,7 +74,10 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) {
             VirtualKeyCode::Numpad1 |
             VirtualKeyCode::B => try_move_player(Direction::DOWNLEFT, &mut game_state.ecs),
 
-            _ => { }
+            _ => {
+                return RunState::AwaitingInput
+            }
         }
     }
+    RunState::PlayerTurn
 }

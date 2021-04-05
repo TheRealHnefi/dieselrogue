@@ -14,6 +14,8 @@ mod visibility_system;
 pub use visibility_system::*;
 mod map_indexing_system;
 pub use map_indexing_system::*;
+mod enemy_ai_system;
+pub use enemy_ai_system::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -25,6 +27,7 @@ fn main() -> rltk::BError {
     let mut game_state = State::new();
 
     game_state.ecs.register::<Player>();
+    game_state.ecs.register::<Enemy>();
     game_state.ecs.register::<Position>();
     game_state.ecs.register::<Direction>();
     game_state.ecs.register::<Facing>();
@@ -55,7 +58,30 @@ fn main() -> rltk::BError {
         .with(Facing {direction: Direction::UP})
         .build();
     game_state.ecs.insert(player_entity);
+
+    let (enemy_x, enemy_y) = map.rooms[1].center();
+    game_state.ecs
+        .create_entity()
+        .with(Position {
+            x: enemy_x,
+            y: enemy_y
+        })
+        .with(Renderable {
+            glyph: rltk::to_cp437('8'),
+            color: rltk::RGB::named(rltk::RED),
+            background: rltk::RGB::named(rltk::BLACK)
+        })
+        .with(Enemy {})
+        .with(Viewshed {
+            visible_tiles: Vec::new(),
+            range: 5,
+            dirty: true
+        })
+        .with(Facing {direction: Direction::UP})
+        .build();
+
     game_state.ecs.insert(map);
+    game_state.ecs.insert(RunState::PreRun);
 
     rltk::main_loop(context, game_state)
 }
