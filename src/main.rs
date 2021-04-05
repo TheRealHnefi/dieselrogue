@@ -46,7 +46,7 @@ fn main() -> rltk::BError {
         .with(Player {})
         .with(Viewshed {
             visible_tiles: Vec::new(),
-            range: 8,
+            range: 10,
             dirty: true
         })
         .with(Facing {direction: Direction::UP})

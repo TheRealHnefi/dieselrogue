@@ -15,45 +15,50 @@ impl<'a> System<'a> for VisibilitySystem {
     fn run(&mut self, data: Self::SystemData) {
         let (mut map, entities, mut viewsheds, positions, player, facings) = data;
 
-        // This means viewshed REQUIRES a facing. May need revisiting.
-        for (ent, viewshed, pos, facing) in (&entities, &mut viewsheds, &positions, &facings).join() {
+        for (ent, viewshed, pos) in (&entities, &mut viewsheds, &positions).join() {
             if viewshed.dirty {
                 viewshed.dirty = false;
                 viewshed.visible_tiles.clear();
                 viewshed.visible_tiles = field_of_view(Point::new(pos.x, pos.y), viewshed.range, &*map);
 
-                match facing.direction {
-                    Direction::UP => {
-                        viewshed.visible_tiles.retain(|p| p.y <= pos.y &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
-                    },
-                    Direction::UPRIGHT => {
-                        viewshed.visible_tiles.retain(|p| p.x - pos.x >= p.y - pos.y &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
-                    },
-                    Direction::RIGHT => {
-                        viewshed.visible_tiles.retain(|p| p.x >= pos.x &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
-                    },
-                    Direction::DOWNRIGHT => {
-                        viewshed.visible_tiles.retain(|p| p.x - pos.x >= -(p.y - pos.y) &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
-                    },
-                    Direction::DOWN => {
-                        viewshed.visible_tiles.retain(|p| p.y >= pos.y &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
-                    },
-                    Direction::DOWNLEFT => {
-                        viewshed.visible_tiles.retain(|p| p.x - pos.x <= p.y - pos.y &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
-                    },
-                    Direction::LEFT => {
-                        viewshed.visible_tiles.retain(|p| p.x <= pos.x &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
-                    },
-                    Direction::UPLEFT => {
-                        viewshed.visible_tiles.retain(|p| p.x - pos.x <= -(p.y - pos.y) &&
-                            p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                let maybe_facing: Option<&Facing> = facings.get(ent);
+                match maybe_facing {
+                    None => {}
+                    Some(facing) => {
+                        match facing.direction {
+                            Direction::UP => {
+                                viewshed.visible_tiles.retain(|p| p.y <= pos.y &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            },
+                            Direction::UPRIGHT => {
+                                viewshed.visible_tiles.retain(|p| p.x - pos.x >= p.y - pos.y &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            },
+                            Direction::RIGHT => {
+                                viewshed.visible_tiles.retain(|p| p.x >= pos.x &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            },
+                            Direction::DOWNRIGHT => {
+                                viewshed.visible_tiles.retain(|p| p.x - pos.x >= -(p.y - pos.y) &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            },
+                            Direction::DOWN => {
+                                viewshed.visible_tiles.retain(|p| p.y >= pos.y &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            },
+                            Direction::DOWNLEFT => {
+                                viewshed.visible_tiles.retain(|p| p.x - pos.x <= p.y - pos.y &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            },
+                            Direction::LEFT => {
+                                viewshed.visible_tiles.retain(|p| p.x <= pos.x &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            },
+                            Direction::UPLEFT => {
+                                viewshed.visible_tiles.retain(|p| p.x - pos.x <= -(p.y - pos.y) &&
+                                    p.x >= 0 && p.x < map.width && p.y > 0 && p.y < map.height);
+                            }
+                        }
                     }
                 }
 
