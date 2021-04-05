@@ -74,6 +74,7 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Numpad1 |
             VirtualKeyCode::B => try_move_player(Direction::DOWNLEFT, &mut game_state.ecs),
 
+            VirtualKeyCode::Numpad5 => {},
             _ => {
                 return RunState::AwaitingInput
             }
