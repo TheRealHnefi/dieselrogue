@@ -20,6 +20,8 @@ fn main() -> rltk::BError {
 
     game_state.ecs.register::<Player>();
     game_state.ecs.register::<Position>();
+    game_state.ecs.register::<Direction>();
+    game_state.ecs.register::<Facing>();
     game_state.ecs.register::<Renderable>();
 
     let player_entity = game_state.ecs
@@ -34,6 +36,7 @@ fn main() -> rltk::BError {
             background: rltk::RGB::named(rltk::BLACK)
         })
         .with(Player {})
+        .with(Facing {direction: Direction::UP})
         .build();
     game_state.ecs.insert(player_entity);
 
