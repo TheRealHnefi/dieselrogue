@@ -15,6 +15,11 @@ impl State {
             last_tick: Instant::now()
         }
     }
+
+    fn run_systems(&mut self) {
+        let mut vis = VisibilitySystem {};
+        vis.run_now(&self.ecs);
+    }
 }
 
 impl GameState for State {
@@ -25,6 +30,10 @@ impl GameState for State {
         
         player_input(self, context);
 
+        self.run_systems();
+
+        draw_map(&self.ecs, context); // Expensive
+
         let positions = self.ecs.read_storage::<Position>();
         let renderables = self.ecs.read_storage::<Renderable>();
 
@@ -33,7 +42,7 @@ impl GameState for State {
         }
 
         let tick_time = begin.elapsed().as_micros();
-        if tick_time > 1000 {
+        if tick_time > 2000 {
             console::log(format!("Tick time: {}", tick_time));
         }
         let tick_rate = self.last_tick.elapsed().as_micros();
