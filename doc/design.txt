@@ -15,14 +15,14 @@ Classes (pick any two?) and perk ideas:
  - aim, scout, controlled burst, fast reload, dodge
 * Pugilist: Unstoppable strongman. Specializes in crowd control and unarmed combat.
  - disarm, stun, throw, dash, grab and hold, block
-* Inquisitor: Relentless fanatic. Wields melee weapons and relies on his faith.
- - dual wield, spot weakness, flurry, smash, ignore pain
 * Burglar: Silent protagonist. Goes unseen before attacking. Relies on stealth.
  - predict movement, misdirection, lockpicking, backstab, sneak, tumble
 * Occultist: Curious mentalist. Aims to uncover unearthly secrets. Relies on magic.
  - circles of magic, sense magic
 * Engineer: Practical intellectual. Relies on versatile equipment.
  - build consumables, handle traps, enhance equipment, assemble, disassemble
+
+Or perhaps no classes at all? Just perks?
 
 Resources:
 * HP: Local for each body part, plus overall HP. No regeneration.
