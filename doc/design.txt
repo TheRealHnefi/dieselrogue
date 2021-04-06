@@ -17,7 +17,7 @@ Classes (pick any two?) and perk ideas:
  - disarm, stun, throw, dash, grab and hold, block
 * Burglar: Silent protagonist. Goes unseen before attacking. Relies on stealth.
  - predict movement, misdirection, lockpicking, backstab, sneak, tumble
-* Occultist: Curious mentalist. Aims to uncover unearthly secrets. Relies on magic.
+* Extropicist: Curious magician. Aims to uncover unearthly secrets. Relies on magic.
  - circles of magic, sense magic
 * Engineer: Practical intellectual. Relies on versatile equipment.
  - build consumables, handle traps, enhance equipment, assemble, disassemble
@@ -71,13 +71,13 @@ Rounds:
 Scenario:
 World is 1950's, parallel earth.
 
-Break into the old Castle (or military base, perhaps?), filled with guards. Objective is to stop the mad scientist (or steal
-his research).
+Break into the military development base, filled with guards and other personnel. Objective is to
+stop or steal the development of new weapons (airplanes? tanks? mechs? all of the above?).
 
 The Castle consists of large battlements with many rooms and a central courtyard. Various towers
 are spread out over the property and bridges cross over the courtyard high above. At the very top,
-the mad scientist is waiting.
+the head scientist is waiting.
 
-Once killed, the catacombs open and out pours various occult and mechanical monsters.
+Once killed, the catacombs open and out pours various occult and/or mechanical monsters.
 The protagonist has to fight through the monsters, find the laboratory in the old dungeons, and
 destroy it.

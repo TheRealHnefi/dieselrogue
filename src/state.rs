@@ -80,6 +80,8 @@ impl GameState for State {
             }
         }
 
+        draw_ui(&self.ecs, context);
+
         let tick_time = begin.elapsed().as_micros();
         if tick_time > 6000 {
             console::log(format!("Tick time: {}", tick_time));
