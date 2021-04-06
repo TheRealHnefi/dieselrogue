@@ -46,3 +46,60 @@ pub struct Viewshed {
 
 #[derive (Component)]
 pub struct BlocksTile {}
+
+pub struct BodyPart {
+    pub name: String,
+    pub max_hitpoints: i32,
+    pub hitpoints: i32
+}
+
+#[derive (Component)]
+pub struct HumanoidBody {
+    pub max_hitpoints: i32,
+    pub hitpoints: i32,
+
+    pub head: BodyPart,
+    pub torso: BodyPart,
+    pub left_arm: BodyPart,
+    pub right_arm: BodyPart,
+    pub left_leg: BodyPart,
+    pub right_leg: BodyPart
+}
+impl HumanoidBody {
+    pub fn new(max_hp: i32) -> HumanoidBody {
+        HumanoidBody {
+            max_hitpoints: max_hp,
+            hitpoints: max_hp,
+            head: BodyPart {
+                name: "head".to_string(),
+                max_hitpoints: max_hp / 4,
+                hitpoints: max_hp / 4
+            },
+            torso: BodyPart {
+                name: "torso".to_string(),
+                max_hitpoints: max_hp / 2,
+                hitpoints: max_hp / 2
+            },
+            left_arm: BodyPart {
+                name: "left arm".to_string(),
+                max_hitpoints: max_hp / 5,
+                hitpoints: max_hp / 5
+            },
+            right_arm: BodyPart {
+                name: "right arm".to_string(),
+                max_hitpoints: max_hp / 5,
+                hitpoints: max_hp / 5
+            },
+            left_leg: BodyPart {
+                name: "left leg".to_string(),
+                max_hitpoints: max_hp / 3,
+                hitpoints: max_hp / 3
+            },
+            right_leg: BodyPart {
+                name: "right leg".to_string(),
+                max_hitpoints: max_hp / 3,
+                hitpoints: max_hp / 3
+            }
+        }
+    }
+}

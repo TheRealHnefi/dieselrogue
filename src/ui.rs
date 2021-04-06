@@ -1,6 +1,6 @@
 use rltk::{RGB, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Map, Enemy};
+use super::{Position, Map, HumanoidBody};
 
 pub fn draw_ui(ecs: &World, context: &mut Rltk) {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
@@ -17,12 +17,18 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, position: Point) {
     }
 
     let positions = ecs.read_storage::<Position>();
-    let enemies = ecs.read_storage::<Enemy>();
+    let bodies = ecs.read_storage::<HumanoidBody>();
     let mut tooltip: Vec<String> = Vec::new();
-    for (_enemy, pos) in (&enemies, &positions).join() {
+    for (body, pos) in (&bodies, &positions).join() {
         let index = map.xy_idx(pos.x, pos.y);
         if pos.x == position.x && pos.y == position.y && map.visible_tiles[index] {
-            tooltip.push("Enemy!".to_string());
+            tooltip.push(format!("Hitpoints: {}/{}", body.hitpoints, body.max_hitpoints));
+            tooltip.push(format!("Head:      {}/{}", body.head.hitpoints, body.head.max_hitpoints));
+            tooltip.push(format!("Torso:     {}/{}", body.torso.hitpoints, body.torso.max_hitpoints));
+            tooltip.push(format!("Left arm:  {}/{}", body.left_arm.hitpoints, body.left_arm.max_hitpoints));
+            tooltip.push(format!("Right arm: {}/{}", body.right_arm.hitpoints, body.right_arm.max_hitpoints));
+            tooltip.push(format!("Left leg:  {}/{}", body.left_leg.hitpoints, body.left_leg.max_hitpoints));
+            tooltip.push(format!("Right leg: {}/{}", body.right_leg.hitpoints, body.right_leg.max_hitpoints));
         }
     }
     if !tooltip.is_empty() {
@@ -35,31 +41,29 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, position: Point) {
         width += 3;
 
         if position.x > 40 {
-            let arrow_pos = Point::new(position.x - 2, position.y);
+            let arrow_pos = Point::new(position.x - 1, position.y);
             let left_x = position.x - width;
-            let mut y = position.y;
+            let mut y = position.y + 1;
+
+            context.draw_box(left_x - 1, y - 1, width -1, tooltip.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+
             for s in tooltip.iter() {
-                context.print_color(left_x, y, RGB::named(rltk::WHITE), RGB::named(rltk::GREY), s);
-                let padding = (width - s.len() as i32) - 1;
-                for i in 0..padding {
-                    context.print_color(arrow_pos.x - i, y, RGB::named(rltk::WHITE), RGB::named(rltk::GREY), &" ".to_string());
-                }
+                context.print_color(left_x, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), s);
                 y += 1;
             }
-            context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::GREY), &"->".to_string());
+            context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &">".to_string());
         } else {
             let arrow_pos = Point::new(position.x + 1, position.y);
-            let left_x = position.x +3;
+            let left_x = position.x + 3;
             let mut y = position.y;
+
+            context.draw_box(left_x - 1, y - 1, width -1, tooltip.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+
             for s in tooltip.iter() {
-                context.print_color(left_x + 1, y, RGB::named(rltk::WHITE), RGB::named(rltk::GREY), s);
-                let padding = (width - s.len() as i32)-1;
-                for i in 0..padding {
-                    context.print_color(arrow_pos.x + 1 + i, y, RGB::named(rltk::WHITE), RGB::named(rltk::GREY), &" ".to_string());
-                }
+                context.print_color(left_x + 1, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), s);
                 y += 1;
             }
-            context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::GREY), &"<-".to_string());
+            context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &"<".to_string());
         }
     }
 }
