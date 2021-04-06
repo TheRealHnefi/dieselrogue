@@ -31,17 +31,15 @@ impl<'a> System<'a> for EnemyAI {
             (&mut viewsheds, &enemies, &mut positions, &mut facings, &mut renderables).join() {
         
             let distance = rltk::DistanceAlg::Pythagoras.distance2d(Point::new(pos.x, pos.y), player_pos);
-            if distance < 1.5 {
-                // Close enough to attack
-            }
-            else if viewshed.visible_tiles.contains(&player_pos) {
+            
+            if viewshed.visible_tiles.contains(&player_pos) {
                 // Path to the player
                 let path = rltk::a_star_search(
                     map.xy_idx(pos.x, pos.y),
                     map.xy_idx(player_pos.x, player_pos.y),
                     &mut *map
-                );
-                if path.success && path.steps.len() > 1 {
+                );                
+                if path.success {
                     let step_x = path.steps[1] as i32 % map.width;
                     let step_y = path.steps[1] as i32 / map.width;
 
@@ -90,15 +88,20 @@ impl<'a> System<'a> for EnemyAI {
                         }
                     }
                     if !did_turn {
-                        let mut idx = map.xy_idx(pos.x, pos.y);
-                        map.blocked_tiles[idx] = false;
+                        if distance < 1.5 {
+                            // Close enough to attack
+                        }
+                        else {
+                            let mut idx = map.xy_idx(pos.x, pos.y);
+                            map.blocked_tiles[idx] = false;
 
-                        pos.x = step_x;
-                        pos.y = step_y;
+                            pos.x = step_x;
+                            pos.y = step_y;
 
-                        idx = map.xy_idx(pos.x, pos.y);
-                        map.blocked_tiles[idx] = true;
-                        viewshed.dirty = true;
+                            idx = map.xy_idx(pos.x, pos.y);
+                            map.blocked_tiles[idx] = true;
+                            viewshed.dirty = true;
+                        }
                     }
                 }
             }
