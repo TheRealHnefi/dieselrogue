@@ -30,6 +30,7 @@ Also, you get to blow things up with retrofuturistic tanks.
  - circles of magic, sense magic
 * Engineer: Practical intellectual. Relies on versatile equipment.
  - build consumables, handle traps, enhance equipment, assemble, disassemble
+* Pilot: 
 
 Or perhaps no classes at all? Just perks?
 
@@ -66,6 +67,7 @@ Or perhaps no classes at all? Just perks?
 ## UI:
 * Need comprehensive shortcut system.
 * Need way to see character facing and localized damage.
+* When targeting: pick target first, then pick ability from list of applicable options
 
 ## Rounds:
 * Static phases:

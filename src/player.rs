@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode, Rltk};
 use specs::prelude::*;
-use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed, Map, RunState};
+use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed, Map, RunState, GettingItem, GameLog};
 use std::cmp::{min, max};
 
 pub fn try_move_player(direction: Direction, ecs: &mut World) {
@@ -75,10 +75,22 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::B => try_move_player(Direction::DOWNLEFT, &mut game_state.ecs),
 
             VirtualKeyCode::Numpad5 => {},
+
+            VirtualKeyCode::G => get_item(&mut game_state.ecs),
             _ => {
                 return RunState::AwaitingInput
             }
         }
     }
     RunState::PlayerTurn
+}
+
+fn get_item(ecs: &mut World) {
+    let player = ecs.fetch::<Entity>();
+    let mut log = ecs.fetch_mut::<GameLog>();
+
+    let mut get_actions = ecs.write_storage::<GettingItem>();
+    get_actions.insert(*player, GettingItem {}).expect("Unable to perform Get action");
+
+    log.entries.push("Getting item".to_string());
 }

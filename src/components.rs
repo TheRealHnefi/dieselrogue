@@ -47,6 +47,12 @@ pub struct Viewshed {
 #[derive (Component)]
 pub struct BlocksTile {}
 
+#[derive (Component)]
+pub struct GettableItem {}
+
+#[derive (Component)]
+pub struct GettingItem {}
+
 pub struct BodyPart {
     pub name: String,
     pub max_hitpoints: i32,
