@@ -18,6 +18,8 @@ mod enemy_ai_system;
 pub use enemy_ai_system::*;
 mod ui;
 pub use ui::*;
+mod game_log;
+pub use game_log::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -87,6 +89,7 @@ fn main() -> rltk::BError {
 
     game_state.ecs.insert(map);
     game_state.ecs.insert(RunState::PreRun);
+    game_state.ecs.insert(GameLog {entries: vec!["Welcome!".to_string()]});
 
     rltk::main_loop(context, game_state)
 }
