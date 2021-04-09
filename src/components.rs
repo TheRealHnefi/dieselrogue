@@ -45,6 +45,11 @@ pub struct Viewshed {
 }
 
 #[derive (Component)]
+pub struct Name {
+    pub value: String
+}
+
+#[derive (Component)]
 pub struct BlocksTile {}
 
 #[derive (Component)]
@@ -52,6 +57,11 @@ pub struct GettableItem {}
 
 #[derive (Component)]
 pub struct GettingItem {}
+
+#[derive (Component)]
+pub struct InInventory {
+    pub owner: Entity
+}
 
 pub struct BodyPart {
     pub name: String,

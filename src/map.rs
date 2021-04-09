@@ -21,7 +21,8 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
-    pub tile_contents: Vec<Vec<Entity>>
+    pub tile_blockers: Vec<Option<Entity>>,
+    pub tile_items: Vec<Option<Entity>>
 }
 
 impl Map {
@@ -35,10 +36,12 @@ impl Map {
         }
     }
 
+    // TODO: Profile with large maps. This is setting off warning bells.
     pub fn clear_contents_index(&mut self) {
-        for contents in self.tile_contents.iter_mut() {
-            contents.clear();
-        }
+        self.tile_blockers.clear();
+        self.tile_blockers.resize(MAPCOUNT, None);
+        self.tile_items.clear();
+        self.tile_items.resize(MAPCOUNT, None);
     }
 
     pub fn new_map_rooms_and_corridors() -> Map {
@@ -50,7 +53,9 @@ impl Map {
             revealed_tiles: vec![false; MAPCOUNT],
             visible_tiles: vec![false; MAPCOUNT],
             blocked_tiles: vec![false; MAPCOUNT],
-            tile_contents: vec![Vec::new(); MAPCOUNT]
+            tile_blockers: Vec::with_capacity(MAPCOUNT),
+            tile_items: Vec::with_capacity(MAPCOUNT)
+
         };
 
         let mut rng = RandomNumberGenerator::new();

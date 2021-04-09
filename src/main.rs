@@ -20,6 +20,8 @@ mod ui;
 pub use ui::*;
 mod game_log;
 pub use game_log::*;
+mod inventory_system;
+pub use inventory_system::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -37,9 +39,11 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Facing>();
     game_state.ecs.register::<Renderable>();
     game_state.ecs.register::<Viewshed>();
+    game_state.ecs.register::<Name>();
     game_state.ecs.register::<BlocksTile>();
     game_state.ecs.register::<GettableItem>();
     game_state.ecs.register::<GettingItem>();
+    game_state.ecs.register::<InInventory>();
     game_state.ecs.register::<HumanoidBody>();
 
     let map = Map::new_map_rooms_and_corridors();
@@ -64,6 +68,7 @@ fn main() -> rltk::BError {
         })
         .with(Facing {direction: Direction::UP})
         .with(HumanoidBody::new(20))
+        .with(Name {value: "Player".to_string()})
         .build();
     game_state.ecs.insert(player_entity);
 
@@ -87,6 +92,7 @@ fn main() -> rltk::BError {
         })
         .with(Facing {direction: Direction::UP})
         .with(HumanoidBody::new(20))
+        .with(Name {value: "Goon".to_string()})
         .build();
 
         let (gun_x, gun_y) = map.rooms[2].center();
@@ -102,6 +108,7 @@ fn main() -> rltk::BError {
                 background: rltk::RGB::named(rltk::BLACK)
             })
             .with(GettableItem {})
+            .with(Name {value: "Gun".to_string()})
             .build();
 
     game_state.ecs.insert(map);
