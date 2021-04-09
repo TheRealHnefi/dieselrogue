@@ -59,8 +59,8 @@ pub struct GettableItem {}
 pub struct GettingItem {}
 
 #[derive (Component)]
-pub struct InInventory {
-    pub owner: Entity
+pub struct Inventory {
+    pub items: Vec<Entity>
 }
 
 pub struct BodyPart {

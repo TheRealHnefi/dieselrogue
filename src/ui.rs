@@ -1,6 +1,6 @@
 use rltk::{RGB, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Map, HumanoidBody, GameLog};
+use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name};
 use std::cmp::max;
 
 pub fn draw_ui(ecs: &World, context: &mut Rltk) {
@@ -15,6 +15,25 @@ pub fn draw_ui(ecs: &World, context: &mut Rltk) {
     for message in &game_log.entries[length..] {
         context.print(2, y, message);
         y += 1;
+    }
+
+    let inventories = ecs.read_storage::<Inventory>();
+    let player = ecs.fetch::<Entity>();
+    let inventory = inventories.get(*player);
+    let names = ecs.read_storage::<Name>();
+    match inventory {
+        Some(inv) => {
+            let mut y = 44;
+            for item in &inv.items {
+                let name = names.get(*item);
+                assert!(name.is_some(), "Item name expected but not found");
+                context.print(50, y, &name.unwrap().value);
+                y += 1;
+            }
+        },
+        None => {
+            panic!("Player lacks inventory");
+        }
     }
 }
 
