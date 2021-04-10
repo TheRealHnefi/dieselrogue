@@ -20,7 +20,7 @@ impl<'a> System<'a> for InventorySystem {
             getter_collection.push((getter, name, Position {x: position.x, y: position.y }, inventory));
         }
 
-        for (getter, name, position, inventory) in getter_collection {
+        for (_getter, name, position, inventory) in getter_collection {
             let index = map.xy_idx(position.x, position.y);
             match map.tile_items[index] {
                 Some(item) => {

@@ -1,15 +1,23 @@
 use rltk::{RGB, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name};
+use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State};
 use std::cmp::max;
 
-pub fn draw_ui(ecs: &World, context: &mut Rltk) {
+pub fn draw_ui(state: &mut State, context: &mut Rltk) {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
-    let mouse_pos = context.mouse_pos();
-    draw_tooltip(ecs, context, Point::new(mouse_pos.0, mouse_pos.1));
+    let mut cursor_pos = state.ecs.fetch_mut::<Point>();
+    let new_mouse_pos = context.mouse_pos();
+    if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
+        cursor_pos.x = new_mouse_pos.0;
+        cursor_pos.y = new_mouse_pos.1;
+        state.mouse_pos.x = new_mouse_pos.0;
+        state.mouse_pos.y = new_mouse_pos.1;
+    }
+    context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
+    draw_tooltip(&state.ecs, context, *cursor_pos);
 
-    let game_log = ecs.fetch::<GameLog>();
+    let game_log = state.ecs.fetch::<GameLog>();
     let mut y = 44;
     let length = max(game_log.entries.len() as i32 - 5, 0) as usize;
     for message in &game_log.entries[length..] {
@@ -17,10 +25,10 @@ pub fn draw_ui(ecs: &World, context: &mut Rltk) {
         y += 1;
     }
 
-    let inventories = ecs.read_storage::<Inventory>();
-    let player = ecs.fetch::<Entity>();
+    let inventories = state.ecs.read_storage::<Inventory>();
+    let player = state.ecs.fetch::<Entity>();
     let inventory = inventories.get(*player);
-    let names = ecs.read_storage::<Name>();
+    let names = state.ecs.read_storage::<Name>();
     match inventory {
         Some(inv) => {
             let mut y = 44;

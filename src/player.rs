@@ -1,4 +1,4 @@
-use rltk::{VirtualKeyCode, Rltk};
+use rltk::{VirtualKeyCode, Rltk, Point};
 use specs::prelude::*;
 use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed, Map, RunState, GettingItem};
 use std::cmp::{min, max};
@@ -42,9 +42,6 @@ pub fn try_move_player(direction: Direction, ecs: &mut World) {
 
 pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
-        None => {
-            return RunState::AwaitingInput
-        }
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 |
@@ -77,12 +74,87 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Numpad5 => {},
 
             VirtualKeyCode::G => get_item(&mut game_state.ecs),
+
+            VirtualKeyCode::T => {
+                return RunState::TargetingInput;
+            },
             _ => {
-                return RunState::AwaitingInput
+                return RunState::AwaitingInput;
             }
+        }
+        None => {
+            return RunState::AwaitingInput;
         }
     }
     RunState::PlayerTurn
+}
+
+pub fn targeting_input(game_state: &mut State, context: &mut Rltk) -> RunState {
+    match context.key {
+        Some(key) => match key {
+            VirtualKeyCode::Left |
+            VirtualKeyCode::Numpad4 |
+            VirtualKeyCode::H => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                cursor_pos.x = max(cursor_pos.x - 1, 0);
+            },
+            VirtualKeyCode::Right |
+            VirtualKeyCode::Numpad6 |
+            VirtualKeyCode::L => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                let map = game_state.ecs.fetch::<Map>();
+                cursor_pos.x = min(cursor_pos.x + 1, map.width - 1);
+            },
+            VirtualKeyCode::Up |
+            VirtualKeyCode::Numpad8 |
+            VirtualKeyCode::K => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                cursor_pos.y = max(cursor_pos.y - 1, 0);
+            },
+            VirtualKeyCode::Down |
+            VirtualKeyCode::Numpad2 |
+            VirtualKeyCode::J => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                let map = game_state.ecs.fetch::<Map>();
+                cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
+            },
+            VirtualKeyCode::Numpad9 |
+            VirtualKeyCode::Y => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                cursor_pos.y = max(cursor_pos.y - 1, 0);
+                let map = game_state.ecs.fetch::<Map>();
+                cursor_pos.x = min(cursor_pos.x + 1, map.width - 1);
+            },
+            VirtualKeyCode::Numpad7 |
+            VirtualKeyCode::U => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                cursor_pos.x = max(cursor_pos.x - 1, 0);
+                cursor_pos.y = max(cursor_pos.y - 1, 0);
+            },
+            VirtualKeyCode::Numpad3 |
+            VirtualKeyCode::N => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                let map = game_state.ecs.fetch::<Map>();
+                cursor_pos.x = min(cursor_pos.x + 1, map.width - 1);
+                cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
+            },
+            VirtualKeyCode::Numpad1 |
+            VirtualKeyCode::B => {
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                let map = game_state.ecs.fetch::<Map>();
+                cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
+                cursor_pos.x = max(cursor_pos.x - 1, 0);
+            },
+            VirtualKeyCode::T => {
+                return RunState::AwaitingInput;
+            }
+            _ => {
+            }
+        }
+        None => {
+        }
+    }
+    RunState::TargetingInput
 }
 
 fn get_item(ecs: &mut World) {

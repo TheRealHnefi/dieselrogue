@@ -1,4 +1,4 @@
-use rltk::{Rltk, GameState, console};
+use rltk::{Rltk, GameState, Point, console};
 use specs::prelude::*;
 use super::*;
 use std::time::{Instant};
@@ -6,6 +6,7 @@ use std::time::{Instant};
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
     AwaitingInput,
+    TargetingInput,
     PreRun,
     PlayerTurn,
     EnemyTurn,
@@ -13,14 +14,16 @@ pub enum RunState {
 
 pub struct State {
     pub ecs: World,
-    last_tick: Instant
+    last_tick: Instant,
+    pub mouse_pos: Point
 }
 
 impl State {
     pub fn new() -> Self {
         Self {
             ecs: World::new(),
-            last_tick: Instant::now()
+            last_tick: Instant::now(),
+            mouse_pos: Point {x: 0, y:0}
         }
     }
 
@@ -55,6 +58,9 @@ impl GameState for State {
             RunState::AwaitingInput => {
                 new_run_state = player_input(self, context);
             },
+            RunState::TargetingInput => {
+                new_run_state = targeting_input(self, context);
+            }
             RunState::PlayerTurn => {
                 self.run_systems();
                 new_run_state = RunState::EnemyTurn;                
@@ -71,18 +77,20 @@ impl GameState for State {
 
         draw_map(&self.ecs, context);
 
-        let positions = self.ecs.read_storage::<Position>();
-        let renderables = self.ecs.read_storage::<Renderable>();
-        let map = self.ecs.fetch::<Map>();
+        {
+            let positions = self.ecs.read_storage::<Position>();
+            let renderables = self.ecs.read_storage::<Renderable>();
+            let map = self.ecs.fetch::<Map>();
 
-        for (pos, render) in (&positions, &renderables).join() {
-            let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] {
-                context.set(pos.x, pos.y, render.color, render.background, render.glyph);
+            for (pos, render) in (&positions, &renderables).join() {
+                let idx = map.xy_idx(pos.x, pos.y);
+                if map.visible_tiles[idx] {
+                    context.set(pos.x, pos.y, render.color, render.background, render.glyph);
+                }
             }
         }
 
-        draw_ui(&self.ecs, context);
+        draw_ui(self, context);
 
         let tick_time = begin.elapsed().as_micros();
         if tick_time > 6000 {
