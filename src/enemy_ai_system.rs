@@ -23,7 +23,7 @@ impl<'a> System<'a> for EnemyAI {
 
         let player_pos;
         {
-            let raw_player_pos = &mut positions.get(*player_entity).unwrap();            
+            let raw_player_pos = &positions.get(*player_entity).unwrap();            
             player_pos = Point::new(raw_player_pos.x, raw_player_pos.y);
         }
 
