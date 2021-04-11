@@ -100,6 +100,7 @@ fn main() -> rltk::BError {
             dirty: true
         })
         .with(Facing {direction: Direction::UP})
+        .with(BlocksTile {})
         .with(HumanoidBody::new(20))
         .with(Inventory {items: Vec::new()})
         .with(Name {value: "Goon".to_string()})
@@ -150,6 +151,7 @@ fn main() -> rltk::BError {
             range: 5,
             dirty: true
         })
+        .with(BlocksTile {})
         .with(Facing {direction: Direction::UP})
         .with(Name {value: "Tank".to_string()})
         .build();
