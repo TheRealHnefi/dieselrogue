@@ -25,6 +25,8 @@ mod game_log;
 pub use game_log::*;
 mod inventory_system;
 pub use inventory_system::*;
+mod menu;
+pub use menu::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
