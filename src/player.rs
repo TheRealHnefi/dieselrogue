@@ -82,8 +82,12 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Escape => {
                 game_state.menu_stack.clear();
 
-                fn quit_function(ecs: &mut World)  {
+                fn quit_function(_ecs: &mut World) -> RunState {
                     ::std::process::exit(0);
+                }
+
+                fn close_function(_ecs: &mut World) -> RunState {
+                    return RunState::AwaitingInput;
                 }
 
                 let quit_row = MenuRow {
@@ -91,11 +95,16 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
                     text: "(Q) Quit".to_string(),
                     functor: quit_function
                 };
+                let close_row = MenuRow {
+                    hotkey: VirtualKeyCode::C,
+                    text: "(C) Close Menu".to_string(),
+                    functor: close_function
+                };
 
                 let main_menu = Menu {
                     x: 35,
                     y: 20,
-                    rows: vec![quit_row]
+                    rows: vec![close_row, quit_row]
                 };
                 game_state.menu_stack.push(main_menu);
 
@@ -192,7 +201,7 @@ pub fn menu_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
                 let rows = &game_state.menu_stack.last().unwrap().rows;
                 for row in rows {
                     if row.hotkey == key {
-                        (row.functor)(&mut game_state.ecs);
+                        return (row.functor)(&mut game_state.ecs);
                     }
                 }
                 return RunState::MenuInput;
