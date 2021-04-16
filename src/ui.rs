@@ -32,7 +32,9 @@ pub fn draw_ui(state: &mut State, context: &mut Rltk) {
     match inventory {
         Some(inv) => {
             let mut y = 44;
-            for item in &inv.items {
+            // Required since EntityVec does not implement IntoIterator
+            let items: &Vec<Entity> = &*inv.items;
+            for item in items {
                 let name = names.get(*item);
                 assert!(name.is_some(), "Item name expected but not found");
                 context.print(60, y, &name.unwrap().value);

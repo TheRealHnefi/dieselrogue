@@ -11,6 +11,8 @@ pub enum RunState {
     PreRun,
     PlayerTurn,
     EnemyTurn,
+    Saving,
+    Loading
 }
 
 pub struct State {
@@ -75,6 +77,13 @@ impl GameState for State {
             },
             RunState::EnemyTurn => {
                 self.run_systems();
+                new_run_state = RunState::AwaitingInput;
+            },
+            RunState::Saving => {
+                //saveload_system::save_game(&mut self.ecs);
+                new_run_state = RunState::AwaitingInput;
+            }
+            RunState::Loading => {
                 new_run_state = RunState::AwaitingInput;
             }
         }
