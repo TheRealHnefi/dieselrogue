@@ -32,6 +32,8 @@ mod input;
 pub use input::*;
 mod saveload_system;
 pub use saveload_system::*;
+mod serde_collections;
+pub use serde_collections::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -49,6 +51,7 @@ fn main() -> rltk::BError {
     let mut game_state = State::new();
 
     game_state.ecs.register::<SimpleMarker<SerializeMarker>>();
+    game_state.ecs.register::<SerializationHelper>();
     game_state.ecs.register::<Player>();
     game_state.ecs.register::<Enemy>();
     game_state.ecs.register::<Position>();
