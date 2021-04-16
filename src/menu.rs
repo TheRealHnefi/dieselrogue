@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode};
 use specs::prelude::*;
-use super::RunState;
+use super::{RunState, GameLog, Name};
 
 pub struct Menu {
     pub x: i32,
@@ -16,31 +16,19 @@ pub struct MenuRow {
     pub action: MenuFunction
 }
 
-// Things menufunction needs to be able to signal:
-// * Go up a menu level
-// * Close the menu entirely
-// * Change things in the world
-type MenuFunction = fn (ecs: &mut World) -> RunState;
+type MenuFunction = fn (menu: &Menu, ecs: &mut World) -> RunState;
 
 impl Menu {
     pub fn new_main() -> Self {
-        fn quit_function(_ecs: &mut World) -> RunState {
-            ::std::process::exit(0);
-        }
-
-        fn close_function(_ecs: &mut World) -> RunState {
-            return RunState::AwaitingInput;
-        }
-
         let quit_row = MenuRow {
             hotkey: VirtualKeyCode::Q,
             text: "(Q) Quit".to_string(),
-            action: quit_function
+            action: Menu::action_quit
         };
         let close_row = MenuRow {
             hotkey: VirtualKeyCode::C,
             text: "(C) Close Menu".to_string(),
-            action: close_function
+            action: Menu::action_close
         };
 
         Self {
@@ -50,5 +38,50 @@ impl Menu {
             selected_row: 0,
             target: None
         }
+    }
+
+    pub fn new_target_menu(x: i32, y: i32, target: Entity) -> Self {
+        let examine_row = MenuRow {
+            hotkey: VirtualKeyCode::E,
+            text: "(E) Examine".to_string(),
+            action: Menu::action_examine
+        };
+
+        Menu {
+            x: x + 1,
+            y: y,
+            rows: vec![examine_row],
+            selected_row: 0,
+            target: Some(target)
+        }
+    }
+
+    pub fn action_quit(&self, _ecs: &mut World) -> RunState {
+        ::std::process::exit(0);
+    }
+
+    pub fn action_close(&self, _ecs: &mut World) -> RunState {
+        return RunState::AwaitingInput;
+    }
+
+    pub fn action_examine(menu: &Menu, ecs: &mut World) -> RunState {
+        let mut game_log = ecs.fetch_mut::<GameLog>();
+        match menu.target {
+            Some(entity) => {
+                let names = ecs.read_storage::<Name>();
+                match names.get(entity) {
+                    Some(name) => {
+                        game_log.entries.push(name.value.to_string());
+                    }
+                    None => {
+                        game_log.entries.push("Nameless entity".to_string());
+                    }
+                }
+            }
+            None => {
+                game_log.entries.push("Empty space".to_string());
+            }
+        }
+        return RunState::AwaitingInput;
     }
 }
