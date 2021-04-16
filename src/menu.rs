@@ -6,7 +6,8 @@ pub struct Menu {
     pub x: i32,
     pub y: i32,
     pub rows: Vec<MenuRow>,
-    pub selected_row: usize
+    pub selected_row: usize,
+    pub target: Option<Entity>
 }
 
 pub struct MenuRow {
@@ -45,8 +46,9 @@ impl Menu {
         Self {
             x: 35,
             y: 20,
-            rows: vec![close_row, quit_row],
-            selected_row: 0
+            rows: vec![quit_row, close_row],
+            selected_row: 0,
+            target: None
         }
     }
 }

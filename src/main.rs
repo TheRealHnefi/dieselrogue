@@ -38,6 +38,7 @@ fn main() -> rltk::BError {
         .with_resource_path("resources")
         .with_font("rexpaint_cp437_10x10.png", 10, 10)
         .with_tile_dimensions(10, 10)
+        .with_fullscreen(true)
         .build()?;
     
     context.set_active_font(1, true);
