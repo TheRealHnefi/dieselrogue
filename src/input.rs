@@ -2,7 +2,7 @@ use rltk::{VirtualKeyCode, Rltk, Point};
 use super::*;
 use std::cmp::{min, max};
 
-pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
+pub fn main_screen_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
         Some(key) => match key {
             VirtualKeyCode::Left |
@@ -36,6 +36,10 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Numpad5 => {},
 
             VirtualKeyCode::G => get_item(&mut game_state.ecs),
+
+            VirtualKeyCode::I => {
+                return RunState::InventoryScreen;
+            },
 
             VirtualKeyCode::T => {
                 let player = *game_state.ecs.fetch::<Entity>();
@@ -134,7 +138,7 @@ pub fn targeting_input(game_state: &mut State, context: &mut Rltk) -> RunState {
                         return RunState::AwaitingInput;
                     }
                 }
-            }
+            },
             _ => {
             }
         }
@@ -191,6 +195,23 @@ pub fn menu_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
         }
         None => {
             return RunState::MenuInput;
+        }
+    }
+}
+
+pub fn inventory_screen_input(_game_state: &mut State, ctx: &mut Rltk) -> RunState {
+    match ctx.key {
+        Some(key) => match key {
+            VirtualKeyCode::Escape |
+            VirtualKeyCode::I => {
+                return RunState::AwaitingInput;
+            },
+            _ => {
+                return RunState::InventoryScreen;
+            }
+        }
+        None => {
+            return RunState::InventoryScreen;
         }
     }
 }
