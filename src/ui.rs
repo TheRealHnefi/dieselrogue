@@ -3,6 +3,9 @@ use specs::prelude::*;
 use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size, TileType, Renderable, LargeRenderable};
 use std::cmp::max;
 
+pub const SCREEN_WIDTH: usize = 80;
+pub const SCREEN_HEIGHT: usize = 50;
+
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     draw_map(&state.ecs, context);
 
@@ -37,8 +40,67 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     draw_main_ui(state, context);
 }
 
-pub fn draw_inventory_screen(_state: &mut State, context: &mut Rltk) {
-    context.draw_box(0, 0, 79, 49, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
+    const LEFT_DIVIDER_X: i32 = 20;
+    const RIGHT_DIVIDER_X: i32 = 60;
+    const BOT_DIVIDER_Y: i32 = 40;
+    const FOREGROUND: RGB = RGB {r: 1., g: 1., b: 1.};
+    const BACKGROUND: RGB = RGB {r: 0., g: 0., b: 0.};
+
+    let _corner_top_left = rltk::to_cp437('╔');
+    let _corner_top_right = rltk::to_cp437('╗');
+    let _corner_bot_left = rltk::to_cp437('╚');
+    let _corner_bot_left = rltk::to_cp437('╝');
+    let vertical_border = rltk::to_cp437('║');
+    let horizontal_border = rltk::to_cp437('═');
+    let divider_top = rltk::to_cp437('╦');
+    let divider_bot = rltk::to_cp437('╩');
+    let _divider_mid = rltk::to_cp437('╬');
+    let divider_right = rltk::to_cp437('╣');
+    let divider_left = rltk::to_cp437('╠');
+    
+    context.draw_box_double(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+
+    for y in 1 .. SCREEN_HEIGHT - 1 {
+        context.set(LEFT_DIVIDER_X, y, FOREGROUND, BACKGROUND, vertical_border);
+        context.set(RIGHT_DIVIDER_X, y, FOREGROUND, BACKGROUND, vertical_border);
+    }
+    for x in LEFT_DIVIDER_X .. RIGHT_DIVIDER_X {
+        context.set(x, BOT_DIVIDER_Y, FOREGROUND, BACKGROUND, horizontal_border);
+    }
+
+    context.set(LEFT_DIVIDER_X, 0, FOREGROUND, BACKGROUND, divider_top);
+    context.set(LEFT_DIVIDER_X, BOT_DIVIDER_Y, FOREGROUND, BACKGROUND, divider_left);
+    context.set(LEFT_DIVIDER_X, SCREEN_HEIGHT - 1, FOREGROUND, BACKGROUND, divider_bot);
+
+    context.set(RIGHT_DIVIDER_X, 0, FOREGROUND, BACKGROUND, divider_top);
+    context.set(RIGHT_DIVIDER_X, BOT_DIVIDER_Y, FOREGROUND, BACKGROUND, divider_right);
+    context.set(RIGHT_DIVIDER_X, SCREEN_HEIGHT - 1, FOREGROUND, BACKGROUND, divider_bot);
+
+    context.print((LEFT_DIVIDER_X / 2) - 5, 0, " INVENTORY ");
+    context.print((SCREEN_WIDTH / 2) - 5, 0, " EQUIPMENT ");
+    context.print(RIGHT_DIVIDER_X + 3, 0, " PLAYER STATS ");
+    context.print((SCREEN_WIDTH / 2) - 9, BOT_DIVIDER_Y, " ITEM INFORMATION ");
+
+    let inventories = state.ecs.read_storage::<Inventory>();
+    let player = state.ecs.fetch::<Entity>();
+    let inventory = inventories.get(*player);
+    let names = state.ecs.read_storage::<Name>();
+    match inventory {
+        Some(inv) => {
+            let mut y = 2;
+            // Required since EntityVec does not implement IntoIterator
+            for item in &*inv.items {
+                let name = names.get(*item);
+                assert!(name.is_some(), "Item name expected but not found");
+                context.print(2, y, &name.unwrap().value);
+                y += 1;
+            }
+        },
+        None => {
+            panic!("Player lacks inventory");
+        }
+    }
 }
 
 pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
@@ -61,27 +123,6 @@ pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
     for message in &game_log.entries[length..] {
         context.print(2, y, message);
         y += 1;
-    }
-
-    let inventories = state.ecs.read_storage::<Inventory>();
-    let player = state.ecs.fetch::<Entity>();
-    let inventory = inventories.get(*player);
-    let names = state.ecs.read_storage::<Name>();
-    match inventory {
-        Some(inv) => {
-            let mut y = 44;
-            // Required since EntityVec does not implement IntoIterator
-            let items: &Vec<Entity> = &*inv.items;
-            for item in items {
-                let name = names.get(*item);
-                assert!(name.is_some(), "Item name expected but not found");
-                context.print(60, y, &name.unwrap().value);
-                y += 1;
-            }
-        },
-        None => {
-            panic!("Player lacks inventory");
-        }
     }
 }
 
