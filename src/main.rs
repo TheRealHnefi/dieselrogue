@@ -64,6 +64,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Viewshed>();
     game_state.ecs.register::<Name>();
     game_state.ecs.register::<BlocksTile>();
+    game_state.ecs.register::<Firearm>();
     game_state.ecs.register::<GettableItem>();
     game_state.ecs.register::<GettingItem>();
     game_state.ecs.register::<Inventory>();
@@ -139,6 +140,7 @@ fn main() -> rltk::BError {
         })
         .with(GettableItem {})
         .with(Name {value: "Gun".to_string()})
+        .with(Firearm {range: 5})
         .marked::<SimpleMarker<SerializeMarker>>()
         .build();
 
