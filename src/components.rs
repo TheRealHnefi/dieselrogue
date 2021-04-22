@@ -113,8 +113,7 @@ pub struct HumanoidBody {
     pub torso: BodyPart,
     pub left_arm: BodyPart,
     pub right_arm: BodyPart,
-    pub left_leg: BodyPart,
-    pub right_leg: BodyPart
+    pub legs: BodyPart
 }
 impl HumanoidBody {
     pub fn new(max_hp: i32) -> HumanoidBody {
@@ -141,13 +140,8 @@ impl HumanoidBody {
                 max_hitpoints: max_hp / 5,
                 hitpoints: max_hp / 5
             },
-            left_leg: BodyPart {
-                name: "left leg".to_string(),
-                max_hitpoints: max_hp / 3,
-                hitpoints: max_hp / 3
-            },
-            right_leg: BodyPart {
-                name: "right leg".to_string(),
+            legs: BodyPart {
+                name: "legs".to_string(),
                 max_hitpoints: max_hp / 3,
                 hitpoints: max_hp / 3
             }
