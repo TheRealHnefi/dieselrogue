@@ -34,6 +34,110 @@ Also, you get to blow things up with retrofuturistic tanks.
 
 Or perhaps no classes at all? Just perks?
 
+### Perk ideas
+
+#### Automatic Weapons
+* Controlled burst (burst at body part)
+* Long burst (double/triple burst amount)
+* Suppressive fire
+* Recoil handling (better accuracy of subsequent shots in burst)
+* Dual wielding submachine guns
+
+#### Chemistry
+* Improved healing effect from medkits
+* Create poison canister
+* Create acid canister
+* Create smoke canister
+* Create KO gas canister
+* Inject berzerkium
+
+#### Conditioning
+* Double stamina
+* Refuel stamina by spending HP
+
+#### Engineering
+* Build trap
+* Disarm trap
+* Fit modifications
+* Destructive modification (massively overpower weapon, destroy after x uses)
+* Rocket-powered dash
+
+#### Explosives
+* Accurate throw
+* Bigger booms
+* Booby trap
+* Create grenade
+* Create firebomb
+
+#### Infiltration
+* Pick lock
+* Peek through keyhole
+* Block door
+* Thorough body search
+* Predict action
+* Sneak
+* Hide
+* Make noise (misdirect)
+* Disguise
+* Precision throwing
+
+#### Launchers
+
+#### Melee
+
+#### Mobility
+* Dodge
+* Dash
+* Slide trip (Bison low roundhouse)
+* Free movement (take X steps without spending turn)
+
+#### Pugilism
+* Triple punch
+* Dashing punch
+* Throw opponent
+* Knock out
+* Disarm
+* Trip
+* Strike weakspot (eyes if face, kidneys if torso, groin if legs etc)
+* Break bodypart (neck, arm, foot)
+* Free strike
+
+#### Piloting
+
+#### Pistols
+* Free shot
+* Double wielding
+* Melee barrage
+* Double tap
+* Human shield
+
+#### Resilience
+* Double HP
+* Innate armor
+* Tougher bodyparts
+* Disregard debuff
+* Revive
+* Gun-fu (fire at all visible opponents)
+
+#### Rifles
+* Aim
+* Penetrating shot (shoot through opponents)
+* Instant reload
+* Crippling shot
+* Shoot weakpoint
+
+#### Scouting
+* Eagle eyes (long distance sight)
+* Listening
+* Spot hidden
+
+#### Shotguns
+* Shoot and reload
+* Double shot
+* Deafen
+* Shower power (fire several shots in area, hit several targets)
+
+
 ### Resources:
 * HP: Local for each body part, plus overall HP. No regeneration.
 * Fatigue: Used for abilities, including magic. No regeneration.
