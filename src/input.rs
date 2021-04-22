@@ -201,35 +201,44 @@ pub fn menu_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
 
 pub fn inventory_screen_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
-        Some(key) => match key {
-            VirtualKeyCode::Escape |
-            VirtualKeyCode::I => {
-                return RunState::AwaitingInput;
-            },
-            VirtualKeyCode::Down |
-            VirtualKeyCode::Numpad2 => {
-                let player = game_state.ecs.fetch::<Entity>();
-                let inventories = game_state.ecs.read_storage::<Inventory>();
-                let inventory = inventories.get(*player);
-                match inventory {
-                    Some(inv) => {
-                        game_state.inventory_screen_selection = min(game_state.inventory_screen_selection + 1,
-                                                                    inv.items.len() as i32 - 1);
-                        
+        Some(key) => {
+            let player = game_state.ecs.fetch::<Entity>();
+            let inventories = game_state.ecs.read_storage::<Inventory>();
+            let inventory = inventories.get(*player).unwrap();
+
+            match key {
+                VirtualKeyCode::Escape |
+                VirtualKeyCode::I => {
+                    return RunState::AwaitingInput;
+                },
+                VirtualKeyCode::Down |
+                VirtualKeyCode::Numpad2 => {
+                    game_state.inventory_screen_selection = min(game_state.inventory_screen_selection + 1,
+                                                                inventory.items.len() as i32 - 1);           
+                    return RunState::InventoryScreen;
+                },
+                VirtualKeyCode::Up |
+                VirtualKeyCode::Numpad8 => {
+                    game_state.inventory_screen_selection = max(game_state.inventory_screen_selection - 1, 0);
+                    return RunState::InventoryScreen;
+                },
+                VirtualKeyCode::Space |
+                VirtualKeyCode::Return => {
+                    let mut bodies = game_state.ecs.write_storage::<HumanoidBody>();
+                    let body_maybe = bodies.get_mut(*player);
+                    match body_maybe {
+                        Some(body) => {
+                            body.left_arm.equipped_item = EntityOption::<Entity>::from(Some(inventory.items[game_state.inventory_screen_selection as usize]));
+                        }
+                        None => {
+                            panic!("Player lacks body");
+                        }
                     }
-                    None => {
-                        panic!("Player lacks inventory");
-                    }
+                    return RunState::InventoryScreen;
+                },
+                _ => {
+                    return RunState::InventoryScreen;
                 }
-                return RunState::InventoryScreen;
-            },
-            VirtualKeyCode::Up |
-            VirtualKeyCode::Numpad8 => {
-                game_state.inventory_screen_selection = max(game_state.inventory_screen_selection - 1, 0);
-                return RunState::InventoryScreen;
-            },
-            _ => {
-                return RunState::InventoryScreen;
             }
         }
         None => {
