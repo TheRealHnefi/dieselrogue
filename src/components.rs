@@ -33,14 +33,23 @@ pub struct Size {
 
 #[derive (Component, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
-    UP,
-    UPRIGHT,
-    RIGHT,
-    DOWNRIGHT,
-    DOWN,
-    DOWNLEFT,
-    LEFT,
-    UPLEFT
+    Up,
+    UpRight,
+    Right,
+    DownRight,
+    Down,
+    DownLeft,
+    Left,
+    UpLeft
+}
+
+#[derive (Component, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
+pub enum ItemSlot {
+    MainWeapon,
+    OffhandWeapon,
+    Head,
+    Torso,
+    Legs
 }
 
 #[derive (Component, ConvertSaveload, Clone)]
@@ -86,8 +95,14 @@ pub struct Firearm {
     pub range: i32
 }
 
+#[derive (Component, ConvertSaveload, Clone)]
+pub struct Equippable {
+    pub equipped: bool,
+    pub slot: ItemSlot
+}
+
 #[derive (Component, Serialize, Deserialize, Clone)]
-pub struct GettableItem {}
+pub struct Gettable {}
 
 #[derive (Component, Serialize, Deserialize, Clone)]
 pub struct GettingItem {}
@@ -99,7 +114,7 @@ pub struct Inventory {
 
 #[derive (ConvertSaveload, Clone)]
 pub struct BodyPart {
-    pub name: String,
+    pub item_slot: ItemSlot,
     pub max_hitpoints: i32,
     pub hitpoints: i32,
     pub equipped_item: EntityOption<Entity>
@@ -122,31 +137,31 @@ impl HumanoidBody {
             max_hitpoints: max_hp,
             hitpoints: max_hp,
             head: BodyPart {
-                name: "head".to_string(),
+                item_slot: ItemSlot::Head,
                 max_hitpoints: max_hp / 4,
                 hitpoints: max_hp / 4,
                 equipped_item: EntityOption::from(None)
             },
             torso: BodyPart {
-                name: "torso".to_string(),
+                item_slot: ItemSlot::Torso,
                 max_hitpoints: max_hp / 2,
                 hitpoints: max_hp / 2,
                 equipped_item: EntityOption::from(None)
             },
             left_arm: BodyPart {
-                name: "left arm".to_string(),
+                item_slot: ItemSlot::OffhandWeapon,
                 max_hitpoints: max_hp / 5,
                 hitpoints: max_hp / 5,
                 equipped_item: EntityOption::from(None)
             },
             right_arm: BodyPart {
-                name: "right arm".to_string(),
+                item_slot: ItemSlot::MainWeapon,
                 max_hitpoints: max_hp / 5,
                 hitpoints: max_hp / 5,
                 equipped_item: EntityOption::from(None)
             },
             legs: BodyPart {
-                name: "legs".to_string(),
+                item_slot: ItemSlot::Legs,
                 max_hitpoints: max_hp / 3,
                 hitpoints: max_hp / 3,
                 equipped_item: EntityOption::from(None)

@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use super::{Map, Position, BlocksTile, GettableItem, Size, Point};
+use super::{Map, Position, BlocksTile, Gettable, Size, Point};
 
 pub struct MapIndexingSystem {}
 
@@ -7,7 +7,7 @@ impl<'a> System<'a> for MapIndexingSystem {
     type SystemData = (WriteExpect<'a, Map>,
                         ReadStorage<'a, Position>,
                         ReadStorage<'a, BlocksTile>,
-                        ReadStorage<'a, GettableItem>,
+                        ReadStorage<'a, Gettable>,
                         ReadStorage<'a, Size>,
                         Entities<'a>);
 
@@ -17,7 +17,7 @@ impl<'a> System<'a> for MapIndexingSystem {
         map.populate_blocked();
         map.clear_contents_index();
         for (entity, position, blocker, size) in (&entities, &position, (&blockers).maybe(), (&sizes).maybe()).join() {
-            let item: Option<&GettableItem> = gettables.get(entity);
+            let item: Option<&Gettable> = gettables.get(entity);
             let dimensions;
             match size {
                 Some(s) => {

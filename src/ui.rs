@@ -118,6 +118,7 @@ pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
     }
 
     let names = state.ecs.read_storage::<Name>();
+    let equippables = state.ecs.read_storage::<Equippable>();
     let inventories = state.ecs.read_storage::<Inventory>();
     let inventory = inventories.get(*player);
     match inventory {
@@ -125,13 +126,24 @@ pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
             let mut y = 2;
             // Required since EntityVec does not implement IntoIterator
             for (i, item) in (&*inv.items).iter().enumerate() {
+                let mut foreground = RGB::named(rltk::WHITE);
+                let mut background = RGB::named(rltk::BLACK);
                 let name = names.get(*item);
                 assert!(name.is_some(), "Item name expected but not found");
-                if i == state.inventory_screen_selection as usize {
-                    context.print_color(2, y, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), &name.unwrap().value);
-                } else {
-                    context.print(2, y, &name.unwrap().value);
+                let equippable = equippables.get(*item);
+
+                match equippable {
+                    Some(equip) => {
+                        if equip.equipped {
+                            foreground = RGB::named(rltk::GREEN);
+                        }
+                    }
+                    None => ()
                 }
+                if i == state.inventory_screen_selection as usize {
+                    background = RGB::named(rltk::MAGENTA);
+                }
+                context.print_color(2, y, foreground, background, &name.unwrap().value);
                 y += 1;
             }
         },

@@ -7,31 +7,31 @@ pub fn main_screen_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 |
-            VirtualKeyCode::H => try_move_player(Direction::LEFT, &mut game_state.ecs),
+            VirtualKeyCode::H => try_move_player(Direction::Left, &mut game_state.ecs),
 
             VirtualKeyCode::Right |
             VirtualKeyCode::Numpad6 |
-            VirtualKeyCode::L => try_move_player(Direction::RIGHT, &mut game_state.ecs),
+            VirtualKeyCode::L => try_move_player(Direction::Right, &mut game_state.ecs),
 
             VirtualKeyCode::Up |
             VirtualKeyCode::Numpad8 |
-            VirtualKeyCode::K => try_move_player(Direction::UP, &mut game_state.ecs),
+            VirtualKeyCode::K => try_move_player(Direction::Up, &mut game_state.ecs),
 
             VirtualKeyCode::Down |
             VirtualKeyCode::Numpad2 |
-            VirtualKeyCode::J => try_move_player(Direction::DOWN, &mut game_state.ecs),
+            VirtualKeyCode::J => try_move_player(Direction::Down, &mut game_state.ecs),
 
             VirtualKeyCode::Numpad9 |
-            VirtualKeyCode::Y => try_move_player(Direction::UPRIGHT, &mut game_state.ecs),
+            VirtualKeyCode::Y => try_move_player(Direction::UpRight, &mut game_state.ecs),
 
             VirtualKeyCode::Numpad7 |
-            VirtualKeyCode::U => try_move_player(Direction::UPLEFT, &mut game_state.ecs),
+            VirtualKeyCode::U => try_move_player(Direction::UpLeft, &mut game_state.ecs),
 
             VirtualKeyCode::Numpad3 |
-            VirtualKeyCode::N => try_move_player(Direction::DOWNRIGHT, &mut game_state.ecs),
+            VirtualKeyCode::N => try_move_player(Direction::DownRight, &mut game_state.ecs),
 
             VirtualKeyCode::Numpad1 |
-            VirtualKeyCode::B => try_move_player(Direction::DOWNLEFT, &mut game_state.ecs),
+            VirtualKeyCode::B => try_move_player(Direction::DownLeft, &mut game_state.ecs),
 
             VirtualKeyCode::Numpad5 => {},
 
@@ -199,11 +199,11 @@ pub fn menu_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
     }
 }
 
-pub fn inventory_screen_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
+pub fn inventory_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
         Some(key) => {
-            let player = game_state.ecs.fetch::<Entity>();
-            let inventories = game_state.ecs.read_storage::<Inventory>();
+            let player = state.ecs.fetch::<Entity>();
+            let inventories = state.ecs.read_storage::<Inventory>();
             let inventory = inventories.get(*player).unwrap();
 
             match key {
@@ -213,22 +213,81 @@ pub fn inventory_screen_input(game_state: &mut State, ctx: &mut Rltk) -> RunStat
                 },
                 VirtualKeyCode::Down |
                 VirtualKeyCode::Numpad2 => {
-                    game_state.inventory_screen_selection = min(game_state.inventory_screen_selection + 1,
+                    state.inventory_screen_selection = min(state.inventory_screen_selection + 1,
                                                                 inventory.items.len() as i32 - 1);           
                     return RunState::InventoryScreen;
                 },
                 VirtualKeyCode::Up |
                 VirtualKeyCode::Numpad8 => {
-                    game_state.inventory_screen_selection = max(game_state.inventory_screen_selection - 1, 0);
+                    state.inventory_screen_selection = max(state.inventory_screen_selection - 1, 0);
                     return RunState::InventoryScreen;
                 },
                 VirtualKeyCode::Space |
                 VirtualKeyCode::Return => {
-                    let mut bodies = game_state.ecs.write_storage::<HumanoidBody>();
+                    // TODO: Switch all this to action taken and handled in InventorySystem
+                    let mut bodies = state.ecs.write_storage::<HumanoidBody>();
                     let body_maybe = bodies.get_mut(*player);
                     match body_maybe {
                         Some(body) => {
-                            body.left_arm.equipped_item = EntityOption::<Entity>::from(Some(inventory.items[game_state.inventory_screen_selection as usize]));
+                            let item = inventory.items[state.inventory_screen_selection as usize];
+                            let mut equippables = state.ecs.write_storage::<Equippable>();
+                            let equippable = equippables.get_mut(item).unwrap();
+                            let unequipped_item;
+                            match equippable.slot {
+                                ItemSlot::MainWeapon => {
+                                    unequipped_item = body.right_arm.equipped_item;
+                                    if body.right_arm.equipped_item.is_some() && body.right_arm.equipped_item.unwrap() == item {
+                                        body.right_arm.equipped_item = EntityOption::from(None);
+                                    } else {
+                                        equippable.equipped = true;
+                                        body.right_arm.equipped_item = EntityOption::<Entity>::from(Some(item));
+                                    }
+                                },
+                                ItemSlot::OffhandWeapon => {
+                                    unequipped_item = body.left_arm.equipped_item;
+                                    if body.left_arm.equipped_item.is_some() && body.left_arm.equipped_item.unwrap() == item {
+                                        body.left_arm.equipped_item = EntityOption::from(None);
+                                    } else {
+                                        equippable.equipped = true;
+                                        body.left_arm.equipped_item = EntityOption::<Entity>::from(Some(item));
+                                    }
+                                },
+                                ItemSlot::Head => {
+                                    unequipped_item = body.head.equipped_item;
+                                    if body.head.equipped_item.is_some() && body.head.equipped_item.unwrap() == item {
+                                        body.head.equipped_item = EntityOption::from(None);
+                                    } else {
+                                        equippable.equipped = true;
+                                        body.head.equipped_item = EntityOption::<Entity>::from(Some(item));
+                                    }
+                                },
+                                ItemSlot::Torso => {
+                                    unequipped_item = body.torso.equipped_item;
+                                    if body.torso.equipped_item.is_some() && body.torso.equipped_item.unwrap() == item {
+                                        body.torso.equipped_item = EntityOption::from(None);
+                                    } else {
+                                        equippable.equipped = true;
+                                        body.torso.equipped_item = EntityOption::<Entity>::from(Some(item));
+                                    }
+                                },
+                                ItemSlot::Legs => {
+                                    unequipped_item = body.legs.equipped_item;
+                                    if body.legs.equipped_item.is_some() && body.legs.equipped_item.unwrap() == item {
+                                        body.legs.equipped_item = EntityOption::from(None);
+                                    } else {
+                                        equippable.equipped = true;
+                                        body.legs.equipped_item = EntityOption::<Entity>::from(Some(item));
+                                    }
+                                }
+                            }
+
+                            match *unequipped_item {
+                                Some(unequip_entity) => {
+                                    let unequippable = equippables.get_mut(unequip_entity).unwrap();
+                                    unequippable.equipped = false;
+                                },
+                                None => ()
+                            }
                         }
                         None => {
                             panic!("Player lacks body");
