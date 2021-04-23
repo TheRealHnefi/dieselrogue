@@ -61,29 +61,33 @@ pub fn valid_actions(ecs: &World, target: Entity) -> Result<Vec<Action>, ()> {
 
     let player = *ecs.fetch::<Entity>();
     let positions = ecs.read_storage::<Position>();
-    let inventories = ecs.read_storage::<Inventory>();
     let player_pos = positions.get(player).ok_or(())?;
     let target_pos = positions.get(target).ok_or(())?;
-    let player_inventory = inventories.get(player).ok_or(())?;
+    let bodies = ecs.read_storage::<HumanoidBody>();
+    let player_body = bodies.get(player).ok_or(())?;
 
     for action in Action::into_enum_iter() {
         match action {
             Action::Examine => ret_val.push(action),
             Action::Shoot => {
-                for item in &*player_inventory.items {
-                    let firearms = ecs.read_storage::<Firearm>();
-                    let firearm = firearms.get(*item);
-                    match firearm {
-                        Some(_) => {
-                            let distance = Pythagoras.distance2d(Point::new(target_pos.x, target_pos.y),
-                                                                 Point::new(player_pos.x, player_pos.y));
-                            if distance <= firearm.unwrap().range as f32 {
-                                ret_val.push(action);
-                                break;
-                            }
-                        },
-                        None => ()
-                    }
+                let item_slot = *player_body.right_arm.equipped_item;
+                match item_slot {
+                    Some(item) => {
+                        let firearms = ecs.read_storage::<Firearm>();
+                        let firearm = firearms.get(item);
+                        match firearm {
+                            Some(_) => {
+                                let distance = Pythagoras.distance2d(Point::new(target_pos.x, target_pos.y),
+                                                                     Point::new(player_pos.x, player_pos.y));
+                                if distance <= firearm.unwrap().range as f32 {
+                                    ret_val.push(action);
+                                    break;
+                                }
+                            },
+                            None => ()
+                        }
+                    },
+                    None => ()
                 }
             }
         }
