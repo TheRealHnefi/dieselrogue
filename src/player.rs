@@ -68,7 +68,7 @@ pub fn drop_item(ecs: &World, item: Entity) -> Result<(), GameError> {
     let positions = ecs.read_storage::<Position>();
     let player_pos = positions.get(player).ok_or(())?;
     let index = map.xy_idx(player_pos.x, player_pos.y);
-    
+
     if map.tile_items[index].is_some() {
         return Err(GameError {});
     }
@@ -76,75 +76,10 @@ pub fn drop_item(ecs: &World, item: Entity) -> Result<(), GameError> {
     Ok(())
 }
 
-pub fn instant_equip_item(ecs: &World, item: Entity) {
-    let player = ecs.fetch::<Entity>();
-    let mut bodies = ecs.write_storage::<HumanoidBody>();
-    let body_maybe = bodies.get_mut(*player);
-    match body_maybe {
-        Some(body) => {
-            let mut equippables = ecs.write_storage::<Equippable>();
-            let equippable = equippables.get_mut(item).unwrap();
-            let unequipped_item;
-            match equippable.slot {
-                ItemSlot::MainWeapon => {
-                    unequipped_item = body.right_arm.equipped_item;
-                    if body.right_arm.equipped_item.is_some() && body.right_arm.equipped_item.unwrap() == item {
-                        body.right_arm.equipped_item = EntityOption::from(None);
-                    } else {
-                        equippable.equipped = true;
-                        body.right_arm.equipped_item = EntityOption::<Entity>::from(Some(item));
-                    }
-                },
-                ItemSlot::OffhandWeapon => {
-                    unequipped_item = body.left_arm.equipped_item;
-                    if body.left_arm.equipped_item.is_some() && body.left_arm.equipped_item.unwrap() == item {
-                        body.left_arm.equipped_item = EntityOption::from(None);
-                    } else {
-                        equippable.equipped = true;
-                        body.left_arm.equipped_item = EntityOption::<Entity>::from(Some(item));
-                    }
-                },
-                ItemSlot::Head => {
-                    unequipped_item = body.head.equipped_item;
-                    if body.head.equipped_item.is_some() && body.head.equipped_item.unwrap() == item {
-                        body.head.equipped_item = EntityOption::from(None);
-                    } else {
-                        equippable.equipped = true;
-                        body.head.equipped_item = EntityOption::<Entity>::from(Some(item));
-                    }
-                },
-                ItemSlot::Torso => {
-                    unequipped_item = body.torso.equipped_item;
-                    if body.torso.equipped_item.is_some() && body.torso.equipped_item.unwrap() == item {
-                        body.torso.equipped_item = EntityOption::from(None);
-                    } else {
-                        equippable.equipped = true;
-                        body.torso.equipped_item = EntityOption::<Entity>::from(Some(item));
-                    }
-                },
-                ItemSlot::Legs => {
-                    unequipped_item = body.legs.equipped_item;
-                    if body.legs.equipped_item.is_some() && body.legs.equipped_item.unwrap() == item {
-                        body.legs.equipped_item = EntityOption::from(None);
-                    } else {
-                        equippable.equipped = true;
-                        body.legs.equipped_item = EntityOption::<Entity>::from(Some(item));
-                    }
-                }
-            }
-
-            match *unequipped_item {
-                Some(unequip_entity) => {
-                    let unequippable = equippables.get_mut(unequip_entity).unwrap();
-                    unequippable.equipped = false;
-                },
-                None => ()
-            }
-        }
-        None => {
-            panic!("Player lacks body");
-        }
-    }
+pub fn equip_item(ecs: &World, item: Entity) -> Result<(), GameError> {
+    let player = *ecs.fetch::<Entity>();
+    ecs.write_storage::<EquippingItem>().insert(player, EquippingItem {item: item})?;
+    Ok(())
 }
 
 pub fn valid_actions(ecs: &World, target: Entity) -> Result<Vec<Action>, GameError> {

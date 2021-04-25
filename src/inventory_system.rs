@@ -1,5 +1,6 @@
 use specs::prelude::*;
-use super::{GettingItem, DroppingItem, Equippable, Position, GameLog, Name, Map, Inventory};
+use super::{HumanoidBody, ItemSlot, GettingItem, DroppingItem, EquippingItem, Equippable, Position, GameLog, Name, Map, Inventory};
+use super::serde_collections::*;
 
 pub struct InventorySystem {}
 
@@ -7,16 +8,18 @@ impl<'a> System<'a> for InventorySystem {
     type SystemData = (WriteExpect<'a, GameLog>,
                         ReadExpect<'a, Map>,
                         ReadStorage<'a, Name>,
-                        ReadStorage<'a, Equippable>,
+                        WriteStorage<'a, Equippable>,
                         WriteStorage<'a, GettingItem>,
                         WriteStorage<'a, DroppingItem>,
+                        WriteStorage<'a, EquippingItem>,
+                        WriteStorage<'a, HumanoidBody>,
                         WriteStorage<'a, Position>,
                         WriteStorage<'a, Inventory>);
                         
     fn run(&mut self, data: Self::SystemData) {
-        let (mut game_log, map, names, equippables, mut item_getters, mut item_droppers, mut positions, mut inventories) = data;
+        let (mut game_log, map, names, mut equippables, mut item_getters, mut item_droppers, mut item_equippers, mut bodies, mut positions, mut inventories) = data;
 
-        // TODO: Profile with large maps. This is setting off warning bells.
+        // Get items
         let mut getter_collection = vec![];
         for (getter, position, name, inventory) in (&item_getters, &positions, &names, &mut inventories).join() {
             getter_collection.push((getter, name, Position {x: position.x, y: position.y }, inventory));
@@ -38,9 +41,9 @@ impl<'a> System<'a> for InventorySystem {
                 }
             }
         }
-
         item_getters.clear();
 
+        // Drop items
         let mut dropper_collection = vec![];
         for (dropper, position, name, inventory) in (&item_droppers, &positions, &names, &mut inventories).join() {
             dropper_collection.push((dropper, name, Position {x: position.x, y: position.y }, inventory));
@@ -67,8 +70,78 @@ impl<'a> System<'a> for InventorySystem {
                 }
             }
         }
-
         item_droppers.clear();
-    }
 
+        for (equipper, inventory, name, body) in (&item_equippers, &inventories, &names, &mut bodies).join() {
+            let equippable = equippables.get_mut(equipper.item).unwrap();
+            let equipped_name = &names.get(equipper.item).unwrap().value;
+            let unequipped_item;
+            if inventory.items.iter().any(|&i| i == equipper.item) {
+                match equippable.slot {
+                    ItemSlot::MainWeapon => {
+                        unequipped_item = body.right_arm.equipped_item;
+                        if body.right_arm.equipped_item.is_some() && body.right_arm.equipped_item.unwrap() == equipper.item {
+                            body.right_arm.equipped_item = EntityOption::from(None);
+                        } else {
+                            equippable.equipped = true;
+                            body.right_arm.equipped_item = EntityOption::<Entity>::from(Some(equipper.item));
+                            game_log.entries.push(format!("{} equipped {} in their right arm", name.value, equipped_name));
+                        }
+                    },
+                    ItemSlot::OffhandWeapon => {
+                        unequipped_item = body.left_arm.equipped_item;
+                        if body.left_arm.equipped_item.is_some() && body.left_arm.equipped_item.unwrap() == equipper.item {
+                            body.left_arm.equipped_item = EntityOption::from(None);
+                        } else {
+                            equippable.equipped = true;
+                            body.left_arm.equipped_item = EntityOption::<Entity>::from(Some(equipper.item));
+                            game_log.entries.push(format!("{} equipped {} in their left arm", name.value, equipped_name));
+                        }
+                    },
+                    ItemSlot::Head => {
+                        unequipped_item = body.head.equipped_item;
+                        if body.head.equipped_item.is_some() && body.head.equipped_item.unwrap() == equipper.item {
+                            body.head.equipped_item = EntityOption::from(None);
+                        } else {
+                            equippable.equipped = true;
+                            body.head.equipped_item = EntityOption::<Entity>::from(Some(equipper.item));
+                            game_log.entries.push(format!("{} equipped {} on their head", name.value, equipped_name));
+                        }
+                    },
+                    ItemSlot::Torso => {
+                        unequipped_item = body.torso.equipped_item;
+                        if body.torso.equipped_item.is_some() && body.torso.equipped_item.unwrap() == equipper.item {
+                            body.torso.equipped_item = EntityOption::from(None);
+                        } else {
+                            equippable.equipped = true;
+                            body.torso.equipped_item = EntityOption::<Entity>::from(Some(equipper.item));
+                            game_log.entries.push(format!("{} equipped {} on their torso", name.value, equipped_name));
+                        }
+                    },
+                    ItemSlot::Legs => {
+                        unequipped_item = body.legs.equipped_item;
+                        if body.legs.equipped_item.is_some() && body.legs.equipped_item.unwrap() == equipper.item {
+                            body.legs.equipped_item = EntityOption::from(None);
+                        } else {
+                            equippable.equipped = true;
+                            body.legs.equipped_item = EntityOption::<Entity>::from(Some(equipper.item));
+                            game_log.entries.push(format!("{} equipped {} on their legs", name.value, equipped_name));
+                        }
+                    }
+                }
+
+                match *unequipped_item {
+                    Some(unequip_entity) => {
+                        let unequippable = equippables.get_mut(unequip_entity).unwrap();
+                        unequippable.equipped = false;
+                        game_log.entries.push(format!("{} unequipped {}", name.value, names.get(unequip_entity).unwrap().value));
+                    },
+                    None => ()
+                }
+            } else {
+                game_log.entries.push(format!("{} tried to equip {} without carrying it", name.value, equipped_name));
+            }
+        }
+        item_equippers.clear();
+    }
 }

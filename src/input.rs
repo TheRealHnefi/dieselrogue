@@ -214,7 +214,8 @@ pub fn inventory_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
             let player = state.ecs.fetch::<Entity>();
             let inventories = state.ecs.read_storage::<Inventory>();
             let inventory = inventories.get(*player).unwrap();
-
+            let mut game_log = state.ecs.fetch_mut::<GameLog>();
+            
             match key {
                 VirtualKeyCode::Escape |
                 VirtualKeyCode::I => {
@@ -232,20 +233,23 @@ pub fn inventory_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
                     return RunState::InventoryScreen;
                 },
                 VirtualKeyCode::D => {
-                    let mut game_log = state.ecs.fetch_mut::<GameLog>();
                     match drop_item(&state.ecs, inventory.items[state.inventory_screen_selection as usize]) {
-                        Ok(_) => (),
+                        Ok(_) => return RunState::PlayerTurn,
                         Err(_) => {
                             game_log.entries.push("Can't drop item. Is something in the way?".to_string());
                             return RunState::AwaitingInput;
                         }
                     }
-                    return RunState::PlayerTurn;
                 },
                 VirtualKeyCode::Space |
                 VirtualKeyCode::Return => {
-                    instant_equip_item(&state.ecs, inventory.items[state.inventory_screen_selection as usize]);
-                    return RunState::InventoryScreen;
+                    match equip_item(&state.ecs, inventory.items[state.inventory_screen_selection as usize]) {
+                        Ok(_) => return RunState::PlayerTurn,
+                        Err(_) => {
+                            game_log.entries.push("Can't equip item".to_string());
+                            return RunState::AwaitingInput;
+                        }
+                    }
                 },
                 _ => {
                     return RunState::InventoryScreen;
