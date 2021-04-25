@@ -35,7 +35,16 @@ pub fn main_screen_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
 
             VirtualKeyCode::Numpad5 => {},
 
-            VirtualKeyCode::G => get_item(&mut game_state.ecs),
+            VirtualKeyCode::G => {
+                let mut game_log = game_state.ecs.fetch_mut::<GameLog>();
+                match get_item(&game_state.ecs) {
+                    Ok(_) => (),
+                    Err(_) => {
+                        game_log.entries.push("Can't pick up item".to_string());
+                        return RunState::AwaitingInput;
+                    }
+                }
+            },
 
             VirtualKeyCode::I => {
                 return RunState::InventoryScreen;
@@ -222,77 +231,13 @@ pub fn inventory_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
                     state.inventory_screen_selection = max(state.inventory_screen_selection - 1, 0);
                     return RunState::InventoryScreen;
                 },
+                VirtualKeyCode::D => {
+                    
+                    return RunState::PlayerTurn;
+                },
                 VirtualKeyCode::Space |
                 VirtualKeyCode::Return => {
-                    // TODO: Switch all this to action taken and handled in InventorySystem
-                    let mut bodies = state.ecs.write_storage::<HumanoidBody>();
-                    let body_maybe = bodies.get_mut(*player);
-                    match body_maybe {
-                        Some(body) => {
-                            let item = inventory.items[state.inventory_screen_selection as usize];
-                            let mut equippables = state.ecs.write_storage::<Equippable>();
-                            let equippable = equippables.get_mut(item).unwrap();
-                            let unequipped_item;
-                            match equippable.slot {
-                                ItemSlot::MainWeapon => {
-                                    unequipped_item = body.right_arm.equipped_item;
-                                    if body.right_arm.equipped_item.is_some() && body.right_arm.equipped_item.unwrap() == item {
-                                        body.right_arm.equipped_item = EntityOption::from(None);
-                                    } else {
-                                        equippable.equipped = true;
-                                        body.right_arm.equipped_item = EntityOption::<Entity>::from(Some(item));
-                                    }
-                                },
-                                ItemSlot::OffhandWeapon => {
-                                    unequipped_item = body.left_arm.equipped_item;
-                                    if body.left_arm.equipped_item.is_some() && body.left_arm.equipped_item.unwrap() == item {
-                                        body.left_arm.equipped_item = EntityOption::from(None);
-                                    } else {
-                                        equippable.equipped = true;
-                                        body.left_arm.equipped_item = EntityOption::<Entity>::from(Some(item));
-                                    }
-                                },
-                                ItemSlot::Head => {
-                                    unequipped_item = body.head.equipped_item;
-                                    if body.head.equipped_item.is_some() && body.head.equipped_item.unwrap() == item {
-                                        body.head.equipped_item = EntityOption::from(None);
-                                    } else {
-                                        equippable.equipped = true;
-                                        body.head.equipped_item = EntityOption::<Entity>::from(Some(item));
-                                    }
-                                },
-                                ItemSlot::Torso => {
-                                    unequipped_item = body.torso.equipped_item;
-                                    if body.torso.equipped_item.is_some() && body.torso.equipped_item.unwrap() == item {
-                                        body.torso.equipped_item = EntityOption::from(None);
-                                    } else {
-                                        equippable.equipped = true;
-                                        body.torso.equipped_item = EntityOption::<Entity>::from(Some(item));
-                                    }
-                                },
-                                ItemSlot::Legs => {
-                                    unequipped_item = body.legs.equipped_item;
-                                    if body.legs.equipped_item.is_some() && body.legs.equipped_item.unwrap() == item {
-                                        body.legs.equipped_item = EntityOption::from(None);
-                                    } else {
-                                        equippable.equipped = true;
-                                        body.legs.equipped_item = EntityOption::<Entity>::from(Some(item));
-                                    }
-                                }
-                            }
-
-                            match *unequipped_item {
-                                Some(unequip_entity) => {
-                                    let unequippable = equippables.get_mut(unequip_entity).unwrap();
-                                    unequippable.equipped = false;
-                                },
-                                None => ()
-                            }
-                        }
-                        None => {
-                            panic!("Player lacks body");
-                        }
-                    }
+                    instant_equip_item(&state.ecs, inventory.items[state.inventory_screen_selection as usize]);
                     return RunState::InventoryScreen;
                 },
                 _ => {

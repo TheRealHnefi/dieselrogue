@@ -68,6 +68,7 @@ pub fn save_game(ecs: &mut World) -> Result<(), std::io::Error> {
             Equippable,
             Gettable,
             GettingItem,
+            DroppingItem,
             Inventory,
             HumanoidBody
         );
@@ -121,6 +122,7 @@ pub fn load_game(ecs: &mut World) -> Result<(), ()> {
             Equippable,
             Gettable,
             GettingItem,
+            DroppingItem,
             Inventory,
             HumanoidBody
         );
