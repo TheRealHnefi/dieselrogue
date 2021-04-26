@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode};
 use specs::prelude::*;
-use super::{RunState, GameLog, Name, player};
+use super::*;
 
 pub struct Menu {
     pub x: i32,
@@ -117,8 +117,23 @@ impl Menu {
     }
 
     pub fn action_shoot(&self, ecs: &mut World) -> RunState {
-        let mut game_log = ecs.fetch_mut::<GameLog>();
-        game_log.entries.push("Bang!".to_string());
-        return RunState::AwaitingInput;
+        let target_pos;
+        {
+            let mut game_log = ecs.fetch_mut::<GameLog>();
+            let target = self.target.unwrap();
+            let names = ecs.read_storage::<Name>();
+            let target_name = &names.get(target).unwrap().value;
+            game_log.entries.push(format!("Firing at {}", target_name));
+
+            let positions = ecs.read_storage::<Position>();
+            let pos = positions.get(target).unwrap();
+            target_pos = Position {x: pos.x, y: pos.y};
+        }
+
+        ecs.create_entity()
+            .with(Damage {phys: 3, heat: 0, elec: 0, localized_target: None})
+            .with(Position {x: target_pos.x, y: target_pos.y})
+            .build();
+        return RunState::PlayerTurn;
     }
 }

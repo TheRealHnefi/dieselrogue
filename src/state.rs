@@ -47,6 +47,8 @@ impl State {
         tank_ai.run_now(&self.ecs);
         let mut inventory_system = InventorySystem {};
         inventory_system.run_now(&self.ecs);
+        let mut damage_system = DamageSystem {};
+        damage_system.run_now(&self.ecs);
     }
 }
 
