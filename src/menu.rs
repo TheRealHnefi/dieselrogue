@@ -117,23 +117,23 @@ impl Menu {
     }
 
     pub fn action_shoot(&self, ecs: &mut World) -> RunState {
-        let target_pos;
-        {
-            let mut game_log = ecs.fetch_mut::<GameLog>();
-            let target = self.target.unwrap();
-            let names = ecs.read_storage::<Name>();
-            let target_name = &names.get(target).unwrap().value;
-            game_log.entries.push(format!("Firing at {}", target_name));
+        let mut game_log = ecs.fetch_mut::<GameLog>();
+        let target = self.target.unwrap();
+        let names = ecs.read_storage::<Name>();
+        let target_name = &names.get(target).unwrap().value;
+        game_log.entries.push(format!("Firing at {}", target_name));
 
-            let positions = ecs.read_storage::<Position>();
-            let pos = positions.get(target).unwrap();
-            target_pos = Position {x: pos.x, y: pos.y};
+        let mut damages = ecs.write_storage::<Damage>();
+        match damages.get_mut(target) {
+            Some(damage) => {
+                damage.instances.push(DamageInstance {phys: 3, heat: 0, elec: 0});
+            },
+            None => {
+                let new_damage = Damage { instances: vec![DamageInstance {phys: 3, heat: 0, elec: 0}]};
+                damages.insert(target, new_damage).expect("Unable to create damage component");
+            }
         }
 
-        ecs.create_entity()
-            .with(Damage {phys: 3, heat: 0, elec: 0, localized_target: None})
-            .with(Position {x: target_pos.x, y: target_pos.y})
-            .build();
         return RunState::PlayerTurn;
     }
 }

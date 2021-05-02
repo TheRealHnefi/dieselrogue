@@ -5,17 +5,20 @@ pub struct DamageSystem {}
 
 impl<'a> System<'a> for DamageSystem {
     type SystemData = (WriteExpect<'a, GameLog>,
-                       ReadExpect<'a, Map>,
                        ReadStorage<'a, Name>,
                        WriteStorage<'a, HumanoidBody>,
-                       WriteStorage<'a, Position>,
                        WriteStorage<'a, Damage>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut game_log, map, names, mut bodies, mut positions, mut damages) = data;
+        let (mut game_log, names, mut bodies, mut damages) = data;
 
-        for (damage, position) in (&mut damages, &mut positions).join() {
-            //NYI
+        for (body, damage, name) in (&mut bodies, &mut damages, &names).join() {
+            for dmg in &damage.instances {
+                body.hitpoints = body.hitpoints - dmg.phys;
+                game_log.entries.push(format!("{} damage done to {}", dmg.phys, name.value));
+            }
         }
+
+        damages.clear();
     }
 }
