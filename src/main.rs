@@ -65,7 +65,7 @@ fn main() -> rltk::BError {
     let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
 
-    let player_entity = game_state.ecs.push((
+    game_state.ecs.push((
         Position {
             x: player_x,
             y: player_y
@@ -84,11 +84,30 @@ fn main() -> rltk::BError {
         Name {value: "Player".to_string()}
     ));
 
+    game_state.ecs.push((
+        Position {
+            x: map.rooms[1].center().0,
+            y: map.rooms[1].center().1
+        },
+        Renderable {
+            glyph: rltk::to_cp437('8'),
+            color: rltk::RGB::named(rltk::YELLOW),
+            background: rltk::RGB::named(rltk::BLACK)
+        },
+        Viewshed {
+            visible_tiles: Vec::new(),
+            range: 10,
+            dirty: true
+        },
+        Facing {direction: Direction::Left},
+        Name {value: "Goon".to_string()}
+    ));
+
     let cursor_pos = Point {x: 0, y: 0};
 
     game_state.resources.insert(map);
-
-    //game_state.ecs.insert(cursor_pos);
+    game_state.resources.insert(cursor_pos);
+    
     //game_state.ecs.insert(RunState::PreRun);
     //game_state.ecs.insert(GameLog {entries: vec!["Welcome!".to_string()]});
     //game_state.ecs.insert(rex_assets::RexAssets::new());
