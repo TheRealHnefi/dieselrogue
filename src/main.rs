@@ -105,6 +105,26 @@ fn main() -> rltk::BError {
         BlocksTile {}
     ));
 
+    game_state.ecs.push((
+        Position {
+            x: player_x,
+            y: player_y - 2
+        },
+        Renderable {
+            glyph: rltk::to_cp437('8'),
+            color: rltk::RGB::named(rltk::YELLOW),
+            background: rltk::RGB::named(rltk::BLACK)
+        },
+        Viewshed {
+            visible_tiles: Vec::new(),
+            range: 10,
+            dirty: true
+        },
+        Facing {direction: Direction::Left},
+        Name {value: "Goon".to_string()},
+        BlocksTile {}
+    ));
+
     let cursor_pos = Point {x: 0, y: 0};
 
     game_state.resources.insert(map);

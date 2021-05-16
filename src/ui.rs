@@ -154,16 +154,19 @@ pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
 pub fn draw_main_ui(state: &mut State, context: &mut Rltk) -> Result<(), GameError> {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
-    let mut cursor_pos = state.resources.get_mut::<Point>().ok_or(())?;
-    let new_mouse_pos = context.mouse_pos();
-    if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
-        cursor_pos.x = new_mouse_pos.0;
-        cursor_pos.y = new_mouse_pos.1;
-        state.mouse_pos.x = new_mouse_pos.0;
-        state.mouse_pos.y = new_mouse_pos.1;
+    {
+        let mut cursor_pos = state.resources.get_mut::<Point>().ok_or(())?;
+        let new_mouse_pos = context.mouse_pos();
+        if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
+            cursor_pos.x = new_mouse_pos.0;
+            cursor_pos.y = new_mouse_pos.1;
+            state.mouse_pos.x = new_mouse_pos.0;
+            state.mouse_pos.y = new_mouse_pos.1;
+        }
+        context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
     }
-    context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
-    //draw_tooltip(state, context, *cursor_pos);
+
+    draw_tooltip(state, context)?;
 
     let game_log = state.resources.get::<GameLog>().ok_or(())?;
     let mut y = 44;
@@ -176,52 +179,32 @@ pub fn draw_main_ui(state: &mut State, context: &mut Rltk) -> Result<(), GameErr
     Ok(())
 }
 
-// fn draw_tooltip(state: &mut State, context: &mut Rltk, cursor_position: Point) -> Result<(), GameError> {
-//     let map = state.resources.get::<Map>().ok_or(())?;
+fn draw_tooltip(state: &mut State, context: &mut Rltk) -> Result<(), GameError> {
+    let map = state.resources.get::<Map>().ok_or(())?;
 
-//     if cursor_position.x >= map.width || cursor_position.y >= map.height {
-//         return Ok(());
-//     }
+    if state.mouse_pos.x >= map.width || state.mouse_pos.y >= map.height {
+        return Ok(());
+    }
 
-//     return Ok(());
+    let index = map.xy_idx(state.mouse_pos.x, state.mouse_pos.y);
+    let mut tooltip: Vec<String> = Vec::new();
 
-    // let positions = ecs.read_storage::<Position>();
-    // let bodies = ecs.read_storage::<HumanoidBody>();
-    // let names = ecs.read_storage::<Name>();
-    // let sizes = ecs.read_storage::<Size>();
-    // let mut tooltip: Vec<String> = Vec::new();
+    if map.blocked_tiles[index] {
+        match map.tile_blockers[index] {
+            Some(_actor) => tooltip.push(format!("=== {} ===", "person")),
+            None => tooltip.push(format!("=== {} ===", "wall"))
+        }
+    }
 
-    // for (name, pos, size_option) in (&names, &positions, (&sizes).maybe()).join() {
-    //     let index = map.xy_idx(cursor_position.x, cursor_position.y);
-    //     let size = match size_option {
-    //         None => {
-    //             Point::new(1, 1)
-    //         },
-    //         Some(s) => {
-    //             Point::new(s.x, s.y)
-    //         }
-    //     };
-    //     if cursor_position.x >= pos.x
-    //         && cursor_position.x < pos.x + size.x
-    //         && cursor_position.y >= pos.y
-    //         && cursor_position.y < pos.y + size.y
-    //         && map.visible_tiles[index] {
-    //         tooltip.push(format!("=== {} ===", name.value));
-    //     }
-    // }
-    // for (body, pos) in (&bodies, &positions).join() {
-    //     let index = map.xy_idx(pos.x, pos.y);
-    //     if pos.x == cursor_position.x && pos.y == cursor_position.y && map.visible_tiles[index] {
-    //         tooltip.push(format!("Hitpoints: {}/{}", body.hitpoints, body.max_hitpoints));
-    //         tooltip.push(format!("Head:      {}/{}", body.head.hitpoints, body.head.max_hitpoints));
-    //         tooltip.push(format!("Torso:     {}/{}", body.torso.hitpoints, body.torso.max_hitpoints));
-    //         tooltip.push(format!("Left arm:  {}/{}", body.left_arm.hitpoints, body.left_arm.max_hitpoints));
-    //         tooltip.push(format!("Right arm: {}/{}", body.right_arm.hitpoints, body.right_arm.max_hitpoints));
-    //         tooltip.push(format!("Legs:      {}/{}", body.legs.hitpoints, body.legs.max_hitpoints));
-    //     }
-    // }
-    // draw_infobox(context, cursor_position, tooltip)
-//}
+    match map.tile_items[index] {
+        Some(_item) => tooltip.push(format!("=== {} ===", "thing")),
+        None => ()
+    }
+
+    draw_infobox(context, state.mouse_pos, tooltip);
+
+    Ok(())
+}
 
 fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
     if contents.is_empty() {

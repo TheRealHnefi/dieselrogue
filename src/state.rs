@@ -46,6 +46,15 @@ impl State {
     }
 
     fn run_systems(&mut self) {
+        match self.resources.get_mut::<Map>() {
+            Some(mut map) => {
+                map.index_walls();
+                map.clear_blockers_index();
+                map.clear_items_index();
+            },
+            None => ()
+        }
+
         self.schedule.execute(&mut self.ecs, &mut self.resources);
     }
 }
