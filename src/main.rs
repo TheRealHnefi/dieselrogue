@@ -11,8 +11,8 @@ mod map;
 pub use map::*;
 mod rect;
 pub use rect::*;
-// mod visibility_system;
-// pub use visibility_system::*;
+mod visibility_system;
+pub use visibility_system::*;
 // mod map_indexing_system;
 // pub use map_indexing_system::*;
 // mod enemy_ai_system;
@@ -86,7 +86,8 @@ fn main() -> rltk::BError {
 
     let cursor_pos = Point {x: 0, y: 0};
 
-    game_state.ecs.push((map,));
+    game_state.resources.insert(map);
+
     //game_state.ecs.insert(cursor_pos);
     //game_state.ecs.insert(RunState::PreRun);
     //game_state.ecs.insert(GameLog {entries: vec!["Welcome!".to_string()]});

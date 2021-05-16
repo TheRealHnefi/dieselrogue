@@ -17,6 +17,8 @@ pub enum RunState {
 
 pub struct State {
     pub ecs: World,
+    pub resources: Resources,
+    pub schedule: Schedule,
     pub mouse_pos: Point,
     pub menu_stack: Vec<Menu>,
     pub inventory_screen_selection: i32,
@@ -28,6 +30,8 @@ impl State {
     pub fn new() -> Self {
         Self {
             ecs: World::default(),
+            resources: Resources::default(),
+            schedule: Schedule::builder().add_system(update_visibility_system()).build(),
             last_tick: Instant::now(),
             mouse_pos: Point {x: 0, y:0},
             menu_stack: Vec::new(),
@@ -37,6 +41,7 @@ impl State {
     }
 
     fn run_systems(&mut self) {
+        self.schedule.execute(&mut self.ecs, &mut self.resources);
     }
 }
 
