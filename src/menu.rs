@@ -52,7 +52,7 @@ impl Menu {
     pub fn new_target_menu(ecs: &World, x: i32, y: i32, target: Entity) -> Self {
         //let actions = player::valid_actions(ecs, target).expect("Error when finding valid actions");
 
-        let mut rows = vec![];
+        let mut new_rows = vec![];
 
         // for action in actions {
         //     match action {
@@ -72,7 +72,7 @@ impl Menu {
         Menu {
             x: x + 1,
             y: y,
-            rows: rows,
+            rows: new_rows,
             selected_row: 0,
             target: Some(target)
         }
@@ -133,6 +133,6 @@ impl Menu {
         //     }
         // }
 
-        return RunState::PlayerTurn;
+        return RunState::ExecuteTurn;
     }
 }

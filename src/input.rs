@@ -48,7 +48,7 @@ pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
             // },
 
             VirtualKeyCode::I => {
-                return RunState::InventoryScreen;
+                return RunState::InventoryInput;
             },
 
             // VirtualKeyCode::T => {
@@ -75,7 +75,7 @@ pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
             return RunState::AwaitingInput;
         }
     }
-    RunState::PlayerTurn
+    RunState::ExecuteTurn
 }
 
 pub fn targeting_input(state: &mut State, context: &mut Rltk) -> RunState {
@@ -226,12 +226,12 @@ pub fn inventory_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
                     VirtualKeyCode::Numpad2 => {
                         state.inventory_screen_selection = min(state.inventory_screen_selection + 1,
                                                             inventory.items.len() as i32 - 1);           
-                        return RunState::InventoryScreen;
+                        return RunState::InventoryInput;
                     },
                     VirtualKeyCode::Up |
                     VirtualKeyCode::Numpad8 => {
                         state.inventory_screen_selection = max(state.inventory_screen_selection - 1, 0);
-                        return RunState::InventoryScreen;
+                        return RunState::InventoryInput;
                     },
                     // VirtualKeyCode::D => {
                     //     match drop_item(&state.ecs, inventory.items[state.inventory_screen_selection as usize]) {
@@ -253,14 +253,14 @@ pub fn inventory_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
                     //     }
                     // },
                     _ => {
-                        return RunState::InventoryScreen;
+                        return RunState::InventoryInput;
                     }
                 }
             }
         }
         None => {
-            return RunState::InventoryScreen;
+            return RunState::InventoryInput;
         }
     }
-    RunState::InventoryScreen
+    RunState::InventoryInput
 }

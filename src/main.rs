@@ -15,8 +15,8 @@ mod visibility_system;
 pub use visibility_system::*;
 mod map_indexing_system;
 pub use map_indexing_system::*;
-// mod enemy_ai_system;
-// pub use enemy_ai_system::*;
+mod enemy_ai_system;
+pub use enemy_ai_system::*;
 // mod tank_ai_system;
 // pub use tank_ai_system::*;
 // mod damage_system;
@@ -110,7 +110,8 @@ fn main() -> rltk::BError {
         },
         Facing {direction: Direction::Left},
         Name {value: "Goon".to_string()},
-        BlocksTile {}
+        BlocksTile {},
+        Enemy {}
     ));
 
     game_state.ecs.push((
@@ -130,7 +131,8 @@ fn main() -> rltk::BError {
         },
         Facing {direction: Direction::Left},
         Name {value: "Goon".to_string()},
-        BlocksTile {}
+        BlocksTile {},
+        Enemy {}
     ));
 
     let cursor_pos = Point {x: 0, y: 0};

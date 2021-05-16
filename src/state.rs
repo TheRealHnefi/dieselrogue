@@ -7,12 +7,11 @@ pub enum RunState {
     AwaitingInput,
     TargetingInput,
     MenuInput,
-    PreRun,
-    PlayerTurn,
-    EnemyTurn,
+    InventoryInput,
     Saving,
     Loading,
-    InventoryScreen
+
+    ExecuteTurn
 }
 
 pub struct State {
@@ -28,7 +27,7 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        let schedule = Schedule::builder()
+        let new_schedule = Schedule::builder()
             .add_system(update_visibility_system())
             .add_system(map_index_blockables_system())
             .add_system(map_index_items_system())
@@ -36,12 +35,12 @@ impl State {
         Self {
             ecs: World::default(),
             resources: Resources::default(),
-            schedule: schedule,
+            schedule: new_schedule,
             last_tick: Instant::now(),
             mouse_pos: Point {x: 0, y:0},
             menu_stack: Vec::new(),
             inventory_screen_selection: 0,
-            run_state: RunState::PreRun
+            run_state: RunState::ExecuteTurn
         }
     }
 
@@ -66,11 +65,6 @@ impl GameState for State {
         context.cls();
 
         match self.run_state {
-            RunState::PreRun => {
-                self.run_systems();
-                self.run_state = RunState::AwaitingInput;
-                draw_main_screen(self, context);
-            },
             RunState::AwaitingInput => {
                 self.run_state = main_screen_input(self, context);
                 draw_main_screen(self, context);
@@ -81,16 +75,6 @@ impl GameState for State {
             },
             RunState::TargetingInput => {
                 self.run_state = targeting_input(self, context);
-                draw_main_screen(self, context);
-            }
-            RunState::PlayerTurn => {
-                self.run_systems();
-                self.run_state = RunState::EnemyTurn;
-                draw_main_screen(self, context);
-            },
-            RunState::EnemyTurn => {
-                self.run_systems();
-                self.run_state = RunState::AwaitingInput;
                 draw_main_screen(self, context);
             },
             RunState::Saving => {
@@ -119,9 +103,14 @@ impl GameState for State {
                 // draw_main_screen(self, context);
                 self.run_state = RunState::AwaitingInput;
             },
-            RunState::InventoryScreen => {
+            RunState::InventoryInput => {
                 self.run_state = inventory_screen_input(self, context);
                 draw_inventory_screen(self, context);
+            },
+            RunState::ExecuteTurn => {
+                self.run_systems();
+                self.run_state = RunState::AwaitingInput;
+                draw_main_screen(self, context);
             }
         }
 
