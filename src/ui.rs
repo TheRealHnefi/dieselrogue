@@ -1,5 +1,4 @@
 use rltk::{RGB, Rltk, Point};
-use specs::prelude::*;
 use super::*;
 use std::cmp::max;
 
@@ -7,35 +6,35 @@ pub const SCREEN_WIDTH: usize = 80;
 pub const SCREEN_HEIGHT: usize = 50;
 
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
-    draw_map(&state.ecs, context);
+    // draw_map(&state.ecs, context);
 
-    {
-        let positions = state.ecs.read_storage::<Position>();
-        let renderables = state.ecs.read_storage::<Renderable>();
-        let large_renderables = state.ecs.read_storage::<LargeRenderable>();
-        let sizes = state.ecs.read_storage::<Size>();
-        let map = state.ecs.fetch::<Map>();
+    // {
+    //     let positions = state.ecs.read_storage::<Position>();
+    //     let renderables = state.ecs.read_storage::<Renderable>();
+    //     let large_renderables = state.ecs.read_storage::<LargeRenderable>();
+    //     let sizes = state.ecs.read_storage::<Size>();
+    //     let map = state.ecs.fetch::<Map>();
 
-        // TODO: Unify these, for efficiency?
-        for (pos, render) in (&positions, &renderables).join() {
-            let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] {
-                context.set(pos.x, pos.y, render.color, render.background, render.glyph);
-            }
-        }
+    //     // TODO: Unify these, for efficiency?
+    //     for (pos, render) in (&positions, &renderables).join() {
+    //         let idx = map.xy_idx(pos.x, pos.y);
+    //         if map.visible_tiles[idx] {
+    //             context.set(pos.x, pos.y, render.color, render.background, render.glyph);
+    //         }
+    //     }
 
-        for (pos, render, size) in (&positions, &large_renderables, &sizes).join() {
-            assert!(size.x * size.y == render.glyphs.len() as i32, "Size and glyphmap size differ for object");
-            for x in 0..size.x {
-                for y in 0..size.y {
-                    let idx = map.xy_idx(pos.x + x, pos.y + y);
-                    if map.visible_tiles[idx] {
-                        context.set(pos.x + x, pos.y + y, render.color, render.background, render.glyphs[(x + size.x * y) as usize]);
-                    }
-                }
-            }
-        }
-    }
+    //     for (pos, render, size) in (&positions, &large_renderables, &sizes).join() {
+    //         assert!(size.x * size.y == render.glyphs.len() as i32, "Size and glyphmap size differ for object");
+    //         for x in 0..size.x {
+    //             for y in 0..size.y {
+    //                 let idx = map.xy_idx(pos.x + x, pos.y + y);
+    //                 if map.visible_tiles[idx] {
+    //                     context.set(pos.x + x, pos.y + y, render.color, render.background, render.glyphs[(x + size.x * y) as usize]);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     draw_main_ui(state, context);
 }
@@ -82,143 +81,143 @@ pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
     context.print(RIGHT_DIVIDER_X + 3, 0, " PLAYER STATS ");
     context.print((SCREEN_WIDTH / 2) - 9, BOT_DIVIDER_Y, " ITEM INFORMATION ");
 
-    let assets = state.ecs.fetch::<RexAssets>();
-    context.render_xp_sprite(&assets.male_silhouette, 34, 3);
+    // let assets = state.ecs.fetch::<RexAssets>();
+    // context.render_xp_sprite(&assets.male_silhouette, 34, 3);
 
-    let player = state.ecs.fetch::<Entity>();
-    let bodies = state.ecs.read_storage::<HumanoidBody>();
-    let body_maybe = bodies.get(*player);
-    match body_maybe {
-        Some(body) => {
-            fn draw_equipment_box(ecs: &World, x: i32, y: i32, title: String, contents: EntityOption<Entity>, context: &mut Rltk) {
-                let names = ecs.read_storage::<Name>();
-                const EQ_BOX_WIDTH: i32 = 13;
-                context.draw_box(x, y, EQ_BOX_WIDTH, 2, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-                context.print(x + (EQ_BOX_WIDTH - title.len() as i32 + 1) / 2, y, title);
-                match *contents {
-                    Some(item) => {
-                        let name_maybe = names.get(item);
-                        match name_maybe {
-                            Some(name) => context.print(x + 1, y + 1, name.value.to_string()),
-                            None => context.print(x + 1, y + 1, "ITEM ERROR"),
-                        }
-                    },
-                    None => ()
-                }
-            }
-            draw_equipment_box(&state.ecs, 21, 4, " HEAD ".to_string(), body.head.equipped_item, context);
-            draw_equipment_box(&state.ecs, 21, 8, " LEFT ARM ".to_string(), body.left_arm.equipped_item, context);
-            draw_equipment_box(&state.ecs, 21, 26, " LEGS ".to_string(), body.legs.equipped_item, context);
-            draw_equipment_box(&state.ecs, 46, 10, " TORSO ".to_string(), body.torso.equipped_item, context);
-            draw_equipment_box(&state.ecs, 46, 22, " RIGHT ARM ".to_string(), body.right_arm.equipped_item, context);
-        }
-        None => {
-            panic!("Player lacks body");
-        }
-    }
+    // let player = state.ecs.fetch::<Entity>();
+    // let bodies = state.ecs.read_storage::<HumanoidBody>();
+    // let body_maybe = bodies.get(*player);
+    // match body_maybe {
+    //     Some(body) => {
+    //         fn draw_equipment_box(ecs: &World, x: i32, y: i32, title: String, contents: EntityOption<Entity>, context: &mut Rltk) {
+    //             let names = ecs.read_storage::<Name>();
+    //             const EQ_BOX_WIDTH: i32 = 13;
+    //             context.draw_box(x, y, EQ_BOX_WIDTH, 2, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    //             context.print(x + (EQ_BOX_WIDTH - title.len() as i32 + 1) / 2, y, title);
+    //             match *contents {
+    //                 Some(item) => {
+    //                     let name_maybe = names.get(item);
+    //                     match name_maybe {
+    //                         Some(name) => context.print(x + 1, y + 1, name.value.to_string()),
+    //                         None => context.print(x + 1, y + 1, "ITEM ERROR"),
+    //                     }
+    //                 },
+    //                 None => ()
+    //             }
+    //         }
+    //         draw_equipment_box(&state.ecs, 21, 4, " HEAD ".to_string(), body.head.equipped_item, context);
+    //         draw_equipment_box(&state.ecs, 21, 8, " LEFT ARM ".to_string(), body.left_arm.equipped_item, context);
+    //         draw_equipment_box(&state.ecs, 21, 26, " LEGS ".to_string(), body.legs.equipped_item, context);
+    //         draw_equipment_box(&state.ecs, 46, 10, " TORSO ".to_string(), body.torso.equipped_item, context);
+    //         draw_equipment_box(&state.ecs, 46, 22, " RIGHT ARM ".to_string(), body.right_arm.equipped_item, context);
+    //     }
+    //     None => {
+    //         panic!("Player lacks body");
+    //     }
+    // }
 
-    let names = state.ecs.read_storage::<Name>();
-    let equippables = state.ecs.read_storage::<Equippable>();
-    let inventories = state.ecs.read_storage::<Inventory>();
-    let inventory = inventories.get(*player);
-    match inventory {
-        Some(inv) => {
-            let mut y = 2;
-            // Required since EntityVec does not implement IntoIterator
-            for (i, item) in (&*inv.items).iter().enumerate() {
-                let mut foreground = RGB::named(rltk::WHITE);
-                let mut background = RGB::named(rltk::BLACK);
-                let name = names.get(*item);
-                assert!(name.is_some(), "Item name expected but not found");
-                let equippable = equippables.get(*item);
+    // let names = state.ecs.read_storage::<Name>();
+    // let equippables = state.ecs.read_storage::<Equippable>();
+    // let inventories = state.ecs.read_storage::<Inventory>();
+    // let inventory = inventories.get(*player);
+    // match inventory {
+    //     Some(inv) => {
+    //         let mut y = 2;
+    //         // Required since EntityVec does not implement IntoIterator
+    //         for (i, item) in (&*inv.items).iter().enumerate() {
+    //             let mut foreground = RGB::named(rltk::WHITE);
+    //             let mut background = RGB::named(rltk::BLACK);
+    //             let name = names.get(*item);
+    //             assert!(name.is_some(), "Item name expected but not found");
+    //             let equippable = equippables.get(*item);
 
-                match equippable {
-                    Some(equip) => {
-                        if equip.equipped {
-                            foreground = RGB::named(rltk::GREEN);
-                        }
-                    }
-                    None => ()
-                }
-                if i == state.inventory_screen_selection as usize {
-                    background = RGB::named(rltk::MAGENTA);
-                }
-                context.print_color(2, y, foreground, background, &name.unwrap().value);
-                y += 1;
-            }
-        },
-        None => {
-            panic!("Player lacks inventory");
-        }
-    }
+    //             match equippable {
+    //                 Some(equip) => {
+    //                     if equip.equipped {
+    //                         foreground = RGB::named(rltk::GREEN);
+    //                     }
+    //                 }
+    //                 None => ()
+    //             }
+    //             if i == state.inventory_screen_selection as usize {
+    //                 background = RGB::named(rltk::MAGENTA);
+    //             }
+    //             context.print_color(2, y, foreground, background, &name.unwrap().value);
+    //             y += 1;
+    //         }
+    //     },
+    //     None => {
+    //         panic!("Player lacks inventory");
+    //     }
+    // }
 }
 
 pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
-    let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-    let new_mouse_pos = context.mouse_pos();
-    if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
-        cursor_pos.x = new_mouse_pos.0;
-        cursor_pos.y = new_mouse_pos.1;
-        state.mouse_pos.x = new_mouse_pos.0;
-        state.mouse_pos.y = new_mouse_pos.1;
-    }
-    context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
-    draw_tooltip(&state.ecs, context, *cursor_pos);
+    // let mut cursor_pos = state.ecs.fetch_mut::<Point>();
+    // let new_mouse_pos = context.mouse_pos();
+    // if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
+    //     cursor_pos.x = new_mouse_pos.0;
+    //     cursor_pos.y = new_mouse_pos.1;
+    //     state.mouse_pos.x = new_mouse_pos.0;
+    //     state.mouse_pos.y = new_mouse_pos.1;
+    // }
+    // context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
+    // draw_tooltip(&state.ecs, context, *cursor_pos);
 
-    let game_log = state.ecs.fetch::<GameLog>();
-    let mut y = 44;
-    let length = max(game_log.entries.len() as i32 - 5, 0) as usize;
-    for message in &game_log.entries[length..] {
-        context.print(2, y, message);
-        y += 1;
-    }
+    // let game_log = state.ecs.fetch::<GameLog>();
+    // let mut y = 44;
+    // let length = max(game_log.entries.len() as i32 - 5, 0) as usize;
+    // for message in &game_log.entries[length..] {
+    //     context.print(2, y, message);
+    //     y += 1;
+    // }
 }
 
 fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
-    let map = ecs.fetch::<Map>();
+    // let map = ecs.fetch::<Map>();
 
-    if cursor_position.x >= map.width || cursor_position.y >= map.height {
-        return;
-    }
+    // if cursor_position.x >= map.width || cursor_position.y >= map.height {
+    //     return;
+    // }
 
-    let positions = ecs.read_storage::<Position>();
-    let bodies = ecs.read_storage::<HumanoidBody>();
-    let names = ecs.read_storage::<Name>();
-    let sizes = ecs.read_storage::<Size>();
-    let mut tooltip: Vec<String> = Vec::new();
+    // let positions = ecs.read_storage::<Position>();
+    // let bodies = ecs.read_storage::<HumanoidBody>();
+    // let names = ecs.read_storage::<Name>();
+    // let sizes = ecs.read_storage::<Size>();
+    // let mut tooltip: Vec<String> = Vec::new();
 
-    for (name, pos, size_option) in (&names, &positions, (&sizes).maybe()).join() {
-        let index = map.xy_idx(cursor_position.x, cursor_position.y);
-        let size = match size_option {
-            None => {
-                Point::new(1, 1)
-            },
-            Some(s) => {
-                Point::new(s.x, s.y)
-            }
-        };
-        if cursor_position.x >= pos.x
-            && cursor_position.x < pos.x + size.x
-            && cursor_position.y >= pos.y
-            && cursor_position.y < pos.y + size.y
-            && map.visible_tiles[index] {
-            tooltip.push(format!("=== {} ===", name.value));
-        }
-    }
-    for (body, pos) in (&bodies, &positions).join() {
-        let index = map.xy_idx(pos.x, pos.y);
-        if pos.x == cursor_position.x && pos.y == cursor_position.y && map.visible_tiles[index] {
-            tooltip.push(format!("Hitpoints: {}/{}", body.hitpoints, body.max_hitpoints));
-            tooltip.push(format!("Head:      {}/{}", body.head.hitpoints, body.head.max_hitpoints));
-            tooltip.push(format!("Torso:     {}/{}", body.torso.hitpoints, body.torso.max_hitpoints));
-            tooltip.push(format!("Left arm:  {}/{}", body.left_arm.hitpoints, body.left_arm.max_hitpoints));
-            tooltip.push(format!("Right arm: {}/{}", body.right_arm.hitpoints, body.right_arm.max_hitpoints));
-            tooltip.push(format!("Legs:      {}/{}", body.legs.hitpoints, body.legs.max_hitpoints));
-        }
-    }
-    draw_infobox(context, cursor_position, tooltip)
+    // for (name, pos, size_option) in (&names, &positions, (&sizes).maybe()).join() {
+    //     let index = map.xy_idx(cursor_position.x, cursor_position.y);
+    //     let size = match size_option {
+    //         None => {
+    //             Point::new(1, 1)
+    //         },
+    //         Some(s) => {
+    //             Point::new(s.x, s.y)
+    //         }
+    //     };
+    //     if cursor_position.x >= pos.x
+    //         && cursor_position.x < pos.x + size.x
+    //         && cursor_position.y >= pos.y
+    //         && cursor_position.y < pos.y + size.y
+    //         && map.visible_tiles[index] {
+    //         tooltip.push(format!("=== {} ===", name.value));
+    //     }
+    // }
+    // for (body, pos) in (&bodies, &positions).join() {
+    //     let index = map.xy_idx(pos.x, pos.y);
+    //     if pos.x == cursor_position.x && pos.y == cursor_position.y && map.visible_tiles[index] {
+    //         tooltip.push(format!("Hitpoints: {}/{}", body.hitpoints, body.max_hitpoints));
+    //         tooltip.push(format!("Head:      {}/{}", body.head.hitpoints, body.head.max_hitpoints));
+    //         tooltip.push(format!("Torso:     {}/{}", body.torso.hitpoints, body.torso.max_hitpoints));
+    //         tooltip.push(format!("Left arm:  {}/{}", body.left_arm.hitpoints, body.left_arm.max_hitpoints));
+    //         tooltip.push(format!("Right arm: {}/{}", body.right_arm.hitpoints, body.right_arm.max_hitpoints));
+    //         tooltip.push(format!("Legs:      {}/{}", body.legs.hitpoints, body.legs.max_hitpoints));
+    //     }
+    // }
+    // draw_infobox(context, cursor_position, tooltip)
 }
 
 fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
@@ -248,35 +247,35 @@ fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
 }
 
 pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
-    let map = ecs.fetch::<Map>();
+    // let map = ecs.fetch::<Map>();
 
-    let mut y = 0;
-    let mut x = 0;
-    for (idx, tile) in map.tiles.iter().enumerate() {
-        if map.revealed_tiles[idx] {
-            let glyph;
-            let mut foreground;
-            match tile {
-                TileType::Floor => {
-                    glyph = rltk::to_cp437('.');
-                    foreground = RGB::from_f32(0.5, 1.0, 0.5);
-                }
-                TileType::Wall => {
-                    glyph = rltk::to_cp437('█');
-                    foreground = RGB::from_f32(0.0, 1.0, 0.0);
-                }
-            }
-            if !map.visible_tiles[idx] {
-                foreground = foreground.to_greyscale();
-            }
-            ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
-        }
-        x += 1;
-        if x >= map.width {
-            x = 0;
-            y += 1;
-        }
-    }
+    // let mut y = 0;
+    // let mut x = 0;
+    // for (idx, tile) in map.tiles.iter().enumerate() {
+    //     if map.revealed_tiles[idx] {
+    //         let glyph;
+    //         let mut foreground;
+    //         match tile {
+    //             TileType::Floor => {
+    //                 glyph = rltk::to_cp437('.');
+    //                 foreground = RGB::from_f32(0.5, 1.0, 0.5);
+    //             }
+    //             TileType::Wall => {
+    //                 glyph = rltk::to_cp437('█');
+    //                 foreground = RGB::from_f32(0.0, 1.0, 0.0);
+    //             }
+    //         }
+    //         if !map.visible_tiles[idx] {
+    //             foreground = foreground.to_greyscale();
+    //         }
+    //         ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
+    //     }
+    //     x += 1;
+    //     if x >= map.width {
+    //         x = 0;
+    //         y += 1;
+    //     }
+    // }
 }
 
 pub fn draw_menu(state: &State, context: &mut Rltk) {
