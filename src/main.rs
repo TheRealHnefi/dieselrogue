@@ -65,13 +65,19 @@ fn main() -> rltk::BError {
     let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
 
+    let gun = game_state.ecs.push((
+        Name {value: "Gun".to_string()},
+        Gettable {},
+        Firearm {range: 5}
+    ));
+
     game_state.ecs.push((
         Position {
             x: player_x,
             y: player_y
         },
         Renderable {
-            glyph: rltk::to_cp437('8'),
+            glyph: rltk::to_cp437('▲'),
             color: rltk::RGB::named(rltk::YELLOW),
             background: rltk::RGB::named(rltk::BLACK)
         },
@@ -82,6 +88,7 @@ fn main() -> rltk::BError {
         },
         Facing {direction: Direction::Up},
         Name {value: "Player".to_string()},
+        Inventory { items: vec![gun] },
         BlocksTile {},
         Player {}
     ));
@@ -92,7 +99,7 @@ fn main() -> rltk::BError {
             y: map.rooms[1].center().1
         },
         Renderable {
-            glyph: rltk::to_cp437('8'),
+            glyph: rltk::to_cp437('▲'),
             color: rltk::RGB::named(rltk::YELLOW),
             background: rltk::RGB::named(rltk::BLACK)
         },
@@ -112,7 +119,7 @@ fn main() -> rltk::BError {
             y: player_y - 2
         },
         Renderable {
-            glyph: rltk::to_cp437('8'),
+            glyph: rltk::to_cp437('▲'),
             color: rltk::RGB::named(rltk::YELLOW),
             background: rltk::RGB::named(rltk::BLACK)
         },
@@ -131,7 +138,6 @@ fn main() -> rltk::BError {
     game_state.resources.insert(map);
     game_state.resources.insert(cursor_pos);
     
-    //game_state.ecs.insert(RunState::PreRun);
     game_state.resources.insert(GameLog {entries: vec!["Welcome!".to_string()]});
     //game_state.ecs.insert(rex_assets::RexAssets::new());
 

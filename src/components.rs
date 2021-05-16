@@ -1,7 +1,4 @@
-use super::Map;
-use std::ops::{Add, Sub};
-
-pub struct SerializeMarker;
+use legion::*;
 
 #[derive (Clone, Copy)]
 pub struct Player {}
@@ -93,5 +90,7 @@ pub struct Equippable {
 #[derive (Clone, Copy)]
 pub struct Gettable {}
 
-#[derive (Clone, Copy)]
-pub struct GettingItem {}
+#[derive (Clone)]
+pub struct Inventory {
+    pub items: Vec<Entity>
+}

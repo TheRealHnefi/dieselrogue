@@ -120,9 +120,8 @@ impl GameState for State {
                 self.run_state = RunState::AwaitingInput;
             },
             RunState::InventoryScreen => {
-                // new_run_state = inventory_screen_input(self, context);
-                // draw_inventory_screen(self, context);
-                self.run_state = RunState::AwaitingInput;
+                self.run_state = inventory_screen_input(self, context);
+                draw_inventory_screen(self, context);
             }
         }
 

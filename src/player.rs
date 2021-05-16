@@ -18,14 +18,14 @@ pub fn try_move_player(direction: Direction, state: &mut State) {
 
     let (delta_x, delta_y, glyph);
     match direction {
-        Direction::Up => {delta_x = 0; delta_y = -1; glyph = rltk::to_cp437('8')},
-        Direction::UpRight => {delta_x = 1; delta_y = -1; glyph = rltk::to_cp437('9')},
-        Direction::Right => {delta_x = 1; delta_y = 0; glyph = rltk::to_cp437('6')},
-        Direction::DownRight => {delta_x = 1; delta_y = 1; glyph = rltk::to_cp437('3')},
-        Direction::Down => {delta_x = 0; delta_y = 1; glyph = rltk::to_cp437('2')},
-        Direction::DownLeft => {delta_x = -1; delta_y = 1; glyph = rltk::to_cp437('1')},
-        Direction::Left => {delta_x = -1; delta_y = 0; glyph = rltk::to_cp437('4')},
-        Direction::UpLeft => {delta_x = -1; delta_y = -1; glyph = rltk::to_cp437('7')},
+        Direction::Up => {delta_x = 0; delta_y = -1; glyph = rltk::to_cp437('▲')},
+        Direction::UpRight => {delta_x = 1; delta_y = -1; glyph = rltk::to_cp437('┐')},
+        Direction::Right => {delta_x = 1; delta_y = 0; glyph = rltk::to_cp437('►')},
+        Direction::DownRight => {delta_x = 1; delta_y = 1; glyph = rltk::to_cp437('┘')},
+        Direction::Down => {delta_x = 0; delta_y = 1; glyph = rltk::to_cp437('▼')},
+        Direction::DownLeft => {delta_x = -1; delta_y = 1; glyph = rltk::to_cp437('└')},
+        Direction::Left => {delta_x = -1; delta_y = 0; glyph = rltk::to_cp437('◄')},
+        Direction::UpLeft => {delta_x = -1; delta_y = -1; glyph = rltk::to_cp437('┌')},
     }
 
     let mut query = <(&mut Position, &mut Facing, &mut Viewshed, &mut Renderable, &Player)>::query();

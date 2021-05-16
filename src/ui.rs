@@ -115,6 +115,30 @@ pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
     //     }
     // }
 
+
+    let mut y = 2;
+    let mut items: Vec<Entity> = Vec::new();
+
+    // MIGRATION_TODO: Make player unique.
+    let mut query = <(&Inventory, &Player)>::query();
+    for (inventory, _player) in query.iter(&state.ecs) {
+        for item in inventory.items.iter() {
+            items.push(*item);
+        }
+    }
+
+    for (i, item) in items.iter().enumerate() {
+        let mut foreground = RGB::named(rltk::WHITE);
+        let mut background = RGB::named(rltk::BLACK);
+        let entry = state.ecs.entry(*item).unwrap();
+        let name = entry.get_component::<Name>().unwrap();
+
+        if i == state.inventory_screen_selection as usize {
+            background = RGB::named(rltk::MAGENTA);
+        }
+        context.print_color(2, y, foreground, background, &name.value);
+        y += 1;
+    }
     // let names = state.ecs.read_storage::<Name>();
     // let equippables = state.ecs.read_storage::<Equippable>();
     // let inventories = state.ecs.read_storage::<Inventory>();
@@ -188,6 +212,10 @@ fn draw_tooltip(state: &mut State, context: &mut Rltk) -> Result<(), GameError> 
 
     let index = map.xy_idx(state.mouse_pos.x, state.mouse_pos.y);
     let mut tooltip: Vec<String> = Vec::new();
+
+    if !map.visible_tiles[index] {
+        return Ok(());
+    }
 
     if map.blocked_tiles[index] {
         match map.tile_blockers[index] {
