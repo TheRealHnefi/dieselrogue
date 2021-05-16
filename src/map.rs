@@ -1,3 +1,4 @@
+use legion::*;
 use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
 use super::{Rect};
@@ -22,8 +23,8 @@ pub struct Map {
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
     
-    // pub tile_blockers: Vec<Option<Entity>>,
-    // pub tile_items: Vec<Option<Entity>>
+    pub tile_blockers: Vec<Option<Entity>>,
+    pub tile_items: Vec<Option<Entity>>
 }
 
 impl Map {
@@ -31,17 +32,20 @@ impl Map {
         (y as usize * MAPWIDTH) + x as usize
     }
 
-    pub fn populate_blocked(&mut self) {
+    pub fn index_walls(&mut self) {
         for (i, tile) in self.tiles.iter_mut().enumerate() {
             self.blocked_tiles[i] = *tile == TileType::Wall;
         }
     }
 
-    pub fn clear_contents_index(&mut self) {
-        // self.tile_blockers.clear();
-        // self.tile_blockers.resize(MAPCOUNT, None);
-        // self.tile_items.clear();
-        // self.tile_items.resize(MAPCOUNT, None);
+    pub fn clear_blockers_index(&mut self) {
+        self.tile_blockers.clear();
+        self.tile_blockers.resize(MAPCOUNT, None);
+    }
+
+    pub fn clear_items_index(&mut self) {
+        self.tile_items.clear();
+        self.tile_items.resize(MAPCOUNT, None);
     }
 
     pub fn new_map_rooms_and_corridors() -> Map {
@@ -53,9 +57,8 @@ impl Map {
             revealed_tiles: vec![false; MAPCOUNT],
             visible_tiles: vec![false; MAPCOUNT],
             blocked_tiles: vec![false; MAPCOUNT],
-            // tile_blockers: Vec::with_capacity(MAPCOUNT),
-            // tile_items: Vec::with_capacity(MAPCOUNT)
-
+            tile_blockers: Vec::with_capacity(MAPCOUNT),
+            tile_items: Vec::with_capacity(MAPCOUNT)
         };
 
         let mut rng = RandomNumberGenerator::new();

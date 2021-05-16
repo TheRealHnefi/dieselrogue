@@ -28,10 +28,15 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
+        let schedule = Schedule::builder()
+            .add_system(update_visibility_system())
+            .add_system(map_index_blockables_system())
+            .add_system(map_index_items_system())
+            .build();
         Self {
             ecs: World::default(),
             resources: Resources::default(),
-            schedule: Schedule::builder().add_system(update_visibility_system()).build(),
+            schedule: schedule,
             last_tick: Instant::now(),
             mouse_pos: Point {x: 0, y:0},
             menu_stack: Vec::new(),

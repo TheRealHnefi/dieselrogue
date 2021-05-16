@@ -7,7 +7,7 @@ pub const SCREEN_HEIGHT: usize = 50;
 
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) -> Result<(), GameError> {
 
-    draw_map(&state.resources, context);
+    draw_map(&state.resources, context)?;
 
     {
         let mut query = <(&Position, &Renderable)>::query();
@@ -163,7 +163,7 @@ pub fn draw_main_ui(state: &mut State, context: &mut Rltk) -> Result<(), GameErr
         state.mouse_pos.y = new_mouse_pos.1;
     }
     context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
-    draw_tooltip(&state.ecs, context, *cursor_pos);
+    //draw_tooltip(state, context, *cursor_pos);
 
     let game_log = state.resources.get::<GameLog>().ok_or(())?;
     let mut y = 44;
@@ -176,12 +176,14 @@ pub fn draw_main_ui(state: &mut State, context: &mut Rltk) -> Result<(), GameErr
     Ok(())
 }
 
-fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
-    // let map = ecs.fetch::<Map>();
+// fn draw_tooltip(state: &mut State, context: &mut Rltk, cursor_position: Point) -> Result<(), GameError> {
+//     let map = state.resources.get::<Map>().ok_or(())?;
 
-    // if cursor_position.x >= map.width || cursor_position.y >= map.height {
-    //     return;
-    // }
+//     if cursor_position.x >= map.width || cursor_position.y >= map.height {
+//         return Ok(());
+//     }
+
+//     return Ok(());
 
     // let positions = ecs.read_storage::<Position>();
     // let bodies = ecs.read_storage::<HumanoidBody>();
@@ -219,7 +221,7 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
     //     }
     // }
     // draw_infobox(context, cursor_position, tooltip)
-}
+//}
 
 fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
     if contents.is_empty() {
@@ -247,41 +249,39 @@ fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
     }
 }
 
-pub fn draw_map(resources: &Resources, ctx: &mut Rltk) {
-    let map_maybe = resources.get::<Map>();
+pub fn draw_map(resources: &Resources, ctx: &mut Rltk) -> Result<(), GameError>{
+    let map = resources.get::<Map>().ok_or(())?;
     
-    match map_maybe {
-        Some(map) => {
-            let mut y = 0;
-            let mut x = 0;
-            for (idx, tile) in map.tiles.iter().enumerate() {
-                if map.revealed_tiles[idx] {
-                    let glyph;
-                    let mut foreground;
-                    match tile {
-                        TileType::Floor => {
-                            glyph = rltk::to_cp437('.');
-                            foreground = RGB::from_f32(0.5, 1.0, 0.5);
-                        }
-                        TileType::Wall => {
-                            glyph = rltk::to_cp437('█');
-                            foreground = RGB::from_f32(0.0, 1.0, 0.0);
-                        }
-                    }
-                    if !map.visible_tiles[idx] {
-                        foreground = foreground.to_greyscale();
-                    }
-                    ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
+
+    let mut y = 0;
+    let mut x = 0;
+    for (idx, tile) in map.tiles.iter().enumerate() {
+        if map.revealed_tiles[idx] {
+            let glyph;
+            let mut foreground;
+            match tile {
+                TileType::Floor => {
+                    glyph = rltk::to_cp437('.');
+                    foreground = RGB::from_f32(0.5, 1.0, 0.5);
                 }
-                x += 1;
-                if x >= map.width {
-                    x = 0;
-                    y += 1;
+                TileType::Wall => {
+                    glyph = rltk::to_cp437('█');
+                    foreground = RGB::from_f32(0.0, 1.0, 0.0);
                 }
             }
+            if !map.visible_tiles[idx] {
+                foreground = foreground.to_greyscale();
+            }
+            ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
         }
-        None => {}
+        x += 1;
+        if x >= map.width {
+            x = 0;
+            y += 1;
+        }
     }
+
+    Ok(())
 }
 
 pub fn draw_menu(state: &State, context: &mut Rltk) {
