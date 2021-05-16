@@ -5,35 +5,35 @@ use std::cmp::{min, max};
 pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
         Some(key) => match key {
-            // VirtualKeyCode::Left |
-            // VirtualKeyCode::Numpad4 |
-            // VirtualKeyCode::H => try_move_player(Direction::Left, &mut state.ecs),
+            VirtualKeyCode::Left |
+            VirtualKeyCode::Numpad4 |
+            VirtualKeyCode::H => try_move_player(Direction::Left, state),
 
-            // VirtualKeyCode::Right |
-            // VirtualKeyCode::Numpad6 |
-            // VirtualKeyCode::L => try_move_player(Direction::Right, &mut state.ecs),
+            VirtualKeyCode::Right |
+            VirtualKeyCode::Numpad6 |
+            VirtualKeyCode::L => try_move_player(Direction::Right, state),
 
-            // VirtualKeyCode::Up |
-            // VirtualKeyCode::Numpad8 |
-            // VirtualKeyCode::K => try_move_player(Direction::Up, &mut state.ecs),
+            VirtualKeyCode::Up |
+            VirtualKeyCode::Numpad8 |
+            VirtualKeyCode::K => try_move_player(Direction::Up, state),
 
-            // VirtualKeyCode::Down |
-            // VirtualKeyCode::Numpad2 |
-            // VirtualKeyCode::J => try_move_player(Direction::Down, &mut state.ecs),
+            VirtualKeyCode::Down |
+            VirtualKeyCode::Numpad2 |
+            VirtualKeyCode::J => try_move_player(Direction::Down, state),
 
-            // VirtualKeyCode::Numpad9 |
-            // VirtualKeyCode::Y => try_move_player(Direction::UpRight, &mut state.ecs),
+            VirtualKeyCode::Numpad9 |
+            VirtualKeyCode::Y => try_move_player(Direction::UpRight, state),
 
-            // VirtualKeyCode::Numpad7 |
-            // VirtualKeyCode::U => try_move_player(Direction::UpLeft, &mut state.ecs),
+            VirtualKeyCode::Numpad7 |
+            VirtualKeyCode::U => try_move_player(Direction::UpLeft, state),
 
-            // VirtualKeyCode::Numpad3 |
-            // VirtualKeyCode::N => try_move_player(Direction::DownRight, &mut state.ecs),
+            VirtualKeyCode::Numpad3 |
+            VirtualKeyCode::N => try_move_player(Direction::DownRight, state),
 
-            // VirtualKeyCode::Numpad1 |
-            // VirtualKeyCode::B => try_move_player(Direction::DownLeft, &mut state.ecs),
+            VirtualKeyCode::Numpad1 |
+            VirtualKeyCode::B => try_move_player(Direction::DownLeft, state),
 
-            // VirtualKeyCode::Numpad5 => {},
+            VirtualKeyCode::Numpad5 => {},
 
             // VirtualKeyCode::G => {
             //     let mut game_log = state.ecs.fetch_mut::<GameLog>();

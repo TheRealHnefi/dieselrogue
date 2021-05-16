@@ -1,4 +1,4 @@
-use specs::prelude::*;
+use legion::*;
 use super::*;
 use std::cmp::{min, max};
 use rltk::DistanceAlg::*;
@@ -11,13 +11,10 @@ pub enum Action {
     Shoot
 }
 
-pub fn try_move_player(direction: Direction, ecs: &mut World) {
-    let mut positions = ecs.write_storage::<Position>();
-    let mut facings = ecs.write_storage::<Facing>();
-    let mut players = ecs.write_storage::<Player>();
-    let mut renderables = ecs.write_storage::<Renderable>();
-    let mut viewsheds = ecs.write_storage::<Viewshed>();
-    let map = ecs.fetch::<Map>();
+// TODO: Move this to a system?
+pub fn try_move_player(direction: Direction, state: &mut State) {
+
+    let map = state.resources.get::<Map>().unwrap();
 
     let (delta_x, delta_y, glyph);
     match direction {
@@ -31,8 +28,9 @@ pub fn try_move_player(direction: Direction, ecs: &mut World) {
         Direction::UpLeft => {delta_x = -1; delta_y = -1; glyph = rltk::to_cp437('7')},
     }
 
-    for (_player, pos, facing, renderable, viewshed) in
-        (&mut players, &mut positions, &mut facings, &mut renderables, &mut viewsheds).join() {
+    let mut query = <(&mut Position, &mut Facing, &mut Viewshed, &mut Renderable, &Player)>::query();
+
+    for (pos, facing, viewshed, renderable, _player) in query.iter_mut(&mut state.ecs) {
         if facing.direction == direction {
             let dest_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
             if !map.blocked_tiles[dest_idx] {
@@ -48,76 +46,76 @@ pub fn try_move_player(direction: Direction, ecs: &mut World) {
     }
 }
 
-pub fn get_item(ecs: &World) -> Result<(), GameError> {
-    let player = *ecs.fetch::<Entity>();
-    let map = ecs.fetch::<Map>();
-    let positions = ecs.read_storage::<Position>();
-    let player_pos = positions.get(player).ok_or(())?;
-    let index = map.xy_idx(player_pos.x, player_pos.y);
+// pub fn get_item(ecs: &World) -> Result<(), GameError> {
+//     let player = *ecs.fetch::<Entity>();
+//     let map = ecs.fetch::<Map>();
+//     let positions = ecs.read_storage::<Position>();
+//     let player_pos = positions.get(player).ok_or(())?;
+//     let index = map.xy_idx(player_pos.x, player_pos.y);
 
-    if map.tile_items[index].is_some() {
-        ecs.write_storage::<GettingItem>().insert(player, GettingItem {})?;
-        return Ok(())
-    }
-    Err(GameError {})
-}
+//     if map.tile_items[index].is_some() {
+//         ecs.write_storage::<GettingItem>().insert(player, GettingItem {})?;
+//         return Ok(())
+//     }
+//     Err(GameError {})
+// }
 
-pub fn drop_item(ecs: &World, item: Entity) -> Result<(), GameError> {
-    let player = *ecs.fetch::<Entity>();
-    let map = ecs.fetch::<Map>();
-    let positions = ecs.read_storage::<Position>();
-    let player_pos = positions.get(player).ok_or(())?;
-    let index = map.xy_idx(player_pos.x, player_pos.y);
+// pub fn drop_item(ecs: &World, item: Entity) -> Result<(), GameError> {
+//     let player = *ecs.fetch::<Entity>();
+//     let map = ecs.fetch::<Map>();
+//     let positions = ecs.read_storage::<Position>();
+//     let player_pos = positions.get(player).ok_or(())?;
+//     let index = map.xy_idx(player_pos.x, player_pos.y);
 
-    if map.tile_items[index].is_some() {
-        return Err(GameError {});
-    }
-    ecs.write_storage::<DroppingItem>().insert(player, DroppingItem {item: item})?;
-    Ok(())
-}
+//     if map.tile_items[index].is_some() {
+//         return Err(GameError {});
+//     }
+//     ecs.write_storage::<DroppingItem>().insert(player, DroppingItem {item: item})?;
+//     Ok(())
+// }
 
-pub fn equip_item(ecs: &World, item: Entity) -> Result<(), GameError> {
-    let player = *ecs.fetch::<Entity>();
-    ecs.write_storage::<EquippingItem>().insert(player, EquippingItem {item: item})?;
-    Ok(())
-}
+// pub fn equip_item(ecs: &World, item: Entity) -> Result<(), GameError> {
+//     let player = *ecs.fetch::<Entity>();
+//     ecs.write_storage::<EquippingItem>().insert(player, EquippingItem {item: item})?;
+//     Ok(())
+// }
 
-pub fn valid_actions(ecs: &World, target: Entity) -> Result<Vec<Action>, GameError> {
-    let mut ret_val: Vec<Action> = Vec::new();
+// pub fn valid_actions(ecs: &World, target: Entity) -> Result<Vec<Action>, GameError> {
+//     let mut ret_val: Vec<Action> = Vec::new();
 
-    let player = *ecs.fetch::<Entity>();
-    let positions = ecs.read_storage::<Position>();
-    let player_pos = positions.get(player).ok_or(())?;
-    let target_pos = positions.get(target).ok_or(())?;
-    let bodies = ecs.read_storage::<HumanoidBody>();
-    let player_body = bodies.get(player).ok_or(())?;
+//     let player = *ecs.fetch::<Entity>();
+//     let positions = ecs.read_storage::<Position>();
+//     let player_pos = positions.get(player).ok_or(())?;
+//     let target_pos = positions.get(target).ok_or(())?;
+//     let bodies = ecs.read_storage::<HumanoidBody>();
+//     let player_body = bodies.get(player).ok_or(())?;
 
-    for action in Action::into_enum_iter() {
-        match action {
-            Action::Examine => ret_val.push(action),
-            Action::Shoot => {
-                let item_slot = *player_body.right_arm.equipped_item;
-                match item_slot {
-                    Some(item) => {
-                        let firearms = ecs.read_storage::<Firearm>();
-                        let firearm = firearms.get(item);
-                        match firearm {
-                            Some(_) => {
-                                let distance = Pythagoras.distance2d(Point::new(target_pos.x, target_pos.y),
-                                                                     Point::new(player_pos.x, player_pos.y));
-                                if distance <= firearm.unwrap().range as f32 {
-                                    ret_val.push(action);
-                                    break;
-                                }
-                            },
-                            None => ()
-                        }
-                    },
-                    None => ()
-                }
-            }
-        }
-    }
+//     for action in Action::into_enum_iter() {
+//         match action {
+//             Action::Examine => ret_val.push(action),
+//             Action::Shoot => {
+//                 let item_slot = *player_body.right_arm.equipped_item;
+//                 match item_slot {
+//                     Some(item) => {
+//                         let firearms = ecs.read_storage::<Firearm>();
+//                         let firearm = firearms.get(item);
+//                         match firearm {
+//                             Some(_) => {
+//                                 let distance = Pythagoras.distance2d(Point::new(target_pos.x, target_pos.y),
+//                                                                      Point::new(player_pos.x, player_pos.y));
+//                                 if distance <= firearm.unwrap().range as f32 {
+//                                     ret_val.push(action);
+//                                     break;
+//                                 }
+//                             },
+//                             None => ()
+//                         }
+//                     },
+//                     None => ()
+//                 }
+//             }
+//         }
+//     }
 
-    Ok(ret_val)
-}
+//     Ok(ret_val)
+// }

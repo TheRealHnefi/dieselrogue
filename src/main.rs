@@ -5,8 +5,8 @@ mod state;
 pub use state::*;
 mod components;
 pub use components::*;
-// mod player;
-// pub use player::*;
+mod player;
+pub use player::*;
 mod map;
 pub use map::*;
 mod rect;
@@ -82,7 +82,8 @@ fn main() -> rltk::BError {
         },
         Facing {direction: Direction::Up},
         Name {value: "Player".to_string()},
-        BlocksTile {}
+        BlocksTile {},
+        Player {}
     ));
 
     game_state.ecs.push((
