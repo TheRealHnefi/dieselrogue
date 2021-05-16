@@ -5,24 +5,23 @@ use std::cmp::max;
 pub const SCREEN_WIDTH: usize = 80;
 pub const SCREEN_HEIGHT: usize = 50;
 
-pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
+pub fn draw_main_screen(state: &mut State, context: &mut Rltk) -> Result<(), GameError> {
+
     draw_map(&state.resources, context);
 
-    // {
-    //     let positions = state.ecs.read_storage::<Position>();
-    //     let renderables = state.ecs.read_storage::<Renderable>();
-    //     let large_renderables = state.ecs.read_storage::<LargeRenderable>();
-    //     let sizes = state.ecs.read_storage::<Size>();
-    //     let map = state.ecs.fetch::<Map>();
+    {
+        let mut query = <(&Position, &Renderable)>::query();
+        let map = state.resources.get::<Map>().ok_or(())?;
 
-    //     // TODO: Unify these, for efficiency?
-    //     for (pos, render) in (&positions, &renderables).join() {
-    //         let idx = map.xy_idx(pos.x, pos.y);
-    //         if map.visible_tiles[idx] {
-    //             context.set(pos.x, pos.y, render.color, render.background, render.glyph);
-    //         }
-    //     }
+        for (pos, renderable) in query.iter(&state.ecs) {
+            let index = map.xy_idx(pos.x, pos.y);
+            if map.visible_tiles[index] {
+                context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
+            }
+        }
+    }
 
+    // MIGRATION_TODO: Large renderables. Consider unifying into a single renderable component.
     //     for (pos, render, size) in (&positions, &large_renderables, &sizes).join() {
     //         assert!(size.x * size.y == render.glyphs.len() as i32, "Size and glyphmap size differ for object");
     //         for x in 0..size.x {
@@ -36,7 +35,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     //     }
     // }
 
-    draw_main_ui(state, context);
+    draw_main_ui(state, context)
 }
 
 pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
@@ -152,27 +151,29 @@ pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
     // }
 }
 
-pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
+pub fn draw_main_ui(state: &mut State, context: &mut Rltk) -> Result<(), GameError> {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
-    // let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-    // let new_mouse_pos = context.mouse_pos();
-    // if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
-    //     cursor_pos.x = new_mouse_pos.0;
-    //     cursor_pos.y = new_mouse_pos.1;
-    //     state.mouse_pos.x = new_mouse_pos.0;
-    //     state.mouse_pos.y = new_mouse_pos.1;
-    // }
-    // context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
-    // draw_tooltip(&state.ecs, context, *cursor_pos);
+    let mut cursor_pos = state.resources.get_mut::<Point>().ok_or(())?;
+    let new_mouse_pos = context.mouse_pos();
+    if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
+        cursor_pos.x = new_mouse_pos.0;
+        cursor_pos.y = new_mouse_pos.1;
+        state.mouse_pos.x = new_mouse_pos.0;
+        state.mouse_pos.y = new_mouse_pos.1;
+    }
+    context.set_bg(cursor_pos.x, cursor_pos.y, RGB::named(rltk::PINK));
+    draw_tooltip(&state.ecs, context, *cursor_pos);
 
-    // let game_log = state.ecs.fetch::<GameLog>();
-    // let mut y = 44;
-    // let length = max(game_log.entries.len() as i32 - 5, 0) as usize;
-    // for message in &game_log.entries[length..] {
-    //     context.print(2, y, message);
-    //     y += 1;
-    // }
+    let game_log = state.resources.get::<GameLog>().ok_or(())?;
+    let mut y = 44;
+    let length = max(game_log.entries.len() as i32 - 5, 0) as usize;
+    for message in &game_log.entries[length..] {
+        context.print(2, y, message);
+        y += 1;
+    }
+
+    Ok(())
 }
 
 fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {

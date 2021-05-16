@@ -23,8 +23,8 @@ pub use visibility_system::*;
 // pub use damage_system::*;
 mod ui;
 pub use ui::*;
-// mod game_log;
-// pub use game_log::*;
+mod game_log;
+pub use game_log::*;
 // mod inventory_system;
 // pub use inventory_system::*;
 mod menu;
@@ -109,7 +109,7 @@ fn main() -> rltk::BError {
     game_state.resources.insert(cursor_pos);
     
     //game_state.ecs.insert(RunState::PreRun);
-    //game_state.ecs.insert(GameLog {entries: vec!["Welcome!".to_string()]});
+    game_state.resources.insert(GameLog {entries: vec!["Welcome!".to_string()]});
     //game_state.ecs.insert(rex_assets::RexAssets::new());
 
     rltk::main_loop(context, game_state)
