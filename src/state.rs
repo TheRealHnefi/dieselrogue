@@ -22,15 +22,24 @@ pub struct State {
     pub menu_stack: Vec<Menu>,
     pub inventory_screen_selection: i32,
     pub run_state: RunState,
+    pub player: Option<Entity>,
     last_tick: Instant,
 }
 
 impl State {
     pub fn new() -> Self {
         let new_schedule = Schedule::builder()
-            .add_system(update_visibility_system())
-            .add_system(map_index_blockables_system())
+            .add_system(map_index_blockables_system()) // TODO: Remove and replace with updates in indivudal systems
             .add_system(map_index_items_system())
+            // out of order actions
+            // inventory actions
+            // melee attacks
+            // ranged attacks
+            .add_system(movement_system())
+            .add_system(turning_system())
+            // other actions
+            .add_system(update_visibility_system())
+            // monster AI
             .build();
         Self {
             ecs: World::default(),
@@ -40,7 +49,8 @@ impl State {
             mouse_pos: Point {x: 0, y:0},
             menu_stack: Vec::new(),
             inventory_screen_selection: 0,
-            run_state: RunState::ExecuteTurn
+            run_state: RunState::ExecuteTurn,
+            player: None
         }
     }
 

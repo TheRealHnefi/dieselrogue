@@ -1,14 +1,13 @@
 use legion::*;
 use super::*;
-use rltk::{Point};
 
 #[system(for_each)]
-pub fn enemy_ai(pos: &mut Position,
-                facing: &mut Facing,
-                renderable: &mut Renderable,
-                viewshed: &mut Viewshed,
-                enemy: &Enemy,
-                #[resource] map: &mut Map) {
+pub fn enemy_ai(_pos: &mut Position,
+                _facing: &mut Facing,
+                _renderable: &mut Renderable,
+                _viewshed: &mut Viewshed,
+                _enemy: &Enemy,
+                #[resource] _map: &mut Map) {
     
 }
 

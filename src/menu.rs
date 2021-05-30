@@ -49,10 +49,10 @@ impl Menu {
         }
     }
 
-    pub fn new_target_menu(ecs: &World, x: i32, y: i32, target: Entity) -> Self {
+    pub fn new_target_menu(_ecs: &World, x: i32, y: i32, target: Entity) -> Self {
         //let actions = player::valid_actions(ecs, target).expect("Error when finding valid actions");
 
-        let mut new_rows = vec![];
+        let new_rows = vec![];
 
         // for action in actions {
         //     match action {
@@ -94,7 +94,7 @@ impl Menu {
         return RunState::AwaitingInput;
     }
 
-    pub fn action_examine(menu: &Menu, ecs: &mut World) -> RunState {
+    pub fn action_examine(_menu: &Menu, _ecs: &mut World) -> RunState {
         // let mut game_log = ecs.fetch_mut::<GameLog>();
         // match menu.target {
         //     Some(entity) => {
@@ -115,7 +115,7 @@ impl Menu {
         return RunState::AwaitingInput;
     }
 
-    pub fn action_shoot(&self, ecs: &mut World) -> RunState {
+    pub fn action_shoot(&self, _ecs: &mut World) -> RunState {
         // let mut game_log = ecs.fetch_mut::<GameLog>();
         // let target = self.target.unwrap();
         // let names = ecs.read_storage::<Name>();

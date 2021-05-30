@@ -3,46 +3,37 @@ use super::*;
 use std::cmp::{min, max};
 use rltk::DistanceAlg::*;
 use rltk::Point;
-use enum_iterator::IntoEnumIterator;
 
-#[derive(Clone, IntoEnumIterator, PartialEq)]
-pub enum Action {
-    Examine,
-    Shoot
+pub fn player_wait(state: &mut State) -> RunState {
+    if state.player.is_none() {
+        return RunState::AwaitingInput;
+    }
+    let intent = Intent{ action: Action::Idle };
+
+    match set_intent(&mut state.ecs, state.player.unwrap(), intent) {
+        Ok(_) => return RunState::ExecuteTurn,
+        Err(_) => return RunState::AwaitingInput,
+    }
 }
 
-// TODO: Move this to a system?
-pub fn try_move_player(direction: Direction, state: &mut State) {
-
-    let map = state.resources.get::<Map>().unwrap();
-
-    let (delta_x, delta_y, glyph);
-    match direction {
-        Direction::Up => {delta_x = 0; delta_y = -1; glyph = rltk::to_cp437('▲')},
-        Direction::UpRight => {delta_x = 1; delta_y = -1; glyph = rltk::to_cp437('┐')},
-        Direction::Right => {delta_x = 1; delta_y = 0; glyph = rltk::to_cp437('►')},
-        Direction::DownRight => {delta_x = 1; delta_y = 1; glyph = rltk::to_cp437('┘')},
-        Direction::Down => {delta_x = 0; delta_y = 1; glyph = rltk::to_cp437('▼')},
-        Direction::DownLeft => {delta_x = -1; delta_y = 1; glyph = rltk::to_cp437('└')},
-        Direction::Left => {delta_x = -1; delta_y = 0; glyph = rltk::to_cp437('◄')},
-        Direction::UpLeft => {delta_x = -1; delta_y = -1; glyph = rltk::to_cp437('┌')},
+pub fn player_move(state: &mut State, direction: Direction) -> RunState {
+    if state.player.is_none() {
+        return RunState::AwaitingInput;
     }
 
-    let mut query = <(&mut Position, &mut Facing, &mut Viewshed, &mut Renderable, &Player)>::query();
+    let player_entry = state.ecs.entry(state.player.unwrap()).unwrap();
+    let player_facing = player_entry.into_component::<Facing>().unwrap();
 
-    for (pos, facing, viewshed, renderable, _player) in query.iter_mut(&mut state.ecs) {
-        if facing.direction == direction {
-            let dest_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
-            if !map.blocked_tiles[dest_idx] {
-                pos.x = min(map.width - 1, max(0, pos.x + delta_x));
-                pos.y = min(map.height - 1, max(0, pos.y + delta_y));
-                viewshed.dirty = true;
-            }
-        } else {
-            facing.direction = direction;
-            renderable.glyph = glyph;
-            viewshed.dirty = true;
-        }
+    let intent;
+    if player_facing.direction == direction {
+        intent = Intent{ action: Action::Walk(direction) };
+    } else {
+        intent = Intent{ action: Action::Turn(direction) };
+    }
+
+    match set_intent(&mut state.ecs, state.player.unwrap(), intent) {
+        Ok(_) => return RunState::ExecuteTurn,
+        Err(_) => return RunState::AwaitingInput,
     }
 }
 

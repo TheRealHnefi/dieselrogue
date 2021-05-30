@@ -35,6 +35,10 @@ pub use input::*;
 // pub use saveload_system::*;
 // mod rex_assets;
 // pub use rex_assets::*;
+mod actor;
+pub use actor::*;
+mod movement_system;
+pub use movement_system::*;
 
 #[derive(Debug)]
 pub struct GameError {
@@ -42,6 +46,12 @@ pub struct GameError {
 
 impl From<()> for GameError {
     fn from(_err: ()) -> Self {
+        GameError {}
+    }
+}
+
+impl From<legion::world::ComponentError> for GameError {
+    fn from(_err: legion::world::ComponentError) -> Self {
         GameError {}
     }
 }
@@ -71,7 +81,7 @@ fn main() -> rltk::BError {
         Firearm {range: 5}
     ));
 
-    game_state.ecs.push((
+    game_state.player = Some(game_state.ecs.push((
         Position {
             x: player_x,
             y: player_y
@@ -89,9 +99,9 @@ fn main() -> rltk::BError {
         Facing {direction: Direction::Up},
         Name {value: "Player".to_string()},
         Inventory { items: vec![gun] },
-        BlocksTile {},
-        Player {}
-    ));
+        Player {},
+        Intent::new()
+    )));
 
     game_state.ecs.push((
         Position {
@@ -100,7 +110,7 @@ fn main() -> rltk::BError {
         },
         Renderable {
             glyph: rltk::to_cp437('▲'),
-            color: rltk::RGB::named(rltk::YELLOW),
+            color: rltk::RGB::named(rltk::RED),
             background: rltk::RGB::named(rltk::BLACK)
         },
         Viewshed {
@@ -111,7 +121,8 @@ fn main() -> rltk::BError {
         Facing {direction: Direction::Left},
         Name {value: "Goon".to_string()},
         BlocksTile {},
-        Enemy {}
+        Enemy {},
+        Intent::new()
     ));
 
     game_state.ecs.push((
@@ -121,7 +132,7 @@ fn main() -> rltk::BError {
         },
         Renderable {
             glyph: rltk::to_cp437('▲'),
-            color: rltk::RGB::named(rltk::YELLOW),
+            color: rltk::RGB::named(rltk::RED),
             background: rltk::RGB::named(rltk::BLACK)
         },
         Viewshed {
@@ -132,7 +143,8 @@ fn main() -> rltk::BError {
         Facing {direction: Direction::Left},
         Name {value: "Goon".to_string()},
         BlocksTile {},
-        Enemy {}
+        Enemy {},
+        Intent::new()
     ));
 
     let cursor_pos = Point {x: 0, y: 0};

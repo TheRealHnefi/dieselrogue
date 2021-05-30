@@ -94,3 +94,32 @@ pub struct Gettable {}
 pub struct Inventory {
     pub items: Vec<Entity>
 }
+
+#[derive (PartialEq, Eq, Clone, Copy)]
+pub enum Action {
+    // Null
+    Idle,
+    // Out of order
+    // Inventory
+    Get(Entity),
+    Drop(Entity),
+    // Melee
+    // Ranged
+    // Movement
+    Walk(Direction),
+    Turn(Direction),
+    // Misc/usage
+}
+
+#[derive (Clone, Copy)]
+pub struct Intent {
+    pub action: Action
+}
+
+impl Intent {
+    pub fn new() -> Self {
+        Self {
+            action: Action::Idle
+        }
+    }
+}

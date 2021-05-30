@@ -1,0 +1,17 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "type": "cargo",
+            "subcommand": "check",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "label": "Rust: cargo check - dieselrogue"
+        }
+    ]
+}

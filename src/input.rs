@@ -1,40 +1,40 @@
 use legion::*;
-use rltk::{VirtualKeyCode, Rltk, Point};
+use rltk::{VirtualKeyCode, Rltk};
 use super::*;
 use std::cmp::{min, max};
 
 pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
-    match ctx.key {
+    return match ctx.key {
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 |
-            VirtualKeyCode::H => try_move_player(Direction::Left, state),
+            VirtualKeyCode::H => player_move(state, Direction::Left),
 
             VirtualKeyCode::Right |
             VirtualKeyCode::Numpad6 |
-            VirtualKeyCode::L => try_move_player(Direction::Right, state),
+            VirtualKeyCode::L => player_move(state, Direction::Right),
 
             VirtualKeyCode::Up |
             VirtualKeyCode::Numpad8 |
-            VirtualKeyCode::K => try_move_player(Direction::Up, state),
+            VirtualKeyCode::K => player_move(state, Direction::Up),
 
             VirtualKeyCode::Down |
             VirtualKeyCode::Numpad2 |
-            VirtualKeyCode::J => try_move_player(Direction::Down, state),
+            VirtualKeyCode::J => player_move(state, Direction::Down),
 
             VirtualKeyCode::Numpad9 |
-            VirtualKeyCode::Y => try_move_player(Direction::UpRight, state),
+            VirtualKeyCode::Y => player_move(state, Direction::UpRight),
 
             VirtualKeyCode::Numpad7 |
-            VirtualKeyCode::U => try_move_player(Direction::UpLeft, state),
+            VirtualKeyCode::U => player_move(state, Direction::UpLeft),
 
             VirtualKeyCode::Numpad3 |
-            VirtualKeyCode::N => try_move_player(Direction::DownRight, state),
+            VirtualKeyCode::N => player_move(state, Direction::DownRight),
 
             VirtualKeyCode::Numpad1 |
-            VirtualKeyCode::B => try_move_player(Direction::DownLeft, state),
+            VirtualKeyCode::B => player_move(state, Direction::DownLeft),
 
-            VirtualKeyCode::Numpad5 => {},
+            VirtualKeyCode::Numpad5 => player_wait(state),
 
             // VirtualKeyCode::G => {
             //     let mut game_log = state.ecs.fetch_mut::<GameLog>();
@@ -47,9 +47,7 @@ pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
             //     }
             // },
 
-            VirtualKeyCode::I => {
-                return RunState::InventoryInput;
-            },
+            VirtualKeyCode::I => RunState::InventoryInput,
 
             // VirtualKeyCode::T => {
             //     let player = *state.ecs.fetch::<Entity>();
@@ -64,21 +62,16 @@ pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Menu::new_main());
-                return RunState::MenuInput;
+                RunState::MenuInput
             }
 
-            _ => {
-                return RunState::AwaitingInput;
-            }
+            _ => RunState::AwaitingInput
         }
-        None => {
-            return RunState::AwaitingInput;
-        }
+        None => RunState::AwaitingInput
     }
-    RunState::ExecuteTurn
 }
 
-pub fn targeting_input(state: &mut State, context: &mut Rltk) -> RunState {
+pub fn targeting_input(_state: &mut State, _context: &mut Rltk) -> RunState {
     // match context.key {
     //     Some(key) => match key {
     //         VirtualKeyCode::Left |
