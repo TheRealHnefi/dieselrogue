@@ -8,7 +8,9 @@ pub struct World {
     /// All data that can be part of entities, stored as contiguous arrays.
     /// This is obviously not optimal, but simple and faster than storing all information in the objects themselves
     positions: Vec<Point>,
-    renderables: Vec<Renderable>
+    renderables: Vec<Renderable>,
+
+    pub map: Map
 }
 
 impl World {
@@ -17,6 +19,7 @@ impl World {
             entities: vec![],
             positions: vec![],
             renderables: vec![],
+            map: Map::new_map_rooms_and_corridors()
         }
     }
 
@@ -29,7 +32,7 @@ impl World {
         self.entities.push(entity);
 
         self.positions.push(Point {x: 0, y: 0});
-        self.renderables.push(Renderable::new());
+        self.renderables.push(Renderable::new_glyph('8'));
 
         entity
     }

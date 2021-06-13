@@ -8,13 +8,13 @@ const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
 const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
     Wall,
     Floor
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Default, Clone)]
 pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
@@ -24,11 +24,7 @@ pub struct Map {
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
     
-    #[serde(skip_serializing)]
-    #[serde(skip_deserializing)]
     pub tile_blockers: Vec<Option<Entity>>,
-    #[serde(skip_serializing)]
-    #[serde(skip_deserializing)]
     pub tile_items: Vec<Option<Entity>>
 }
 
