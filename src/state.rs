@@ -29,15 +29,19 @@ pub struct State {
 impl State {
     pub fn new() -> Self {
         let new_schedule = Schedule::builder()
+            // preparation - blockables etc
             .add_system(map_index_blockables_system()) // TODO: Remove and replace with updates in indivudal systems
             .add_system(map_index_items_system())
             // out of order actions
             // inventory actions
+            .add_system(inventory_action_system())
             // melee attacks
             // ranged attacks
+            // movement actions
             .add_system(movement_system())
             .add_system(turning_system())
             // other actions
+            // cleanup - damage, visibility etc
             .add_system(update_visibility_system())
             // monster AI
             .build();

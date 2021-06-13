@@ -9,7 +9,10 @@ pub struct Enemy {}
 #[derive (Clone, Copy, PartialEq)]
 pub struct Position {
     pub x: i32,
-    pub y: i32
+    pub y: i32,
+    // Problem: changing components is slow in legion, but some entities can be removed from the world.
+    // Solution: add flag to Position to signal non-existing items.
+    pub valid: bool
 }
 
 #[derive (Clone, Copy, PartialEq)]
@@ -101,7 +104,7 @@ pub enum Action {
     Idle,
     // Out of order
     // Inventory
-    Get(Entity),
+    Get,
     Drop(Entity),
     // Melee
     // Ranged

@@ -36,16 +36,7 @@ pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
 
             VirtualKeyCode::Numpad5 => player_wait(state),
 
-            // VirtualKeyCode::G => {
-            //     let mut game_log = state.ecs.fetch_mut::<GameLog>();
-            //     match get_item(&state.ecs) {
-            //         Ok(_) => (),
-            //         Err(_) => {
-            //             game_log.entries.push("Can't pick up item".to_string());
-            //             return RunState::AwaitingInput;
-            //         }
-            //     }
-            // },
+            VirtualKeyCode::G => player_get_item(state),
 
             VirtualKeyCode::I => RunState::InventoryInput,
 

@@ -2,7 +2,9 @@
 
 ## Name ideas:
 DieselRogue
-Decodence
+Deco-x (decodence, decoventure, decogue)
+Heavy Fuel
+
 
 ## Elevator pitch:
 A roguelike set in a dieselpunk world where armed conflict is a constant threat.

@@ -9,14 +9,17 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) -> Result<(), Gam
 
     draw_map(&state.resources, context)?;
 
+    // TODO: Isn't it a LOT more efficient to iterate over visible tiles and draw their contents?
     {
         let mut query = <(&Position, &Renderable)>::query();
         let map = state.resources.get::<Map>().ok_or(())?;
 
         for (pos, renderable) in query.iter(&state.ecs) {
-            let index = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[index] {
-                context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
+            if pos.valid {
+                let index = map.xy_idx(pos.x, pos.y);
+                if map.visible_tiles[index] {
+                    context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
+                }
             }
         }
     }

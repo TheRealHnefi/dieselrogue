@@ -1,13 +1,11 @@
 use legion::*;
 use super::*;
-use std::cmp::{min, max};
-use rltk::DistanceAlg::*;
-use rltk::Point;
 
 pub fn player_wait(state: &mut State) -> RunState {
     if state.player.is_none() {
         return RunState::AwaitingInput;
     }
+
     let intent = Intent{ action: Action::Idle };
 
     match set_intent(&mut state.ecs, state.player.unwrap(), intent) {
@@ -37,19 +35,34 @@ pub fn player_move(state: &mut State, direction: Direction) -> RunState {
     }
 }
 
-// pub fn get_item(ecs: &World) -> Result<(), GameError> {
-//     let player = *ecs.fetch::<Entity>();
-//     let map = ecs.fetch::<Map>();
-//     let positions = ecs.read_storage::<Position>();
-//     let player_pos = positions.get(player).ok_or(())?;
-//     let index = map.xy_idx(player_pos.x, player_pos.y);
+pub fn player_get_item(state: &mut State) -> RunState {
+    if state.player.is_none() {
+        return RunState::AwaitingInput;
+    }
+    
+    let intent;
+    match state.resources.get::<Map>() {
+        Some(map) => {
+            let player_entry = state.ecs.entry(state.player.unwrap()).unwrap();
+            let player_pos = player_entry.into_component::<Position>().unwrap();
+            let index = map.xy_idx(player_pos.x, player_pos.y);
+            match map.tile_items[index] {
+                Some(_) => intent = Intent{ action: Action::Get },
+                None => {
+                    let mut log = state.resources.get_mut::<GameLog>().unwrap();
+                    log.entries.push(format!("No item to get at player position"));
+                    return RunState::AwaitingInput;
+                }
+            }
+        },
+        None => return RunState::AwaitingInput
+    }
 
-//     if map.tile_items[index].is_some() {
-//         ecs.write_storage::<GettingItem>().insert(player, GettingItem {})?;
-//         return Ok(())
-//     }
-//     Err(GameError {})
-// }
+    match set_intent(&mut state.ecs, state.player.unwrap(), intent) {
+        Ok(_) => return RunState::ExecuteTurn,
+        Err(_) => return RunState::AwaitingInput,
+    }
+}
 
 // pub fn drop_item(ecs: &World, item: Entity) -> Result<(), GameError> {
 //     let player = *ecs.fetch::<Entity>();

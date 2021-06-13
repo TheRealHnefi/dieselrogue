@@ -25,8 +25,8 @@ mod ui;
 pub use ui::*;
 mod game_log;
 pub use game_log::*;
-// mod inventory_system;
-// pub use inventory_system::*;
+mod inventory_system;
+pub use inventory_system::*;
 mod menu;
 pub use menu::*;
 mod input;
@@ -75,16 +75,11 @@ fn main() -> rltk::BError {
     let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
 
-    let gun = game_state.ecs.push((
-        Name {value: "Gun".to_string()},
-        Gettable {},
-        Firearm {range: 5}
-    ));
-
     game_state.player = Some(game_state.ecs.push((
         Position {
             x: player_x,
-            y: player_y
+            y: player_y,
+            valid: true
         },
         Renderable {
             glyph: rltk::to_cp437('▲'),
@@ -98,7 +93,7 @@ fn main() -> rltk::BError {
         },
         Facing {direction: Direction::Up},
         Name {value: "Player".to_string()},
-        Inventory { items: vec![gun] },
+        Inventory { items: vec![] },
         Player {},
         Intent::new()
     )));
@@ -106,7 +101,8 @@ fn main() -> rltk::BError {
     game_state.ecs.push((
         Position {
             x: map.rooms[1].center().0,
-            y: map.rooms[1].center().1
+            y: map.rooms[1].center().1,
+            valid: true
         },
         Renderable {
             glyph: rltk::to_cp437('▲'),
@@ -128,7 +124,8 @@ fn main() -> rltk::BError {
     game_state.ecs.push((
         Position {
             x: player_x,
-            y: player_y - 2
+            y: player_y + 2,
+            valid: true
         },
         Renderable {
             glyph: rltk::to_cp437('▲'),
@@ -147,11 +144,26 @@ fn main() -> rltk::BError {
         Intent::new()
     ));
 
+    game_state.ecs.push((
+        Position {
+            x: player_x,
+            y: player_y - 2,
+            valid: true
+        },
+        Renderable {
+            glyph: rltk::to_cp437('!'),
+            color: rltk::RGB::named(rltk::TEAL),
+            background: rltk::RGB::named(rltk::BLACK)
+        },
+        Name {value: "Gun".to_string()},
+        Gettable {},
+        Firearm {range: 5}
+    ));
+
     let cursor_pos = Point {x: 0, y: 0};
 
     game_state.resources.insert(map);
     game_state.resources.insert(cursor_pos);
-    
     game_state.resources.insert(GameLog {entries: vec!["Welcome!".to_string()]});
     //game_state.ecs.insert(rex_assets::RexAssets::new());
 
