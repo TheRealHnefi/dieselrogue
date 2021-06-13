@@ -67,7 +67,7 @@ fn main() -> rltk::BError {
 
     let mut state = State::new();
 
-    let player = state.world.create_entity();
+    let _player = state.world.create_player();
 
     state.log.entries.push("Welcome!".to_string());
  

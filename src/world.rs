@@ -20,9 +20,10 @@ impl World {
         }
     }
 
-    pub fn create_entity(&mut self) -> Entity {
+    pub fn create_player(&mut self) -> Entity {
         let entity = Entity {
-            index: self.entities.len()
+            index: self.entities.len(),
+            entity_type: EntityType::Player(Player {})
         };
 
         self.entities.push(entity);
@@ -33,11 +34,13 @@ impl World {
         entity
     }
 
-    pub fn delete_entity(&mut self, entity: Entity) {
+    pub fn remove_entity(&mut self, entity: Entity) -> Entity {
         self.entities.swap_remove(entity.index);
         self.entities[entity.index].index = entity.index;
 
         self.positions.swap_remove(entity.index);
         self.renderables.swap_remove(entity.index);
+
+        entity
     }
 }

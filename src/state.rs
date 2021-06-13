@@ -47,6 +47,8 @@ impl GameState for State {
             },
             _ => ()
         }
+
+        draw_main_screen(self, context);
  
         let tick_time = begin.elapsed().as_micros();
         if tick_time > 6000 {
