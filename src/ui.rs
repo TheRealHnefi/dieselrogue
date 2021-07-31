@@ -1,4 +1,4 @@
-use rltk::{RGB, Rltk, Point};
+use rltk::{RGB, Rltk};
 use super::*;
 use std::cmp::max;
 
@@ -39,7 +39,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     draw_main_ui(state, context);
 }
 
-pub fn draw_inventory_screen(_state: &mut State, context: &mut Rltk) {
+pub fn draw_inventory_screen(_state: &mut State, _context: &mut Rltk) {
     // const LEFT_DIVIDER_X: i32 = 20;
     // const RIGHT_DIVIDER_X: i32 = 60;
     // const BOT_DIVIDER_Y: i32 = 40;

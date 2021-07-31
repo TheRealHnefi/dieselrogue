@@ -1,5 +1,3 @@
-use rltk::{Point};
-
 mod state;
 pub use state::*;
 mod world;
@@ -66,8 +64,6 @@ fn main() -> rltk::BError {
     context.set_active_font(1, true);
 
     let mut state = State::new();
-
-    let _player = state.world.create_player();
 
     state.log.entries.push("Welcome!".to_string());
  
