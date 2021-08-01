@@ -1,7 +1,6 @@
 use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
-use super::{Rect};
-use specs::prelude::*;
+use crate::Rect;
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
@@ -22,10 +21,7 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
-    
-    pub tile_blockers: Vec<Option<Entity>>,
-    pub tile_items: Vec<Option<Entity>>
-}
+    }
 
 impl Map {
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
@@ -38,12 +34,7 @@ impl Map {
         }
     }
 
-    // TODO: Profile with large maps. This is setting off warning bells.
     pub fn clear_contents_index(&mut self) {
-        self.tile_blockers.clear();
-        self.tile_blockers.resize(MAPCOUNT, None);
-        self.tile_items.clear();
-        self.tile_items.resize(MAPCOUNT, None);
     }
 
     pub fn new_map_rooms_and_corridors() -> Map {
@@ -55,8 +46,6 @@ impl Map {
             revealed_tiles: vec![false; MAPCOUNT],
             visible_tiles: vec![false; MAPCOUNT],
             blocked_tiles: vec![false; MAPCOUNT],
-            tile_blockers: Vec::with_capacity(MAPCOUNT),
-            tile_items: Vec::with_capacity(MAPCOUNT)
 
         };
 

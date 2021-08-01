@@ -1,4 +1,4 @@
-//use rltk::FontCharType;
+use rltk::Point;
 //use std::ops::{Add, Sub};
 
 #[derive (PartialEq, Eq, Clone, Copy)]
@@ -41,6 +41,17 @@ impl Renderable {
             background: rltk::RGB::named(rltk::BLACK)
         }
     }
+}
+
+#[derive (Copy, Clone)]
+pub struct Intent {
+    pub action: Action,
+    pub target: Point
+}
+
+#[derive (Copy, Clone)]
+pub enum Action {
+    Idle
 }
 
 // #[derive (Component, ConvertSaveload, Clone)]
