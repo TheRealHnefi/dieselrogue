@@ -21,7 +21,7 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked_tiles: Vec<bool>,
-    }
+}
 
 impl Map {
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
