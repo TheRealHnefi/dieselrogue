@@ -1,9 +1,11 @@
 use crate::components::*;
+use rltk::Point;
 
-#[derive(Copy, Clone)]
-pub struct Player {
-    /// Most of the actual data is stored in the World. It is found by using the index as reference.
-    pub index: usize,
+#[derive(Clone)]
+pub struct Entity {
+    pub position: Point,
+    pub renderable: Renderable,
+    pub name: String,
+    pub intent: Intent,
     pub facing: Facing
 }
-

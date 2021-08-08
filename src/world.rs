@@ -3,17 +3,8 @@ use rltk::Point;
 
 /// The contents of the game world itself.
 pub struct World {
-    pub player: Option<Player>,
-
-    // For ease of bookkeeping, keep explicit track of the number of extant entities
-    pub extant_entities: usize,
-
-    /// All data that can be part of entities, stored as contiguous arrays.
-    /// This is obviously not optimal, but simple and faster than storing all information in the objects themselves
-    pub positions: Vec<Point>,
-    pub renderables: Vec<Renderable>,
-    pub names: Vec<String>,
-    pub intents: Vec<Intent>,
+    pub player: Option<Entity>,
+    pub entities: Vec<Entity>,
 
     // TODO: Copy relevant data to map when adding/moving actors. Might be faster, since moving
     // is relatively uncommon compared to rendering/dereferencing.
@@ -68,31 +59,45 @@ impl World {
     pub fn new() -> Self {
         Self {
             player: Option::None,
-            extant_entities: 0,
-            positions: vec![],
-            renderables: vec![],
-            names: vec![],
-            intents: vec![],
+            entities: vec![],
             map: Map::new_map_rooms_and_corridors()
         }
     }
 
     pub fn create_player(&mut self, pos: Point, facing: Facing, name: String) -> Result<(), GameError> {
-        self.player = Some(Player {
-            index: self.extant_entities,
+        if self.player.is_some() {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: "Tried to create player, but one already exists"
+            });
+        }
+
+        let player = Entity {
+            position: pos,
+            renderable: Renderable::new_glyph('8'),
+            name: name,
+            intent: Intent { action: Action::Idle, target: Point {x: 0, y: 0}},
             facing: facing
-        });
+        };
 
-        self.positions.push(pos);
-        self.renderables.push(Renderable::new_glyph('8'));
-        self.names.push(name);
-        self.intents.push(Intent { action: Action::Idle, target: Point {x: 0, y: 0}});
+        self.player = Some(player);
 
-        self.extant_entities += 1;
         Ok(())
     }
 
+    pub fn create_entity(&mut self, pos: Point, facing: Facing, name: String) -> Result<(), GameError> {
+        let entity = Entity {
+            position: pos,
+            renderable: Renderable::new_glyph('5'),
+            name: name,
+            intent: Intent { action: Action::Idle, target: Point {x: 0, y: 0}},
+            facing: facing
+        };
 
+        self.entities.push(entity);
+
+        Ok(())
+    }
 }
 
 
@@ -101,15 +106,16 @@ mod tests {
     use super::*;
 
     fn assert_worldsize(world: World, size: usize) -> World {
-        assert_eq!(world.positions.len(), size, "Position vector is of incorrect size");
-        assert_eq!(world.renderables.len(), size, "Renderable vector is of incorrect size");
-        assert_eq!(world.names.len(), size, "Names vector is of incorrect size");
-        assert_eq!(world.intents.len(), size, "Intents vector is of incorrect size");
+        let player_count = if world.player.is_some() { 1 } else { 0 };
+
+        let total_size = player_count + world.entities.len();
+
+        assert_eq!(total_size, size, "Position vector is of incorrect size");
         world
     }
 
     #[test]
-    fn test_create_player() {
+    fn create_player() {
         let mut world = World::new();
 
         let pos = Point {x: 0, y: 0};
@@ -119,7 +125,23 @@ mod tests {
 
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
-        assert_eq!(world.positions[0], pos);
-        assert_eq!(world.names[0], name);
+        let player = world.player.unwrap();
+        assert_eq!(player.position, pos);
+        assert_eq!(player.name, name);
+    }
+
+    #[test]
+    fn create_entity() {
+        let mut world = World::new();
+
+        let pos = Point {x: 0, y: 0};
+        let facing = Facing {direction: Direction::Up};
+        let name = "Entity";
+        let result = world.create_entity(pos, facing, String::from(name));
+
+        assert!(result.is_ok());
+        world = assert_worldsize(world, 1);
+        assert_eq!(world.entities[0].position, pos);
+        assert_eq!(world.entities[0].name, name);
     }
 }
