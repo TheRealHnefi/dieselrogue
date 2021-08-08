@@ -292,21 +292,21 @@ fn draw_entity(entity: &Entity, context: &mut Rltk) {
     context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
 }
 
-// pub fn draw_menu(state: &State, context: &mut Rltk) {
-//     for menu in &state.menu_stack {
-//         let mut width = 0;
-//         for row in &menu.rows {
-//             if row.text.len() > width {
-//                 width = row.text.len();
-//             }
-//         }
-//         context.draw_box(menu.x, menu.y, width + 3, menu.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-//         for (i, row) in menu.rows.iter().enumerate() {
-//             if menu.selected_row == i {
-//                 context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), row.text.to_string());
-//             } else {
-//                 context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), row.text.to_string());
-//             }
-//         }
-//     }
-// }
+pub fn draw_menu(state: &State, context: &mut Rltk) {
+    for menu in &state.menu_stack {
+        let mut width = 0;
+        for row in &menu.rows {
+            if row.text.len() > width {
+                width = row.text.len();
+            }
+        }
+        context.draw_box(menu.x, menu.y, width + 3, menu.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+        for (i, row) in menu.rows.iter().enumerate() {
+            if menu.selected_row == i {
+                context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), row.text.to_string());
+            } else {
+                context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), row.text.to_string());
+            }
+        }
+    }
+}

@@ -30,10 +30,10 @@ mod game_log;
 pub use game_log::*;
 // mod inventory_system;
 // pub use inventory_system::*;
-// mod menu;
-// pub use menu::*;
-// mod input;
-// pub use input::*;
+mod menu;
+pub use menu::*;
+mod input;
+pub use input::*;
 // mod saveload_system;
 // pub use saveload_system::*;
 // mod serde_collections;
@@ -75,7 +75,9 @@ fn main() -> rltk::BError {
 
     let mut state = State::new();
 
-    let _result = state.world.create_player(Point {x: 5, y: 5}, Facing { direction: Direction::Up}, String::from("Player"));
+    let _result = state.world.create_player(Point {x: state.world.map.rooms[0].x1+1, y: state.world.map.rooms[0].y1+1},
+        Facing { direction: Direction::Up},
+        String::from("Player"));
 
     state.log.entries.push("Welcome!".to_string());
  
