@@ -1,6 +1,7 @@
 use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
 use crate::Rect;
+use crate::entity::Pawn;
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
@@ -20,7 +21,7 @@ pub struct Map {
     pub height: i32,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
-    pub blocked_tiles: Vec<bool>,
+    pub pawns: Vec<Option<Pawn>>
 }
 
 impl Map {
@@ -28,13 +29,11 @@ impl Map {
         (y as usize * MAPWIDTH) + x as usize
     }
 
-    pub fn populate_blocked(&mut self) {
-        for (i, tile) in self.tiles.iter_mut().enumerate() {
-            self.blocked_tiles[i] = *tile == TileType::Wall;
-        }
-    }
-
-    pub fn clear_contents_index(&mut self) {
+    pub fn blocked(&self, x: i32, y: i32) -> bool {
+        let index = self.xy_idx(x, y);
+        return
+            self.tiles[index] != TileType::Floor || 
+            self.pawns[index].is_some()
     }
 
     pub fn new_map_rooms_and_corridors() -> Map {
@@ -45,8 +44,7 @@ impl Map {
             height: MAPHEIGHT as i32,
             revealed_tiles: vec![false; MAPCOUNT],
             visible_tiles: vec![false; MAPCOUNT],
-            blocked_tiles: vec![false; MAPCOUNT],
-
+            pawns: vec![None; MAPCOUNT]
         };
 
         let mut rng = RandomNumberGenerator::new();
@@ -123,8 +121,7 @@ impl Map {
         if x < 1 || x > self.width - 1 || y < 1 || y > self.height - 1 {
             return false;
         }
-        let idx = self.xy_idx(x, y);
-        !self.blocked_tiles[idx]
+        !self.blocked(x, y)
     }
 }
 
