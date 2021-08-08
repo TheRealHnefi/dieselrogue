@@ -45,13 +45,14 @@ impl Renderable {
 
 #[derive (Copy, Clone)]
 pub struct Intent {
-    pub action: Action,
-    pub target: Point
+    pub action: Action
 }
 
 #[derive (Copy, Clone)]
 pub enum Action {
-    Idle
+    Idle,
+    Move(Point),
+    Turn(Direction)
 }
 
 // #[derive (Component, ConvertSaveload, Clone)]

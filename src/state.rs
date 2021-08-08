@@ -6,6 +6,7 @@ use std::time::{Instant};
 pub enum RunState {
     AwaitingInput,
     AwaitingMenuInput,
+    Resolve
 }
 
 pub struct State {
@@ -46,6 +47,10 @@ impl GameState for State {
             }
             RunState::AwaitingMenuInput => {
                 self.run_state = menu_input(self, context);
+            }
+            RunState::Resolve => {
+                let _result = self.world.resolve();
+                self.run_state = main_screen_input(self, context);
             }
         }
 
