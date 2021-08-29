@@ -13,7 +13,7 @@ pub enum TileType {
     Floor
 }
 
-#[derive(Default, Clone)]
+//#[derive(Default, Clone)]
 pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,

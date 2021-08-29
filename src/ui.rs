@@ -7,7 +7,6 @@ pub const SCREEN_HEIGHT: usize = 50;
 
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     draw_map(&state.world.map, context);
-    draw_entities(&state.world, context);
 
     // {
     //     let positions = state.ecs.read_storage::<Position>();
@@ -251,10 +250,21 @@ fn draw_map(map: &Map, ctx: &mut Rltk) {
         if true || map.revealed_tiles[idx] {
             let glyph;
             let mut foreground;
+            let mut background = RGB::from_f32(0.0, 0.0, 0.0);
             match tile {
                 TileType::Floor => {
-                    glyph = rltk::to_cp437('.');
-                    foreground = RGB::from_f32(0.5, 1.0, 0.5);
+                    match &map.pawns[idx] {
+                        Some(pawn) => {
+                            glyph = pawn.renderable.glyph;
+                            foreground = pawn.renderable.color;
+                            background = pawn.renderable.background;
+                        },
+
+                        None => {
+                            glyph = rltk::to_cp437('.');
+                            foreground = RGB::from_f32(0.5, 1.0, 0.5);
+                        }
+                    };
                 }
                 TileType::Wall => {
                     glyph = rltk::to_cp437('█');
@@ -264,7 +274,7 @@ fn draw_map(map: &Map, ctx: &mut Rltk) {
             if !map.visible_tiles[idx] {
                 foreground = foreground.to_greyscale();
             }
-            ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
+            ctx.set(x, y, foreground, background, glyph);
         }
         x += 1;
         if x >= map.width {
@@ -272,24 +282,6 @@ fn draw_map(map: &Map, ctx: &mut Rltk) {
             y += 1;
         }
     }
-}
-
-pub fn draw_entities(world: &World, context: &mut Rltk) {
-    match &world.player {
-        Some(player) => {
-            draw_entity(player, context);
-        },
-        None => ()
-    }
-    for entity in &world.entities {
-        draw_entity(entity, context);
-    }
-}
-
-fn draw_entity(entity: &Entity, context: &mut Rltk) {
-    let pos = entity.position;
-    let renderable = entity.renderable;
-    context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
 }
 
 pub fn draw_menu(state: &State, context: &mut Rltk) {
