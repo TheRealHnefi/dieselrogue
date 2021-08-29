@@ -117,49 +117,22 @@ impl World {
     }
 
     pub fn resolve(&mut self) -> Result<(), GameError> {
-        self.verify_player_exists()?;
-        let mut player = self.player.take().unwrap();
-        
-        match player.intent.action {
-            Action::Idle => {},
-            Action::Move(pos) => {
-                if !self.map.blocked(pos.x, pos.y) {
-                    player.position = pos;
-                }
-            },
-            Action::Turn(direction) => {
-                player.facing.direction = direction;
-
-                match direction {
-                    Direction::Up => {player.renderable.glyph = rltk::to_cp437('8')},
-                    Direction::UpRight => {player.renderable.glyph = rltk::to_cp437('9')},
-                    Direction::Right => {player.renderable.glyph = rltk::to_cp437('6')},
-                    Direction::DownRight => {player.renderable.glyph = rltk::to_cp437('3')},
-                    Direction::Down => {player.renderable.glyph = rltk::to_cp437('2')},
-                    Direction::DownLeft => {player.renderable.glyph = rltk::to_cp437('1')},
-                    Direction::Left => {player.renderable.glyph = rltk::to_cp437('4')},
-                    Direction::UpLeft => {player.renderable.glyph = rltk::to_cp437('7')},
-                }
+        match &mut self.player {
+            Some(player) => player.resolve(&self.map),
+            None => {
+                return Err(GameError {
+                   error: Error::BadPrecondition,
+                   message: String::from("Player does not exist")
+                })
             }
         }
 
-        player.intent = Intent {action: Action::Idle};
-
-        self.player = Some(player);
-        Ok(())
-    }
-
-    fn verify_player_exists(&self) -> Result<(), GameError> {
-        if self.player.is_none() {
-            return Err(GameError {
-                error: Error::BadPrecondition,
-                message: String::from("Player does not exist")
-            });
+        for entity in self.entities.iter_mut() {
+            entity.resolve(&self.map);
         }
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
