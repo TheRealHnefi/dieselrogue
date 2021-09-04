@@ -183,6 +183,7 @@ impl World {
         for effect in effects.iter() {
             match effect {
                 Effect::Damage(id) => {
+                    println!("Resolving damage to {}", id);
                     deathlist.push(*id);
                 }
             }
@@ -192,6 +193,10 @@ impl World {
     }
 
     fn post_resolve(&mut self, deathlist: Vec<usize>) {
+        for id in &deathlist {
+            self.entities[*id].kill(&mut self.map);
+        }
+        
         self.entities.retain(|entity| {
             let should_be_dead = deathlist.iter().any(|&id| id == entity.id);
             return !should_be_dead;
@@ -333,6 +338,9 @@ mod tests {
 
             assert!(!should_be_dead);
             assert!(entity.id == index);
+            assert!(world.map.pawns[world.map.xy_idx(pos.x + 1, pos.y)].is_none());
+            assert!(world.map.pawns[world.map.xy_idx(pos.x + 3, pos.y)].is_none());
+            assert!(world.map.pawns[world.map.xy_idx(pos.x + 4, pos.y)].is_none());
         }
     }
 }

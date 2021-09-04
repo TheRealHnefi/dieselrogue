@@ -22,12 +22,17 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         Direction::UpLeft => {delta_x = -1; delta_y = -1},
     }
 
-    let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
-
-    if player.facing.direction == direction {
-        player.intent = Intent {action: Action::Move(target_pos)};
-    } else {
+    if player.facing.direction != direction {
         player.intent = Intent {action: Action::Turn(direction)};
+    } else {
+        let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
+        let index = world.map.xy_idx(target_pos.x, target_pos.y);
+
+        if world.map.pawns[index].is_some() {
+            player.intent = Intent {action: Action::Melee(target_pos)};
+        } else {
+            player.intent = Intent {action: Action::Move(target_pos)};
+        }
     }
 
     world.player = Some(player);
