@@ -4,11 +4,11 @@ use super::*;
 //use rltk::Point;
 
 pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError>{
-    if world.player.is_none() {
+    if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
 
-    let mut player = world.player.take().unwrap();
+    let mut player = &mut world.entities[world.player_id.unwrap()];
 
     let (delta_x, delta_y);
     match direction {
@@ -34,8 +34,6 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
             player.intent = Intent {action: Action::Move(target_pos)};
         }
     }
-
-    world.player = Some(player);
 
     Ok(())
 }

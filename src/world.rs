@@ -3,7 +3,7 @@ use rltk::Point;
 
 /// The contents of the game world itself.
 pub struct World {
-    pub player: Option<Entity>,
+    pub player_id: Option<usize>,
     pub entities: Vec<Entity>,
 
     // TODO: Copy relevant data to map when adding/moving actors. Might be faster, since moving
@@ -58,17 +58,17 @@ World.cleanup(); // Delete dead entries
 impl World {
     pub fn new() -> Self {
         Self {
-            player: Option::None,
+            player_id: Option::None,
             entities: vec![],
             map: Map::new_map_rooms_and_corridors()
         }
     }
 
     pub fn create_player(&mut self, pos: Point, facing: Facing, name: String) -> Result<(), GameError> {
-        if self.player.is_some() {
+        if self.entities.len() > 0 {
             return Err(GameError {
                 error: Error::BadPrecondition,
-                message: String::from("Tried to create player, but one already exists")
+                message: String::from("Tried to create player, but entities already exist")
             });
         }
         if self.map.blocked(pos.x, pos.y) {
@@ -89,7 +89,8 @@ impl World {
 
         let index = self.map.xy_idx(pos.x, pos.y);
         self.map.pawns[index] = Some(player.create_pawn());
-        self.player = Some(player);
+        self.entities.push(player);
+        self.player_id = Some(0);
 
         Ok(())
     }
@@ -121,21 +122,6 @@ impl World {
     pub fn resolve_movement(&mut self) -> Result<(), GameError> {
 
         let mut effects: Vec<Effect> = vec!();
-        match &mut self.player {
-            Some(player) => {
-                match player.resolve_movement(&mut self.map) {
-                    Some(effect) => effects.push(effect),
-                    None => ()
-                }
-            },
-            None => {
-                return Err(GameError {
-                   error: Error::BadPrecondition,
-                   message: String::from("Player does not exist")
-                })
-            }
-        }
-
         for entity in self.entities.iter_mut() {
             match entity.resolve_movement(&mut self.map) {
                 Some(effect) => effects.push(effect),
@@ -151,20 +137,6 @@ impl World {
     pub fn resolve_melee(&mut self) -> Result<(), GameError> {
 
         let mut effects: Vec<Effect> = vec!();
-        match &mut self.player {
-            Some(player) => {
-                match player.resolve_melee(&mut self.map) {
-                    Some(effect) => effects.push(effect),
-                    None => ()
-                }
-            },
-            None => {
-                return Err(GameError {
-                   error: Error::BadPrecondition,
-                   message: String::from("Player does not exist")
-                })
-            }
-        }
 
         for entity in self.entities.iter_mut() {
             match entity.resolve_melee(&mut self.map) {
@@ -183,7 +155,6 @@ impl World {
         for effect in effects.iter() {
             match effect {
                 Effect::Damage(id) => {
-                    println!("Resolving damage to {}", id);
                     deathlist.push(*id);
                 }
             }
@@ -213,11 +184,7 @@ mod tests {
     use super::*;
 
     fn assert_worldsize(world: World, size: usize) -> World {
-        let player_count = if world.player.is_some() { 1 } else { 0 };
-
-        let total_size = player_count + world.entities.len();
-
-        assert_eq!(total_size, size, "Position vector is of incorrect size");
+        assert_eq!(world.entities.len(), size, "Position vector is of incorrect size");
         world
     }
 
@@ -232,7 +199,7 @@ mod tests {
 
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
-        let player = world.player.unwrap();
+        let player = &world.entities[world.player_id.unwrap()];
         assert_eq!(player.position, pos);
         assert_eq!(player.name, name);
     }
@@ -249,7 +216,7 @@ mod tests {
 
         assert!(result.is_err());
         world = assert_worldsize(world, 1);
-        let player = world.player.unwrap();
+        let player = &world.entities[world.player_id.unwrap()];
         assert_eq!(player.position, pos);
         assert_eq!(player.name, name);
     }
