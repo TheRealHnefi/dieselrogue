@@ -3,10 +3,6 @@ use rltk::Point;
 use crate::Map;
 use crate::Item;
 
-pub enum Effect {
-    Damage(usize) // damage(entity_id)
-}
-
 /// Concrete type containing all data of something that acts and moves.
 #[derive(Clone)]
 pub struct Entity {

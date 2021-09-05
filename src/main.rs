@@ -16,51 +16,16 @@ mod map;
 pub use map::*;
 mod rect;
 pub use rect::*;
-// mod visibility_system;
-// pub use visibility_system::*;
-// mod map_indexing_system;
-// pub use map_indexing_system::*;
-// mod enemy_ai_system;
-// pub use enemy_ai_system::*;
-// mod tank_ai_system;
-// pub use tank_ai_system::*;
-// mod damage_system;
-// pub use damage_system::*;
 mod ui;
 pub use ui::*;
 mod game_log;
 pub use game_log::*;
-// mod inventory_system;
-// pub use inventory_system::*;
 mod menu;
 pub use menu::*;
 mod input;
 pub use input::*;
-// mod saveload_system;
-// pub use saveload_system::*;
-// mod serde_collections;
-// pub use serde_collections::*;
-// mod rex_assets;
-// pub use rex_assets::*;
-
-#[derive(Debug)]
-pub enum Error {
-    Generic,
-    BadPrecondition,
-    UnsolvableSituation
-}
-
-#[derive(Debug)]
-pub struct GameError {
-    pub error: Error,
-    pub message: String
-}
-
-impl From<()> for GameError {
-    fn from(_err: ()) -> Self {
-        GameError {error: Error::Generic, message: String::from("")}
-    }
-}
+mod error;
+pub use error::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -88,10 +53,7 @@ fn main() -> rltk::BError {
         String::from("Goon"));
     state.world.entities[1].intent = Intent {action: Action::Turn(Direction::DownLeft)};
     
-    let item = Item {
-        renderable: Renderable::new_glyph('g'),
-        name: String::from("Grenade")
-    };
+    let item = Item::grenade();
     let _ = state.world.add_item(pos, item);
 
     state.log.entries.push("Welcome!".to_string());

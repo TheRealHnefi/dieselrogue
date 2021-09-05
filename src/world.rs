@@ -340,11 +340,7 @@ mod tests {
         let mut world = World::new();
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
 
-        let item = Item {
-            name: String::from("Item"),
-            renderable: Renderable::new()
-        };
-
+        let item = Item::grenade();
         let _ = world.add_item(pos, item);
 
         let index = world.map.xy_idx(pos.x, pos.y);
@@ -356,11 +352,7 @@ mod tests {
         let mut world = World::new();
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
 
-        let item = Item {
-            name: String::from("Item"),
-            renderable: Renderable::new()
-        };
-
+        let item = Item::grenade();
         let _ = world.add_item(pos, item.clone());
         let _ = world.add_item(pos, item);
 
