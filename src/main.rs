@@ -6,6 +6,8 @@ mod world;
 pub use world::*;
 mod entity;
 pub use entity::*;
+mod item;
+pub use item::*;
 mod components;
 pub use components::*;
 mod player;
@@ -44,7 +46,8 @@ pub use input::*;
 #[derive(Debug)]
 pub enum Error {
     Generic,
-    BadPrecondition
+    BadPrecondition,
+    UnsolvableSituation
 }
 
 #[derive(Debug)]

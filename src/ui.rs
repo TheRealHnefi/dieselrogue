@@ -7,35 +7,6 @@ pub const SCREEN_HEIGHT: usize = 50;
 
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     draw_map(&state.world.map, context);
-
-    // {
-    //     let positions = state.ecs.read_storage::<Position>();
-    //     let renderables = state.ecs.read_storage::<Renderable>();
-    //     let large_renderables = state.ecs.read_storage::<LargeRenderable>();
-    //     let sizes = state.ecs.read_storage::<Size>();
-    //     let map = state.ecs.fetch::<Map>();
-
-    //     // TODO: Unify these, for efficiency?
-    //     for (pos, render) in (&positions, &renderables).join() {
-    //         let idx = map.xy_idx(pos.x, pos.y);
-    //         if map.visible_tiles[idx] {
-    //             context.set(pos.x, pos.y, render.color, render.background, render.glyph);
-    //         }
-    //     }
-
-    //     for (pos, render, size) in (&positions, &large_renderables, &sizes).join() {
-    //         assert!(size.x * size.y == render.glyphs.len() as i32, "Size and glyphmap size differ for object");
-    //         for x in 0..size.x {
-    //             for y in 0..size.y {
-    //                 let idx = map.xy_idx(pos.x + x, pos.y + y);
-    //                 if map.visible_tiles[idx] {
-    //                     context.set(pos.x + x, pos.y + y, render.color, render.background, render.glyphs[(x + size.x * y) as usize]);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     draw_main_ui(state, context);
 }
 
@@ -261,8 +232,17 @@ fn draw_map(map: &Map, ctx: &mut Rltk) {
                         },
 
                         None => {
-                            glyph = rltk::to_cp437('.');
-                            foreground = RGB::from_f32(0.5, 1.0, 0.5);
+                            match &map.items[idx] {
+                                Some(item) => {
+                                    glyph = item.renderable.glyph;
+                                    foreground = item.renderable.color;
+                                    background = item.renderable.background;
+                                }
+                                None => {
+                                    glyph = rltk::to_cp437('.');
+                                    foreground = RGB::from_f32(0.25, 0.25, 0.25);
+                                }
+                            }
                         }
                     };
                 }

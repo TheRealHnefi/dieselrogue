@@ -2,6 +2,8 @@ use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
 use crate::Rect;
 use crate::entity::Pawn;
+use crate::item::Item;
+use super::{GameError, Error};
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
@@ -21,7 +23,8 @@ pub struct Map {
     pub height: i32,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
-    pub pawns: Vec<Option<Pawn>>
+    pub pawns: Vec<Option<Pawn>>,
+    pub items: Vec<Option<Item>>,
 }
 
 impl Map {
@@ -36,6 +39,36 @@ impl Map {
             self.pawns[index].is_some()
     }
 
+    pub fn nearest_free_item_position(&self, pos: Point) -> Result<Point, GameError> {
+        let mut index = self.xy_idx(pos.x, pos.y);
+
+        fn is_free(map: &Map, idx: usize) -> bool {
+            return map.tiles[idx] == TileType::Floor && map.items[idx].is_none();
+        }
+
+        if is_free(self, index) {
+            return Ok(pos);
+        }
+
+        // This should be replaced by a spiral search for efficiency. But meh.
+        for distance in 1..=5 {
+            for dx in -distance..=distance {
+                for dy in -distance..=distance {
+                    index = self.xy_idx(pos.x + dx, pos.y + dy);
+                    if is_free(self, index) {
+                        return Ok(Point {x: pos.x + dx, y: pos.y + dy});
+                    }
+                }
+            }
+        }
+
+        return Err(
+            GameError {
+                message: String::from("Could not find open spot for item"),
+                error: Error::UnsolvableSituation
+        });
+    }
+
     pub fn new_map_rooms_and_corridors() -> Map {
         let mut map = Map {
             tiles: vec![TileType::Wall; MAPCOUNT],
@@ -44,7 +77,8 @@ impl Map {
             height: MAPHEIGHT as i32,
             revealed_tiles: vec![false; MAPCOUNT],
             visible_tiles: vec![false; MAPCOUNT],
-            pawns: vec![None; MAPCOUNT]
+            pawns: vec![None; MAPCOUNT],
+            items: vec![None; MAPCOUNT]
         };
 
         let mut rng = RandomNumberGenerator::new();
