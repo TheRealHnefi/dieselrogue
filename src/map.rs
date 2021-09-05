@@ -53,7 +53,13 @@ impl Map {
         // This should be replaced by a spiral search for efficiency. But meh.
         for distance in 1..=5 {
             for dx in -distance..=distance {
+                if dx + pos.x > self.width || pos.x - dx < 0 {
+                    continue;
+                }
                 for dy in -distance..=distance {
+                    if dy + pos.y > self.height || pos.y - dy < 0 {
+                        continue;
+                    }
                     index = self.xy_idx(pos.x + dx, pos.y + dy);
                     if is_free(self, index) {
                         return Ok(Point {x: pos.x + dx, y: pos.y + dy});

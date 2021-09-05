@@ -87,6 +87,12 @@ fn main() -> rltk::BError {
         Facing { direction: Direction::Up},
         String::from("Goon"));
     state.world.entities[1].intent = Intent {action: Action::Turn(Direction::DownLeft)};
+    
+    let item = Item {
+        renderable: Renderable::new_glyph('g'),
+        name: String::from("Grenade")
+    };
+    let _ = state.world.add_item(pos, item);
 
     state.log.entries.push("Welcome!".to_string());
  

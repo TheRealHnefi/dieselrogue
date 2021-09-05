@@ -73,6 +73,17 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 }
             },
 
+            VirtualKeyCode::G => {
+                let result = getitem_player_intent(&mut state.world); 
+                if result.is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    state.log.entries.push(result.err().unwrap().message);
+                    return RunState::AwaitingInput;
+                }
+            },
+
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Menu::new_main());

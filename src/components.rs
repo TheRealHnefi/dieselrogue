@@ -54,6 +54,7 @@ pub enum Action {
     Move(Point),
     Turn(Direction),
     Melee(Point),
+    GetItem
 }
 
 // #[derive (Component, ConvertSaveload, Clone)]
