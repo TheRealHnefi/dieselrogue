@@ -84,9 +84,17 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 }
             },
 
+            VirtualKeyCode::Space => {
+                state.system_menu_stack.clear();
+                state.action_menu_stack.clear();
+                state.action_menu_stack.push(ActionMenu::all_actions(&state.world));
+                return RunState::AwaitingMenuInput;
+            },
+
             VirtualKeyCode::Escape => {
-                state.menu_stack.clear();
-                state.menu_stack.push(Menu::new_main());
+                state.system_menu_stack.clear();
+                state.action_menu_stack.clear();
+                state.system_menu_stack.push(SystemMenu::main_menu());
                 return RunState::AwaitingMenuInput;
             }
 
@@ -182,45 +190,59 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
 // }
 
 pub fn menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
-    assert!(!state.menu_stack.is_empty(), "Menu stack is empty during menu input");
+    assert!(!state.system_menu_stack.is_empty() || !state.action_menu_stack.is_empty(),
+        "Menu stack is empty during menu input");
+    assert!(state.system_menu_stack.is_empty() || state.action_menu_stack.is_empty(),
+        "Both menu systems active simultaneously");
+
+    if !state.system_menu_stack.is_empty() {
+        return system_menu_input(state, ctx);
+    }
+    else {
+        return action_menu_input(state, ctx);
+    }
+}
+
+fn system_menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
         Some(key) => match key {
             VirtualKeyCode::Escape => {
-                state.menu_stack.clear();
+                state.system_menu_stack.clear();
+                state.action_menu_stack.clear();
                 return RunState::AwaitingInput;
             },
             VirtualKeyCode::Down |
             VirtualKeyCode::Numpad2 => {
-                let index = state.menu_stack.len() - 1;
-                state.menu_stack[index].selected_row += 1;
-                if state.menu_stack[index].selected_row > state.menu_stack[index].rows.len() - 1 {
-                    state.menu_stack[index].selected_row = 0;
+                let index = state.system_menu_stack.len() - 1;
+                state.system_menu_stack[index].selected_row += 1;
+                if state.system_menu_stack[index].selected_row > state.system_menu_stack[index].rows.len() - 1 {
+                    state.system_menu_stack[index].selected_row = 0;
                 }
                 return RunState::AwaitingMenuInput;
             },
             VirtualKeyCode::Up |
             VirtualKeyCode::Numpad8 => {
-                let index = state.menu_stack.len() - 1;
-                if state.menu_stack[index].selected_row == 0 {
-                    state.menu_stack[index].selected_row = state.menu_stack[index].rows.len() - 1;
+                let index = state.system_menu_stack.len() - 1;
+                if state.system_menu_stack[index].selected_row == 0 {
+                    state.system_menu_stack[index].selected_row = state.system_menu_stack[index].rows.len() - 1;
                 } else {
-                    state.menu_stack[index].selected_row -= 1;
+                    state.system_menu_stack[index].selected_row -= 1;
                 }
                 return RunState::AwaitingMenuInput;
             },
             VirtualKeyCode::Space |
             VirtualKeyCode::Return => {
-                let menu_index = state.menu_stack.len() - 1;
-                let row_index = state.menu_stack[menu_index].selected_row;
-                assert!(row_index < state.menu_stack[menu_index].rows.len(), "Row index out of bounds");
-                let action = state.menu_stack[menu_index].rows[row_index].action;
-                return action(&state.menu_stack[menu_index], &mut state.world);
+                let menu_index = state.system_menu_stack.len() - 1;
+                let row_index = state.system_menu_stack[menu_index].selected_row;
+                assert!(row_index < state.system_menu_stack[menu_index].rows.len(), "Row index out of bounds");
+                let action = state.system_menu_stack[menu_index].rows[row_index].action;
+                return action(&state.system_menu_stack[menu_index], &mut state.world);
             },
             _ => {
-                let rows = &state.menu_stack.last().unwrap().rows;
+                let rows = &state.system_menu_stack.last().unwrap().rows;
                 for row in rows {
                     if row.hotkey == key {
-                        return (row.action)(&state.menu_stack.last().unwrap(), &mut state.world);
+                        return (row.action)(&state.system_menu_stack.last().unwrap(), &mut state.world);
                     }
                 }
                 return RunState::AwaitingMenuInput;
@@ -229,6 +251,62 @@ pub fn menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
         None => {
             return RunState::AwaitingMenuInput;
         }
+    }
+}
+
+fn action_menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
+    match ctx.key {
+        Some(key) => match key {
+            VirtualKeyCode::Escape => {
+                state.system_menu_stack.clear();
+                state.action_menu_stack.clear();
+                return RunState::AwaitingInput;
+            },
+            VirtualKeyCode::Down |
+            VirtualKeyCode::Numpad2 => {
+                let index = state.action_menu_stack.len() - 1;
+                state.action_menu_stack[index].selected_row += 1;
+                if state.action_menu_stack[index].selected_row > state.action_menu_stack[index].item_rows.len() - 1 {
+                    state.action_menu_stack[index].selected_row = 0;
+                }
+                return RunState::AwaitingMenuInput;
+            },
+            VirtualKeyCode::Up |
+            VirtualKeyCode::Numpad8 => {
+                let index = state.action_menu_stack.len() - 1;
+                if state.action_menu_stack[index].selected_row == 0 {
+                    state.action_menu_stack[index].selected_row = state.action_menu_stack[index].item_rows.len() - 1;
+                } else {
+                    state.action_menu_stack[index].selected_row -= 1;
+                }
+                return RunState::AwaitingMenuInput;
+            },
+            VirtualKeyCode::Space |
+            VirtualKeyCode::Return => {
+                let menu_index = state.action_menu_stack.len() - 1;
+                let row_index = state.action_menu_stack[menu_index].selected_row;
+                assert!(row_index < state.action_menu_stack[menu_index].item_rows.len(), "Row index out of bounds");
+                return use_item(&state.action_menu_stack[menu_index].item_rows[row_index].action, &mut state.world);
+            },
+            _ => {
+                let rows = &state.action_menu_stack.last().unwrap().item_rows;
+                for row in rows {
+                    if row.hotkey == key {
+                        return use_item(&row.action, &mut state.world);
+                    }
+                }
+                return RunState::AwaitingMenuInput;
+            }
+        }
+        None => {
+            return RunState::AwaitingMenuInput;
+        }
+    }
+}
+
+fn use_item(action: &ItemAction, _world: &mut World) -> RunState {
+    match action.targeting {
+        TargetingType::Position => return RunState::AwaitingPositionalTargetingInput
     }
 }
 

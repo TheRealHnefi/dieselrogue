@@ -149,7 +149,6 @@ Or perhaps no classes at all? Just perks?
 * Deafen
 * Shower power (fire several shots in area, hit several targets)
 
-
 ### Resources:
 * HP: Local for each body part, plus overall HP. No regeneration.
 * Fatigue: Used for abilities, including magic. No regeneration.
@@ -201,7 +200,6 @@ All actions are one of the following categories:
  * Resolve movement
  * Resolve other actions (including using items)
  * Cleanup
-
 
 ## Misc:
 * Multi-tile actors, like mechs and tanks - pilotable!
