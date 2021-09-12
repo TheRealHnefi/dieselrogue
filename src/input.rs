@@ -1,5 +1,6 @@
 use rltk::{VirtualKeyCode, Rltk};
 use super::*;
+use std::cmp::*;
 
 pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
     match context.key {
@@ -108,86 +109,53 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
     }
 }
 
-// pub fn targeting_input(state: &mut State, context: &mut Rltk) -> RunState {
-//     match context.key {
-//         Some(key) => match key {
-//             VirtualKeyCode::Left |
-//             VirtualKeyCode::Numpad4 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 cursor_pos.x = max(cursor_pos.x - 1, 0);
-//             },
-//             VirtualKeyCode::Right |
-//             VirtualKeyCode::Numpad6 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 let map = state.ecs.fetch::<Map>();
-//                 cursor_pos.x = min(cursor_pos.x + 1, map.width - 1);
-//             },
-//             VirtualKeyCode::Up |
-//             VirtualKeyCode::Numpad8 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 cursor_pos.y = max(cursor_pos.y - 1, 0);
-//             },
-//             VirtualKeyCode::Down |
-//             VirtualKeyCode::Numpad2 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 let map = state.ecs.fetch::<Map>();
-//                 cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
-//             },
-//             VirtualKeyCode::Numpad9 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 cursor_pos.y = max(cursor_pos.y - 1, 0);
-//                 let map = state.ecs.fetch::<Map>();
-//                 cursor_pos.x = min(cursor_pos.x + 1, map.width - 1);
-//             },
-//             VirtualKeyCode::Numpad7 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 cursor_pos.x = max(cursor_pos.x - 1, 0);
-//                 cursor_pos.y = max(cursor_pos.y - 1, 0);
-//             },
-//             VirtualKeyCode::Numpad3 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 let map = state.ecs.fetch::<Map>();
-//                 cursor_pos.x = min(cursor_pos.x + 1, map.width - 1);
-//                 cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
-//             },
-//             VirtualKeyCode::Numpad1 => {
-//                 let mut cursor_pos = state.ecs.fetch_mut::<Point>();
-//                 let map = state.ecs.fetch::<Map>();
-//                 cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
-//                 cursor_pos.x = max(cursor_pos.x - 1, 0);
-//             },
-//             VirtualKeyCode::Escape => {
-//                 return RunState::AwaitingInput;
-//             },
-//             VirtualKeyCode::Space |
-//             VirtualKeyCode::Return |
-//             VirtualKeyCode::T => {
-//                 let cursor_pos = state.ecs.fetch::<Point>();
-//                 let map = state.ecs.fetch::<Map>();
-//                 let index = map.xy_idx(cursor_pos.x, cursor_pos.y);
-//                 let maybe_actor = map.tile_blockers[index];
-//                 // TODO: Iterate over all entities with this position and, in case of >1 hit, create menu
-//                 // to choose which to focus on
-//                 match maybe_actor {
-//                     Some(entity) => {
-//                         state.menu_stack.clear();
-//                         state.menu_stack.push(Menu::new_target_menu(&state.ecs, cursor_pos.x, cursor_pos.y, entity));
-//                         return RunState::MenuInput;
-//                     }
-//                     None => {
-//                         return RunState::AwaitingInput;
-//                     }
-//                 }
-//             },
-//             _ => {
-//             }
-//         }
-//         None => {
-//             return RunState::TargetingInput;
-//         }
-//     }
-//     RunState::TargetingInput
-// }
+pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunState {
+    match context.key {
+        Some(key) => match key {
+            VirtualKeyCode::Left |
+            VirtualKeyCode::Numpad4 => {
+                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+            },
+            VirtualKeyCode::Right |
+            VirtualKeyCode::Numpad6 => {
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width - 1);
+            },
+            VirtualKeyCode::Up |
+            VirtualKeyCode::Numpad8 => {
+                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
+            },
+            VirtualKeyCode::Down |
+            VirtualKeyCode::Numpad2 => {
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height - 1);
+            },
+            VirtualKeyCode::Numpad9 => {
+                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width - 1);
+            },
+            VirtualKeyCode::Numpad7 => {
+                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
+            },
+            VirtualKeyCode::Numpad3 => {
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width - 1);
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height - 1);
+            },
+            VirtualKeyCode::Numpad1 => {
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height - 1);
+                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+            },
+            VirtualKeyCode::Escape => {
+                return RunState::AwaitingInput;
+            },
+            _ => {
+            }
+        }
+        None => {
+            return RunState::AwaitingPositionalTargetingInput
+        }
+    }
+    RunState::AwaitingPositionalTargetingInput
+}
 
 pub fn menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
     assert!(!state.system_menu_stack.is_empty() || !state.action_menu_stack.is_empty(),
@@ -286,15 +254,16 @@ fn action_menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
                 let menu_index = state.action_menu_stack.len() - 1;
                 let row_index = state.action_menu_stack[menu_index].selected_row;
                 assert!(row_index < state.action_menu_stack[menu_index].item_rows.len(), "Row index out of bounds");
-                return use_item(&state.action_menu_stack[menu_index].item_rows[row_index].action, &mut state.world);
+                let action = &state.action_menu_stack[menu_index].item_rows[row_index].action.clone();
+                return use_item(action, state);
             },
             _ => {
-                let rows = &state.action_menu_stack.last().unwrap().item_rows;
-                for row in rows {
-                    if row.hotkey == key {
-                        return use_item(&row.action, &mut state.world);
-                    }
-                }
+                // let rows = &state.action_menu_stack.last().unwrap().item_rows;
+                // for row in rows {
+                //     if row.hotkey == key {
+                //         return use_item(&row.action, state);
+                //     }
+                // }
                 return RunState::AwaitingMenuInput;
             }
         }
@@ -304,9 +273,12 @@ fn action_menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
     }
 }
 
-fn use_item(action: &ItemAction, _world: &mut World) -> RunState {
+fn use_item(action: &ItemAction, state: &mut State) -> RunState {
     match action.targeting {
-        TargetingType::Position => return RunState::AwaitingPositionalTargetingInput
+        TargetingType::Position => {
+            state.cursor_pos = state.world.entities[state.world.player_id.unwrap()].position;
+            return RunState::AwaitingPositionalTargetingInput;
+        }
     }
 }
 
