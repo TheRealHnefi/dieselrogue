@@ -1,5 +1,6 @@
 use rltk::Point;
 use crate::Map;
+use crate::Item;
 
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -54,30 +55,15 @@ pub enum Action {
     Move(Point),
     Turn(Direction),
     Melee(Point),
-    GetItem
+    GetItem,
+    Throw(usize, Point) // (inventory index, map position)
 }
 
 pub enum Effect {
     Damage(usize) // damage(entity_id)
 }
 
-type ItemActionEffect = fn (source_position: Point, target_position: Point, map: &Map) -> Option<Effect>;
-
 #[derive(Clone)]
-pub struct ItemAction {
-    pub label: String,
-    pub targeting: TargetingType,
-    pub cost: UsageCost,
-    pub effect: ItemActionEffect
-}
-
-#[derive(Clone)]
-pub enum TargetingType {
-    Position
-}
-
-#[derive(Clone)]
-pub enum UsageCost {
-    Free,
-    Consume
+pub enum ItemAction {
+    Throw(fn (source_position: Point, target_position: Point, map: &Map) -> Option<Effect>)
 }

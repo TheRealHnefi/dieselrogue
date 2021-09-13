@@ -58,6 +58,7 @@ impl GameState for State {
                 debug_assert!(self.world.resolve_movement().is_ok());
                 debug_assert!(self.world.resolve_inventory().is_ok());
                 debug_assert!(self.world.resolve_melee().is_ok());
+                debug_assert!(self.world.resolve_throw().is_ok());
                 self.run_state = main_screen_input(self, context);
             }
         }

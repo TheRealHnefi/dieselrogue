@@ -11,12 +11,7 @@ pub struct Item {
 
 impl Item {
     pub fn grenade() -> Self {
-        let throw_action = ItemAction {
-            label: String::from("Throw"),
-            targeting: TargetingType::Position,
-            cost: UsageCost::Consume,
-            effect: throw_grenade
-        };
+        let throw_action = ItemAction::Throw(throw_grenade_effect);
         Item {
             renderable: Renderable::new_glyph('g'),
             name: String::from("Grenade"),
@@ -25,6 +20,10 @@ impl Item {
     }
 }
 
-fn throw_grenade(source_position: Point, target_position: Point, map: &Map) -> Option<Effect> {
-    None
+fn throw_grenade_effect(source_position: Point, target_position: Point, map: &Map) -> Option<Effect> {
+    let target_map_index = map.pos_idx(target_position);
+    match &map.pawns[target_map_index] {
+        Some(pawn) => Some(Effect::Damage(pawn.entity_id)),
+        _ => None
+    }
 }

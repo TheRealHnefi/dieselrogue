@@ -28,6 +28,10 @@ pub struct Map {
 }
 
 impl Map {
+    pub fn pos_idx(&self, pos: Point) -> usize {
+        self.xy_idx(pos.x, pos.y)
+    }
+
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
         (y as usize * MAPWIDTH) + x as usize
     }
