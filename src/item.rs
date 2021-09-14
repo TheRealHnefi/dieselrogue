@@ -20,7 +20,13 @@ impl Item {
     }
 }
 
-fn throw_grenade_effect(source_position: Point, target_position: Point, map: &Map) -> Option<Effect> {
+impl PartialEq for Item {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+fn throw_grenade_effect(_source_position: Point, target_position: Point, map: &Map) -> Option<Effect> {
     let target_map_index = map.pos_idx(target_position);
     match &map.pawns[target_map_index] {
         Some(pawn) => Some(Effect::Damage(pawn.entity_id)),

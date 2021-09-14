@@ -1,6 +1,5 @@
 use rltk::Point;
 use crate::Map;
-use crate::Item;
 
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -60,7 +59,7 @@ pub enum Action {
 }
 
 pub enum Effect {
-    Damage(usize) // damage(entity_id)
+    Damage(usize) // (entity_id)
 }
 
 #[derive(Clone)]

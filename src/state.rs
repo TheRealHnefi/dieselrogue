@@ -17,8 +17,8 @@ pub struct State {
 
     pub world: World,
 
-    pub system_menu_stack: Vec<SystemMenu>,
-    pub action_menu_stack: Vec<ActionMenu>,
+    pub system_menu_stack: Vec<Menu<SystemRow>>,
+    pub item_menu_stack: Vec<Menu<ItemRow>>,
 
     last_tick: Instant,
 }
@@ -31,7 +31,7 @@ impl State {
             log: GameLog {entries: vec![]},
             world: World::new(),
             system_menu_stack: vec![],
-            action_menu_stack: vec![],
+            item_menu_stack: vec![],
             last_tick: Instant::now(),
         }
     }
