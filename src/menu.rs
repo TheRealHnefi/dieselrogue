@@ -1,4 +1,4 @@
-use rltk::{VirtualKeyCode};
+use rltk::{VirtualKeyCode, Rltk, RGB};
 use super::*;
 
 /**
@@ -10,22 +10,30 @@ use super::*;
  *   - Ability menu - pick an ability to use
  */
 
-pub struct Menu<RowType> {
+pub trait Menu {
+    fn select_next(&mut self);
+    fn select_previous(&mut self);
+    fn get_action(&self) -> MenuAction;
+    fn draw(&self, context: &mut Rltk);
+}
+
+pub trait MenuRow {
+    fn get_action(&self) -> MenuAction;
+    fn get_text(&self) -> String;
+}
+
+type MenuAction = fn (&mut State) -> RunState;
+
+pub struct MenuPanel<T: MenuRow> {
     pub x: i32,
     pub y: i32,
-    pub rows: Vec<RowType>,
+    pub rows: Vec<T>,
     pub selected_row: usize,
 }
 
 pub struct SystemRow {
     pub text: String,
-    pub action: SystemMenuAction
-}
-
-pub struct ItemActionRow {
-    pub text: String,
-    pub action: ItemAction,
-    pub item: Item
+    pub action: fn (state: &mut State) -> RunState
 }
 
 pub struct ItemRow {
@@ -33,27 +41,87 @@ pub struct ItemRow {
     pub item: Item
 }
 
-type SystemMenuAction = fn (world: &mut World) -> RunState;
+pub struct ItemActionRow {
+    pub text: String,
+    pub item: Item,
+    pub action: ItemAction
+}
 
-fn action_quit(_world: &mut World) -> RunState {
+impl MenuRow for SystemRow {
+    fn get_action(&self) -> MenuAction {
+        return self.action;
+    }
+
+    fn get_text(&self) -> String {
+        return self.text.clone();
+    }
+}
+
+fn temp_item_action(state: &mut State) -> RunState {
+    state.menu_stack.pop();
+    if state.menu_stack.is_empty() {
+        RunState::AwaitingInput;
+    }
+    return RunState::AwaitingMenuInput;
+}
+
+impl MenuRow for ItemRow {
+    fn get_action(&self) -> MenuAction {
+        return temp_item_action;
+    }
+
+    fn get_text(&self) -> String {
+        return self.text.clone();
+    }
+}
+
+fn temp_throw_action(state: &mut State) -> RunState {
+    RunState::AwaitingInput
+}
+
+impl MenuRow for ItemActionRow {
+    fn get_action(&self) -> MenuAction {
+        match self.action {
+            ItemAction::Throw(_) => {
+                temp_throw_action
+            }
+        }
+    }
+
+    fn get_text(&self) -> String {
+        return self.text.clone();
+    }
+}
+
+fn action_quit(_state: &mut State) -> RunState {
     ::std::process::exit(0);
 }
 
-pub fn main_menu() -> Menu<SystemRow> {
+fn action_open_item_menu(state: &mut State) -> RunState {
+    state.menu_stack.push(Box::new(item_menu(&state.world)));
+    return RunState::AwaitingMenuInput;
+}
+
+pub fn main_menu() -> MenuPanel<SystemRow> {
     let quit_row = SystemRow {
-        text: "(Q) Quit".to_string(),
+        text: "Quit".to_string(),
         action: action_quit
     };
 
-    Menu {
+    let useitem_row = SystemRow {
+        text: "Use item".to_string(),
+        action: action_open_item_menu
+    };
+
+    MenuPanel {
         x: 35,
         y: 20,
-        rows: vec![quit_row],
+        rows: vec![quit_row, useitem_row],
         selected_row: 0,
     }
 }
 
-pub fn item_menu(world: &World) -> Menu<ItemRow> {
+pub fn item_menu(world: &World) -> MenuPanel<ItemRow> {
     let mut item_rows = vec!();
     match world.get_player() {
         Ok(player) => {
@@ -67,10 +135,49 @@ pub fn item_menu(world: &World) -> Menu<ItemRow> {
         Err(_) => ()
     }
 
-    Menu {
+    MenuPanel {
         x: 35,
         y: 20,
         rows: item_rows,
         selected_row: 0
+    }
+}
+
+impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
+    fn select_next(&mut self){
+        self.selected_row += 1;
+        if self.selected_row > self.rows.len() - 1 {
+            self.selected_row = 0;
+        }
+    }
+
+    fn select_previous(&mut self) {
+        if self.selected_row == 0 {
+            self.selected_row = self.rows.len() - 1;
+        } else {
+            self.selected_row -= 1;
+        }
+    }
+
+    fn get_action(&self) -> MenuAction {
+        assert!(self.rows.len() >= self.selected_row);
+        return self.rows[self.selected_row].get_action();
+    }
+
+    fn draw(&self, context: &mut Rltk) {
+        let mut width = 0;
+        for row in &self.rows {
+            if row.get_text().len() > width {
+                width = row.get_text().len();
+            }
+        }
+        context.draw_box(self.x, self.y, width + 3, self.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+        for (i, row) in self.rows.iter().enumerate() {
+            if self.selected_row == i {
+                context.print_color(self.x + 2, self.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), row.get_text());
+            } else {
+                context.print_color(self.x + 2, self.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), row.get_text());
+            }
+        }
     }
 }
