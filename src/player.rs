@@ -23,15 +23,15 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     }
 
     if player.facing.direction != direction {
-        player.intent = Intent {action: Action::Turn(direction)};
+        player.intent = Intent::Turn(direction);
     } else {
         let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
 
         if world.map.pawns[index].is_some() {
-            player.intent = Intent {action: Action::Melee(target_pos)};
+            player.intent = Intent::Melee(target_pos);
         } else {
-            player.intent = Intent {action: Action::Move(target_pos)};
+            player.intent = Intent::Move(target_pos);
         }
     }
 
@@ -47,7 +47,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     let index = world.map.xy_idx(player.position.x, player.position.y);
 
     if world.map.items[index].is_some() {
-        player.intent = Intent {action: Action::GetItem};
+        player.intent = Intent::GetItem;
         return Ok(());
     }
 

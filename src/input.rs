@@ -156,7 +156,7 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                     }
                 }
                 state.world.entities[state.world.player_id.unwrap()].intent =
-                    Intent { action: Action::Throw(item_index, state.cursor_pos) };
+                    Intent::Throw(item_index, state.cursor_pos);
 
                 return RunState::Resolve;
             },
