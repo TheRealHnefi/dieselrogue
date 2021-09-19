@@ -89,6 +89,17 @@ impl Entity {
                 }
                 return None;
             },
+            Action::Drop(item_index) => {
+                self.intent = Intent {action: Action::Idle};
+                
+                let target_pos = map.nearest_free_item_position(self.position).unwrap();
+                let map_index = map.pos_idx(target_pos);
+
+                let item = self.inventory.remove(item_index);
+                map.items[map_index] = Some(item);
+
+                return None;
+            },
             _ => None
         }
     }
@@ -105,7 +116,8 @@ impl Entity {
                     match item_action {
                         ItemAction::Throw(effect_fn) => {
                             return effect_fn(self.position, position, map);
-                        }
+                        },
+                        _ => return None
                     };
                 }
                 

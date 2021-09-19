@@ -12,10 +12,11 @@ pub struct Item {
 impl Item {
     pub fn grenade() -> Self {
         let throw_action = ItemAction::Throw(throw_grenade_effect);
+        let drop_action = ItemAction::Drop;
         Item {
             renderable: Renderable::new_glyph('g'),
             name: String::from("Grenade"),
-            inventory_actions: vec![throw_action]
+            inventory_actions: vec![throw_action, drop_action]
         }
     }
 }
