@@ -22,7 +22,6 @@ pub trait MenuRow {
     fn get_text(&self) -> String;
 }
 
-//type MenuAction = fn (&mut State) -> RunState;
 pub enum MenuAction {
     Simple(fn (&mut State) -> RunState),
     Item(Item, fn (Item, &mut State) -> RunState)
@@ -68,10 +67,6 @@ fn show_inventory_item_menu_action(item: Item, state: &mut State) -> RunState {
     return RunState::AwaitingMenuInput;
 }
 
-fn test(number: usize, state: &mut State) -> RunState {
-    return RunState::AwaitingMenuInput;
-}
-
 impl MenuRow for ItemRow {
     fn get_action(&self) -> MenuAction {
         return MenuAction::Item(self.item.clone(), show_inventory_item_menu_action);
@@ -82,15 +77,22 @@ impl MenuRow for ItemRow {
     }
 }
 
-fn temp_throw_action(state: &mut State) -> RunState {
-    RunState::AwaitingInput
+fn throw_action(item: Item, state: &mut State) -> RunState {
+    match state.world.get_player() {
+        Ok(player) => {
+            state.cursor_pos = player.position;
+            state.item_being_used = Some(item);
+        },
+        Err(_) => ()
+    }
+    RunState::AwaitingPositionalTargetingInput
 }
 
 impl MenuRow for ItemActionRow {
     fn get_action(&self) -> MenuAction {
         match self.action {
             ItemAction::Throw(_) => {
-                MenuAction::Simple(temp_throw_action)
+                MenuAction::Item(self.item.clone(), throw_action)
             }
         }
     }
