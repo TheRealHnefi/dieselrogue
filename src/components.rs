@@ -63,3 +63,9 @@ pub enum ItemAction {
     Throw(fn (source_position: Point, target_position: Point, map: &Map) -> Option<Effect>),
     Drop
 }
+
+#[derive(Clone)]
+pub enum SlotType {
+    RightHand,
+    LeftHand,
+}

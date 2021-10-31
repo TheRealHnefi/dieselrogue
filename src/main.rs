@@ -26,6 +26,8 @@ mod input;
 pub use input::*;
 mod error;
 pub use error::*;
+mod body;
+pub use body::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -53,8 +55,9 @@ fn main() -> rltk::BError {
         String::from("Goon"));
     state.world.entities[1].intent = Intent::Turn(Direction::DownLeft);
     
-    let item = Item::grenade();
-    let _ = state.world.add_item(pos, item);
+    let _ = state.world.add_item(pos, Item::grenade());
+    let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::rifle());
+    let _ = state.world.add_item(Point{x: pos.x + 2, y: pos.y}, Item::pistol());
 
     state.log.entries.push("Welcome!".to_string());
  
