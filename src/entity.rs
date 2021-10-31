@@ -102,6 +102,23 @@ impl Entity {
 
                 return None;
             },
+            Intent::Equip(item_index) => {
+                self.intent = Intent::Idle;
+
+                let item = self.inventory.remove(item_index);
+                let unequipped_result = self.body.equip(item.clone());
+                match unequipped_result {
+                    Ok(unequipped_items) => {
+                        for unequipped_item in unequipped_items {
+                            self.inventory.push(unequipped_item);
+                        }
+                    },
+                    Err(_) => {
+                        self.inventory.push(item);
+                    }
+                }
+                return None;
+            },
             _ => None
         }
     }

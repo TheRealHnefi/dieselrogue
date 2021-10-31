@@ -6,7 +6,9 @@ use rltk::Point;
 pub struct Item {
     pub renderable: Renderable,
     pub name: String,
-    pub inventory_actions: Vec<ItemAction>
+    pub inventory_actions: Vec<ItemAction>,
+    pub equip_slots: Vec<SlotType>,
+    pub proxy: bool
 }
 
 impl Item {
@@ -16,25 +18,43 @@ impl Item {
         Item {
             renderable: Renderable::new_glyph('g'),
             name: String::from("Grenade"),
-            inventory_actions: vec![throw_action, drop_action]
+            inventory_actions: vec![throw_action, drop_action],
+            equip_slots: vec!(),
+            proxy: false
         }
     }
 
     pub fn pistol() -> Self {
+        let equip_action = ItemAction::Equip;
         let drop_action = ItemAction::Drop;
         Item {
             renderable: Renderable::new_glyph('p'),
             name: String::from("Pistol"),
-            inventory_actions: vec![drop_action]
+            inventory_actions: vec![equip_action, drop_action],
+            equip_slots: vec!(SlotType::PrimaryHand),
+            proxy: false
         }
     }
 
     pub fn rifle() -> Self {
+        let equip_action = ItemAction::Equip;
         let drop_action = ItemAction::Drop;
         Item {
             renderable: Renderable::new_glyph('r'),
             name: String::from("Rifle"),
-            inventory_actions: vec![drop_action]
+            inventory_actions: vec![equip_action, drop_action],
+            equip_slots: vec!(SlotType::PrimaryHand, SlotType::SecondaryHand),
+            proxy: false
+        }
+    }
+
+    pub fn proxy(&self) -> Self {
+        Item {
+            renderable: self.renderable.clone(),
+            name: self.name.clone(),
+            inventory_actions: vec!(),
+            equip_slots: self.equip_slots.clone(),
+            proxy: true
         }
     }
 }

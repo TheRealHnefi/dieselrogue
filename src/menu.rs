@@ -77,6 +77,26 @@ impl MenuRow for ItemRow {
     }
 }
 
+fn equip_action(item: Item, state: &mut State) -> RunState {
+    match state.world.get_player_mut() {
+        Ok(player) => {
+            let mut item_index = 0;
+            for (index, inventory_item) in player.inventory.iter().enumerate() {
+                if inventory_item == &item && player.body.can_equip(item.clone()) {
+                    item_index = index;
+                    break;
+                }
+            }
+            player.intent = Intent::Equip(item_index);
+            return RunState::Resolve;
+        },
+        Err(_) => {
+            state.log.entries.push("Can not equip item".to_string());
+            return RunState::AwaitingMenuInput
+        }
+    }
+}
+
 fn throw_action(item: Item, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
@@ -110,6 +130,9 @@ impl MenuRow for ItemActionRow {
         match self.action {
             ItemAction::Throw(_) => {
                 MenuAction::Item(self.item.clone(), throw_action)
+            },
+            ItemAction::Equip => {
+                MenuAction::Item(self.item.clone(), equip_action)
             },
             ItemAction::Drop => {
                 MenuAction::Item(self.item.clone(), drop_action)
@@ -190,6 +213,7 @@ pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
     for inventory_action in &item.inventory_actions {
         let description = match inventory_action {
             ItemAction::Throw(_) => "Throw".to_string(),
+            ItemAction::Equip => "Equip".to_string(),
             ItemAction::Drop => "Drop".to_string()
         };
         action_rows.push(ItemActionRow {

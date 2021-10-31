@@ -51,7 +51,8 @@ pub enum Intent {
     Melee(Point),
     GetItem,
     Throw(usize, Point), // (inventory index, map position)
-    Drop(usize) // (inventory index)
+    Drop(usize), // (inventory index)
+    Equip(usize) // (inventory index)
 }
 
 pub enum Effect {
@@ -61,11 +62,12 @@ pub enum Effect {
 #[derive(Clone)]
 pub enum ItemAction {
     Throw(fn (source_position: Point, target_position: Point, map: &Map) -> Option<Effect>),
+    Equip,
     Drop
 }
 
-#[derive(Clone)]
+#[derive (PartialEq, Eq, Copy, Clone)]
 pub enum SlotType {
-    RightHand,
-    LeftHand,
+    PrimaryHand,
+    SecondaryHand,
 }
