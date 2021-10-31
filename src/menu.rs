@@ -13,6 +13,7 @@ use super::*;
 pub trait Menu {
     fn select_next(&mut self);
     fn select_previous(&mut self);
+    fn no_selectable_exists(&self) -> bool;
     fn get_action(&self) -> MenuAction;
     fn draw(&self, context: &mut Rltk);
 }
@@ -20,6 +21,7 @@ pub trait Menu {
 pub trait MenuRow {
     fn get_action(&self) -> MenuAction;
     fn get_text(&self) -> String;
+    fn selectable(&self) -> bool;
 }
 
 pub enum MenuAction {
@@ -32,6 +34,7 @@ pub struct MenuPanel<T: MenuRow> {
     pub y: i32,
     pub rows: Vec<T>,
     pub selected_row: usize,
+    no_selectable_rows: bool
 }
 
 pub struct SystemRow {
@@ -63,6 +66,10 @@ impl MenuRow for SystemRow {
     fn get_text(&self) -> String {
         return self.text.clone();
     }
+
+    fn selectable(&self) -> bool {
+        true
+    }
 }
 
 impl MenuRow for ItemRow {
@@ -72,6 +79,10 @@ impl MenuRow for ItemRow {
 
     fn get_text(&self) -> String {
         return self.text.clone();
+    }
+
+    fn selectable(&self) -> bool {
+        true
     }
 }
 
@@ -85,6 +96,13 @@ impl MenuRow for ItemSlotRow {
 
     fn get_text(&self) -> String {
         return self.text.clone();
+    }
+
+    fn selectable(&self) -> bool {
+        match &self.item {
+            Some(_) => true,
+            None => false
+        }
     }
 }
 
@@ -177,6 +195,10 @@ impl MenuRow for ItemActionRow {
     fn get_text(&self) -> String {
         return self.text.clone();
     }
+
+    fn selectable(&self) -> bool {
+        true
+    }
 }
 
 fn action_noop(_state: &mut State) -> RunState {
@@ -224,6 +246,7 @@ pub fn main_menu() -> MenuPanel<SystemRow> {
         y: 20,
         rows: vec![quit_row, useitem_row],
         selected_row: 0,
+        no_selectable_rows: false
     }
 }
 
@@ -249,7 +272,8 @@ pub fn item_menu(world: &World) -> Option<MenuPanel<ItemRow>> {
         x: 35,
         y: 20,
         rows: item_rows,
-        selected_row: 0
+        selected_row: 0,
+        no_selectable_rows: false
     })
 }
 
@@ -272,22 +296,33 @@ pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
         x: 35,
         y: 20,
         rows: action_rows,
-        selected_row: 0
+        selected_row: 0,
+        no_selectable_rows: false
     }
 }
 
 pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
     let mut slot_rows = vec!();
+    let mut first_selectable_row = -1;
     let player = world.get_player().unwrap();
     for bodypart in &player.body.parts {
+        slot_rows.push(ItemSlotRow {
+            item: None,
+            text: format!("{}:", bodypart.name)
+        });
         for slot in &bodypart.slots {
             let item_name = match &slot.item {
-                Some(item) => item.name.clone(),
+                Some(item) => {
+                    if first_selectable_row == -1 {
+                        first_selectable_row = slot_rows.len() as i32;
+                    }
+                    item.name.clone()
+                },
                 None => "Empty".to_string()
             };
             slot_rows.push(ItemSlotRow {
                 item: slot.item.clone(),
-                text: format!("{}: {}", bodypart.name, item_name)
+                text: format!("    {}", item_name)
             })
         }
     }
@@ -296,24 +331,42 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
         x: 35,
         y: 20,
         rows: slot_rows,
-        selected_row: 0
+        selected_row: first_selectable_row as usize,
+        no_selectable_rows: first_selectable_row == -1
     }
 }
 
 impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
-    fn select_next(&mut self){
+    fn select_next(&mut self) {
+        if self.no_selectable_exists() {
+            return;
+        }
         self.selected_row += 1;
         if self.selected_row > self.rows.len() - 1 {
             self.selected_row = 0;
         }
+        if !self.rows[self.selected_row].selectable() {
+            self.select_next();
+        }
     }
 
     fn select_previous(&mut self) {
+        if self.no_selectable_exists() {
+            return;
+        }
         if self.selected_row == 0 {
             self.selected_row = self.rows.len() - 1;
         } else {
             self.selected_row -= 1;
         }
+
+        if !self.rows[self.selected_row].selectable() {
+            self.select_previous();
+        }
+    }
+
+    fn no_selectable_exists(&self) -> bool {
+        self.no_selectable_rows
     }
 
     fn get_action(&self) -> MenuAction {
@@ -330,10 +383,15 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
         }
         context.draw_box(self.x, self.y, width + 3, self.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
         for (i, row) in self.rows.iter().enumerate() {
-            if self.selected_row == i {
-                context.print_color(self.x + 2, self.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), row.get_text());
+            let fg = if self.rows[i].selectable() {
+                RGB::named(rltk::WHITE)
             } else {
-                context.print_color(self.x + 2, self.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), row.get_text());
+                RGB::named(rltk::DARKGRAY)
+            };
+            if self.selected_row == i && !self.no_selectable_exists() {
+                context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(rltk::MAGENTA), row.get_text());
+            } else {
+                context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(rltk::BLACK), row.get_text());
             }
         }
     }
