@@ -25,32 +25,34 @@ impl Body {
         let mut body = Body { parts: vec!() };
         body.parts.push(BodyPart {
             name: "Head".to_string(),
-            slots: vec!()
+            slots: vec!(ItemSlot {slot_type: SlotType::Headwear, item: None})
         });
 
         body.parts.push(BodyPart {
             name: "Torso".to_string(),
-            slots: vec!()
+            slots: vec!(ItemSlot {slot_type: SlotType::Bodywear, item: None})
         });
 
         body.parts.push(BodyPart {
             name: "Left arm".to_string(),
-            slots: vec!(ItemSlot {slot_type: SlotType::SecondaryHand, item: None})
+            slots: vec!(ItemSlot {slot_type: SlotType::SecondaryHand, item: None},
+                ItemSlot {slot_type: SlotType::LeftArmwear, item: None})
         });
 
         body.parts.push(BodyPart {
             name: "Right arm".to_string(),
-            slots: vec!(ItemSlot {slot_type: SlotType::PrimaryHand, item: None})
+            slots: vec!(ItemSlot {slot_type: SlotType::PrimaryHand, item: None},
+                ItemSlot {slot_type: SlotType::RightArmwear, item: None})
         });
 
         body.parts.push(BodyPart {
             name: "Left leg".to_string(),
-            slots: vec!()
+            slots: vec!(ItemSlot {slot_type: SlotType::LeftLegwear, item: None})
         });
 
         body.parts.push(BodyPart {
             name: "Right leg".to_string(),
-            slots: vec!()
+            slots: vec!(ItemSlot {slot_type: SlotType::RightArmwear, item: None})
         });
 
         return body;
@@ -100,5 +102,36 @@ impl Body {
         }
 
         return Ok(removed_items);
+    }
+
+    pub fn unequip(&mut self, slot: SlotType) -> Option<Item> {
+        for bodypart in &mut self.parts {
+            for part_slot in &mut bodypart.slots {
+                if part_slot.slot_type == slot {
+                    let removed_item = part_slot.item.take();
+                    match &removed_item {
+                        Some(item) => {
+                            for proxy_slot in &item.equip_slots {
+                                self.clear_proxy(*proxy_slot);
+                            }
+                        },
+                        None => ()
+                    }
+                    return removed_item;
+                }
+            }
+        }
+        None
+    }
+
+    fn clear_proxy(&mut self, slot: SlotType) {
+        for bodypart in &mut self.parts {
+            for part_slot in &mut bodypart.slots {
+                if part_slot.slot_type == slot {
+                    part_slot.item = None;
+                    return;
+                }
+            }
+        }
     }
 }

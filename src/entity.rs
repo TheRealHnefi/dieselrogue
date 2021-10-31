@@ -119,6 +119,15 @@ impl Entity {
                 }
                 return None;
             },
+            Intent::Unequip(slot) => {
+                self.intent = Intent::Idle;
+
+                match self.body.unequip(slot) {
+                    Some(item) => self.inventory.push(item),
+                    None => ()
+                }
+                return None;
+            },
             _ => None
         }
     }
