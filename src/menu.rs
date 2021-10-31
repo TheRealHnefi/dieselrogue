@@ -127,8 +127,17 @@ fn action_quit(_state: &mut State) -> RunState {
 }
 
 fn action_open_item_menu(state: &mut State) -> RunState {
-    state.menu_stack.push(Box::new(item_menu(&state.world)));
-    return RunState::AwaitingMenuInput;
+    let maybe_menu = item_menu(&state.world);
+    match maybe_menu {
+        Some(menu) => {
+            state.menu_stack.push(Box::new(menu));
+            return RunState::AwaitingMenuInput;
+        },
+        None => {
+            state.log.entries.push("No usable items".to_string());
+            return RunState::AwaitingInput;
+        }
+    }
 }
 
 pub fn main_menu() -> MenuPanel<SystemRow> {
@@ -150,7 +159,7 @@ pub fn main_menu() -> MenuPanel<SystemRow> {
     }
 }
 
-pub fn item_menu(world: &World) -> MenuPanel<ItemRow> {
+pub fn item_menu(world: &World) -> Option<MenuPanel<ItemRow>> {
     let mut item_rows = vec!();
     match world.get_player() {
         Ok(player) => {
@@ -164,12 +173,16 @@ pub fn item_menu(world: &World) -> MenuPanel<ItemRow> {
         Err(_) => ()
     }
 
-    MenuPanel {
+    if item_rows.len() == 0 {
+        return None
+    }
+
+    Some(MenuPanel {
         x: 35,
         y: 20,
         rows: item_rows,
         selected_row: 0
-    }
+    })
 }
 
 pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
