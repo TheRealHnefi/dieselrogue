@@ -100,7 +100,7 @@ impl MenuRow for ItemSlotRow {
 
     fn selectable(&self) -> bool {
         match &self.item {
-            Some(_) => true,
+            Some(item) => !item.proxy,
             None => false
         }
     }
@@ -313,7 +313,7 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
         for slot in &bodypart.slots {
             let item_name = match &slot.item {
                 Some(item) => {
-                    if first_selectable_row == -1 {
+                    if first_selectable_row == -1 && !item.proxy {
                         first_selectable_row = slot_rows.len() as i32;
                     }
                     item.name.clone()
