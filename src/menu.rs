@@ -58,6 +58,10 @@ pub struct ItemSlotRow {
     pub item: Option<Item>
 }
 
+pub struct AbilityRow {
+    pub text: String
+}
+
 impl MenuRow for SystemRow {
     fn get_action(&self) -> MenuAction {
         return MenuAction::Simple(self.action);
@@ -103,6 +107,20 @@ impl MenuRow for ItemSlotRow {
             Some(item) => !item.proxy,
             None => false
         }
+    }
+}
+
+impl MenuRow for AbilityRow {
+    fn get_action(&self) -> MenuAction {
+        return MenuAction::Simple(action_noop)
+    }
+
+    fn get_text(&self) -> String {
+        return self.text.clone();
+    }
+
+    fn selectable(&self) -> bool {
+        true
     }
 }
 
@@ -331,6 +349,32 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
         rows: slot_rows,
         selected_row: first_selectable_row as usize,
         no_selectable_rows: first_selectable_row == -1
+    }
+}
+
+pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
+    let mut rows = vec!();
+    let mut no_selectable_rows = true;
+    let player = world.get_player().unwrap();
+
+    for slot in &player.body.item_slots {
+        match &slot.item {
+            Some(item) => {
+                for ability in &item.equip_abilities {
+                    rows.push(AbilityRow { text: format!("{}: {}", item.name, ability.name)});
+                    no_selectable_rows = false;
+                }
+            },
+            None => ()
+        }
+    }
+
+    MenuPanel {
+        x: 35,
+        y: 20,
+        rows: rows,
+        selected_row: 0,
+        no_selectable_rows: no_selectable_rows
     }
 }
 
