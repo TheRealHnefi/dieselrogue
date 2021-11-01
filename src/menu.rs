@@ -110,12 +110,10 @@ impl MenuRow for ItemSlotRow {
 fn unequip_action(item: Item, state: &mut State) -> RunState {
     match state.world.get_player_mut() {
         Ok(player) => {
-            for bodypart in &player.body.parts {
-                for bodyslot in &bodypart.slots {
-                    if bodyslot.slot_type == item.equip_slots[0] {
-                        player.intent = Intent::Unequip(bodyslot.slot_type);
-                        return RunState::Resolve;
-                    }
+            for bodyslot in &player.body.item_slots {
+                if bodyslot.slot_type == item.equip_slots[0] {
+                    player.intent = Intent::Unequip(bodyslot.slot_type);
+                    return RunState::Resolve;
                 }
             }
             
@@ -310,8 +308,8 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
             item: None,
             text: format!("{}:", bodypart.name)
         });
-        for slot in &bodypart.slots {
-            let item_name = match &slot.item {
+        for slot_index in &bodypart.slot_index {
+            let item_name = match &player.body.item_slots[*slot_index].item {
                 Some(item) => {
                     if first_selectable_row == -1 && !item.proxy {
                         first_selectable_row = slot_rows.len() as i32;
@@ -321,7 +319,7 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
                 None => "---".to_string()
             };
             slot_rows.push(ItemSlotRow {
-                item: slot.item.clone(),
+                item: player.body.item_slots[*slot_index].item.clone(),
                 text: format!("    {}", item_name)
             })
         }
