@@ -318,7 +318,7 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
                     }
                     item.name.clone()
                 },
-                None => "Empty".to_string()
+                None => "---".to_string()
             };
             slot_rows.push(ItemSlotRow {
                 item: slot.item.clone(),

@@ -34,25 +34,21 @@ impl Body {
         });
 
         body.parts.push(BodyPart {
-            name: "Left arm".to_string(),
-            slots: vec!(ItemSlot {slot_type: SlotType::SecondaryHand, item: None},
-                ItemSlot {slot_type: SlotType::LeftArmwear, item: None})
-        });
-
-        body.parts.push(BodyPart {
             name: "Right arm".to_string(),
             slots: vec!(ItemSlot {slot_type: SlotType::PrimaryHand, item: None},
                 ItemSlot {slot_type: SlotType::RightArmwear, item: None})
         });
 
         body.parts.push(BodyPart {
-            name: "Left leg".to_string(),
-            slots: vec!(ItemSlot {slot_type: SlotType::LeftLegwear, item: None})
+            name: "Left arm".to_string(),
+            slots: vec!(ItemSlot {slot_type: SlotType::SecondaryHand, item: None},
+                ItemSlot {slot_type: SlotType::LeftArmwear, item: None})
         });
 
         body.parts.push(BodyPart {
-            name: "Right leg".to_string(),
-            slots: vec!(ItemSlot {slot_type: SlotType::RightArmwear, item: None})
+            name: "Legs".to_string(),
+            slots: vec!(ItemSlot {slot_type: SlotType::Legwear, item: None},
+                ItemSlot {slot_type: SlotType::Footwear, item: None})
         });
 
         return body;
