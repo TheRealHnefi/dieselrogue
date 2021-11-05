@@ -72,9 +72,23 @@ impl Entity {
                 self.intent = Intent::Idle;
 
                 let index = map.xy_idx(pos.x, pos.y);
-                // TODO: check existence
                 let id = map.pawns[index].as_ref().unwrap().entity_id;
                 Some(Effect::Damage(id))
+            },
+            _ => None
+        }
+    }
+
+    pub fn resolve_ranged(&mut self, map: &mut Map) -> Option<Effect> {
+        match self.intent {
+            Intent::Ranged(slot, pos, ability_index) => {
+                self.intent = Intent::Idle;
+                
+                let item = self.body.get_item(slot).unwrap();
+                let ability = &item.equip_abilities[ability_index];
+                let effect = ability.effect;
+
+                return effect(self.position, pos, map, item);
             },
             _ => None
         }

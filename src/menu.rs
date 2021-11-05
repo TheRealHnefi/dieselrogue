@@ -26,7 +26,8 @@ pub trait MenuRow {
 
 pub enum MenuAction {
     Simple(fn (&mut State) -> RunState),
-    Item(Item, fn (Item, &mut State) -> RunState)
+    Item(Item, fn (Item, &mut State) -> RunState),
+    EquipmentAbility(ItemSlot, usize, fn (ItemSlot, usize, &mut State) -> RunState)
 }
 
 pub struct MenuPanel<T: MenuRow> {
@@ -59,7 +60,9 @@ pub struct ItemSlotRow {
 }
 
 pub struct AbilityRow {
-    pub text: String
+    pub text: String,
+    pub index: usize,
+    pub slot: ItemSlot
 }
 
 impl MenuRow for SystemRow {
@@ -112,7 +115,7 @@ impl MenuRow for ItemSlotRow {
 
 impl MenuRow for AbilityRow {
     fn get_action(&self) -> MenuAction {
-        return MenuAction::Simple(action_noop)
+        return MenuAction::EquipmentAbility(self.slot.clone(), self.index, fire_action);
     }
 
     fn get_text(&self) -> String {
@@ -124,6 +127,19 @@ impl MenuRow for AbilityRow {
     }
 }
 
+fn fire_action(slot: ItemSlot, ability_index: usize, state: &mut State) -> RunState {
+    match state.world.get_player_mut() {
+        Ok(player) => {
+            state.cursor_pos = player.position;
+            state.ability_being_used = Some((slot, ability_index));
+            RunState::AwaitingPositionalTargetingInput
+        },
+        Err(_) => {
+            state.log.entries.push("Can not fire weapon".to_string());
+            return RunState::AwaitingMenuInput
+        }
+    }
+}
 
 fn unequip_action(item: Item, state: &mut State) -> RunState {
     match state.world.get_player_mut() {
@@ -360,8 +376,10 @@ pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
     for slot in &player.body.item_slots {
         match &slot.item {
             Some(item) => {
-                for ability in &item.equip_abilities {
-                    rows.push(AbilityRow { text: format!("{}: {}", item.name, ability.name)});
+                for (index, ability) in (&item.equip_abilities).iter().enumerate() {
+                    rows.push(AbilityRow {  text: format!("{}: {}", item.name, ability.name),
+                                            index: index,
+                                            slot: slot.clone() });
                     no_selectable_rows = false;
                 }
             },

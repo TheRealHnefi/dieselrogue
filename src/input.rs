@@ -168,18 +168,33 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
             },
             VirtualKeyCode::Return => {
                 let player = state.world.get_player().unwrap();
-                let item_in_use = state.item_being_used.take().unwrap();
-                let mut item_index = 0;
-                for (index, item) in player.inventory.iter().enumerate() {
-                    if item == &item_in_use {
-                        item_index = index;
-                        break;
-                    }
-                }
-                state.world.entities[state.world.player_id.unwrap()].intent =
-                    Intent::Throw(item_index, state.cursor_pos);
+                match state.item_being_used.take() {
+                    Some(item_in_use) => {
+                        let mut item_index = 0;
+                        for (index, item) in player.inventory.iter().enumerate() {
+                            if item == &item_in_use {
+                                item_index = index;
+                                break;
+                            }
+                        }
+                        state.world.entities[state.world.player_id.unwrap()].intent =
+                            Intent::Throw(item_index, state.cursor_pos);
 
-                return RunState::Resolve;
+                        return RunState::Resolve;
+                    }
+                    None => ()
+                }
+
+                match state.ability_being_used.take() {
+                    Some((slot, index)) => {
+                        state.world.entities[state.world.player_id.unwrap()].intent =
+                            Intent::Ranged(slot.slot_type, state.cursor_pos, index);
+                        return RunState::Resolve;
+                    }
+                    None => ()
+                }
+
+                return RunState::AwaitingInput;
             },
             _ => {
             }
@@ -221,7 +236,8 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
             VirtualKeyCode::Return => {
                 match menu.get_action() {
                     MenuAction::Simple(action) => return action(state),
-                    MenuAction::Item(item, action) => return action(item, state)
+                    MenuAction::Item(item, action) => return action(item, state),
+                    MenuAction::EquipmentAbility(slot, ability_index, action) => return action(slot, ability_index, state)
                 }
             },
             _ => return RunState::AwaitingMenuInput

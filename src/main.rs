@@ -58,7 +58,7 @@ fn main() -> rltk::BError {
     state.world.entities[1].intent = Intent::Turn(Direction::DownLeft);
     
     let _ = state.world.add_item(pos, Item::grenade());
-    let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::rifle());
+    let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::machinegun());
     let _ = state.world.add_item(Point{x: pos.x + 2, y: pos.y}, Item::pistol());
 
     state.log.entries.push("Welcome!".to_string());

@@ -131,6 +131,15 @@ impl Body {
         None
     }
 
+    pub fn get_item(&mut self, slot: SlotType) -> Option<&mut Item> {
+        for self_slot in &mut self.item_slots {
+            if self_slot.slot_type == slot {
+                return self_slot.item.as_mut();
+            }
+        }
+        None
+    }
+
     fn clear_slot(&mut self, slot: SlotType) {
         for self_slot in &mut self.item_slots {
             if self_slot.slot_type == slot {
