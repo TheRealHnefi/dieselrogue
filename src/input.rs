@@ -167,41 +167,49 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                 return RunState::AwaitingInput;
             },
             VirtualKeyCode::Return => {
-                // let player = state.world.get_player().unwrap();
-                // match state.item_being_used.take() {
-                //     Some(item_in_use) => {
-                //         let mut item_index = 0;
-                //         for (index, item) in player.inventory.iter().enumerate() {
-                //             if item == &item_in_use {
-                //                 item_index = index;
-                //                 break;
-                //             }
-                //         }
-                //         state.world.entities[state.world.player_id.unwrap()].intent =
-                //             Intent::Throw(item_index, state.cursor_pos);
+                let player = state.world.get_player_mut().unwrap();
 
-                //         return RunState::Resolve;
-                //     }
-                //     None => ()
-                // }
-
-                // match state.ability_being_used.take() {
-                //     Some((slot, index)) => {
-                //         state.world.entities[state.world.player_id.unwrap()].intent =
-                //             Intent::Ranged(slot.slot_type, state.cursor_pos, index);
-                //         return RunState::Resolve;
-                //     }
-                //     None => ()
-                // }
-
-                return RunState::AwaitingInput;
+                match state.action_being_used.take() {
+                    Some(action_in_use) => {
+                        match state.action_item.take() {
+                            Some(item_in_use) => {
+                                let intent = Intent {
+                                    phase: action_in_use.phase,
+                                    data: IntentData::TargetWithInventory{item: item_in_use, target: state.cursor_pos},
+                                    action: action_in_use.effects
+                                };
+                                player.intent = intent;
+                            },
+                            None => {
+                                match state.action_slot.take() {
+                                    Some(slot_in_use) => {
+                                        let intent = Intent {
+                                            phase: action_in_use.phase,
+                                            data: IntentData::TargetWithEquipment{slot: slot_in_use, target: state.cursor_pos},
+                                            action: action_in_use.effects
+                                        };
+                                        player.intent = intent;
+                                    },
+                                    None => {
+                                        let intent = Intent {
+                                            phase: action_in_use.phase,
+                                            data: IntentData::Target(state.cursor_pos),
+                                            action: action_in_use.effects
+                                        };
+                                        player.intent = intent;
+                                    }
+                                }
+                            }
+                        }
+                        return RunState::Resolve;
+                    },
+                    None => return RunState::AwaitingInput
+                }
             },
             _ => {
             }
         }
-        None => {
-            return RunState::AwaitingPositionalTargetingInput
-        }
+        None => return RunState::AwaitingPositionalTargetingInput
     }
     RunState::AwaitingPositionalTargetingInput
 }

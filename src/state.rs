@@ -18,8 +18,9 @@ pub struct State {
     pub world: World,
 
     pub menu_stack: Vec<Box<dyn Menu>>,
-    pub item_being_used: Option<Item>,
-    pub item_action_being_used: Option<ItemAction>,
+    pub action_being_used: Option<ItemAction>,
+    pub action_item: Option<Item>,
+    pub action_slot: Option<SlotType>,
 
     last_tick: Instant,
 }
@@ -32,8 +33,9 @@ impl State {
             log: GameLog {entries: vec![]},
             world: World::new(),
             menu_stack: vec![],
-            item_being_used: None,
-            item_action_being_used: None,
+            action_being_used: None,
+            action_item: None,
+            action_slot: None,
             last_tick: Instant::now(),
         }
     }
