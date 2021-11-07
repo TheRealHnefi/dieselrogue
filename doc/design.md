@@ -194,11 +194,10 @@ All actions are one of the following categories:
  * Take input and designate actions for player
  * Resolve out-of-order actions (instant abilities or time manipulation)
   * Potentially return to start - if movement occurs, need to reassess entire situation
- * Resolve inventory actions (get/drop/equip)
- * Resolve melee attacks
- * Resolve ranged attacks (including throwing items)
+ * Resolve inventory actions (get/drop/equip/use)
+ * Resolve attacks (including throwing items)
  * Resolve movement
- * Resolve other actions (including using items)
+ * Resolve other actions (are there any?)
  * Cleanup
 
 ## Misc:

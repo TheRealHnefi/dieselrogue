@@ -1,5 +1,7 @@
 use rltk::Point;
 use crate::Map;
+use crate::item::Item;
+use crate::entity::Entity;
 
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -43,29 +45,48 @@ impl Renderable {
     }
 }
 
+#[derive (Clone)]
+pub struct Intent {
+    pub phase: IntentPhase,
+    pub data: IntentData,
+    pub action: fn (self_ref: &mut Entity, map: &mut Map) -> Vec<Effect>
+}
+
+fn intent_noop(_entity: &mut Entity, _map: &mut Map) -> Vec<Effect> {
+    vec!()
+}
+
+pub fn idle_intent() -> Intent {
+    Intent {
+        phase: IntentPhase::Idle,
+        data: IntentData::Void,
+        action: intent_noop
+    }
+}
+
 #[derive (PartialEq, Eq, Copy, Clone)]
-pub enum Intent {
+pub enum IntentPhase {
     Idle,
-    Move(Point),
-    Turn(Direction),
-    Melee(Point),
-    Ranged(SlotType, Point, usize), // (equipment slot to use, target map position, ability index)
-    GetItem,
-    Throw(usize, Point), // (inventory index, map position)
-    Drop(usize), // (inventory index)
-    Equip(usize), // (inventory index)
-    Unequip(SlotType)
+    Instant,
+    Inventory,
+    Attack,
+    Movement,
+    Misc
+}
+
+#[derive (Clone)]
+pub enum IntentData {
+    Void,
+    InventoryItem(Item),
+    EquippedItem(SlotType),
+    Target(Point),
+    Direction(Direction),
+    TargetWithEquipment{slot: SlotType, target: Point},
+    TargetWithInventory{item: Item, target: Point}
 }
 
 pub enum Effect {
-    Damage(usize) // (entity_id)
-}
-
-#[derive(Clone)]
-pub enum ItemAction {
-    Throw(fn (source_position: Point, target_position: Point, map: &Map) -> Option<Effect>),
-    Equip,
-    Drop
+    Damage {entity_id: usize},
 }
 
 #[derive (PartialEq, Eq, Copy, Clone)]
@@ -78,4 +99,11 @@ pub enum SlotType {
     Bodywear,
     LeftArmwear,
     RightArmwear
+}
+
+
+#[derive(Clone)]
+pub enum ItemKind {
+    Firearm {ammo: u32, max_ammo: u32},
+    Misc
 }

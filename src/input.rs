@@ -100,17 +100,17 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 }
             },
 
-            VirtualKeyCode::E => {
-                state.menu_stack.clear();
-                state.menu_stack.push(Box::new(equipment_menu(&state.world)));
-                return RunState::AwaitingMenuInput;
-            },
+            // VirtualKeyCode::E => {
+            //     state.menu_stack.clear();
+            //     state.menu_stack.push(Box::new(equipment_menu(&state.world)));
+            //     return RunState::AwaitingMenuInput;
+            // },
 
-            VirtualKeyCode::A => {
-                state.menu_stack.clear();
-                state.menu_stack.push(Box::new(ability_menu(&state.world)));
-                return RunState::AwaitingMenuInput;
-            },
+            // VirtualKeyCode::A => {
+            //     state.menu_stack.clear();
+            //     state.menu_stack.push(Box::new(ability_menu(&state.world)));
+            //     return RunState::AwaitingMenuInput;
+            // },
 
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
@@ -167,32 +167,32 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                 return RunState::AwaitingInput;
             },
             VirtualKeyCode::Return => {
-                let player = state.world.get_player().unwrap();
-                match state.item_being_used.take() {
-                    Some(item_in_use) => {
-                        let mut item_index = 0;
-                        for (index, item) in player.inventory.iter().enumerate() {
-                            if item == &item_in_use {
-                                item_index = index;
-                                break;
-                            }
-                        }
-                        state.world.entities[state.world.player_id.unwrap()].intent =
-                            Intent::Throw(item_index, state.cursor_pos);
+                // let player = state.world.get_player().unwrap();
+                // match state.item_being_used.take() {
+                //     Some(item_in_use) => {
+                //         let mut item_index = 0;
+                //         for (index, item) in player.inventory.iter().enumerate() {
+                //             if item == &item_in_use {
+                //                 item_index = index;
+                //                 break;
+                //             }
+                //         }
+                //         state.world.entities[state.world.player_id.unwrap()].intent =
+                //             Intent::Throw(item_index, state.cursor_pos);
 
-                        return RunState::Resolve;
-                    }
-                    None => ()
-                }
+                //         return RunState::Resolve;
+                //     }
+                //     None => ()
+                // }
 
-                match state.ability_being_used.take() {
-                    Some((slot, index)) => {
-                        state.world.entities[state.world.player_id.unwrap()].intent =
-                            Intent::Ranged(slot.slot_type, state.cursor_pos, index);
-                        return RunState::Resolve;
-                    }
-                    None => ()
-                }
+                // match state.ability_being_used.take() {
+                //     Some((slot, index)) => {
+                //         state.world.entities[state.world.player_id.unwrap()].intent =
+                //             Intent::Ranged(slot.slot_type, state.cursor_pos, index);
+                //         return RunState::Resolve;
+                //     }
+                //     None => ()
+                // }
 
                 return RunState::AwaitingInput;
             },
@@ -236,8 +236,9 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
             VirtualKeyCode::Return => {
                 match menu.get_action() {
                     MenuAction::Simple(action) => return action(state),
-                    MenuAction::Item(item, action) => return action(item, state),
-                    MenuAction::EquipmentAbility(slot, ability_index, action) => return action(slot, ability_index, state)
+                    MenuAction::WithItemAction(item, itemaction, action) => return action(item, itemaction, state),
+                    MenuAction::WithIntent(intent, action) => return action(intent, state),
+                    MenuAction::WithItem(item, action) => return action(item, state)
                 }
             },
             _ => return RunState::AwaitingMenuInput

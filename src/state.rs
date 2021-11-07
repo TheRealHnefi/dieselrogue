@@ -19,7 +19,7 @@ pub struct State {
 
     pub menu_stack: Vec<Box<dyn Menu>>,
     pub item_being_used: Option<Item>,
-    pub ability_being_used: Option<(ItemSlot, usize)>,
+    pub item_action_being_used: Option<ItemAction>,
 
     last_tick: Instant,
 }
@@ -33,7 +33,7 @@ impl State {
             world: World::new(),
             menu_stack: vec![],
             item_being_used: None,
-            ability_being_used: None,
+            item_action_being_used: None,
             last_tick: Instant::now(),
         }
     }
@@ -57,11 +57,12 @@ impl GameState for State {
                 self.run_state = positional_targeting_input(self, context);
             },
             RunState::Resolve => {
-                debug_assert!(self.world.resolve_movement().is_ok());
-                debug_assert!(self.world.resolve_inventory().is_ok());
-                debug_assert!(self.world.resolve_melee().is_ok());
-                debug_assert!(self.world.resolve_ranged().is_ok());
-                debug_assert!(self.world.resolve_throw().is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Instant).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Movement).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Inventory).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Attack).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Misc).is_ok());
+
                 self.run_state = main_screen_input(self, context);
             }
         }

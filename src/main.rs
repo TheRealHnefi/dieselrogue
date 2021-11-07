@@ -40,7 +40,7 @@ fn main() -> rltk::BError {
         .with_resource_path("resources")
         .with_font("rexpaint_cp437_10x10.png", 10, 10)
         .with_tile_dimensions(10, 10)
-        .with_fullscreen(true)
+        //.with_fullscreen(true)
         .build()?;
     
     context.set_active_font(1, true);
@@ -55,7 +55,6 @@ fn main() -> rltk::BError {
     let _result = state.world.create_entity(Point {x: pos.x + 1, y: pos.y+1},
         Facing { direction: Direction::Up},
         String::from("Goon"));
-    state.world.entities[1].intent = Intent::Turn(Direction::DownLeft);
     
     let _ = state.world.add_item(pos, Item::grenade());
     let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::machinegun());
