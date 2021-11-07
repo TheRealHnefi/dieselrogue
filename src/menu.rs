@@ -60,10 +60,11 @@ pub struct ItemSlotRow {
     pub item: Option<Item>
 }
 
-// pub struct AbilityRow {
-//     pub text: String,
-//     pub intent: Intent
-// }
+pub struct AbilityRow {
+    pub text: String,
+    pub item: Item,
+    pub action: ItemAction
+}
 
 impl MenuRow for SystemRow {
     fn get_action(&self) -> MenuAction {
@@ -113,19 +114,31 @@ impl MenuRow for ItemSlotRow {
     }
 }
 
-// impl MenuRow for AbilityRow {
-//     fn get_action(&self) -> MenuAction {
-//         return MenuAction::WithIntent(self.intent, ability_action);
-//     }
+impl MenuRow for AbilityRow {
+    fn get_action(&self) -> MenuAction {
+        match self.action.targeting {
+            Targeting::None => {
+                let intent = Intent {
+                    phase: self.action.phase,
+                    data: IntentData::EquippedItem(self.item.equip_slots[0]),
+                    action: self.action.effects
+                };
+                MenuAction::WithIntent(intent, action_apply_intent_to_player)
+            },
+            Targeting::Positional => {
+                MenuAction::WithItemAction(self.item.clone(), self.action.clone(), action_target_equipment_action)
+            }
+        }
+    }
 
-//     fn get_text(&self) -> String {
-//         return self.text.clone();
-//     }
+    fn get_text(&self) -> String {
+        return self.text.clone();
+    }
 
-//     fn selectable(&self) -> bool {
-//         true
-//     }
-// }
+    fn selectable(&self) -> bool {
+        true
+    }
+}
 
 // fn ability_action(intent: Intent, state: &mut State) -> RunState {
 //     match state.world.get_player_mut() {
@@ -164,6 +177,18 @@ fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut St
         Ok(player) => {
             state.cursor_pos = player.position;
             state.action_item = Some(item);
+            state.action_being_used = Some(item_action);
+        },
+        Err(_) => ()
+    }
+    RunState::AwaitingPositionalTargetingInput
+}
+
+fn action_target_equipment_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
+    match state.world.get_player() {
+        Ok(player) => {
+            state.cursor_pos = player.position;
+            state.action_slot = Some(item.equip_slots[0]);
             state.action_being_used = Some(item_action);
         },
         Err(_) => ()
@@ -299,33 +324,33 @@ pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
     }
 }
 
-// pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
-//     let mut rows = vec!();
-//     let mut no_selectable_rows = true;
-//     let player = world.get_player().unwrap();
+pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
+    let mut rows = vec!();
+    let mut no_selectable_rows = true;
+    let player = world.get_player().unwrap();
 
-//     for slot in &player.body.item_slots {
-//         match &slot.item {
-//             Some(item) => {
-//                 for (index, ability) in (&item.equip_abilities).iter().enumerate() {
-//                     rows.push(AbilityRow {  text: format!("{}: {}", item.name, ability.name),
-//                                             index: index,
-//                                             slot: slot.clone() });
-//                     no_selectable_rows = false;
-//                 }
-//             },
-//             None => ()
-//         }
-//     }
+    for slot in &player.body.item_slots {
+        match &slot.item {
+            Some(item) => {
+                for action in &item.equip_actions {
+                    rows.push(AbilityRow {  text: format!("{}: {}", item.name, action.name),
+                                            item: item.clone(),
+                                            action: action.clone() });
+                    no_selectable_rows = false;
+                }
+            },
+            None => ()
+        }
+    }
 
-//     MenuPanel {
-//         x: 35,
-//         y: 20,
-//         rows: rows,
-//         selected_row: 0,
-//         no_selectable_rows: no_selectable_rows
-//     }
-// }
+    MenuPanel {
+        x: 35,
+        y: 20,
+        rows: rows,
+        selected_row: 0,
+        no_selectable_rows: no_selectable_rows
+    }
+}
 
 pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
     let mut slot_rows = vec!();
