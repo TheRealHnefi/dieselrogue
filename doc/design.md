@@ -2,7 +2,9 @@
 
 ## Name ideas:
 DieselRogue
-Decodence
+Deco-x (decodence, decoventure, decogue)
+Heavy Fuel
+
 
 ## Elevator pitch:
 A roguelike set in a dieselpunk world where armed conflict is a constant threat.
@@ -11,6 +13,12 @@ and attributes is dramatic. No fiddling with single digit percentages; the choic
 you make have a large impact on how you play.
 Also, you get to blow things up with retrofuturistic tanks.
 
+## Potential major direction:
+No randomness beyond level generation and enemy actions. Everything you do has
+predictable results. If you shoot, you know that you will hit and how much damage
+you will do. The challenge comes from analyzing the situation and applying your
+tools for maximum effect. You will never be screwed by RNG - except potentially
+in level layout...
 
 ## Character:
 ### Stats:
@@ -141,7 +149,6 @@ Or perhaps no classes at all? Just perks?
 * Deafen
 * Shower power (fire several shots in area, hit several targets)
 
-
 ### Resources:
 * HP: Local for each body part, plus overall HP. No regeneration.
 * Fatigue: Used for abilities, including magic. No regeneration.
@@ -179,20 +186,24 @@ Or perhaps no classes at all? Just perks?
 * When targeting: pick target first, then pick ability from list of applicable options
 
 ## Rounds:
+All actions are one of the following categories:
+
 * Static phases:
- * Take input
- * Resolve out-of-order actions (special abilities or time manipulation)
- * Resolve inventory actions (pick up/drop/equip)
- * Resolve melee attacks
- * Resolve ranged attacks
- * Resolve magic
- * Resolve movement
- * Resolve other actions
+ * Update viewsheds
  * Monster decides next action
+ * Take input and designate actions for player
+ * Resolve out-of-order actions (instant abilities or time manipulation)
+  * Potentially return to start - if movement occurs, need to reassess entire situation
+ * Resolve inventory actions (get/drop/equip/use)
+ * Resolve attacks (including throwing items)
+ * Resolve movement
+ * Resolve other actions (are there any?)
+ * Cleanup
 
 ## Misc:
 * Multi-tile actors, like mechs and tanks - pilotable!
 * Fluid mechanics. Possible to have fuel leak and ignite. Precursor to fortress mode?
+* Items that give active abilities, but never overlap with perks abilities
 
 ## Projectile Weapons:
 ### Examples:

@@ -1,26 +1,26 @@
 use rltk::{Rltk, GameState, Point, console};
-use specs::prelude::*;
 use super::*;
 use std::time::{Instant};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
     AwaitingInput,
-    TargetingInput,
-    MenuInput,
-    PreRun,
-    PlayerTurn,
-    EnemyTurn,
-    Saving,
-    Loading,
-    InventoryScreen
+    AwaitingMenuInput,
+    AwaitingPositionalTargetingInput,
+    Resolve
 }
 
 pub struct State {
-    pub ecs: World,
-    pub mouse_pos: Point,
-    pub menu_stack: Vec<Menu>,
-    pub inventory_screen_selection: i32,
+    pub run_state: RunState,
+    pub cursor_pos: Point,
+    pub log: GameLog,
+
+    pub world: World,
+
+    pub menu_stack: Vec<Box<dyn Menu>>,
+    pub action_being_used: Option<ItemAction>,
+    pub action_item: Option<Item>,
+    pub action_slot: Option<SlotType>,
 
     last_tick: Instant,
 }
@@ -28,107 +28,52 @@ pub struct State {
 impl State {
     pub fn new() -> Self {
         Self {
-            ecs: World::new(),
+            run_state: RunState::AwaitingInput,
+            cursor_pos: Point {x: 0, y:0},
+            log: GameLog {entries: vec![]},
+            world: World::new(),
+            menu_stack: vec![],
+            action_being_used: None,
+            action_item: None,
+            action_slot: None,
             last_tick: Instant::now(),
-            mouse_pos: Point {x: 0, y:0},
-            menu_stack: Vec::new(),
-            inventory_screen_selection: 0
         }
-    }
-
-    fn run_systems(&mut self) {
-        let mut vis = VisibilitySystem {};
-        vis.run_now(&self.ecs);
-        let mut mapindex = MapIndexingSystem {};
-        mapindex.run_now(&self.ecs);
-        let mut enemy_ai = EnemyAI {};
-        enemy_ai.run_now(&self.ecs);
-        let mut tank_ai = TankAI {};
-        tank_ai.run_now(&self.ecs);
-        let mut inventory_system = InventorySystem {};
-        inventory_system.run_now(&self.ecs);
-        let mut damage_system = DamageSystem {};
-        damage_system.run_now(&self.ecs);
     }
 }
 
 impl GameState for State {
+    /// Called periodically as real time advances.
     fn tick(&mut self, context: &mut Rltk) {
         let begin = Instant::now();
         
         context.cls();
 
-        let mut new_run_state;
-        {
-            let run_state = self.ecs.fetch::<RunState>();
-            new_run_state = *run_state;
-        }
-        match new_run_state {
-            RunState::PreRun => {
-                self.run_systems();
-                new_run_state = RunState::AwaitingInput;
-                draw_main_screen(self, context);
-            },
+        match self.run_state {
             RunState::AwaitingInput => {
-                new_run_state = main_screen_input(self, context);
-                draw_main_screen(self, context);
+                self.run_state = main_screen_input(self, context);
             },
-            RunState::MenuInput => {
-                new_run_state = menu_input(self, context);
-                draw_main_screen(self, context);
+            RunState::AwaitingMenuInput => {
+                self.run_state = menu_input(self, context);
             },
-            RunState::TargetingInput => {
-                new_run_state = targeting_input(self, context);
-                draw_main_screen(self, context);
+            RunState::AwaitingPositionalTargetingInput => {
+                self.run_state = positional_targeting_input(self, context);
+            },
+            RunState::Resolve => {
+                debug_assert!(self.world.resolve_phase(IntentPhase::Instant).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Movement).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Inventory).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Attack).is_ok());
+                debug_assert!(self.world.resolve_phase(IntentPhase::Misc).is_ok());
+
+                self.run_state = main_screen_input(self, context);
             }
-            RunState::PlayerTurn => {
-                self.run_systems();
-                new_run_state = RunState::EnemyTurn;
-                draw_main_screen(self, context);
-            },
-            RunState::EnemyTurn => {
-                self.run_systems();
-                new_run_state = RunState::AwaitingInput;
-                draw_main_screen(self, context);
-            },
-            RunState::Saving => {
-                {
-                    let result = saveload_system::save_game(&mut self.ecs);
-                    let mut game_log = self.ecs.fetch_mut::<GameLog>();
-                    match result {
-                        Ok(_) => game_log.entries.push("Game saved.".to_string()),
-                        Err(_) => game_log.entries.push("Game could not be saved.".to_string())
-                    }
-                    new_run_state = RunState::AwaitingInput;
-                }
-                draw_main_screen(self, context);
-            },
-            RunState::Loading => {
-                {
-                    let result = saveload_system::load_game(&mut self.ecs);
-                    let mut game_log = self.ecs.fetch_mut::<GameLog>();
-                    match result {
-                        Ok(_) => game_log.entries.push("Game loaded.".to_string()),
-                        Err(_) => game_log.entries.push("Game could not be loaded.".to_string())
-                    }
-                    new_run_state = RunState::AwaitingInput;
-                }
-                draw_main_screen(self, context);
-            },
-            RunState::InventoryScreen => {
-                new_run_state = inventory_screen_input(self, context);
-                draw_inventory_screen(self, context);
-            }
-        }
-        {
-            let mut run_writer = self.ecs.write_resource::<RunState>();
-            *run_writer = new_run_state;
         }
 
-        if new_run_state == RunState::MenuInput {
+        draw_main_screen(self, context);
+        if self.run_state == RunState::AwaitingMenuInput {
             draw_menu(self, context);
         }
-
+ 
         let tick_time = begin.elapsed().as_micros();
         if tick_time > 6000 {
             console::log(format!("Tick time: {}", tick_time));

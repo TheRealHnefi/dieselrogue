@@ -1,20 +1,21 @@
 use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
-use super::{Rect};
-use specs::prelude::*;
-use serde::{Serialize, Deserialize};
+use crate::Rect;
+use crate::entity::Pawn;
+use crate::item::Item;
+use super::{GameError, Error};
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
 const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
     Wall,
     Floor
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+//#[derive(Default, Clone)]
 pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
@@ -22,33 +23,60 @@ pub struct Map {
     pub height: i32,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
-    pub blocked_tiles: Vec<bool>,
-    
-    #[serde(skip_serializing)]
-    #[serde(skip_deserializing)]
-    pub tile_blockers: Vec<Option<Entity>>,
-    #[serde(skip_serializing)]
-    #[serde(skip_deserializing)]
-    pub tile_items: Vec<Option<Entity>>
+    pub pawns: Vec<Option<Pawn>>,
+    pub items: Vec<Option<Item>>,
 }
 
 impl Map {
+    pub fn pos_idx(&self, pos: Point) -> usize {
+        self.xy_idx(pos.x, pos.y)
+    }
+
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
         (y as usize * MAPWIDTH) + x as usize
     }
 
-    pub fn populate_blocked(&mut self) {
-        for (i, tile) in self.tiles.iter_mut().enumerate() {
-            self.blocked_tiles[i] = *tile == TileType::Wall;
-        }
+    pub fn blocked(&self, x: i32, y: i32) -> bool {
+        let index = self.xy_idx(x, y);
+        return
+            self.tiles[index] != TileType::Floor || 
+            self.pawns[index].is_some()
     }
 
-    // TODO: Profile with large maps. This is setting off warning bells.
-    pub fn clear_contents_index(&mut self) {
-        self.tile_blockers.clear();
-        self.tile_blockers.resize(MAPCOUNT, None);
-        self.tile_items.clear();
-        self.tile_items.resize(MAPCOUNT, None);
+    pub fn nearest_free_item_position(&self, pos: Point) -> Result<Point, GameError> {
+        let mut index = self.xy_idx(pos.x, pos.y);
+
+        fn is_free(map: &Map, idx: usize) -> bool {
+            return map.tiles[idx] == TileType::Floor && map.items[idx].is_none();
+        }
+
+        if is_free(self, index) {
+            return Ok(pos);
+        }
+
+        // This should be replaced by a spiral search for efficiency. But meh.
+        for distance in 1..=5 {
+            for dx in -distance..=distance {
+                if dx + pos.x > self.width || pos.x - dx < 0 {
+                    continue;
+                }
+                for dy in -distance..=distance {
+                    if dy + pos.y > self.height || pos.y - dy < 0 {
+                        continue;
+                    }
+                    index = self.xy_idx(pos.x + dx, pos.y + dy);
+                    if is_free(self, index) {
+                        return Ok(Point {x: pos.x + dx, y: pos.y + dy});
+                    }
+                }
+            }
+        }
+
+        return Err(
+            GameError {
+                message: String::from("Could not find open spot for item"),
+                error: Error::UnsolvableSituation
+        });
     }
 
     pub fn new_map_rooms_and_corridors() -> Map {
@@ -59,10 +87,8 @@ impl Map {
             height: MAPHEIGHT as i32,
             revealed_tiles: vec![false; MAPCOUNT],
             visible_tiles: vec![false; MAPCOUNT],
-            blocked_tiles: vec![false; MAPCOUNT],
-            tile_blockers: Vec::with_capacity(MAPCOUNT),
-            tile_items: Vec::with_capacity(MAPCOUNT)
-
+            pawns: vec![None; MAPCOUNT],
+            items: vec![None; MAPCOUNT]
         };
 
         let mut rng = RandomNumberGenerator::new();
@@ -139,8 +165,7 @@ impl Map {
         if x < 1 || x > self.width - 1 || y < 1 || y > self.height - 1 {
             return false;
         }
-        let idx = self.xy_idx(x, y);
-        !self.blocked_tiles[idx]
+        !self.blocked(x, y)
     }
 }
 
