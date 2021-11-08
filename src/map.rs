@@ -5,8 +5,8 @@ use crate::entity::Pawn;
 use crate::item::Item;
 use super::{GameError, Error};
 
-const MAPWIDTH: usize = 80;
-const MAPHEIGHT: usize = 43;
+const MAPWIDTH: usize = 200;
+const MAPHEIGHT: usize = 100;
 const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 
 #[derive(PartialEq, Copy, Clone)]
@@ -33,6 +33,13 @@ impl Map {
 
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
         (y as usize * MAPWIDTH) + x as usize
+    }
+
+    pub fn idx_pos(&self, idx: usize) -> Point {
+        let y = idx as i32 / self.width;
+        let x = idx as i32 % self.width;
+        
+        Point {x: x, y: y}
     }
 
     pub fn blocked(&self, x: i32, y: i32) -> bool {

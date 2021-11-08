@@ -74,8 +74,8 @@ impl GameState for State {
             draw_menu(self, context);
         }
  
-        let tick_time = begin.elapsed().as_micros();
-        if tick_time > 6000 {
+        let tick_time = begin.elapsed().as_millis();
+        if tick_time > 160 {
             console::log(format!("Tick time: {}", tick_time));
         }
         let tick_rate = self.last_tick.elapsed().as_micros();
