@@ -137,7 +137,7 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
             },
             VirtualKeyCode::Right |
             VirtualKeyCode::Numpad6 => {
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width - 1);
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
             },
             VirtualKeyCode::Up |
             VirtualKeyCode::Numpad8 => {
@@ -145,22 +145,22 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
             },
             VirtualKeyCode::Down |
             VirtualKeyCode::Numpad2 => {
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height - 1);
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
             },
             VirtualKeyCode::Numpad9 => {
                 state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width - 1);
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
             },
             VirtualKeyCode::Numpad7 => {
                 state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
                 state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
             },
             VirtualKeyCode::Numpad3 => {
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width - 1);
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height - 1);
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
             },
             VirtualKeyCode::Numpad1 => {
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height - 1);
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
                 state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
             },
             VirtualKeyCode::Escape => {

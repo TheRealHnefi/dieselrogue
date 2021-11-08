@@ -60,7 +60,7 @@ impl World {
         Self {
             player_id: Option::None,
             entities: vec![],
-            map: Map::new_map_rooms_and_corridors()
+            map: Map::new_map_rooms_and_corridors(200, 100)
         }
     }
 

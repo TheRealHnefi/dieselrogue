@@ -5,10 +5,6 @@ use crate::entity::Pawn;
 use crate::item::Item;
 use super::{GameError, Error};
 
-const MAPWIDTH: usize = 200;
-const MAPHEIGHT: usize = 100;
-const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
-
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
     Wall,
@@ -18,8 +14,8 @@ pub enum TileType {
 pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
-    pub width: i32,
-    pub height: i32,
+    pub width: usize,
+    pub height: usize,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub pawns: Vec<Option<Pawn>>,
@@ -32,14 +28,14 @@ impl Map {
     }
 
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
-        (y as usize * MAPWIDTH) + x as usize
+        (y as usize * self.width) + x as usize
     }
 
     pub fn idx_pos(&self, idx: usize) -> Point {
-        let y = idx as i32 / self.width;
-        let x = idx as i32 % self.width;
+        let y = idx / self.width;
+        let x = idx % self.width;
         
-        Point {x: x, y: y}
+        Point {x: x as i32, y: y as i32}
     }
 
     pub fn blocked(&self, x: i32, y: i32) -> bool {
@@ -63,11 +59,11 @@ impl Map {
         // This should be replaced by a spiral search for efficiency. But meh.
         for distance in 1..=5 {
             for dx in -distance..=distance {
-                if dx + pos.x > self.width || pos.x - dx < 0 {
+                if dx + pos.x > self.width as i32 || pos.x - dx < 0 {
                     continue;
                 }
                 for dy in -distance..=distance {
-                    if dy + pos.y > self.height || pos.y - dy < 0 {
+                    if dy + pos.y > self.height as i32 || pos.y - dy < 0 {
                         continue;
                     }
                     index = self.xy_idx(pos.x + dx, pos.y + dy);
@@ -85,16 +81,17 @@ impl Map {
         });
     }
 
-    pub fn new_map_rooms_and_corridors() -> Map {
+    pub fn new_map_rooms_and_corridors(width: usize, height: usize) -> Map {
+        let tile_count = width * height;
         let mut map = Map {
-            tiles: vec![TileType::Wall; MAPCOUNT],
+            tiles: vec![TileType::Wall; tile_count],
             rooms: Vec::new(),
-            width: MAPWIDTH as i32,
-            height: MAPHEIGHT as i32,
-            revealed_tiles: vec![false; MAPCOUNT],
-            visible_tiles: vec![false; MAPCOUNT],
-            pawns: vec![None; MAPCOUNT],
-            items: vec![None; MAPCOUNT]
+            width: width,
+            height: height,
+            revealed_tiles: vec![false; tile_count],
+            visible_tiles: vec![false; tile_count],
+            pawns: vec![None; tile_count],
+            items: vec![None; tile_count]
         };
 
         let mut rng = RandomNumberGenerator::new();
@@ -106,8 +103,8 @@ impl Map {
         for _ in 0..MAX_ROOMS {
             let w = rng.range(MIN_SIZE, MAX_SIZE);
             let h = rng.range(MIN_SIZE, MAX_SIZE);
-            let x =  rng.roll_dice(1, map.width - w - 1) - 1;
-            let y = rng.roll_dice(1, map.height - h - 1) - 1;
+            let x =  rng.roll_dice(1, map.width as i32 - w - 1) - 1;
+            let y = rng.roll_dice(1, map.height as i32 - h - 1) - 1;
             let new_room = Rect::new(x, y , w, h);
 
             let mut ok = true;
@@ -152,7 +149,7 @@ impl Map {
     fn apply_horizontal_tunnel(&mut self, x1: i32, x2: i32, y: i32) {
         for x in min(x1, x2) ..= max(x1, x2) {
             let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < MAPCOUNT {
+            if idx > 0 && idx < self.tiles.len() {
                 self.tiles[idx as usize] = TileType::Floor;
             }
         }
@@ -161,14 +158,14 @@ impl Map {
     fn apply_vertical_tunnel(&mut self, y1: i32, y2: i32, x: i32) {
         for y in min(y1, y2) ..= max(y1, y2) {
             let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < MAPCOUNT {
+            if idx > 0 && idx < self.tiles.len() {
                 self.tiles[idx as usize] = TileType::Floor;
             }
         }
     }
 
     fn is_exit_valid(&self, x: i32, y: i32) -> bool {
-        if x < 1 || x > self.width - 1 || y < 1 || y > self.height - 1 {
+        if x < 1 || x > self.width as i32 - 1 || y < 1 || y > self.height as i32 - 1 {
             return false;
         }
         !self.blocked(x, y)
@@ -188,8 +185,8 @@ impl BaseMap for Map {
 
     fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
         let mut exits = rltk::SmallVec::new();
-        let x = idx as i32 % self.width;
-        let y = idx as i32 / self.width;
+        let x = idx as i32 % self.width as i32;
+        let y = idx as i32 / self.width as i32;
         let w = self.width as usize;
 
         if self.is_exit_valid(x-1, y) { exits.push((idx-1, 1.0)) };

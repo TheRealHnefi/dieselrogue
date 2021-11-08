@@ -17,7 +17,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
 }
 
 fn draw_main_ui(state: &mut State, context: &mut Rltk) {
-    context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    context.draw_box(0, VIEWPORT_HEIGHT, SCREEN_WIDTH - 1, BOTTOM_BAR_HEIGHT - 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
     if state.run_state == RunState::AwaitingPositionalTargetingInput {
         context.set_bg(state.cursor_pos.x, state.cursor_pos.y, RGB::named(rltk::PINK));
@@ -35,12 +35,12 @@ fn draw_map(map: &Map, center: Point, screen_size: Point, ctx: &mut Rltk) {
     let mut top_left = Point {x: max(center.x - screen_size.x / 2, 0), y: max(center.y - screen_size.y / 2, 0)};
     let mut bottom_right = Point {x: top_left.x + SCREEN_WIDTH as i32, y: top_left.y + VIEWPORT_HEIGHT as i32};
 
-    if bottom_right.x > map.width {
-        bottom_right.x = map.width;
+    if bottom_right.x > map.width as i32{
+        bottom_right.x = map.width as i32;
         top_left.x = bottom_right.x - SCREEN_WIDTH as i32;
     }
-    if bottom_right.y > map.height {
-        bottom_right.y = map.height;
+    if bottom_right.y > map.height as i32 {
+        bottom_right.y = map.height as i32;
         top_left.y = bottom_right.y - VIEWPORT_HEIGHT as i32;
     }
 
