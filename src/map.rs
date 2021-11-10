@@ -81,6 +81,129 @@ impl Map {
         });
     }
 
+/***
+ * Scratchpad for map creation algorithm
+ * One function for indoor maps, one for outdoor
+ * Or - one function for building buildings, another for conjoining buildings into one large indoor map?
+ * Indoor maps:
+ * Data that might be needed:
+ *  exits
+ *  size
+ *  list of types of rooms, with amounts for each
+ *  list of possible items
+ *  list of possible enemies
+ * Rooms may need the following data:
+ *  types of occupants (civilians, guards, vehicles, etc) - to group similar usage together
+ *  name (hangar, bedroom, control room etc)
+ *  value, to set up guard routes
+ *  special items or enemies
+ *  dimensions and shape
+ *  impassable areas
+ * Idea for algorithm:
+ *  pick room type at random and place one
+ *  find rooms with similar occupants and place adjacent, create doors between
+ *  if high value, surround with corridors for guarding, possibly create one long corridor with roomcluster at end
+ *  create room cluster along corridor
+ *  repeat
+ */
+    pub fn new_map_buildings_outdoors(map_width: usize, map_height: usize) -> Map {
+        let tile_count = map_width * map_height;
+        let mut map = Map {
+            tiles: vec![TileType::Floor; tile_count],
+            rooms: Vec::new(),
+            width: map_width,
+            height: map_height,
+            revealed_tiles: vec![false; tile_count],
+            visible_tiles: vec![false; tile_count],
+            pawns: vec![None; tile_count],
+            items: vec![None; tile_count]
+        };
+
+        fn create_room(map: &mut Map, room: Rect) {
+            for x in room.x1..=room.x2 {
+                for y in room.y1..=room.y2 {
+                    let idx = map.xy_idx(x, y);
+                    if x == room.x1
+                        || x == room.x2
+                        || y == room.y1
+                        || y == room.y2 {
+                        map.tiles[idx] = TileType::Wall;
+                    } else {
+                        map.tiles[idx] = TileType::Floor;
+                    }
+                }
+            }
+            map.rooms.push(room);
+        }
+
+        fn split_room(map: &mut Map, room: Rect, min_size: i32, rng: &mut rltk::RandomNumberGenerator) {
+            enum Dirs {
+                Vertical,
+                Horizontal
+            };
+            let mut allowed_dirs = vec!();
+            if room.x2 - room.x1 > 2 * min_size {
+                allowed_dirs.push(Dirs::Horizontal);
+            }
+            if room.y2 - room.y1 > 2 * min_size {
+                allowed_dirs.push(Dirs::Vertical);
+            }
+
+            let chosen_dir = rng.range(0, allowed_dirs.len() + 1);
+            if chosen_dir == allowed_dirs.len() {
+                create_room(map, room);
+                return;
+            }
+            match allowed_dirs[chosen_dir] {
+                Dirs::Vertical => {
+                    let split_point = rng.range(room.y1 + min_size, room.y2 - min_size);
+                    let top_room = Rect::new(room.x1, room.y1, room.x2 - room.x1, split_point - room.y1);
+                    let bottom_room = Rect::new(room.x1, top_room.y2, room.x2 - room.x1, room.y2 - top_room.y2);
+
+                    split_room(map, top_room, min_size, rng);
+                    split_room(map, bottom_room, min_size, rng);
+                },
+                Dirs::Horizontal => {
+                    let split_point = rng.range(room.x1 + min_size, room.x2 - min_size);
+                    let left_room = Rect::new(room.x1, room.y1, split_point - room.x1, room.y2 - room.y1);
+                    let right_room = Rect::new(left_room.x2, room.y1, room.x2 - left_room.x2, room.y2 - room.y1);
+
+                    split_room(map, left_room, min_size, rng);
+                    split_room(map, right_room, min_size, rng);
+                }
+            }
+        }
+
+        let mut rng = RandomNumberGenerator::new();
+
+        let max_rooms_per_building = 10;
+        let room_min_size = 4;
+        let building_max_size = 40;
+
+        let building_width = rng.range(building_max_size - room_min_size, building_max_size);
+        let building_height = rng.range(building_max_size - room_min_size, building_max_size);
+        let building_left = rng.range(10, map_width as i32 - building_max_size - 10);
+        let building_top = rng.range(10, map_height as i32 - building_max_size - 10);
+
+        let building = Rect::new(building_left, building_top, building_width, building_height);
+
+        split_room(&mut map, building, room_min_size, &mut rng);
+
+        // for i in 0..max_rooms_per_building {
+        //     if i == 0 {
+        //         let room_width = rng.range(room_min_size, room_max_size);
+        //         let room_height = rng.range(room_min_size, room_max_size);
+        //         let room_left = rng.range(10, map_width as i32 - 20);
+        //         let room_top = rng.range(10, map_height as i32 - 20);
+
+        //         let room = Rect::new(room_left, room_top, room_width, room_height);
+
+        //         create_room(&mut map, room);
+        //     }
+        // }
+        map
+    }
+
     pub fn new_map_rooms_and_corridors(width: usize, height: usize) -> Map {
         let tile_count = width * height;
         let mut map = Map {
@@ -96,9 +219,9 @@ impl Map {
 
         let mut rng = RandomNumberGenerator::new();
 
-        const MAX_ROOMS: i32 = 30;
+        const MAX_ROOMS: i32 = 60;
         const MIN_SIZE: i32 = 6;
-        const MAX_SIZE: i32 = 10;
+        const MAX_SIZE: i32 = 20;
 
         for _ in 0..MAX_ROOMS {
             let w = rng.range(MIN_SIZE, MAX_SIZE);
