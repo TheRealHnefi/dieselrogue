@@ -119,7 +119,14 @@ impl Map {
             items: vec![None; tile_count]
         };
 
-        fn create_room(map: &mut Map, room: Rect) {
+        enum Side {
+            Top,
+            Bottom,
+            Left,
+            Right
+        }
+
+        fn create_room(map: &mut Map, room: Rect) -> Rect {
             for x in room.x1..=room.x2 {
                 for y in room.y1..=room.y2 {
                     let idx = map.xy_idx(x, y);
@@ -133,14 +140,41 @@ impl Map {
                     }
                 }
             }
-            map.rooms.push(room);
+            room
+        }
+        
+        fn create_door(map: &mut Map, room: Rect, rng: &mut rltk::RandomNumberGenerator, allowed_dirs: Vec<Side>) {
+            let chosen_dir = rng.range(0, allowed_dirs.len());
+            match allowed_dirs[chosen_dir] {
+                Side::Top => {
+                    let x = rng.range(room.x1 + 1, room.x2);
+                    let index = map.xy_idx(x, room.y1);
+                    map.tiles[index] = TileType::Floor;
+                },
+                Side::Bottom => {
+                    let x = rng.range(room.x1 + 1, room.x2);
+                    let index = map.xy_idx(x, room.y2);
+                    map.tiles[index] = TileType::Floor;
+                },
+                Side::Left => {
+                    let y = rng.range(room.y1 + 1, room.y2);
+                    let index = map.xy_idx(room.x1, y);
+                    map.tiles[index] = TileType::Floor;
+                },
+                Side::Right => {
+                    let y = rng.range(room.y1 + 1, room.y2);
+                    let index = map.xy_idx(room.x2, y);
+                    map.tiles[index] = TileType::Floor;
+                },
+            }
         }
 
-        fn split_room(map: &mut Map, room: Rect, min_size: i32, rng: &mut rltk::RandomNumberGenerator) {
+        fn split_room(map: &mut Map, room: Rect, min_size: i32, rng: &mut rltk::RandomNumberGenerator) -> Vec<Rect> {
+            let mut result = vec!();
             enum Dirs {
                 Vertical,
                 Horizontal
-            };
+            }
             let mut allowed_dirs = vec!();
             if room.x2 - room.x1 > 2 * min_size {
                 allowed_dirs.push(Dirs::Horizontal);
@@ -151,8 +185,9 @@ impl Map {
 
             let chosen_dir = rng.range(0, allowed_dirs.len() + 1);
             if chosen_dir == allowed_dirs.len() {
-                create_room(map, room);
-                return;
+                result.push(create_room(map, room));
+                //create_door(map, room, rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+                return result;
             }
             match allowed_dirs[chosen_dir] {
                 Dirs::Vertical => {
@@ -160,23 +195,30 @@ impl Map {
                     let top_room = Rect::new(room.x1, room.y1, room.x2 - room.x1, split_point - room.y1);
                     let bottom_room = Rect::new(room.x1, top_room.y2, room.x2 - room.x1, room.y2 - top_room.y2);
 
-                    split_room(map, top_room, min_size, rng);
-                    split_room(map, bottom_room, min_size, rng);
+                    result.append(&mut split_room(map, top_room, min_size, rng));
+                    result.append(&mut split_room(map, bottom_room, min_size, rng));
+                    create_door(map, top_room, rng, vec!(Side::Bottom));
+                    create_door(map, top_room, rng, vec!(Side::Top, Side::Left, Side::Right));
+                    create_door(map, bottom_room, rng, vec!(Side::Bottom, Side::Left, Side::Right));
                 },
                 Dirs::Horizontal => {
                     let split_point = rng.range(room.x1 + min_size, room.x2 - min_size);
                     let left_room = Rect::new(room.x1, room.y1, split_point - room.x1, room.y2 - room.y1);
                     let right_room = Rect::new(left_room.x2, room.y1, room.x2 - left_room.x2, room.y2 - room.y1);
 
-                    split_room(map, left_room, min_size, rng);
-                    split_room(map, right_room, min_size, rng);
+                    result.append(&mut split_room(map, left_room, min_size, rng));
+                    result.append(&mut split_room(map, right_room, min_size, rng));
+                    create_door(map, left_room, rng, vec!(Side::Right));
+                    create_door(map, left_room, rng, vec!(Side::Top, Side::Left, Side::Bottom));
+                    create_door(map, right_room, rng, vec!(Side::Bottom, Side::Bottom, Side::Right));
                 }
             }
+
+            result
         }
 
         let mut rng = RandomNumberGenerator::new();
 
-        let max_rooms_per_building = 10;
         let room_min_size = 4;
         let building_max_size = 40;
 
@@ -187,7 +229,13 @@ impl Map {
 
         let building = Rect::new(building_left, building_top, building_width, building_height);
 
-        split_room(&mut map, building, room_min_size, &mut rng);
+        let mut rooms = split_room(&mut map, building, room_min_size, &mut rng);
+
+        if rooms.len() == 1 {
+            create_door(&mut map, rooms[0], &mut rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+        }
+
+        map.rooms.append(&mut rooms);
 
         // for i in 0..max_rooms_per_building {
         //     if i == 0 {
