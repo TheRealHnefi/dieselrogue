@@ -8,7 +8,9 @@ use super::{GameError, Error};
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
     Wall,
-    Floor
+    Floor,
+    OpenDoor,
+    ClosedDoor
 }
 
 pub struct Map {
@@ -40,9 +42,12 @@ impl Map {
 
     pub fn blocked(&self, x: i32, y: i32) -> bool {
         let index = self.xy_idx(x, y);
-        return
-            self.tiles[index] != TileType::Floor || 
-            self.pawns[index].is_some()
+        match self.tiles[index] {
+            TileType::Floor => self.pawns[index].is_some(),
+            TileType::Wall => true,
+            TileType::OpenDoor => self.pawns[index].is_some(),
+            TileType::ClosedDoor => true
+        }
     }
 
     pub fn nearest_free_item_position(&self, pos: Point) -> Result<Point, GameError> {
@@ -154,22 +159,22 @@ impl Map {
                 Side::Top => {
                     let x = rng.range(room.x1 + 1, room.x2);
                     let index = map.xy_idx(x, room.y1);
-                    map.tiles[index] = TileType::Floor;
+                    map.tiles[index] = TileType::OpenDoor;
                 },
                 Side::Bottom => {
                     let x = rng.range(room.x1 + 1, room.x2);
                     let index = map.xy_idx(x, room.y2);
-                    map.tiles[index] = TileType::Floor;
+                    map.tiles[index] = TileType::OpenDoor;
                 },
                 Side::Left => {
                     let y = rng.range(room.y1 + 1, room.y2);
                     let index = map.xy_idx(room.x1, y);
-                    map.tiles[index] = TileType::Floor;
+                    map.tiles[index] = TileType::OpenDoor;
                 },
                 Side::Right => {
                     let y = rng.range(room.y1 + 1, room.y2);
                     let index = map.xy_idx(room.x2, y);
-                    map.tiles[index] = TileType::Floor;
+                    map.tiles[index] = TileType::OpenDoor;
                 },
             }
         }
@@ -226,7 +231,7 @@ impl Map {
 
         let mut buildings = vec!();
 
-        for i in 0 .. max_buildings {
+        for _ in 0 .. max_buildings {
             let building_width = rng.range(building_max_size - room_min_size, building_max_size);
             let building_height = rng.range(building_max_size - room_min_size, building_max_size);
             let building_left = rng.range(1, map_width as i32 - building_max_size - 1);
@@ -359,7 +364,12 @@ impl Algorithm2D for Map {
 
 impl BaseMap for Map {
     fn is_opaque(&self, idx: usize) -> bool {
-        self.tiles[idx as usize] == TileType::Wall
+        match self.tiles[idx as usize] {
+            TileType::Wall => true,
+            TileType::Floor => false,
+            TileType::OpenDoor => false,
+            TileType::ClosedDoor => true,
+        }
     }
 
     fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {

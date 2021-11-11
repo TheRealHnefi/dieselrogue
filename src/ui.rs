@@ -82,11 +82,38 @@ fn draw_map(map: &Map, center: Point, screen_size: Point, ctx: &mut Rltk) {
                             }
                         }
                     };
-                }
+                },
                 TileType::Wall => {
                     glyph = rltk::to_cp437('█');
                     foreground = RGB::from_f32(0.0, 1.0, 0.0);
-                }
+                },
+                TileType::OpenDoor => {
+                    match &map.pawns[idx] {
+                        Some(pawn) => {
+                            glyph = pawn.renderable.glyph;
+                            foreground = pawn.renderable.color;
+                            background = pawn.renderable.background;
+                        },
+
+                        None => {
+                            match &map.items[idx] {
+                                Some(item) => {
+                                    glyph = item.renderable.glyph;
+                                    foreground = item.renderable.color;
+                                    background = item.renderable.background;
+                                }
+                                None => {
+                                    glyph = rltk::to_cp437(' ');
+                                    foreground = RGB::from_f32(0.25, 0.25, 0.25);
+                                }
+                            }
+                        }
+                    };
+                },
+                TileType::ClosedDoor => {
+                    glyph = rltk::to_cp437('■');
+                    foreground = RGB::from_f32(0.0, 1.0, 0.0);
+                },
             }
             if !map.visible_tiles[idx] {
                 foreground = foreground.to_greyscale();
