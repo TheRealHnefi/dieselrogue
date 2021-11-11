@@ -4,6 +4,7 @@ use std::time::{Instant};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
+    DeclareIntent,
     AwaitingInput,
     AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
@@ -49,6 +50,10 @@ impl GameState for State {
         context.cls();
 
         match self.run_state {
+            RunState::DeclareIntent => {
+                self.world.resolve_intent_declaration();
+                self.run_state = RunState::AwaitingInput;
+            }
             RunState::AwaitingInput => {
                 self.run_state = main_screen_input(self, context);
             },
@@ -65,7 +70,7 @@ impl GameState for State {
                 debug_assert!(self.world.resolve_phase(IntentPhase::Attack).is_ok());
                 debug_assert!(self.world.resolve_phase(IntentPhase::Misc).is_ok());
 
-                self.run_state = main_screen_input(self, context);
+                self.run_state = RunState::DeclareIntent;
             }
         }
 

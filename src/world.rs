@@ -79,16 +79,7 @@ impl World {
             });
         }
 
-        let player = Entity {
-            id: 0,
-            position: pos,
-            renderable: Renderable::new_glyph('8'),
-            name: name,
-            intent: idle_intent(),
-            facing: facing,
-            inventory: vec!(),
-            body: Body::human_body()
-        };
+        let player = Entity::new_human(0, pos, facing, name);
 
         let index = self.map.xy_idx(pos.x, pos.y);
         self.map.pawns[index] = Some(player.create_pawn());
@@ -106,16 +97,7 @@ impl World {
             });
         }
 
-        let entity = Entity {
-            id: self.entities.len(),
-            position: pos,
-            renderable: Renderable::new_glyph('5'),
-            name: name,
-            intent: idle_intent(),
-            facing: facing,
-            inventory: vec!(),
-            body: Body::human_body()
-        };
+        let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name);
 
         let index = self.map.xy_idx(pos.x, pos.y);
         self.map.pawns[index] = Some(entity.create_pawn());
@@ -149,6 +131,12 @@ impl World {
         let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
         self.map.items[index] = Some(item);
         Ok(())
+    }
+
+    pub fn resolve_intent_declaration(&mut self) {
+        for i in 0..self.entities.len() {
+            (self.entities[i].declare_intent)(&mut self.entities[i], &self.map);
+        }
     }
 
     pub fn resolve_phase(&mut self, phase: IntentPhase) -> Result<(), GameError> {
