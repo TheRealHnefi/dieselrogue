@@ -73,6 +73,9 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                     return RunState::AwaitingInput;
                 }
             },
+            VirtualKeyCode::Numpad5 => {
+                return RunState::Resolve;
+            },
 
             VirtualKeyCode::G => {
                 let result = getitem_player_intent(&mut state.world); 
