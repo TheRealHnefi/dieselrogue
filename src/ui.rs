@@ -12,15 +12,29 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
         Ok(player) => player.position,
         Err(_) => Point{x: (SCREEN_WIDTH / 2) as i32, y: (SCREEN_HEIGHT / 2) as i32}
     };
-    draw_map(&state.world.map, camera_pos, Point{x: SCREEN_WIDTH as i32, y: SCREEN_HEIGHT as i32}, context);
-    draw_main_ui(state, context);
+
+    let mut top = max(camera_pos.y - SCREEN_HEIGHT as i32 / 2, 0);
+    let mut left = max(camera_pos.x - SCREEN_WIDTH as i32 / 2, 0);
+    let mut bottom = top + VIEWPORT_HEIGHT as i32;
+    let mut right = left + SCREEN_WIDTH as i32;
+
+    if right > state.world.map.width as i32{
+        right = state.world.map.width as i32;
+        left = right - SCREEN_WIDTH as i32;
+    }
+    if bottom > state.world.map.height as i32 {
+        bottom = state.world.map.height as i32;
+        top = bottom - VIEWPORT_HEIGHT as i32;
+    }
+
+    draw_map(&state.world.map, left, right, top, bottom, context);
+    draw_main_ui(state, left, right, top, bottom, context);
 }
 
-fn draw_main_ui(state: &mut State, context: &mut Rltk) {
+fn draw_main_ui(state: &mut State, left: i32, _right: i32, top: i32, _bottom: i32, context: &mut Rltk) {
     context.draw_box(0, VIEWPORT_HEIGHT, SCREEN_WIDTH - 1, BOTTOM_BAR_HEIGHT - 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-
     if state.run_state == RunState::AwaitingPositionalTargetingInput {
-        context.set_bg(state.cursor_pos.x, state.cursor_pos.y, RGB::named(rltk::PINK));
+        context.set_bg(state.cursor_pos.x - left, state.cursor_pos.y - top, RGB::named(rltk::PINK));
     }
 
     let mut y = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT + 1;
@@ -31,27 +45,15 @@ fn draw_main_ui(state: &mut State, context: &mut Rltk) {
     }
 }
 
-fn draw_map(map: &Map, center: Point, screen_size: Point, ctx: &mut Rltk) {
-    let mut top_left = Point {x: max(center.x - screen_size.x / 2, 0), y: max(center.y - screen_size.y / 2, 0)};
-    let mut bottom_right = Point {x: top_left.x + SCREEN_WIDTH as i32, y: top_left.y + VIEWPORT_HEIGHT as i32};
-
-    if bottom_right.x > map.width as i32{
-        bottom_right.x = map.width as i32;
-        top_left.x = bottom_right.x - SCREEN_WIDTH as i32;
-    }
-    if bottom_right.y > map.height as i32 {
-        bottom_right.y = map.height as i32;
-        top_left.y = bottom_right.y - VIEWPORT_HEIGHT as i32;
-    }
-
+fn draw_map(map: &Map, left: i32, right: i32, top: i32, bottom: i32, ctx: &mut Rltk) {
     let mut x = 0;
     let mut y = 0;
     for (idx, tile) in map.tiles.iter().enumerate() {
         let tile_pos = map.idx_pos(idx);
-        if tile_pos.x < top_left.x
-            || tile_pos.x >= bottom_right.x 
-            || tile_pos.y < top_left.y 
-            || tile_pos.y >= bottom_right.y {
+        if tile_pos.x < left
+            || tile_pos.x >= right 
+            || tile_pos.y < top
+            || tile_pos.y >= bottom {
             continue;
         }
         // TODO - remove true
@@ -121,7 +123,7 @@ fn draw_map(map: &Map, center: Point, screen_size: Point, ctx: &mut Rltk) {
             ctx.set(x, y, foreground, background, glyph);
         }
         x += 1;
-        if x >= SCREEN_WIDTH as i32 {
+        if x >= right - left {
             x = 0;
             y += 1;
         }

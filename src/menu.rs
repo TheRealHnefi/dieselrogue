@@ -140,21 +140,6 @@ impl MenuRow for AbilityRow {
     }
 }
 
-// fn ability_action(intent: Intent, state: &mut State) -> RunState {
-//     match state.world.get_player_mut() {
-//         Ok(player) => {
-//             debug_assert!(false); //TODO: add intent to state, determine if this is a targeting intent or not
-//             state.cursor_pos = player.position;
-            
-//             RunState::AwaitingPositionalTargetingInput
-//         },
-//         Err(_) => {
-//             state.log.entries.push("Can not fire weapon".to_string());
-//             return RunState::AwaitingMenuInput
-//         }
-//     }
-// }
-
 fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunState {
     match state.world.get_player_mut() {
         Ok(player) => {
