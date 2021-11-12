@@ -52,9 +52,12 @@ fn main() -> rltk::BError {
         Facing { direction: Direction::Up},
         String::from("Player"));
 
-    let _result = state.world.create_entity(Point {x: pos.x + 1, y: pos.y+1},
+    let max_room_index = std::cmp::min(state.world.map.rooms.len(), 5);
+
+    let _result = state.world.create_patrolling_goon(Point {x: pos.x + 1, y: pos.y+1},
         Facing { direction: Direction::Up},
-        String::from("Goon"));
+        String::from("Goon"),
+        (0..max_room_index).collect());
     
     let _ = state.world.add_item(pos, Item::grenade());
     let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::machinegun());

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::components::*;
 use rltk::Point;
 use crate::Map;
@@ -15,7 +16,13 @@ pub struct Entity {
     pub facing: Facing,
     pub inventory: Vec<Item>,
     pub body: Body,
-    pub declare_intent: fn (entity: &mut Entity, map: &Map)
+    pub declare_intent: fn (entity: &mut Entity, map: &Map),
+    memories: HashMap<String, Memory>
+}
+
+#[derive(Clone)]
+enum Memory {
+    Position(Point)
 }
 
 impl Entity {
@@ -29,11 +36,17 @@ impl Entity {
             facing: facing,
             inventory: vec!(),
             body: Body::human_body(),
-            declare_intent: Entity::declare_intent_noop
+            declare_intent: Entity::declare_intent_noop,
+            memories: HashMap::new()
         }
     }
 
-    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Facing, name: String) -> Self {
+    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Facing, name: String, waypoints: Vec<Point>) -> Self {
+        let mut memories = HashMap::new();
+        for (i, waypoint) in waypoints.iter().enumerate() {
+            memories.insert(format!("WAYPOINT {}", i), Memory::Position(*waypoint));
+        }
+
         Self {
             id: id,
             position: pos,
@@ -43,7 +56,8 @@ impl Entity {
             facing: facing,
             inventory: vec!(),
             body: Body::human_body(),
-            declare_intent: Entity::declare_intent_patrolling_goon
+            declare_intent: Entity::declare_intent_patrolling_goon,
+            memories: memories
         }
     }
 
