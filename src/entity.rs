@@ -22,6 +22,7 @@ pub struct Entity {
 
 #[derive(Clone)]
 enum Memory {
+    Number(i32),
     Position(Point)
 }
 
@@ -46,6 +47,10 @@ impl Entity {
         for (i, waypoint) in waypoints.iter().enumerate() {
             memories.insert(format!("WAYPOINT {}", i), Memory::Position(*waypoint));
         }
+        if memories.len() == 0 {
+            memories.insert(format!("WAYPOINT {}", 0), Memory::Position(pos));
+        }
+        memories.insert(format!("CURRENT WAYPOINT"), Memory::Number(0));
 
         Self {
             id: id,
@@ -363,22 +368,100 @@ impl Entity {
         return;
     }
 
-    fn declare_intent_patrolling_goon(&mut self, _map: &Map) {
-        let new_direction = match self.facing.direction {
-            Direction::Left => Direction::UpLeft,
-            Direction::UpLeft => Direction::Up,
-            Direction::Up => Direction::UpRight,
-            Direction::UpRight => Direction::Right,
-            Direction::Right => Direction::DownRight,
-            Direction::DownRight => Direction::Down,
-            Direction::Down => Direction::DownLeft,
-            Direction::DownLeft => Direction::Left
+    fn declare_intent_patrolling_goon(&mut self, map: &Map) {
+        let waypoint_index_memory = self.memories.get("CURRENT WAYPOINT").unwrap();
+        let mut waypoint_index = match waypoint_index_memory {
+            Memory::Number(index) => *index as usize,
+            _ => return
         };
-        self.intent = Intent {
-            phase: IntentPhase::Movement,
-            data: IntentData::Direction(new_direction),
-            action: Self::resolve_turn
-        };
+        let mut waypoints = vec!();
+        
+        for i in 0.. {
+            let waypoint_string = format!("WAYPOINT {}", i);
+            match self.memories.get(&waypoint_string) {
+                Some(waypoint) => waypoints.push(waypoint.clone()),
+                None => break
+            };
+        }
+        match waypoints[waypoint_index] {
+            Memory::Position(waypoint) => {
+                if waypoint == self.position {
+                    waypoint_index += 1;
+                    if waypoint_index >= waypoints.len() {
+                        waypoint_index = 0;
+                    }
+                    self.memories.insert("CURRENT WAYPOINT".to_string(), Memory::Number(waypoint_index as i32));
+                    return;
+                }
+                let path = rltk::a_star_search(
+                    map.pos_idx(self.position),
+                    map.pos_idx(waypoint),
+                    map);
+                
+                if path.success && path.steps.len() > 1 {
+                    let walk_direction;
+                    let step = map.idx_pos(path.steps[1]);
+                    if self.position.x - step.x == 0 {
+                        if self.position.y - step.y == -1 {
+                            walk_direction = Direction::Up;
+                        }
+                        else if self.position.y - step.y == 1 {
+                            walk_direction = Direction::Down;
+                        }
+                        else {
+                            panic!("X was 0, but Y is not -1 or 1");
+                        }
+                    }
+                    else if self.position.x - step.x == -1 {
+                        if self.position.y - step.y == -1 {
+                            walk_direction = Direction::UpLeft;
+                        }
+                        else if self.position.y - step.y == 1 {
+                            walk_direction = Direction::DownLeft;
+                        }
+                        else if self.position.y - step.y == 0 {
+                            walk_direction = Direction::Left;
+                        }
+                        else {
+                            panic!("X was -1, but Y is not 0, -1 or 1");
+                        }
+                    }
+                    else if self.position.x - step.x == 1 {
+                        if self.position.y - step.y == -1 {
+                            walk_direction = Direction::UpRight;
+                        }
+                        else if self.position.y - step.y == 1 {
+                            walk_direction = Direction::DownRight;
+                        }
+                        else if self.position.y - step.y == 0 {
+                            walk_direction = Direction::Right;
+                        }
+                        else {
+                            panic!("X was 1, but Y is not 0, -1 or 1");
+                        }
+                    }
+                    else {
+                        panic!("X was not 0, -1 or 1");
+                    }
+
+                    if walk_direction != self.facing.direction {
+                        self.intent = Intent {
+                            phase: IntentPhase::Movement,
+                            data: IntentData::Direction(walk_direction),
+                            action: Self::resolve_turn
+                        };
+                    }
+                    else {
+                        self.intent = Intent {
+                            phase: IntentPhase::Movement,
+                            data: IntentData::Target(step),
+                            action: Self::resolve_move
+                        };
+                    }
+                }
+            },
+            _ => return
+        }
     }
 }
 
