@@ -42,10 +42,13 @@ impl State {
     }
 }
 
+const PROFILING: bool = true;
+
 impl GameState for State {
     /// Called periodically as real time advances.
     fn tick(&mut self, context: &mut Rltk) {
         let begin = Instant::now();
+        let tick_interval = self.last_tick.elapsed().as_millis();
         
         context.cls();
 
@@ -79,14 +82,12 @@ impl GameState for State {
             draw_menu(self, context);
         }
  
-        let tick_time = begin.elapsed().as_millis();
-        if tick_time > 160 {
-            console::log(format!("Tick time: {}", tick_time));
+        if PROFILING {
+            let tick_time = begin.elapsed().as_millis();
+            if tick_time + tick_interval > 30 {
+                console::log(format!("Tick duration,interval: {}, {}  ", tick_time, tick_interval));
+            }
+            self.last_tick = Instant::now();
         }
-        let tick_rate = self.last_tick.elapsed().as_micros();
-        if tick_rate > 40000 {
-            console::log(format!("Time since last tick: {}", tick_rate));
-        }
-        self.last_tick = Instant::now();
     }
 }
