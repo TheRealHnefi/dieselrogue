@@ -65,7 +65,7 @@ impl World {
         }
     }
 
-    pub fn create_player(&mut self, pos: Point, facing: Facing, name: String) -> Result<(), GameError> {
+    pub fn create_player(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         if self.entities.len() > 0 {
             return Err(GameError {
                 error: Error::BadPrecondition,
@@ -89,7 +89,7 @@ impl World {
         Ok(())
     }
 
-    pub fn create_entity(&mut self, pos: Point, facing: Facing, name: String) -> Result<(), GameError> {
+    pub fn create_entity(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         if self.map.blocked(pos.x, pos.y) {
             return Err(GameError {
                 error: Error::BadPrecondition,
@@ -106,7 +106,7 @@ impl World {
         Ok(())
     }
 
-    pub fn create_patrolling_goon(&mut self, pos: Point, facing: Facing, name: String, room_indices: Vec<usize>) -> Result<(), GameError> {
+    pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, room_indices: Vec<usize>) -> Result<(), GameError> {
         if self.map.blocked(pos.x, pos.y) {
             return Err(GameError {
                 error: Error::BadPrecondition,
@@ -158,7 +158,7 @@ impl World {
 
     pub fn resolve_intent_declaration(&mut self) {
         for i in 0..self.entities.len() {
-            (self.entities[i].declare_intent)(&mut self.entities[i], &self.map);
+            self.entities[i].declare_intent(&self.map);
         }
     }
 
@@ -220,14 +220,14 @@ mod tests {
         let mut world = World::new();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
-        let facing = Facing {direction: Direction::Up};
+        let facing = Direction::Up;
         let name = "Player";
         let result = world.create_player(pos, facing, String::from(name));
 
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
         let player = &world.entities[world.player_id.unwrap()];
-        assert_eq!(player.position, pos);
+        assert_eq!(player.body.position, pos);
         assert_eq!(player.name, name);
     }
 
@@ -236,7 +236,7 @@ mod tests {
         let mut world = World::new();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
-        let facing = Facing {direction: Direction::Up};
+        let facing = Direction::Up;
         let name = "Player";
         let _res = world.create_player(pos, facing, String::from(name));
         let result = world.create_player(Point {x: pos.x+1, y: pos.y+1}, facing, String::from("P2"));
@@ -244,7 +244,7 @@ mod tests {
         assert!(result.is_err());
         world = assert_worldsize(world, 1);
         let player = &world.entities[world.player_id.unwrap()];
-        assert_eq!(player.position, pos);
+        assert_eq!(player.body.position, pos);
         assert_eq!(player.name, name);
     }
 
@@ -253,13 +253,13 @@ mod tests {
         let mut world = World::new();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
-        let facing = Facing {direction: Direction::Up};
+        let facing = Direction::Up;
         let name = "Entity";
         let result = world.create_entity(pos, facing, String::from(name));
 
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
-        assert_eq!(world.entities[0].position, pos);
+        assert_eq!(world.entities[0].body.position, pos);
         assert_eq!(world.entities[0].name, name);
     }
 
@@ -268,7 +268,7 @@ mod tests {
         let mut world = World::new();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
-        let facing = Facing {direction: Direction::Up};
+        let facing = Direction::Up;
         let name = "Entity";
         let result1 = world.create_entity(pos, facing, String::from(name));
 
@@ -279,9 +279,9 @@ mod tests {
         assert!(result1.is_ok());
         assert!(result2.is_ok());
         world = assert_worldsize(world, 2);
-        assert_eq!(world.entities[0].position, pos);
+        assert_eq!(world.entities[0].body.position, pos);
         assert_eq!(world.entities[0].name, name);
-        assert_eq!(world.entities[1].position, pos2);
+        assert_eq!(world.entities[1].body.position, pos2);
         assert_eq!(world.entities[1].name, name2);
     }
 
@@ -290,7 +290,7 @@ mod tests {
         let mut world = World::new();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
-        let facing = Facing {direction: Direction::Up};
+        let facing = Direction::Up;
         let name = "Entity";
         let result1 = world.create_entity(pos, facing, String::from(name));
 
@@ -301,7 +301,7 @@ mod tests {
         assert!(result1.is_ok());
         assert!(result2.is_err());
         world = assert_worldsize(world, 1);
-        assert_eq!(world.entities[0].position, pos);
+        assert_eq!(world.entities[0].body.position, pos);
         assert_eq!(world.entities[0].name, name);
     }
 
@@ -312,7 +312,7 @@ mod tests {
 
         // Create a bunch of entities, named after their id
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
-        let facing = Facing {direction: Direction::Up};
+        let facing = Direction::Up;
         for i in 0..number_of_entities {
             assert!(world.create_entity(Point{x: pos.x+i as i32, y: pos.y}, facing, format!("{}", i)).is_ok());
         }

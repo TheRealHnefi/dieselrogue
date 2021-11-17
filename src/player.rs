@@ -21,14 +21,14 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         Direction::UpLeft => {delta_x = -1; delta_y = -1},
     }
 
-    if player.facing.direction != direction {
+    if player.body.facing != direction {
         player.intent = Intent {
             phase: IntentPhase::Movement,
             data: IntentData::Direction(direction),
             action: Entity::resolve_turn
         };
     } else {
-        let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
+        let target_pos = Point {x: player.body.position.x + delta_x, y: player.body.position.y + delta_y};
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
 
         if world.map.pawns[index].is_some() {
@@ -55,7 +55,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     }
 
     let mut player = &mut world.entities[world.player_id.unwrap()];
-    let index = world.map.xy_idx(player.position.x, player.position.y);
+    let index = world.map.xy_idx(player.body.position.x, player.body.position.y);
 
     if world.map.items[index].is_some() {
         player.intent = Intent {
@@ -78,7 +78,7 @@ pub fn get_item_actions(world: &World) -> Vec<ItemAction>{
 
     // TODO: Filter duplicates?
     let mut valid_actions = vec!();
-    for item in &player.inventory {
+    for item in &player.body.inventory {
         valid_actions.append(&mut item.inventory_actions.clone());
     }
 

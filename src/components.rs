@@ -16,11 +16,6 @@ pub enum Direction {
 }
 
 #[derive (Copy, Clone)]
-pub struct Facing {
-    pub direction: Direction
-}
-
-#[derive (Copy, Clone)]
 pub struct Renderable {
     pub glyph: rltk::FontCharType,
     pub color: rltk::RGB,

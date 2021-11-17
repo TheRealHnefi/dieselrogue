@@ -1,9 +1,13 @@
+use rltk::Point;
 use crate::components::*;
 use crate::item::*;
 use crate::error::*;
 
 #[derive(Clone)]
 pub struct Body {
+    pub position: Point,
+    pub facing: Direction,
+    pub inventory: Vec<Item>,
     pub parts: Vec<BodyPart>,
     pub item_slots: Vec<ItemSlot>
 }
@@ -22,8 +26,8 @@ pub struct ItemSlot {
 
 /// Note: Slot types have to be unique.
 impl Body {
-    pub fn human_body() -> Self {
-        let mut body = Body { parts: vec!(), item_slots: vec!() };
+    pub fn human_body(pos: Point, facing: Direction) -> Self {
+        let mut body = Body { position: pos, facing: facing, inventory: vec!(), parts: vec!(), item_slots: vec!() };
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
         body.parts.push(BodyPart {
