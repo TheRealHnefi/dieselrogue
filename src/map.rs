@@ -42,6 +42,10 @@ impl Map {
 
     pub fn blocked(&self, x: i32, y: i32) -> bool {
         let index = self.xy_idx(x, y);
+        self.blocked_idx(index)
+    }
+
+    pub fn blocked_idx(&self, index: usize) -> bool {
         match self.tiles[index] {
             TileType::Floor => self.pawns[index].is_some(),
             TileType::Wall => true,
