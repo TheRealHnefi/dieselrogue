@@ -78,7 +78,7 @@ fn draw_map(map: &Map, left: i32, right: i32, top: i32, bottom: i32, ctx: &mut R
                                 }
                                 None => {
                                     glyph = rltk::to_cp437('.');
-                                    foreground = RGB::from_f32(0.25, 0.25, 0.25);
+                                    foreground = RGB::from_f32(0.0, 0.5, 0.0);
                                 }
                             }
                         }

@@ -2,6 +2,7 @@ use rltk::Point;
 use crate::Body;
 use crate::Map;
 use crate::Entity;
+use crate::util::*;
 use crate::components::*;
 
 pub enum AI {
@@ -35,7 +36,8 @@ impl PatrollingAI {
         else {
             match self.current_path.last() {
                 Some(pos_index) => {
-                    if map.blocked_idx(*pos_index) {
+                    if map.blocked_idx(*pos_index)
+                        || !adjacent(map.idx_pos(*pos_index), body.position) {
                         self.update_path(body, map);
                     }
                 },
@@ -88,8 +90,6 @@ impl PatrollingAI {
         }
     }
 
-    // Debug assert branches can hit if body has been forcibly moved or failed to move.
-    // Not handled in current state of the AI.
     fn decide_direction(&self, position: Point, map: &Map) -> Option<Direction> {
         match self.current_path.last() {
             Some(next_step) => {
