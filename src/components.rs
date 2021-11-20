@@ -81,7 +81,7 @@ pub enum IntentData {
 }
 
 pub enum Effect {
-    Damage {entity_id: usize},
+    Damage {entity_id: usize, bodypart_index: usize, raw_damage: u32},
 }
 
 #[derive (PartialEq, Eq, Copy, Clone)]
@@ -99,6 +99,6 @@ pub enum SlotType {
 
 #[derive(Clone)]
 pub enum ItemKind {
-    Firearm {ammo: u32, max_ammo: u32},
+    Firearm {ammo: u32, max_ammo: u32, damage: u32},
     Misc
 }
