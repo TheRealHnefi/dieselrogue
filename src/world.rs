@@ -204,7 +204,8 @@ impl World {
         for effect in effects.iter() {
             match effect {
                 Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} => {
-                    if self.entities[*id].apply_damage(*part_index, *damage) {
+                    self.entities[*id].apply_damage(*part_index, *damage);
+                    if self.entities[*id].mortally_wounded() {
                         deathlist.push(*id);
                     }
                 }

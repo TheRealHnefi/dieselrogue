@@ -1,7 +1,9 @@
+use std::collections::HashSet;
 use rltk::Point;
 use crate::components::*;
 use crate::item::*;
 use crate::error::*;
+use crate::Ability;
 
 #[derive(Clone)]
 pub struct Body {
@@ -9,15 +11,18 @@ pub struct Body {
     pub facing: Direction,
     pub inventory: Vec<Item>,
     pub parts: Vec<BodyPart>,
-    pub item_slots: Vec<ItemSlot>
+    pub item_slots: Vec<ItemSlot>,
+    pub abilities: HashSet<Ability>
 }
 
 #[derive(Clone)]
 pub struct BodyPart {
     pub name: String,
+    pub vital: bool,
     pub slot_index: Vec<usize>,
     pub max_damage: u32,
-    pub damage: u32
+    pub damage: u32,
+    pub abilities: Vec<Ability>
 }
 
 #[derive(Clone)]
@@ -34,50 +39,61 @@ impl Body {
             facing: facing,
             inventory: vec!(),
             parts: vec!(),
-            item_slots: vec!()
+            item_slots: vec!(),
+            abilities: HashSet::new()
         };
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
         body.parts.push(BodyPart {
             name: "Head".to_string(),
+            vital: true,
             slot_index: vec!(body.item_slots.len() - 1),
             max_damage: 10,
-            damage: 0
+            damage: 0,
+            abilities: vec!()
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Bodywear, item: None});
         body.parts.push(BodyPart {
             name: "Torso".to_string(),
+            vital: true,
             slot_index: vec!(body.item_slots.len() - 1),
             max_damage: 15,
-            damage: 0
+            damage: 0,
+            abilities: vec!()
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::PrimaryHand, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::RightArmwear, item: None});
         body.parts.push(BodyPart {
             name: "Right arm".to_string(),
+            vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
-            damage: 0
+            damage: 0,
+            abilities: vec!(Ability::PickUp)
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::SecondaryHand, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::LeftArmwear, item: None});
         body.parts.push(BodyPart {
             name: "Left arm".to_string(),
+            vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
-            damage: 0
+            damage: 0,
+            abilities: vec!(Ability::PickUp)
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Legwear, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::Footwear, item: None});
         body.parts.push(BodyPart {
             name: "Legs".to_string(),
+            vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 12,
-            damage: 0
+            damage: 0,
+            abilities: vec!(Ability::Move)
         });
 
         for i in 0 .. body.item_slots.len() - 1 {
@@ -87,6 +103,8 @@ impl Body {
                 }
             }
         }
+
+        body.update_abilities();
 
         return body;
     }
@@ -160,6 +178,21 @@ impl Body {
             }
         }
         None
+    }
+
+    pub fn update_abilities(&mut self) {
+        self.abilities.clear();
+        for part in &self.parts {
+            if part.damage < part.max_damage {
+                for ability in &part.abilities {
+                    self.abilities.insert(ability.clone());
+                }
+            }
+        }
+    }
+
+    pub fn has_ability(&self, ability: Ability) -> bool {
+        self.abilities.contains(&ability)
     }
 
     fn clear_slot(&mut self, slot: SlotType) {
