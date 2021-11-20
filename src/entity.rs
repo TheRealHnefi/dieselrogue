@@ -221,10 +221,17 @@ impl Entity {
     
         let target_map_index;
         let item_slot;
+        let bodypart;
         match self.intent.data {
             IntentData::TargetWithEquipment{slot, target} => {
                 item_slot = slot;
                 target_map_index = map.pos_idx(target);
+                bodypart = 0;
+            },
+            IntentData::TargetBodypartWithEquipment{slot, target, bodypart_index} => {
+                item_slot = slot;
+                target_map_index = map.pos_idx(target);
+                bodypart = bodypart_index;
             },
             _ => {
                 debug_assert!(false);
@@ -260,7 +267,7 @@ impl Entity {
             Some(pawn) => {
                 result.push(Effect::Damage {
                     entity_id: pawn.entity_id,
-                    bodypart_index: 4,
+                    bodypart_index: bodypart,
                     raw_damage: shot_damage
                 });
                 log.log(format!("{} fired at {}", self.name, pawn.name));

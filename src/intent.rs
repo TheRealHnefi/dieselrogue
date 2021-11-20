@@ -42,5 +42,7 @@ pub enum IntentData {
     Target(Point),
     Direction(Direction),
     TargetWithEquipment{slot: SlotType, target: Point},
-    TargetWithInventory{item: Item, target: Point}
+    TargetWithInventory{item: Item, target: Point},
+    TargetBodypartWithEquipment{slot: SlotType, target: Point, bodypart_index: usize},
+    TargetBodypartWithInventory{item: Item, target: Point, bodypart_index: usize}
 }

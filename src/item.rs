@@ -15,16 +15,16 @@ pub struct Item {
     pub proxy: bool
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Targeting {
     None,
-    Positional
+    Positional,
+    Detailed
 }
 
 #[derive(Clone)]
 pub struct ItemAction {
     pub name: String,
-    // pub preconditions <- check item charges and such
     pub targeting: Targeting,
     pub phase: IntentPhase,
     pub effects: fn (self_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>
@@ -70,7 +70,7 @@ impl Item {
         };
         let fire_action = ItemAction {
             name: "Fire".to_string(),
-            targeting: Targeting::Positional,
+            targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
             effects: Entity::resolve_single_fire
         };
