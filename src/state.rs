@@ -71,11 +71,11 @@ impl GameState for State {
                 self.run_state = positional_targeting_input(self, context);
             },
             RunState::Resolve => {
-                assert!(self.world.resolve_phase(IntentPhase::Instant).is_ok());
-                assert!(self.world.resolve_phase(IntentPhase::Inventory).is_ok());
-                assert!(self.world.resolve_phase(IntentPhase::Attack).is_ok());
-                assert!(self.world.resolve_phase(IntentPhase::Movement).is_ok());
-                assert!(self.world.resolve_phase(IntentPhase::Misc).is_ok());
+                self.world.resolve_phase(IntentPhase::Instant, &mut self.log);
+                self.world.resolve_phase(IntentPhase::Inventory, &mut self.log);
+                self.world.resolve_phase(IntentPhase::Attack, &mut self.log);
+                self.world.resolve_phase(IntentPhase::Movement, &mut self.log);
+                self.world.resolve_phase(IntentPhase::Misc, &mut self.log);
                 
                 self.world.update_views();
 

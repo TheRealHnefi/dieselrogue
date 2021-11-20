@@ -4,6 +4,8 @@ use crate::Map;
 use crate::Entity;
 use crate::util::*;
 use crate::components::*;
+use crate::intent::*;
+use crate::GameLog;
 
 pub enum AI {
     None,
@@ -150,6 +152,6 @@ impl PatrollingAI {
     }
 }
 
-fn declare_intent_noop(_entity: &mut Entity, _map: &mut Map) -> Vec<Effect> {
+fn declare_intent_noop(_entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     return vec!();
 }

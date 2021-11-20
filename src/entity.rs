@@ -6,6 +6,8 @@ use crate::Body;
 use crate::ai::*;
 use crate::Viewshed;
 use crate::Ability;
+use crate::intent::*;
+use crate::GameLog;
 
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
@@ -84,7 +86,8 @@ impl Entity {
         self.viewshed.update(self.body.position, self.body.facing, map);
     }
 
-    pub fn resolve_throw_grenade(&mut self, map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_throw_grenade(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+        log.log(format!("{} threw a grenade", self.name));
         let mut result = vec!();
     
         let used_item;
@@ -118,8 +121,7 @@ impl Entity {
         result
     }
     
-    pub fn resolve_drop_item(&mut self, map: &mut Map) -> Vec<Effect> {
-    
+    pub fn resolve_drop_item(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let inventory_item;
         match self.intent.data.clone() {
             IntentData::InventoryItem(item) => {
@@ -130,25 +132,30 @@ impl Entity {
                 return vec!();
             }
         }
-    
+
+        log.log(format!("{} dropped {}", self.name, inventory_item.name));
+
         let target_pos = map.nearest_free_item_position(self.body.position).unwrap();
         let map_index = map.pos_idx(target_pos);
-    
+
         map.items[map_index] = self.take_item(inventory_item);
-    
+
         vec!()
     }
 
-    pub fn resolve_get_item(&mut self, map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_get_item(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let index = map.xy_idx(self.body.position.x, self.body.position.y);
         if map.items[index].is_some() {
-            self.body.inventory.push(map.items[index].take().unwrap());
+            let item = map.items[index].take().unwrap();
+
+            log.log(format!("{} picked up {}", self.name, item.name));
+            self.body.inventory.push(item);
         }
 
         vec!()
     }
     
-    pub fn resolve_equip_item(&mut self, _map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_equip_item(&mut self, _map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let inventory_item;
         match self.intent.data.clone() {
             IntentData::InventoryItem(item) => {
@@ -163,9 +170,11 @@ impl Entity {
         match self.take_item(inventory_item) {
             Some(item) => {
                 let unequipped_result = self.body.equip(item.clone());
+                log.log(format!("{} equipped {}", self.name, item.name));
                 match unequipped_result {
                     Ok(unequipped_items) => {
                         for unequipped_item in unequipped_items {
+                            log.log(format!("{} unequipped {}", self.name, unequipped_item.name));
                             self.body.inventory.push(unequipped_item);
                         }
                     },
@@ -183,7 +192,7 @@ impl Entity {
         vec!()
     }
 
-    pub fn resolve_unequip_item(&mut self, _map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_unequip_item(&mut self, _map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let equipped_item;
         match self.intent.data.clone() {
             IntentData::EquippedItem(item) => {
@@ -196,7 +205,10 @@ impl Entity {
         }
     
         match self.body.unequip(equipped_item) {
-            Some(item) => self.body.inventory.push(item),
+            Some(item) => {
+                log.log(format!("{} unequipped {}", self.name, item.name));
+                self.body.inventory.push(item);
+            },
             None => ()
         }
         
@@ -204,7 +216,7 @@ impl Entity {
     }
 
 
-    pub fn resolve_single_fire(&mut self, map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_single_fire(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let mut result = vec!();
     
         let target_map_index;
@@ -226,6 +238,7 @@ impl Entity {
                 match item.kind {
                     ItemKind::Firearm {ammo, max_ammo, damage} => {
                         if ammo < 1 {
+                            log.log(format!("{} pulled the trigger. 'Click'.", self.name));
                             return result;
                         }
                         item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage};
@@ -244,17 +257,20 @@ impl Entity {
         }
 
         match &map.pawns[target_map_index] {
-            Some(pawn) => result.push(Effect::Damage {
-                entity_id: pawn.entity_id,
-                bodypart_index: 4,
-                raw_damage: shot_damage
-            }),
+            Some(pawn) => {
+                result.push(Effect::Damage {
+                    entity_id: pawn.entity_id,
+                    bodypart_index: 4,
+                    raw_damage: shot_damage
+                });
+                log.log(format!("{} fired at {}", self.name, pawn.name));
+            },
             _ => return result
         }
         result
     }
     
-    pub fn resolve_burst_fire(&mut self, map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_burst_fire(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let mut result = vec!();
     
         let target_map_index;
@@ -276,6 +292,7 @@ impl Entity {
                 match item.kind {
                     ItemKind::Firearm {ammo, max_ammo, damage} => {
                         if ammo < 5 {
+                            log.log(format!("{} pulled the trigger. 'Clickclickclickclickclick'.", self.name));
                             return result;
                         }
                         item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo, damage};
@@ -294,18 +311,22 @@ impl Entity {
         }
     
         match &map.pawns[target_map_index] {
-            Some(pawn) => result.push(Effect::Damage {
-                entity_id: pawn.entity_id,
-                bodypart_index: 1,
-                raw_damage: burst_damage
-            }),
+            Some(pawn) => {
+                result.push(Effect::Damage {
+                    entity_id: pawn.entity_id,
+                    bodypart_index: 1,
+                    raw_damage: burst_damage
+                });
+                log.log(format!("{} fired at {}", self.name, pawn.name));
+            },
             _ => return result
         }
         result
     }
 
-    pub fn resolve_move(&mut self, map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_move(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         if !self.has_ability(Ability::Move) {
+            log.log(format!("{} tried to move, but couldn't", self.name));
             return vec!();
         }
 
@@ -328,11 +349,12 @@ impl Entity {
         vec!()
     }
 
-    pub fn resolve_turn(&mut self, map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_turn(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         if !self.has_ability(Ability::Move) {
+            log.log(format!("{} tried to turn, but couldn't", self.name));
             return vec!();
         }
-        
+
         match self.intent.data {
             IntentData::Direction(direction) => {
                 self.body.facing = direction;
@@ -358,13 +380,14 @@ impl Entity {
         vec!()
     }
 
-    pub fn resolve_melee(&mut self, map: &mut Map) -> Vec<Effect> {
+    pub fn resolve_melee(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let mut result = vec!();
 
         match self.intent.data {
             IntentData::Target(pos) => {
                 let index = map.xy_idx(pos.x, pos.y);
                 let id = map.pawns[index].as_ref().unwrap().entity_id;
+                log.log(format!("{} struck {}", self.name, map.pawns[index].as_ref().unwrap().name));
                 result.push(Effect::Damage {
                     entity_id: id,
                     bodypart_index: 1,
