@@ -100,13 +100,13 @@ impl Item {
         };
         let fire_action = ItemAction {
             name: "Fire shot".to_string(),
-            targeting: Targeting::Positional,
+            targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
             effects: Entity::resolve_single_fire
         };
         let fire_burst_action = ItemAction {
             name: "Fire burst".to_string(),
-            targeting: Targeting::Positional,
+            targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
             effects: Entity::resolve_burst_fire
         };
