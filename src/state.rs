@@ -24,6 +24,7 @@ pub struct State {
     pub action_slot: Option<SlotType>,
 
     last_tick: Instant,
+    start_tick: Instant
 }
 
 impl State {
@@ -38,6 +39,7 @@ impl State {
             action_item: None,
             action_slot: None,
             last_tick: Instant::now(),
+            start_tick: Instant::now()
         }
     }
 
@@ -85,7 +87,7 @@ impl GameState for State {
 
         draw_main_screen(self, context);
         if self.run_state == RunState::AwaitingMenuInput {
-            draw_menu(self, context);
+            draw_menu(self, context, self.start_tick.elapsed().as_millis());
         }
  
         if PROFILING {

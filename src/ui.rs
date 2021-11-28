@@ -130,8 +130,9 @@ fn draw_map(map: &Map, left: i32, right: i32, top: i32, bottom: i32, ctx: &mut R
     }
 }
 
-pub fn draw_menu(state: &State, context: &mut Rltk) {
+pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
+    let show_cursor = (monotime / 250) % 2 == 0;
     for menu in &state.menu_stack {
-        menu.draw(context);
+        menu.draw(context, show_cursor);
     }
 }
