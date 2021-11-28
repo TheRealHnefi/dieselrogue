@@ -1,15 +1,16 @@
 use crate::components::*;
 
+#[derive(Clone)]
 pub enum Sprite {
     Human,
     Tank
 }
 
 impl Sprite {
-    pub fn get(&self, facing: Direction, dx: u32, dy: u32) -> rltk::FontCharType {
+    pub fn glyph(&self, facing: Direction, index: u32) -> rltk::FontCharType {
         match self {
             Sprite::Human => self.human_sprite(facing),
-            Sprite::Tank => self.tank_sprite(dx, dy, facing),
+            Sprite::Tank => self.tank_sprite(index, facing),
         }
     }
 
@@ -26,8 +27,7 @@ impl Sprite {
         }
     }
 
-    fn tank_sprite(&self, dx: u32, dy: u32, facing: Direction) -> rltk::FontCharType {
-        let index = dx + dy*3;
+    fn tank_sprite(&self, index: u32, facing: Direction) -> rltk::FontCharType {
         if index > 8 {
             return rltk::to_cp437('?');
         }

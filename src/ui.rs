@@ -97,8 +97,10 @@ fn draw_map(map: &Map, left: i32, right: i32, top: i32, bottom: i32, ctx: &mut R
 
 fn render_floor_tile(map: &Map, tile_index: usize) -> Renderable {
     match &map.pawns[tile_index] {
-        Some(pawn) => {
-            return pawn.renderable
+        Some(pawn) => Renderable {
+            glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index),
+            color: rltk::RGB::named(rltk::YELLOW),
+            background: RGB::from_f32(0.0, 0.0, 0.0)
         },
         None => {
             match &map.items[tile_index] {
@@ -115,8 +117,10 @@ fn render_floor_tile(map: &Map, tile_index: usize) -> Renderable {
 
 fn render_open_door_tile(map: &Map, tile_index: usize) -> Renderable {
     match &map.pawns[tile_index] {
-        Some(pawn) => {
-            return pawn.renderable
+        Some(pawn) => Renderable {
+            glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index),
+            color: rltk::RGB::named(rltk::YELLOW),
+            background: RGB::from_f32(0.0, 0.0, 0.0)
         },
         None => {
             match &map.items[tile_index] {

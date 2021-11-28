@@ -86,7 +86,8 @@ impl Entity {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = Some(Pawn {
                     entity_id: self.id,
-                    renderable: Renderable::new_glyph(self.sprite.get(self.body.facing, x, y)),
+                    sprite: self.sprite.clone(),
+                    sprite_index: x + y * self.size,
                     name: self.name.clone(),
                     intent: self.intent.clone(),
                     body: self.body.clone()
@@ -506,7 +507,8 @@ impl Entity {
 #[derive(Clone)]
 pub struct Pawn {
     pub entity_id: usize,
-    pub renderable: Renderable,
+    pub sprite: Sprite,
+    pub sprite_index: u32,
     pub name: String,
     pub intent: Intent,
     pub body: Body
