@@ -9,7 +9,7 @@ pub const VIEWPORT_HEIGHT: usize = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT;
 
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     let camera_pos = match state.world.get_player() {
-        Ok(player) => player.body.position,
+        Ok(player) => player.position,
         Err(_) => Point{x: (SCREEN_WIDTH / 2) as i32, y: (SCREEN_HEIGHT / 2) as i32}
     };
 

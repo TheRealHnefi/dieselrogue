@@ -81,8 +81,7 @@ impl World {
 
         let player = Entity::new_human(0, pos, facing, name);
 
-        let index = self.map.xy_idx(pos.x, pos.y);
-        self.map.pawns[index] = Some(player.create_pawn());
+        player.create_pawns(&mut self.map);
         self.entities.push(player);
         self.player_id = Some(0);
 
@@ -98,9 +97,7 @@ impl World {
         }
 
         let entity = Entity::new_human(self.entities.len(), pos, facing, name);
-
-        let index = self.map.xy_idx(pos.x, pos.y);
-        self.map.pawns[index] = Some(entity.create_pawn());
+        entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 
         Ok(())
@@ -121,9 +118,7 @@ impl World {
         }
 
         let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name, waypoints);
-
-        let index = self.map.xy_idx(pos.x, pos.y);
-        self.map.pawns[index] = Some(entity.create_pawn());
+        entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 
         Ok(())
@@ -251,7 +246,7 @@ mod tests {
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
         let player = &world.entities[world.player_id.unwrap()];
-        assert_eq!(player.body.position, pos);
+        assert_eq!(player.position, pos);
         assert_eq!(player.name, name);
     }
 
@@ -268,7 +263,7 @@ mod tests {
         assert!(result.is_err());
         world = assert_worldsize(world, 1);
         let player = &world.entities[world.player_id.unwrap()];
-        assert_eq!(player.body.position, pos);
+        assert_eq!(player.position, pos);
         assert_eq!(player.name, name);
     }
 
@@ -283,7 +278,7 @@ mod tests {
 
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
-        assert_eq!(world.entities[0].body.position, pos);
+        assert_eq!(world.entities[0].position, pos);
         assert_eq!(world.entities[0].name, name);
     }
 
@@ -303,9 +298,9 @@ mod tests {
         assert!(result1.is_ok());
         assert!(result2.is_ok());
         world = assert_worldsize(world, 2);
-        assert_eq!(world.entities[0].body.position, pos);
+        assert_eq!(world.entities[0].position, pos);
         assert_eq!(world.entities[0].name, name);
-        assert_eq!(world.entities[1].body.position, pos2);
+        assert_eq!(world.entities[1].position, pos2);
         assert_eq!(world.entities[1].name, name2);
     }
 
@@ -325,7 +320,7 @@ mod tests {
         assert!(result1.is_ok());
         assert!(result2.is_err());
         world = assert_worldsize(world, 1);
-        assert_eq!(world.entities[0].body.position, pos);
+        assert_eq!(world.entities[0].position, pos);
         assert_eq!(world.entities[0].name, name);
     }
 

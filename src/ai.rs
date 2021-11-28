@@ -27,27 +27,27 @@ impl PatrollingAI {
         }
     }
 
-    pub fn declare_intent(&mut self, body: &Body, map: &Map) -> Intent {
-        if self.waypoints[self.waypoint_index] == body.position {
+    pub fn declare_intent(&mut self, position: Point, body: &Body, map: &Map) -> Intent {
+        if self.waypoints[self.waypoint_index] == position {
             self.waypoint_index += 1;
             if self.waypoint_index >= self.waypoints.len() {
                 self.waypoint_index = 0;
             }
-            self.update_path(body, map)
+            self.update_path(position, map)
         }
         else {
             match self.current_path.last() {
                 Some(pos_index) => {
                     if map.blocked_idx(*pos_index)
-                        || !adjacent(map.idx_pos(*pos_index), body.position) {
-                        self.update_path(body, map);
+                        || !adjacent(map.idx_pos(*pos_index), position) {
+                        self.update_path(position, map);
                     }
                 },
-                None => self.update_path(body, map)
+                None => self.update_path(position, map)
             }
         }
 
-        let walk_direction = self.decide_direction(body.position, map);
+        let walk_direction = self.decide_direction(position, map);
 
         match walk_direction {
             Some(direction) => {
@@ -76,9 +76,9 @@ impl PatrollingAI {
         }
     }
 
-    fn update_path(&mut self, body: &Body, map: &Map) {
+    fn update_path(&mut self, position: Point, map: &Map) {
         let path = rltk::a_star_search(
-            map.pos_idx(body.position),
+            map.pos_idx(position),
             map.pos_idx(self.waypoints[self.waypoint_index]),
             map);
 

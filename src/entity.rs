@@ -12,7 +12,9 @@ use crate::GameLog;
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
     pub id: usize,
-    pub renderable: Renderable,
+    pub size: u32,
+    pub position: Point,
+    pub renderables: Vec<Renderable>,
     pub name: String,
     pub intent: Intent,
     pub body: Body,
@@ -24,10 +26,12 @@ impl Entity {
     pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
-            renderable: Renderable::new_glyph('5'),
+            size: 1,
+            position: pos,
+            renderables: vec!(Renderable::new_glyph('5')),
             name: name,
             intent: idle_intent(),
-            body: Body::human_body(pos, facing),
+            body: Body::human_body(facing),
             viewshed: Viewshed::new(),
             ai: AI::None
         }
@@ -36,23 +40,58 @@ impl Entity {
     pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Self {
         Self {
             id: id,
-            renderable: Renderable::new_glyph('5'),
+            size: 1,
+            position: pos,
+            renderables: vec!(Renderable::new_glyph('5')),
             name: name,
             intent: idle_intent(),
-            body: Body::human_body(pos, facing),
+            body: Body::human_body(facing),
             viewshed: Viewshed::new(),
             ai: AI::Patrolling(PatrollingAI::new(waypoints))
         }
     }
 
-    pub fn create_pawn(&self) -> Pawn {
-        Pawn {
-            entity_id: self.id,
-            renderable: self.renderable,
-            name: self.name.clone(),
-            intent: self.intent.clone(),
-            body: self.body.clone()
+    pub fn check_fit(&self, pos: Point, map: &mut Map) -> bool {
+        for x in 0..self.size {
+            for y in 0..self.size {
+                let index = map.xy_idx(pos.x + x as i32, pos.y + y as i32);
+                if map.pawns[index].is_some() || map.blocked_idx(index) {
+                    return false;
+                }
+            }
         }
+
+        return true;
+    }
+
+    pub fn create_pawns(&self, map: &mut Map) {
+        for x in 0..self.size {
+            for y in 0..self.size {
+                let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
+                map.pawns[index] = Some(Pawn {
+                    entity_id: self.id,
+                    renderable: self.renderables[(x + y*x) as usize],
+                    name: self.name.clone(),
+                    intent: self.intent.clone(),
+                    body: self.body.clone()
+                });
+            }
+        }
+    }
+
+    pub fn clear_pawns(&self, map: &mut Map) {
+        for x in 0..self.size {
+            for y in 0..self.size {
+                let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
+                map.pawns[index] = None;
+            }
+        }
+    }
+
+    pub fn set_position(&mut self, pos: Point, map: &mut Map) {
+        self.clear_pawns(map);
+        self.position = pos;
+        self.create_pawns(map);
     }
 
     pub fn take_item(&mut self, item: Item) -> Option<Item> {
@@ -76,14 +115,14 @@ impl Entity {
     pub fn declare_intent(&mut self, map: &Map) {
         match &mut self.ai {
             AI::Patrolling(ai) => {
-                self.intent = ai.declare_intent(&self.body, map);
+                self.intent = ai.declare_intent(self.position, &self.body, map);
             }
             AI::None => ()
         }
     }
 
     pub fn update_view(&mut self, map: &Map) {
-        self.viewshed.update(self.body.position, self.body.facing, map);
+        self.viewshed.update(self.position, self.body.facing, map);
     }
 
     pub fn resolve_throw_grenade(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
@@ -135,7 +174,7 @@ impl Entity {
 
         log.log(format!("{} dropped {}", self.name, inventory_item.name));
 
-        let target_pos = map.nearest_free_item_position(self.body.position).unwrap();
+        let target_pos = map.nearest_free_item_position(self.position).unwrap();
         let map_index = map.pos_idx(target_pos);
 
         map.items[map_index] = self.take_item(inventory_item);
@@ -144,7 +183,7 @@ impl Entity {
     }
 
     pub fn resolve_get_item(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-        let index = map.xy_idx(self.body.position.x, self.body.position.y);
+        let index = map.xy_idx(self.position.x, self.position.y);
         if map.items[index].is_some() {
             let item = map.items[index].take().unwrap();
 
@@ -347,11 +386,7 @@ impl Entity {
         match self.intent.data {
             IntentData::Target(pos) => {
                 if !map.blocked(pos.x, pos.y) {
-                    let old_index = map.xy_idx(self.body.position.x, self.body.position.y);
-                    let new_index = map.xy_idx(pos.x, pos.y);
-                    self.body.position = pos;
-                    map.pawns[old_index] = None;
-                    map.pawns[new_index] = Some(self.create_pawn());
+                    self.set_position(pos, map);
                 }
             },
             _ => {
@@ -373,17 +408,16 @@ impl Entity {
             IntentData::Direction(direction) => {
                 self.body.facing = direction;
                 match direction {
-                    Direction::Up => {self.renderable.glyph = rltk::to_cp437('8')},
-                    Direction::UpRight => {self.renderable.glyph = rltk::to_cp437('9')},
-                    Direction::Right => {self.renderable.glyph = rltk::to_cp437('6')},
-                    Direction::DownRight => {self.renderable.glyph = rltk::to_cp437('3')},
-                    Direction::Down => {self.renderable.glyph = rltk::to_cp437('2')},
-                    Direction::DownLeft => {self.renderable.glyph = rltk::to_cp437('1')},
-                    Direction::Left => {self.renderable.glyph = rltk::to_cp437('4')},
-                    Direction::UpLeft => {self.renderable.glyph = rltk::to_cp437('7')},
+                    Direction::Up => {self.renderables[0].glyph = rltk::to_cp437('8')},
+                    Direction::UpRight => {self.renderables[0].glyph = rltk::to_cp437('9')},
+                    Direction::Right => {self.renderables[0].glyph = rltk::to_cp437('6')},
+                    Direction::DownRight => {self.renderables[0].glyph = rltk::to_cp437('3')},
+                    Direction::Down => {self.renderables[0].glyph = rltk::to_cp437('2')},
+                    Direction::DownLeft => {self.renderables[0].glyph = rltk::to_cp437('1')},
+                    Direction::Left => {self.renderables[0].glyph = rltk::to_cp437('4')},
+                    Direction::UpLeft => {self.renderables[0].glyph = rltk::to_cp437('7')},
                 }
-                let index = map.xy_idx(self.body.position.x, self.body.position.y);
-                map.pawns[index] = Some(self.create_pawn());
+                self.create_pawns(map);
             },
             _ => {
                 debug_assert!(false);
@@ -450,7 +484,7 @@ impl Entity {
     }
 
     pub fn kill(&mut self, map: &mut Map) {
-        let index = map.xy_idx(self.body.position.x, self.body.position.y);
+        let index = map.xy_idx(self.position.x, self.position.y);
         map.pawns[index] = None;
     }
 }
