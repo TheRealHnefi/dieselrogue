@@ -2,13 +2,21 @@ use rltk::{RGB, Rltk, Point};
 use std::cmp::max;
 use crate::state::*;
 use crate::map::*;
+use crate::components::*;
 
 pub const SCREEN_WIDTH: usize = 80;
 pub const SCREEN_HEIGHT: usize = 50;
 pub const BOTTOM_BAR_HEIGHT: usize = 7;
 pub const VIEWPORT_HEIGHT: usize = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT;
 
-pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
+pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
+    let show_cursor = (monotime / 250) % 2 == 0;
+    for menu in &state.menu_stack {
+        menu.draw(context, show_cursor);
+    }
+}
+
+pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     let camera_pos = match state.world.get_player() {
         Ok(player) => player.position,
         Err(_) => Point{x: (SCREEN_WIDTH / 2) as i32, y: (SCREEN_HEIGHT / 2) as i32}
@@ -28,13 +36,15 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
         top = bottom - VIEWPORT_HEIGHT as i32;
     }
 
+    let blink = (monotime / 250) % 2 == 0;
+
     draw_map(&state.world.map, left, right, top, bottom, context);
-    draw_main_ui(state, left, right, top, bottom, context);
+    draw_main_ui(state, left, right, top, bottom, context, blink);
 }
 
-fn draw_main_ui(state: &mut State, left: i32, _right: i32, top: i32, _bottom: i32, context: &mut Rltk) {
+fn draw_main_ui(state: &mut State, left: i32, _right: i32, top: i32, _bottom: i32, context: &mut Rltk, blink: bool) {
     context.draw_box(0, VIEWPORT_HEIGHT, SCREEN_WIDTH - 1, BOTTOM_BAR_HEIGHT - 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-    if state.run_state == RunState::AwaitingPositionalTargetingInput {
+    if blink && state.run_state == RunState::AwaitingPositionalTargetingInput {
         context.set_bg(state.cursor_pos.x - left, state.cursor_pos.y - top, RGB::named(rltk::PINK));
     }
 
@@ -58,69 +68,24 @@ fn draw_map(map: &Map, left: i32, right: i32, top: i32, bottom: i32, ctx: &mut R
             continue;
         }
         if map.revealed_tiles[idx] {
-            let glyph;
-            let mut foreground;
-            let mut background = RGB::from_f32(0.0, 0.0, 0.0);
-            match tile {
-                TileType::Floor => {
-                    match &map.pawns[idx] {
-                        Some(pawn) => {
-                            glyph = pawn.renderable.glyph;
-                            foreground = pawn.renderable.color;
-                            background = pawn.renderable.background;
-                        },
-
-                        None => {
-                            match &map.items[idx] {
-                                Some(item) => {
-                                    glyph = item.renderable.glyph;
-                                    foreground = item.renderable.color;
-                                    background = item.renderable.background;
-                                }
-                                None => {
-                                    glyph = rltk::to_cp437('.');
-                                    foreground = RGB::from_f32(0.0, 0.5, 0.0);
-                                }
-                            }
-                        }
-                    };
+            let mut renderable = match tile {
+                TileType::Floor => render_floor_tile(map, idx),
+                TileType::OpenDoor => render_open_door_tile(map, idx),
+                TileType::Wall => Renderable {
+                    glyph: rltk::to_cp437('█'),
+                    color: RGB::from_f32(0.0, 1.0, 0.0),
+                    background: RGB::from_f32(0.0, 0.0, 0.0)
                 },
-                TileType::Wall => {
-                    glyph = rltk::to_cp437('█');
-                    foreground = RGB::from_f32(0.0, 1.0, 0.0);
-                },
-                TileType::OpenDoor => {
-                    match &map.pawns[idx] {
-                        Some(pawn) => {
-                            glyph = pawn.renderable.glyph;
-                            foreground = pawn.renderable.color;
-                            background = pawn.renderable.background;
-                        },
-
-                        None => {
-                            match &map.items[idx] {
-                                Some(item) => {
-                                    glyph = item.renderable.glyph;
-                                    foreground = item.renderable.color;
-                                    background = item.renderable.background;
-                                }
-                                None => {
-                                    glyph = rltk::to_cp437(' ');
-                                    foreground = RGB::from_f32(0.25, 0.25, 0.25);
-                                }
-                            }
-                        }
-                    };
-                },
-                TileType::ClosedDoor => {
-                    glyph = rltk::to_cp437('■');
-                    foreground = RGB::from_f32(0.0, 1.0, 0.0);
-                },
-            }
+                TileType::ClosedDoor => Renderable {
+                    glyph: rltk::to_cp437('■'),
+                    color: RGB::from_f32(0.0, 1.0, 0.0),
+                    background: RGB::from_f32(0.0, 0.0, 0.0)
+                }
+            };
             if !map.visible_tiles[idx] {
-                foreground = foreground.to_greyscale();
+                renderable.color = renderable.color.to_greyscale();
             }
-            ctx.set(x, y, foreground, background, glyph);
+            ctx.set(x, y, renderable.color, renderable.background, renderable.glyph);
         }
         x += 1;
         if x >= right - left {
@@ -130,9 +95,38 @@ fn draw_map(map: &Map, left: i32, right: i32, top: i32, bottom: i32, ctx: &mut R
     }
 }
 
-pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
-    let show_cursor = (monotime / 250) % 2 == 0;
-    for menu in &state.menu_stack {
-        menu.draw(context, show_cursor);
+fn render_floor_tile(map: &Map, tile_index: usize) -> Renderable {
+    match &map.pawns[tile_index] {
+        Some(pawn) => {
+            return pawn.renderable
+        },
+        None => {
+            match &map.items[tile_index] {
+                Some(item) => item.renderable,
+                None => Renderable {
+                    glyph: rltk::to_cp437('.'),
+                    color: RGB::from_f32(0.0, 0.5, 0.0),
+                    background: RGB::from_f32(0.0, 0.0, 0.0),
+                }
+            }
+        }
+    }
+}
+
+fn render_open_door_tile(map: &Map, tile_index: usize) -> Renderable {
+    match &map.pawns[tile_index] {
+        Some(pawn) => {
+            return pawn.renderable
+        },
+        None => {
+            match &map.items[tile_index] {
+                Some(item) => item.renderable,
+                None => Renderable {
+                    glyph: rltk::to_cp437(' '),
+                    color: RGB::from_f32(0.0, 0.0, 0.0),
+                    background: RGB::from_f32(0.0, 0.0, 0.0),
+                }
+            }
+        }
     }
 }

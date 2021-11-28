@@ -85,9 +85,11 @@ impl GameState for State {
             }
         }
 
-        draw_main_screen(self, context);
+        let monotime = self.start_tick.elapsed().as_millis();
+
+        draw_main_screen(self, context, monotime);
         if self.run_state == RunState::AwaitingMenuInput {
-            draw_menu(self, context, self.start_tick.elapsed().as_millis());
+            draw_menu(self, context, monotime);
         }
  
         if PROFILING {
