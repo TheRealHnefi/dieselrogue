@@ -38,6 +38,8 @@ mod util;
 pub use util::*;
 mod intent;
 pub use intent::*;
+mod sprite;
+pub use sprite::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -71,6 +73,10 @@ fn main() -> rltk::BError {
         Direction::Up,
         String::from("Goon"),
         (0..max_room_index).collect());
+
+    let _result = state.world.create_tank(Point {x: state.world.map.rooms[3].center().0, y: state.world.map.rooms[3].center().1},
+        Direction::Up,
+        String::from("Tank"));
     
     let _ = state.world.add_item(pos, Item::grenade());
     let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::machinegun());

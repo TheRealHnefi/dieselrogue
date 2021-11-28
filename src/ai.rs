@@ -9,6 +9,7 @@ use crate::GameLog;
 
 pub enum AI {
     None,
+    Rotator,
     Patrolling(PatrollingAI)
 }
 
