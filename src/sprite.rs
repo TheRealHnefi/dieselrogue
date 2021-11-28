@@ -7,23 +7,28 @@ pub enum Sprite {
 }
 
 impl Sprite {
-    pub fn glyph(&self, facing: Direction, index: u32) -> rltk::FontCharType {
+    pub fn glyph(&self, facing: Direction, index: u32, blink: bool) -> rltk::FontCharType {
         match self {
-            Sprite::Human => self.human_sprite(facing),
+            Sprite::Human => self.human_sprite(facing, blink),
             Sprite::Tank => self.tank_sprite(index, facing),
         }
     }
 
-    fn human_sprite(&self, facing: Direction) -> rltk::FontCharType {
-        match facing {
-            Direction::Up => rltk::to_cp437('8'),
-            Direction::UpRight => rltk::to_cp437('9'),
-            Direction::Right => rltk::to_cp437('6'),
-            Direction::DownRight => rltk::to_cp437('3'),
-            Direction::Down => rltk::to_cp437('2'),
-            Direction::DownLeft => rltk::to_cp437('1'),
-            Direction::Left => rltk::to_cp437('4'),
-            Direction::UpLeft => rltk::to_cp437('7'),
+    fn human_sprite(&self, facing: Direction, blink: bool) -> rltk::FontCharType {
+        if blink {
+            rltk::to_cp437('☺')
+        }
+        else {
+            match facing {
+                Direction::Up => rltk::to_cp437('▲'),
+                Direction::UpRight => rltk::to_cp437('┐'),
+                Direction::Right => rltk::to_cp437('►'),
+                Direction::DownRight => rltk::to_cp437('┘'),
+                Direction::Down => rltk::to_cp437('▼'),
+                Direction::DownLeft => rltk::to_cp437('└'),
+                Direction::Left => rltk::to_cp437('◄'),
+                Direction::UpLeft => rltk::to_cp437('┌'),
+            }
         }
     }
 
