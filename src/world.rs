@@ -198,7 +198,7 @@ impl World {
         }
     }
 
-    pub fn resolve_phase(&mut self, phase: IntentPhase, log: &mut GameLog) {
+    pub fn resolve_phase(&mut self, phase: IntentPhase, log: &mut GameLog) -> Vec<Animation> {
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {
             if entity.intent.phase == phase {
@@ -208,10 +208,11 @@ impl World {
             }
         }
 
-        self.resolve_effects(&effects, log);
+        return self.resolve_effects(&effects, log);
     }
 
-    fn resolve_effects(&mut self, effects: &Vec<Effect>, log: &mut GameLog) {
+    fn resolve_effects(&mut self, effects: &Vec<Effect>, log: &mut GameLog) -> Vec<Animation> {
+        let mut animations = vec!();
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {
             match effect {
@@ -221,11 +222,15 @@ impl World {
                         log.log(format!("{} was killed!", self.entities[*id].name));
                         deathlist.push(*id);
                     }
+                },
+                Effect::Animation(animation) => {
+                    animations.push(animation.clone());
                 }
             }
         }
 
         self.post_resolve(deathlist);
+        return animations;
     }
 
     fn post_resolve(&mut self, deathlist: Vec<usize>) {

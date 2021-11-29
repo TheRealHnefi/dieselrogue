@@ -9,7 +9,7 @@ use crate::Ability;
 use crate::Map;
 use crate::Item;
 use crate::Body;
-
+use crate::animation::*;
 
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
@@ -155,8 +155,10 @@ impl Entity {
     
         let used_item;
         let target_map_index;
+        let target_pos;
         match self.intent.data.clone() {
             IntentData::TargetWithInventory{item, target} => {
+                target_pos = target;
                 used_item = item;
                 target_map_index = map.pos_idx(target);
             },
@@ -178,8 +180,10 @@ impl Entity {
                     });
                 }
             }
-            _ => return result
+            _ => ()
         }
+
+        result.push(Effect::Animation(explosion_animation(target_pos)));
     
         result
     }
