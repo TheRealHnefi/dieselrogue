@@ -1,14 +1,17 @@
 use rltk::{Rltk, GameState, Point, console};
-use std::time::{Instant};
-use crate::animation::*;
-use crate::world::*;
-use crate::gamelog::*;
-use crate::item::*;
-use crate::menu::*;
+use std::cmp::max;
+use std::time::Instant;
+use crate::AnimationSystem;
+use crate::World;
+use crate::GameLog;
+use crate::ItemAction;
+use crate::Item;
+use crate::Menu;
+use crate::IntentPhase;
 use crate::ui::*;
 use crate::components::*;
-use crate::intent::*;
 use crate::input::*;
+use crate::Rect;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -98,7 +101,7 @@ impl GameState for State {
                 self.run_state = RunState::DeclareIntent;
             },
             RunState::RenderAnimations => {
-                self.animations.render(monotime);
+                self.run_state = self.animations.render(self.get_viewport(), monotime, context);
             }
         }
  
@@ -108,6 +111,36 @@ impl GameState for State {
                 console::log(format!("Tick duration,interval: {}, {}  ", tick_time, tick_interval));
             }
             self.last_tick = Instant::now();
+        }
+    }
+}
+
+impl State {
+    pub fn get_viewport(&self) -> Rect {
+        let camera_pos = match self.world.get_player() {
+            Ok(player) => player.position,
+            Err(_) => Point{x: (SCREEN_WIDTH / 2) as i32, y: (SCREEN_HEIGHT / 2) as i32}
+        };
+
+        let mut top = max(camera_pos.y - SCREEN_HEIGHT as i32 / 2, 0);
+        let mut left = max(camera_pos.x - SCREEN_WIDTH as i32 / 2, 0);
+        let mut bottom = top + VIEWPORT_HEIGHT as i32;
+        let mut right = left + SCREEN_WIDTH as i32;
+
+        if right > self.world.map.width as i32{
+            right = self.world.map.width as i32;
+            left = right - SCREEN_WIDTH as i32;
+        }
+        if bottom > self.world.map.height as i32 {
+            bottom = self.world.map.height as i32;
+            top = bottom - VIEWPORT_HEIGHT as i32;
+        }
+
+        Rect {
+            x1: left,
+            x2: right,
+            y1: top,
+            y2: bottom
         }
     }
 }
