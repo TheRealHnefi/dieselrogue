@@ -40,6 +40,8 @@ mod intent;
 pub use intent::*;
 mod sprite;
 pub use sprite::*;
+mod animation;
+pub use animation::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;

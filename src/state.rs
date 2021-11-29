@@ -1,6 +1,14 @@
 use rltk::{Rltk, GameState, Point, console};
-use super::*;
 use std::time::{Instant};
+use crate::animation::*;
+use crate::world::*;
+use crate::gamelog::*;
+use crate::item::*;
+use crate::menu::*;
+use crate::ui::*;
+use crate::components::*;
+use crate::intent::*;
+use crate::input::*;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -8,7 +16,8 @@ pub enum RunState {
     AwaitingInput,
     AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
-    Resolve
+    Resolve,
+    RenderAnimations
 }
 
 pub struct State {
@@ -17,6 +26,7 @@ pub struct State {
     pub log: GameLog,
 
     pub world: World,
+    pub animations: AnimationSystem,
 
     pub menu_stack: Vec<Box<dyn Menu>>,
     pub action_being_used: Option<ItemAction>,
@@ -34,6 +44,7 @@ impl State {
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(),
+            animations: AnimationSystem::new(),
             menu_stack: vec![],
             action_being_used: None,
             action_item: None,
@@ -57,6 +68,8 @@ impl GameState for State {
         let tick_interval = self.last_tick.elapsed().as_millis();
         
         context.cls();
+        let monotime = self.start_tick.elapsed().as_millis();
+        draw_main_screen(self, context, monotime);
 
         match self.run_state {
             RunState::DeclareIntent => {
@@ -68,6 +81,7 @@ impl GameState for State {
             },
             RunState::AwaitingMenuInput => {
                 self.run_state = menu_input(self, context);
+                draw_menu(self, context, monotime);
             },
             RunState::AwaitingPositionalTargetingInput => {
                 self.run_state = positional_targeting_input(self, context);
@@ -82,14 +96,10 @@ impl GameState for State {
                 self.world.update_views();
 
                 self.run_state = RunState::DeclareIntent;
+            },
+            RunState::RenderAnimations => {
+                self.animations.render(monotime);
             }
-        }
-
-        let monotime = self.start_tick.elapsed().as_millis();
-
-        draw_main_screen(self, context, monotime);
-        if self.run_state == RunState::AwaitingMenuInput {
-            draw_menu(self, context, monotime);
         }
  
         if PROFILING {
