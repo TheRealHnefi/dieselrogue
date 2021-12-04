@@ -1,6 +1,5 @@
 use rltk::{RGB, Rltk, Point};
 use crate::Renderable;
-use crate::RunState;
 use crate::Rect;
 
 pub fn shoot_animation(start_pos: Point, target_pos: Point) -> Animation {
@@ -124,7 +123,7 @@ impl AnimationSystem {
         }
     }
 
-    pub fn render(&mut self, viewport: Rect, monotime: u128, context: &mut Rltk) -> RunState {
+    pub fn render(&mut self, viewport: Rect, monotime: u128, context: &mut Rltk) -> bool {
         let delta_time = (monotime - self.start_time) as u32;
         self.start_time = monotime;
 
@@ -136,12 +135,7 @@ impl AnimationSystem {
             }
         }
 
-        if all_done {
-            return RunState::DeclareIntent;
-        }
-        else {
-            return RunState::RenderAnimations;
-        }
+        return all_done;
     }
 }
 

@@ -34,6 +34,19 @@ pub enum IntentPhase {
     Misc
 }
 
+impl IntentPhase {
+    pub fn next(&self) -> Option<IntentPhase> {
+        match self {
+            IntentPhase::Idle => Some(IntentPhase::Instant),
+            IntentPhase::Instant => Some(IntentPhase::Inventory),
+            IntentPhase::Inventory => Some(IntentPhase::Attack),
+            IntentPhase::Attack => Some(IntentPhase::Movement),
+            IntentPhase::Movement => Some(IntentPhase::Misc),
+            IntentPhase::Misc => None
+        }
+    }
+}
+
 #[derive (Clone)]
 pub enum IntentData {
     Void,

@@ -19,8 +19,8 @@ pub enum RunState {
     AwaitingInput,
     AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
-    Resolve,
-    RenderAnimations
+    Resolve(IntentPhase),
+    RenderAnimations(IntentPhase)
 }
 
 pub struct State {
@@ -89,25 +89,29 @@ impl GameState for State {
             RunState::AwaitingPositionalTargetingInput => {
                 self.run_state = positional_targeting_input(self, context);
             },
-            RunState::Resolve => {
-                let mut animations = self.world.resolve_phase(IntentPhase::Instant, &mut self.log);
-                animations.append(&mut self.world.resolve_phase(IntentPhase::Inventory, &mut self.log));
-                animations.append(&mut self.world.resolve_phase(IntentPhase::Attack, &mut self.log));
-                animations.append(&mut self.world.resolve_phase(IntentPhase::Movement, &mut self.log));
-                animations.append(&mut self.world.resolve_phase(IntentPhase::Misc, &mut self.log));
-                
+            RunState::Resolve(phase) => {
+                self.animations.animations = self.world.resolve_phase(phase, &mut self.log);
+
                 self.world.update_views();
 
-                if animations.len() > 0 {
-                    self.animations.animations = animations;
+                if self.animations.animations.len() > 0 {
                     self.animations.init_render(monotime);
-                    self.run_state = RunState::RenderAnimations;
+                    self.run_state = RunState::RenderAnimations(phase);
                 } else {
-                    self.run_state = RunState::DeclareIntent;
+                    match phase.next() {
+                        Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
+                        None => self.run_state = RunState::DeclareIntent
+                    }
                 }
             },
-            RunState::RenderAnimations => {
-                self.run_state = self.animations.render(self.get_viewport(), monotime, context);
+            RunState::RenderAnimations(phase) => {
+                let animation_done = self.animations.render(self.get_viewport(), monotime, context);
+                if animation_done {
+                    match phase.next() {
+                        Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
+                        None => self.run_state = RunState::DeclareIntent
+                    }
+                }
             }
         }
  
