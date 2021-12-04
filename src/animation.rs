@@ -3,14 +3,10 @@ use crate::Renderable;
 use crate::Rect;
 
 pub fn shoot_animation(start_pos: Point, target_pos: Point) -> Animation {
-    let particle = Renderable {
-        glyph: rltk::to_cp437(' '),
-        color: RGB::named(rltk::RED),
-        background: RGB::named(rltk::YELLOW)
-    };
+    let particle = Particle::Background(RGB::named(rltk::RED));
 
     let frame = Frame {
-        renderables: vec!(particle.clone(), particle.clone()),
+        particles: vec!(particle.clone(), particle.clone()),
         positions: vec!(start_pos, target_pos),
         duration_ms: 150
     };
@@ -24,20 +20,22 @@ pub fn shoot_animation(start_pos: Point, target_pos: Point) -> Animation {
 }
 
 pub fn explosion_animation(pos: Point) -> Animation {
-    let particle = Renderable {
-        glyph: rltk::to_cp437('*'),
-        color: RGB::named(rltk::RED),
-        background: RGB::named(rltk::YELLOW)
-    };
+    let particle = Particle::Complete(
+        Renderable {
+            glyph: rltk::to_cp437('*'),
+            color: RGB::named(rltk::RED),
+            background: RGB::named(rltk::YELLOW)
+        }
+    );
 
     let frame_1 = Frame {
-        renderables: vec!(particle.clone()),
+        particles: vec!(particle.clone()),
         positions: vec!(pos),
         duration_ms: 250
     };
 
     let frame_2 = Frame {
-        renderables: vec!(
+        particles: vec!(
             particle.clone(),
             particle.clone(),
             particle.clone(),
@@ -55,7 +53,7 @@ pub fn explosion_animation(pos: Point) -> Animation {
     };
 
     let frame_3 = Frame {
-        renderables: vec!(
+        particles: vec!(
             particle.clone(),
             particle.clone(),
             particle.clone(),
@@ -87,18 +85,24 @@ pub fn explosion_animation(pos: Point) -> Animation {
 }
 
 #[derive(Clone)]
-pub struct Frame {
-    pub renderables: Vec<Renderable>,
-    pub positions: Vec<Point>,
-    pub duration_ms: u32
+enum Particle {
+    Complete(Renderable),
+    Background(rltk::RGB)
+}
+
+#[derive(Clone)]
+struct Frame {
+    particles: Vec<Particle>,
+    positions: Vec<Point>,
+    duration_ms: u32
 }
 
 #[derive(Clone)]
 pub struct Animation {
-    pub frames: Vec<Frame>,
-    pub current_frame: usize,
-    pub time_spent_in_current_frame: u32,
-    pub done: bool
+    frames: Vec<Frame>,
+    current_frame: usize,
+    time_spent_in_current_frame: u32,
+    done: bool
 }
 
 pub struct AnimationSystem {
@@ -154,8 +158,8 @@ impl Animation {
             }
         }
 
-        for i in 0..self.frames[self.current_frame].renderables.len() {
-            let renderable = self.frames[self.current_frame].renderables[i];
+        for i in 0..self.frames[self.current_frame].particles.len() {
+            let particle = &self.frames[self.current_frame].particles[i];
             let position = self.frames[self.current_frame].positions[i];
 
             let screen_pos = Point {
@@ -163,7 +167,12 @@ impl Animation {
                 y: position.y - viewport.y1
             };
 
-            context.set(screen_pos.x, screen_pos.y, renderable.color, renderable.background, renderable.glyph);
+            match particle {
+                Particle::Complete(renderable) =>
+                    context.set(screen_pos.x, screen_pos.y, renderable.color, renderable.background, renderable.glyph),
+                Particle::Background(color) =>
+                    context.set_bg(screen_pos.x, screen_pos.y, *color)
+            }
         }
     }
 }
