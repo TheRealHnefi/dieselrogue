@@ -3,6 +3,27 @@ use crate::Renderable;
 use crate::RunState;
 use crate::Rect;
 
+pub fn shoot_animation(start_pos: Point, target_pos: Point) -> Animation {
+    let particle = Renderable {
+        glyph: rltk::to_cp437(' '),
+        color: RGB::named(rltk::RED),
+        background: RGB::named(rltk::YELLOW)
+    };
+
+    let frame = Frame {
+        renderables: vec!(particle.clone(), particle.clone()),
+        positions: vec!(start_pos, target_pos),
+        duration_ms: 150
+    };
+
+    Animation {
+        frames: vec!(frame),
+        current_frame: 0,
+        time_spent_in_current_frame: 0,
+        done: false
+    }
+}
+
 pub fn explosion_animation(pos: Point) -> Animation {
     let particle = Renderable {
         glyph: rltk::to_cp437('*'),
