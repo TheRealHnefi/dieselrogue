@@ -345,7 +345,7 @@ impl Entity {
             _ => ()
         }
 
-        result.push(Effect::Animation(single_shot_animation(self.position, target_pos)));
+        result.push(Effect::Animation(shot_animation(self.position, target_pos, 1)));
 
         result
     }
@@ -399,7 +399,7 @@ impl Entity {
                 return result;
             }
         }
-    
+
         match &map.pawns[target_map_index] {
             Some(pawn) => {
                 result.push(Effect::Damage {
@@ -412,7 +412,7 @@ impl Entity {
             _ => ()
         }
 
-        result.push(Effect::Animation(burst_shot_animation(self.position, target_pos)));
+        result.push(Effect::Animation(shot_animation(self.position, target_pos, 5)));
 
         result
     }

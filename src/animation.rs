@@ -2,52 +2,32 @@ use rltk::{RGB, Rltk, Point};
 use crate::Renderable;
 use crate::Rect;
 
-pub fn single_shot_animation(start_pos: Point, target_pos: Point) -> Animation {
-    let particle = Particle::Background(RGB::named(rltk::RED));
+pub fn shot_animation(start_pos: Point, target_pos: Point, number_of_shots: i32) -> Animation {
+    let particle_red = Particle::Background(RGB::named(rltk::RED));
+    let particle_yellow = Particle::Background(RGB::named(rltk::YELLOW));
+    let mut frames = vec!();
+    
+    for _ in 0..number_of_shots {
+        frames.push(Frame {
+            particles: vec!(particle_red.clone(), particle_red.clone()),
+            positions: vec!(start_pos, target_pos),
+            duration_ms: 100
+        });
 
-    let frame = Frame {
-        particles: vec!(particle.clone(), particle.clone()),
-        positions: vec!(start_pos, target_pos),
-        duration_ms: 150
-    };
+        frames.push(Frame {
+            particles: vec!(particle_yellow.clone(), particle_yellow.clone()),
+            positions: vec!(start_pos, target_pos),
+            duration_ms: 100
+        });
+    }
 
     Animation {
-        frames: vec!(frame),
+        frames: frames,
         current_frame: 0,
         time_spent_in_current_frame: 0,
         done: false
     }
 }
-
-pub fn burst_shot_animation(start_pos: Point, target_pos: Point) -> Animation {
-    let particle = Particle::Background(RGB::named(rltk::RED));
-
-    let frame_shot = Frame {
-        particles: vec!(particle.clone(), particle.clone()),
-        positions: vec!(start_pos, target_pos),
-        duration_ms: 150
-    };
-
-    let frame_cycle = Frame {
-        particles: vec!(),
-        positions: vec!(),
-        duration_ms: 150
-    };
-
-    Animation {
-        frames: vec!(
-            frame_shot.clone(),
-            frame_cycle.clone(),
-            frame_shot.clone(),
-            frame_cycle.clone(),
-            frame_shot.clone()
-        ),
-        current_frame: 0,
-        time_spent_in_current_frame: 0,
-        done: false
-    }
-}
-
 
 pub fn explosion_animation(pos: Point) -> Animation {
     let particle = Particle::Complete(
