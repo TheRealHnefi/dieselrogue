@@ -115,6 +115,20 @@ impl Map {
  *  create room cluster along corridor
  *  repeat
  */
+    pub fn new_empty_map(map_width: usize, map_height: usize) -> Map {
+        let tile_count = map_width * map_height;
+        Map {
+            tiles: vec![TileType::Floor; tile_count],
+            rooms: Vec::new(),
+            width: map_width,
+            height: map_height,
+            revealed_tiles: vec![true; tile_count],
+            visible_tiles: vec![false; tile_count],
+            pawns: vec![None; tile_count],
+            items: vec![None; tile_count]
+        }
+    }
+
     pub fn new_map_buildings_outdoors(map_width: usize, map_height: usize) -> Map {
         let tile_count = map_width * map_height;
         let mut map = Map {
