@@ -99,6 +99,7 @@ fn main() -> rltk::BError {
     let _ = state.world.add_item(pos, Item::grenade());
     let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::machinegun());
     let _ = state.world.add_item(Point{x: pos.x + 2, y: pos.y}, Item::pistol());
+    let _ = state.world.add_item(Point{x: pos.x + 3, y: pos.y}, Item::rocket_launcher());
 
     state.log.entries.push("Welcome!".to_string());
  

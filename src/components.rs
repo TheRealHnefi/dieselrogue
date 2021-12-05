@@ -69,6 +69,7 @@ impl Renderable {
 pub enum Effect {
     Damage {entity_id: usize, bodypart_index: usize, raw_damage: u32},
     OpenDoor(Point),
+    DestroyWall(Point),
     Animation(Animation)
 }
 
