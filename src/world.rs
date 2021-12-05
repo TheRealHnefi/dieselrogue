@@ -61,7 +61,7 @@ impl World {
             player_id: Option::None,
             entities: vec![],
             //map: Map::new_map_rooms_and_corridors(200, 100)
-            map: Map::new_map_buildings_outdoors(200, 100)
+            map: Map::new_map_buildings_outdoors(2000, 2000)
         }
     }
 
