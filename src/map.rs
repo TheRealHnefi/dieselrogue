@@ -177,22 +177,22 @@ impl Map {
                 Side::Top => {
                     let x = rng.range(room.x1 + 1, room.x2);
                     let index = map.xy_idx(x, room.y1);
-                    map.tiles[index] = TileType::OpenDoor;
+                    map.tiles[index] = TileType::ClosedDoor;
                 },
                 Side::Bottom => {
                     let x = rng.range(room.x1 + 1, room.x2);
                     let index = map.xy_idx(x, room.y2);
-                    map.tiles[index] = TileType::OpenDoor;
+                    map.tiles[index] = TileType::ClosedDoor;
                 },
                 Side::Left => {
                     let y = rng.range(room.y1 + 1, room.y2);
                     let index = map.xy_idx(room.x1, y);
-                    map.tiles[index] = TileType::OpenDoor;
+                    map.tiles[index] = TileType::ClosedDoor;
                 },
                 Side::Right => {
                     let y = rng.range(room.y1 + 1, room.y2);
                     let index = map.xy_idx(room.x2, y);
-                    map.tiles[index] = TileType::OpenDoor;
+                    map.tiles[index] = TileType::ClosedDoor;
                 },
             }
         }

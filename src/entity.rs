@@ -432,6 +432,18 @@ impl Entity {
         result
     }
 
+    pub fn resolve_open_door(&mut self, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+        match self.intent.data {
+            IntentData::Target(pos) => {
+                return vec!(Effect::OpenDoor(pos));
+            },
+            _ => {
+                debug_assert!(false);
+                return vec!();
+            }
+        }
+    }
+
     pub fn resolve_move(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         if !self.has_ability(Ability::Move) {
             log.log(format!("{} tried to move, but couldn't", self.name));

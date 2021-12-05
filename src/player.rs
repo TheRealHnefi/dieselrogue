@@ -6,6 +6,7 @@ use crate::ability::*;
 use crate::intent::*;
 use crate::item::*;
 use crate::World;
+use crate::TileType;
 
 pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
@@ -43,6 +44,12 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
                 phase: IntentPhase::Attack,
                 data: IntentData::Target(target_pos),
                 action: Entity::resolve_melee
+            };
+        } else if world.map.tiles[index] == TileType::ClosedDoor {
+            player.intent = Intent {
+                phase: IntentPhase::Movement,
+                data: IntentData::Target(target_pos),
+                action: Entity::resolve_open_door
             };
         } else {
             player.intent = Intent {

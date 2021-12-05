@@ -50,13 +50,13 @@ fn draw_map(map: &Map, viewport: Rect, ctx: &mut Rltk, blink: bool) {
                     TileType::OpenDoor => render_open_door_tile(map, index, blink),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),
-                        color: RGB::from_f32(0.0, 1.0, 0.0),
-                        background: RGB::from_f32(0.0, 0.0, 0.0)
+                        color: rltk::RGB::named(rltk::GREEN),
+                        background: rltk::RGB::named(rltk::BLACK)
                     },
                     TileType::ClosedDoor => Renderable {
                         glyph: rltk::to_cp437('■'),
-                        color: RGB::from_f32(0.0, 1.0, 0.0),
-                        background: RGB::from_f32(0.0, 0.0, 0.0)
+                        color: rltk::RGB::named(rltk::GREEN),
+                        background: rltk::RGB::named(rltk::BLACK)
                     }
                 };
                 if !map.visible_tiles[index] {
@@ -73,7 +73,7 @@ fn render_floor_tile(map: &Map, tile_index: usize, blink: bool) -> Renderable {
         Some(pawn) => Renderable {
             glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index, blink),
             color: rltk::RGB::named(rltk::YELLOW),
-            background: RGB::from_f32(0.0, 0.0, 0.0)
+            background: rltk::RGB::named(rltk::BLACK)
         },
         None => {
             match &map.items[tile_index] {
@@ -81,7 +81,7 @@ fn render_floor_tile(map: &Map, tile_index: usize, blink: bool) -> Renderable {
                 None => Renderable {
                     glyph: rltk::to_cp437('.'),
                     color: RGB::from_f32(0.0, 0.5, 0.0),
-                    background: RGB::from_f32(0.0, 0.0, 0.0),
+                    background: rltk::RGB::named(rltk::BLACK),
                 }
             }
         }
@@ -93,15 +93,15 @@ fn render_open_door_tile(map: &Map, tile_index: usize, blink: bool) -> Renderabl
         Some(pawn) => Renderable {
             glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index, blink),
             color: rltk::RGB::named(rltk::YELLOW),
-            background: RGB::from_f32(0.0, 0.0, 0.0)
+            background: rltk::RGB::named(rltk::BLACK)
         },
         None => {
             match &map.items[tile_index] {
                 Some(item) => item.renderable,
                 None => Renderable {
-                    glyph: rltk::to_cp437(' '),
-                    color: RGB::from_f32(0.0, 0.0, 0.0),
-                    background: RGB::from_f32(0.0, 0.0, 0.0),
+                    glyph: 32,
+                    color: rltk::RGB::named(rltk::BLACK),
+                    background: rltk::RGB::named(rltk::BLACK),
                 }
             }
         }
