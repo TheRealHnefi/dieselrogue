@@ -146,7 +146,7 @@ impl Entity {
         }
     }
 
-    fn update_view(&mut self, map: &mut Map) {
+    pub fn update_view(&mut self, map: &mut Map) {
         if self.is_player() {
             for tile_pos in &self.viewshed.visible_tiles {
                 let index = map.pos_idx(*tile_pos);

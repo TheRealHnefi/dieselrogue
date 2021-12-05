@@ -54,6 +54,25 @@ impl Map {
         }
     }
 
+    pub fn get_entities_in_vicinity(&self, center: Point, radius: i32) -> Vec<usize> {
+        let min_x = max(center.x - radius, 0);
+        let max_x = min(center.x + radius, self.width as i32);
+        let min_y = max(center.y - radius, 0);
+        let max_y = min(center.y + radius, self.height as i32);
+        let mut result = vec!();
+        for x in min_x..max_x {
+            for y in min_y..max_y {
+                let index = self.xy_idx(x, y);
+                match &self.pawns[index] {
+                    Some(pawn) => result.push(pawn.entity_id),
+                    None => ()
+                }
+            }
+        }
+
+        return result;
+    }
+
     pub fn nearest_free_item_position(&self, pos: Point) -> Result<Point, GameError> {
         let mut index = self.xy_idx(pos.x, pos.y);
 

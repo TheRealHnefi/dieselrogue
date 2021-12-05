@@ -206,6 +206,7 @@ impl World {
                     let index = self.map.pos_idx(*pos);
                     if self.map.tiles[index] == TileType::ClosedDoor {
                         self.map.tiles[index] = TileType::OpenDoor;
+                        self.update_views_near_event(*pos, 10);
                     }
                 },
                 Effect::Animation(animation) => {
@@ -230,6 +231,13 @@ impl World {
 
         for (i, entity) in self.entities.iter_mut().enumerate() {
             entity.id = i;
+        }
+    }
+
+    fn update_views_near_event(&mut self, position: Point, radius: i32) {
+        let entity_ids = self.map.get_entities_in_vicinity(position, radius);
+        for id in entity_ids {
+            self.entities[id].update_view(&mut self.map);
         }
     }
 }
