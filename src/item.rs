@@ -6,6 +6,7 @@ use crate::GameLog;
 
 #[derive(Clone)]
 pub struct Item {
+    pub id: usize,
     pub renderable: Renderable,
     pub name: String,
     pub inventory_actions: Vec<ItemAction>,
@@ -31,7 +32,7 @@ pub struct ItemAction {
 }
 
 impl Item {
-    pub fn grenade() -> Self {
+    pub fn grenade(id: usize) -> Self {
         let throw_action = ItemAction {
             name: "Throw".to_string(),
             targeting: Targeting::Positional,
@@ -45,6 +46,7 @@ impl Item {
             effects: Entity::resolve_drop_item
         };
         Item {
+            id: id,
             renderable: Renderable::new_char('g'),
             name: String::from("Grenade"),
             inventory_actions: vec![throw_action, drop_action],
@@ -55,7 +57,7 @@ impl Item {
         }
     }
 
-    pub fn rocket_launcher() -> Self {
+    pub fn rocket_launcher(id: usize) -> Self {
         let equip_action = ItemAction {
             name: "Equip".to_string(),
             targeting: Targeting::None,
@@ -75,6 +77,7 @@ impl Item {
             effects: Entity::resolve_rocket_fire
         };
         Item {
+            id: id,
             renderable: Renderable::new_char('r'),
             name: String::from("Rocket launcher"),
             inventory_actions: vec![equip_action, drop_action],
@@ -85,7 +88,7 @@ impl Item {
         }
     }
 
-    pub fn pistol() -> Self {
+    pub fn pistol(id: usize) -> Self {
         let equip_action = ItemAction {
             name: "Equip".to_string(),
             targeting: Targeting::None,
@@ -105,6 +108,7 @@ impl Item {
             effects: Entity::resolve_single_fire
         };
         Item {
+            id: id,
             renderable: Renderable::new_char('p'),
             name: String::from("Pistol"),
             inventory_actions: vec![equip_action, drop_action],
@@ -115,7 +119,7 @@ impl Item {
         }
     }
 
-    pub fn machinegun() -> Self {
+    pub fn machinegun(id: usize) -> Self {
         let equip_action = ItemAction {
             name: "Equip".to_string(),
             targeting: Targeting::None,
@@ -141,6 +145,7 @@ impl Item {
             effects: Entity::resolve_burst_fire
         };
         Item {
+            id: id,
             renderable: Renderable::new_char('m'),
             name: String::from("Machinegun"),
             inventory_actions: vec![equip_action, drop_action],
@@ -153,6 +158,7 @@ impl Item {
 
     pub fn proxy(&self) -> Self {
         Item {
+            id: self.id,
             renderable: self.renderable.clone(),
             name: self.name.clone(),
             inventory_actions: vec!(),
@@ -166,7 +172,7 @@ impl Item {
 
 impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.id == other.id
     }
 }
 

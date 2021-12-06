@@ -96,10 +96,10 @@ fn main() -> rltk::BError {
         Direction::Up,
         String::from("Tank"));
 
-    let _ = state.world.add_item(pos, Item::grenade());
-    let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::machinegun());
-    let _ = state.world.add_item(Point{x: pos.x + 2, y: pos.y}, Item::pistol());
-    let _ = state.world.add_item(Point{x: pos.x + 3, y: pos.y}, Item::rocket_launcher());
+    let _ = state.world.create_grenade(pos);
+    let _ = state.world.create_machinegun(Point{x: pos.x + 1, y: pos.y});
+    let _ = state.world.create_pistol(Point{x: pos.x + 2, y: pos.y});
+    let _ = state.world.create_rocket_launcher(Point{x: pos.x + 3, y: pos.y});
 
     state.log.entries.push("Welcome!".to_string());
  

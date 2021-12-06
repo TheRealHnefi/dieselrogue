@@ -5,7 +5,8 @@ use rltk::Point;
 pub struct World {
     pub player_id: Option<usize>,
     pub entities: Vec<Entity>,
-    pub map: Map
+    pub map: Map,
+    item_count: usize
 }
 
 
@@ -57,6 +58,7 @@ impl World {
         Self {
             player_id: Option::None,
             entities: vec![],
+            item_count: 0,
             //map: Map::new_map_rooms_and_corridors(200, 100)
             map: Map::new_map_buildings_outdoors(200, 200)
             //map: Map::new_empty_map(2000, 2000)
@@ -161,10 +163,35 @@ impl World {
         }
     }
 
-    pub fn add_item(&mut self, pos: Point, item: Item) -> Result<(), GameError> {
+    pub fn create_grenade(&mut self, pos: Point) -> Result<(), GameError> {
         let actual_pos = self.map.nearest_free_item_position(pos)?;
         let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
-        self.map.items[index] = Some(item);
+        self.map.items[index] = Some(Item::grenade(self.item_count));
+        self.item_count += 1;
+        Ok(())
+    }
+
+    pub fn create_pistol(&mut self, pos: Point) -> Result<(), GameError> {
+        let actual_pos = self.map.nearest_free_item_position(pos)?;
+        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
+        self.map.items[index] = Some(Item::pistol(self.item_count));
+        self.item_count += 1;
+        Ok(())
+    }
+
+    pub fn create_machinegun(&mut self, pos: Point) -> Result<(), GameError> {
+        let actual_pos = self.map.nearest_free_item_position(pos)?;
+        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
+        self.map.items[index] = Some(Item::machinegun(self.item_count));
+        self.item_count += 1;
+        Ok(())
+    }
+
+    pub fn create_rocket_launcher(&mut self, pos: Point) -> Result<(), GameError> {
+        let actual_pos = self.map.nearest_free_item_position(pos)?;
+        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
+        self.map.items[index] = Some(Item::rocket_launcher(self.item_count));
+        self.item_count += 1;
         Ok(())
     }
 
@@ -390,8 +417,7 @@ mod tests {
         let mut world = World::new();
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
 
-        let item = Item::grenade();
-        let _ = world.add_item(pos, item);
+        let _ = world.create_grenade(pos);
 
         let index = world.map.xy_idx(pos.x, pos.y);
         assert!(world.map.items[index].is_some());
@@ -402,9 +428,8 @@ mod tests {
         let mut world = World::new();
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
 
-        let item = Item::grenade();
-        let _ = world.add_item(pos, item.clone());
-        let _ = world.add_item(pos, item);
+        let _ = world.create_grenade(pos);
+        let _ = world.create_grenade(pos);
 
         assert!(world.map.items.iter().filter(|i| i.is_some()).count() == 2);
 
