@@ -5,7 +5,7 @@ authors = ["Johan Larsson <johan.t.larsson@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-rltk = {version = "0.8.1", features = ["serde"]}
+rltk = {version = "*", features = ["serde"]}
 serde = {version = "1.0.125", features = ["derive"]}
 serde_json = "1.0.39"
-enum-iterator = "0.6.0"
+
