@@ -197,7 +197,30 @@ impl World {
 
     pub fn resolve_intent_declaration(&mut self) {
         for i in 0..self.entities.len() {
-            self.entities[i].declare_intent(&self.map);
+            match self.entities[i].driving {
+                DrivingState::Driving(_vehicle_id) => (),
+                DrivingState::DrivenBy(pilot_id) => {
+                    if i < pilot_id {
+                        let split_index = i + 1;
+                        let (e1, e2) = self.entities.split_at_mut(split_index);
+                        let pilot_ai = &mut e2[pilot_id - split_index].ai;
+                        e1[i].declare_intent_by_pilot(&self.map, pilot_ai);
+                    } else if i > pilot_id {
+                        let split_index = pilot_id + 1;
+                        let (e1, e2) = self.entities.split_at_mut(split_index);
+                        let pilot_ai = &mut e1[pilot_id].ai;
+                        e2[i - split_index].declare_intent_by_pilot(&self.map, pilot_ai);
+                    } else {
+                        assert!(false);
+                    }
+                },
+                DrivingState::Drivable => {
+                    self.entities[i].declare_intent(&self.map);
+                },
+                DrivingState::None => {
+                    self.entities[i].declare_intent(&self.map);
+                }
+            }
         }
     }
 
@@ -246,6 +269,13 @@ impl World {
                         },
                         _ => ()
                     }
+                },
+                Effect::Embark{pilot_id, vehicle_id} => {
+                    self.entities[*pilot_id].driving = DrivingState::Driving(*vehicle_id);
+                    self.entities[*vehicle_id].driving = DrivingState::DrivenBy(*pilot_id);
+                    log.log(format!("{} entered {}",
+                        self.entities[*pilot_id].name,
+                        self.entities[*vehicle_id].name));
                 },
                 Effect::Animation(animation) => {
                     animations.push(animation.clone());

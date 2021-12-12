@@ -12,7 +12,21 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
-    let mut player = &mut world.entities[world.player_id.unwrap()];
+    let mut player;
+    let driving;
+    let player_id = world.player_id.unwrap();
+
+    match world.entities[player_id].driving {
+        DrivingState::Driving(vehicle_id) => {
+            player = &mut world.entities[vehicle_id];
+            driving = true;
+        },
+        _ => {
+            player = &mut world.entities[player_id];
+            driving = false;
+        }
+    }
+
     if !player.has_ability(Ability::Move) {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not move")});
     }
@@ -35,23 +49,44 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
             data: IntentData::Direction(direction),
             action: Entity::resolve_turn
         };
-    } else {
+    } else if !driving {
         let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
-
-        if world.map.pawns[index].is_some() {
-            player.intent = Intent {
-                phase: IntentPhase::Attack,
-                data: IntentData::Target(target_pos),
-                action: Entity::resolve_melee
-            };
-        } else if world.map.tiles[index] == TileType::ClosedDoor {
-            player.intent = Intent {
-                phase: IntentPhase::Movement,
-                data: IntentData::Target(target_pos),
-                action: Entity::resolve_open_door
-            };
-        } else {
+        match &world.map.pawns[index] {
+            Some(pawn) => {
+                if pawn.driving == DrivingState::Drivable {
+                    player.intent = Intent {
+                        phase: IntentPhase::Movement,
+                        data: IntentData::Target(target_pos),
+                        action: Entity::resolve_embark
+                    };
+                } else {
+                    player.intent = Intent {
+                        phase: IntentPhase::Attack,
+                        data: IntentData::Target(target_pos),
+                        action: Entity::resolve_melee
+                    };
+                }
+            },
+            None => {
+                if world.map.tiles[index] == TileType::ClosedDoor {
+                    player.intent = Intent {
+                        phase: IntentPhase::Movement,
+                        data: IntentData::Target(target_pos),
+                        action: Entity::resolve_open_door
+                    };
+                } else {
+                    player.intent = Intent {
+                        phase: IntentPhase::Movement,
+                        data: IntentData::Target(target_pos),
+                        action: Entity::resolve_move
+                    };
+                }
+            }
+        }
+    } else {
+        let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
+        if player.check_fit(target_pos, &world.map) {
             player.intent = Intent {
                 phase: IntentPhase::Movement,
                 data: IntentData::Target(target_pos),
@@ -62,6 +97,8 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
 
     Ok(())
 }
+
+
 
 pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
