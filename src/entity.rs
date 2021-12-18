@@ -201,19 +201,20 @@ impl Entity {
 
     pub fn update_view(&mut self, map: &mut Map) {
         if self.player {
-            for tile_pos in &self.viewshed.visible_tiles {
-                let index = map.pos_idx(*tile_pos);
-                map.visible_tiles[index] = false;
-            }
+            self.set_visible_tiles(map, false);
         }
 
         self.viewshed.update(self.center(), self.body.facing, map);
 
         if self.player {
-            for tile_pos in &self.viewshed.visible_tiles {
-                let index = map.pos_idx(*tile_pos);
-                map.visible_tiles[index] = true;
-            }
+            self.set_visible_tiles(map, true);
+        }
+    }
+
+    pub fn set_visible_tiles(&self, map: &mut Map, visibility: bool) {
+        for tile_pos in &self.viewshed.visible_tiles {
+            let index = map.pos_idx(*tile_pos);
+            map.visible_tiles[index] = visibility;
         }
     }
 
