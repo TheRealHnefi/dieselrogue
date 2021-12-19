@@ -90,7 +90,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 12,
             damage: 0,
-            abilities: vec!(Ability::Move)
+            abilities: vec!(Ability::HumanMove)
         });
 
         for i in 0 .. body.item_slots.len() - 1 {
@@ -121,7 +121,7 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
-            abilities: vec!(Ability::Move)
+            abilities: vec!(Ability::VehicleMove)
         });
 
         body.parts.push(BodyPart {

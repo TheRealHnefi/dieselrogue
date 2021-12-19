@@ -20,7 +20,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         _ => false
     };
 
-    if !player.has_ability(Ability::Move) {
+    if !player.has_ability(Ability::HumanMove) && !player.has_ability(Ability::VehicleMove) {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not move")});
     }
 

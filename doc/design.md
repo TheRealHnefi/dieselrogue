@@ -4,7 +4,7 @@
 DieselRogue
 Deco-x (decodence, decoventure, decogue)
 Heavy Fuel
-
+Rogue Noir
 
 ## Elevator pitch:
 A roguelike set in a dieselpunk world where armed conflict is a constant threat.
@@ -22,10 +22,7 @@ in level layout...
 
 ## Character:
 ### Stats:
-3 base stats (but are stats even necessary?):
-* Physical - shooting, punching, taking damage, sneaking
-* Intellectual - tinkering, spotting, listening, trapping
-* Spiritual - magic, willpower, bravery
+No stats! It's just busywork to keep track of.
 
 ### Classes (pick any two?) and perk ideas:
 * Agent: Trenchcoat-wearing government operative. Specializes in ranged combat.
@@ -256,7 +253,3 @@ stop or steal the development of new weapons (airplanes? tanks? mechs? all of th
 The Castle consists of large battlements with many rooms and a central courtyard. Various towers
 are spread out over the property and bridges cross over the courtyard high above. At the very top,
 the head scientist is waiting.
-
-Once killed, the catacombs open (get key from corpse?) and out pours various occult and/or mechanical monsters.
-The protagonist has to fight through the monsters, find the laboratory in the old dungeons, and activate
-the self-destruct (or plant the bomb, whatever). Get out before she blows up!
