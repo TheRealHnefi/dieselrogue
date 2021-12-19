@@ -74,18 +74,32 @@ impl Map {
     }
 
     pub fn nearest_free_item_position(&self, pos: Point) -> Result<Point, GameError> {
-        let mut index = self.xy_idx(pos.x, pos.y);
 
         fn is_free(map: &Map, idx: usize) -> bool {
             return map.tiles[idx] == TileType::Floor && map.items[idx].is_none();
         }
 
-        if is_free(self, index) {
+        return self.find_nearest_tile(pos, 5, is_free);
+    }
+
+    pub fn nearest_free_pawn_position(&self, pos: Point) -> Result<Point, GameError> {
+
+        fn is_free(map: &Map, idx: usize) -> bool {
+            return !map.blocked_idx(idx);
+        }
+
+        return self.find_nearest_tile(pos, 5, is_free);
+    }
+
+    fn find_nearest_tile(&self, pos: Point, radius: usize, good_tile: fn (&Map, usize) -> bool) -> Result<Point, GameError> {
+        let mut index = self.xy_idx(pos.x, pos.y);
+
+        if good_tile(&self, index) {
             return Ok(pos);
         }
 
         // This should be replaced by a spiral search for efficiency. But meh.
-        for distance in 1..=5 {
+        for distance in 1..=radius as i32 {
             for dx in -distance..=distance {
                 if dx + pos.x > self.width as i32 || pos.x - dx < 0 {
                     continue;
@@ -95,7 +109,7 @@ impl Map {
                         continue;
                     }
                     index = self.xy_idx(pos.x + dx, pos.y + dy);
-                    if is_free(self, index) {
+                    if good_tile(&self, index) {
                         return Ok(Point {x: pos.x + dx, y: pos.y + dy});
                     }
                 }
@@ -104,7 +118,7 @@ impl Map {
 
         return Err(
             GameError {
-                message: String::from("Could not find open spot for item"),
+                message: String::from("Could not find open spot"),
                 error: Error::UnsolvableSituation
         });
     }

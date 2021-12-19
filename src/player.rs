@@ -15,12 +15,10 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     let player_id = world.player_id.unwrap();
     let mut player = &mut world.entities[player_id];
 
-    let driving;
-    if player_id != 0 {
-        driving = true;
-    } else {
-        driving = false;
-    }
+    let driving = match player.driving {
+        DrivingState::DrivenBy(_) => true,
+        _ => false
+    };
 
     if !player.has_ability(Ability::Move) {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not move")});
@@ -93,7 +91,31 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     Ok(())
 }
 
+pub fn disembark_player_intent(world: &mut World) -> Result<(), GameError> {
+    if world.player_id.is_none() {
+        return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
+    }
+    
+    let player_id = world.player_id.unwrap();
+    let mut player = &mut world.entities[player_id];
 
+    let driving = match player.driving {
+        DrivingState::DrivenBy(_) => true,
+        _ => false
+    };
+
+    if !driving {
+        return Err(GameError{error: Error::BadPrecondition, message: String::from("Player is not driving a vehicle")});
+    }
+
+    player.intent = Intent {
+        phase: IntentPhase::Movement,
+        data: IntentData::Void,
+        action: Entity::resolve_disembark
+    };
+
+    Ok(())
+}
 
 pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {

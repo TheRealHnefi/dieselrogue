@@ -47,6 +47,16 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 }
             },
 
+            VirtualKeyCode::D => {
+                match disembark_player_intent(&mut state.world) {
+                    Ok(_) => return RunState::Resolve(IntentPhase::Instant),
+                    Err(error) => {
+                        state.log(error.message);
+                        return RunState::AwaitingInput;
+                    }
+                }
+            },
+
             VirtualKeyCode::I => {
                 state.menu_stack.clear();
                 let maybe_menu = item_menu(&state.world);

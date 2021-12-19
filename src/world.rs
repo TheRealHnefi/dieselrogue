@@ -288,6 +288,35 @@ impl World {
                         self.entities[*vehicle_id].player = true;
                     }
                 },
+                Effect::Disembark{pilot_id, vehicle_id} => {
+                    let vehicle_center = self.entities[*vehicle_id].center();
+                    match self.map.nearest_free_pawn_position(vehicle_center) {
+                        Ok(pos) => {
+                            self.entities[*pilot_id].driving = DrivingState::None;
+                            self.entities[*vehicle_id].driving = DrivingState::Drivable;
+                            self.entities[*pilot_id].position = pos;
+                            self.entities[*pilot_id].create_pawns(&mut self.map);
+                            self.entities[*vehicle_id].create_pawns(&mut self.map);
+                            self.entities[*pilot_id].update_view(&mut self.map);
+
+                            if self.entities[*vehicle_id].id == self.player_id.unwrap() {
+                                self.entities[*vehicle_id].set_visible_tiles(&mut self.map, false);
+                                self.entities[*pilot_id].set_visible_tiles(&mut self.map, true);
+
+                                self.player_id = Some(*pilot_id);
+                                self.entities[*vehicle_id].player = false;
+                                self.entities[*pilot_id].player = true;
+                            }
+
+                            log.log(format!("{} left their vehicle",
+                                self.entities[*pilot_id].name));
+                        },
+                        Err(_) => {
+                            log.log(format!("{} tried to disembark, but there is no room",
+                                self.entities[*pilot_id].name));
+                        }
+                    }
+                },
                 Effect::Animation(animation) => {
                     animations.push(animation.clone());
                 }
