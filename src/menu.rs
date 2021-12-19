@@ -30,7 +30,7 @@ pub trait MenuRow {
 
 pub enum MenuAction {
     Simple(fn (&mut State) -> RunState),
-    WithItemAction(Item, ItemAction, fn (Item, ItemAction, &mut State) -> RunState),
+    WithItemAction(Item, IntentAction, fn (Item, IntentAction, &mut State) -> RunState),
     WithIntent(Intent, fn (Intent, &mut State) -> RunState),
     WithItem(Item, fn (Item, &mut State) -> RunState),
     WithTargetedBodypartIndex(usize, fn (usize, &mut State) -> RunState)
@@ -57,7 +57,7 @@ pub struct ItemRow {
 pub struct ItemActionRow {
     pub text: String,
     pub item: Item,
-    pub action: ItemAction
+    pub action: IntentAction
 }
 
 pub struct ItemSlotRow {
@@ -68,7 +68,7 @@ pub struct ItemSlotRow {
 pub struct AbilityRow {
     pub text: String,
     pub item: Item,
-    pub action: ItemAction
+    pub action: IntentAction
 }
 
 pub struct TargetingRow {
@@ -461,7 +461,7 @@ fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunSt
     }
 }
 
-fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
+fn action_target_item_action(item: Item, item_action: IntentAction, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
             state.cursor_pos = player.position;
@@ -473,7 +473,7 @@ fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut St
     RunState::AwaitingPositionalTargetingInput
 }
 
-fn action_target_equipment_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
+fn action_target_equipment_action(item: Item, item_action: IntentAction, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
             state.cursor_pos = player.position;

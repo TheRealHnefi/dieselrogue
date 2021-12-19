@@ -1,45 +1,28 @@
 use crate::components::*;
 use crate::entity::Entity;
-use crate::map::Map;
 use crate::intent::*;
-use crate::GameLog;
 
 #[derive(Clone)]
 pub struct Item {
     pub id: usize,
     pub renderable: Renderable,
     pub name: String,
-    pub inventory_actions: Vec<ItemAction>,
-    pub equip_actions: Vec<ItemAction>,
+    pub inventory_actions: Vec<IntentAction>,
+    pub equip_actions: Vec<IntentAction>,
     pub equip_slots: Vec<SlotType>,
     pub kind: ItemKind,
     pub proxy: bool
 }
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum Targeting {
-    None,
-    Positional,
-    Detailed
-}
-
-#[derive(Clone)]
-pub struct ItemAction {
-    pub name: String,
-    pub targeting: Targeting,
-    pub phase: IntentPhase,
-    pub effects: fn (self_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>
-}
-
 impl Item {
     pub fn grenade(id: usize) -> Self {
-        let throw_action = ItemAction {
+        let throw_action = IntentAction {
             name: "Throw".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
             effects: Entity::resolve_throw_grenade
         };
-        let drop_action = ItemAction {
+        let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
@@ -58,19 +41,19 @@ impl Item {
     }
 
     pub fn rocket_launcher(id: usize) -> Self {
-        let equip_action = ItemAction {
+        let equip_action = IntentAction {
             name: "Equip".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_equip_item
         };
-        let drop_action = ItemAction {
+        let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_drop_item
         };
-        let fire_action = ItemAction {
+        let fire_action = IntentAction {
             name: "Fire".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
@@ -89,19 +72,19 @@ impl Item {
     }
 
     pub fn pistol(id: usize) -> Self {
-        let equip_action = ItemAction {
+        let equip_action = IntentAction {
             name: "Equip".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_equip_item
         };
-        let drop_action = ItemAction {
+        let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_drop_item
         };
-        let fire_action = ItemAction {
+        let fire_action = IntentAction {
             name: "Fire".to_string(),
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
@@ -120,25 +103,25 @@ impl Item {
     }
 
     pub fn machinegun(id: usize) -> Self {
-        let equip_action = ItemAction {
+        let equip_action = IntentAction {
             name: "Equip".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_equip_item
         };
-        let drop_action = ItemAction {
+        let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_drop_item
         };
-        let fire_action = ItemAction {
+        let fire_action = IntentAction {
             name: "Fire shot".to_string(),
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
             effects: Entity::resolve_single_fire
         };
-        let fire_burst_action = ItemAction {
+        let fire_burst_action = IntentAction {
             name: "Fire burst".to_string(),
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
