@@ -68,7 +68,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
             damage: 0,
-            abilities: vec!(Ability::PickUp)
+            abilities: vec!(Ability::PickUp, Ability::Embark)
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::SecondaryHand, item: None});
@@ -79,7 +79,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
             damage: 0,
-            abilities: vec!(Ability::PickUp)
+            abilities: vec!(Ability::PickUp, Ability::Embark)
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Legwear, item: None});
