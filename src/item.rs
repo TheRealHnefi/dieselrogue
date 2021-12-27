@@ -53,6 +53,12 @@ impl Item {
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_drop_item
         };
+        let aim_action = IntentAction {
+            name: "Aim at position".to_string(),
+            targeting: Targeting::Positional,
+            phase: IntentPhase::Attack,
+            effects: Entity::resolve_aim
+        };
         let fire_action = IntentAction {
             name: "Fire".to_string(),
             targeting: Targeting::Positional,
@@ -64,7 +70,7 @@ impl Item {
             renderable: Renderable::new_char('r'),
             name: String::from("Rocket launcher"),
             inventory_actions: vec![equip_action, drop_action],
-            equip_actions: vec!(fire_action),
+            equip_actions: vec!(aim_action, fire_action),
             equip_slots: vec!(SlotType::PrimaryHand, SlotType::SecondaryHand),
             kind: ItemKind::Firearm {ammo: 1, max_ammo: 1, damage: 500},
             proxy: false
@@ -84,6 +90,12 @@ impl Item {
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_drop_item
         };
+        let aim_action = IntentAction {
+            name: "Aim at position".to_string(),
+            targeting: Targeting::Positional,
+            phase: IntentPhase::Attack,
+            effects: Entity::resolve_aim
+        };
         let fire_action = IntentAction {
             name: "Fire".to_string(),
             targeting: Targeting::Detailed,
@@ -95,7 +107,7 @@ impl Item {
             renderable: Renderable::new_char('p'),
             name: String::from("Pistol"),
             inventory_actions: vec![equip_action, drop_action],
-            equip_actions: vec!(fire_action),
+            equip_actions: vec!(aim_action, fire_action),
             equip_slots: vec!(SlotType::PrimaryHand),
             kind: ItemKind::Firearm {ammo: 5, max_ammo: 5, damage: 5},
             proxy: false
@@ -115,6 +127,12 @@ impl Item {
             phase: IntentPhase::Inventory,
             effects: Entity::resolve_drop_item
         };
+        let aim_action = IntentAction {
+            name: "Aim at position".to_string(),
+            targeting: Targeting::Positional,
+            phase: IntentPhase::Attack,
+            effects: Entity::resolve_aim
+        };
         let fire_action = IntentAction {
             name: "Fire shot".to_string(),
             targeting: Targeting::Detailed,
@@ -132,7 +150,7 @@ impl Item {
             renderable: Renderable::new_char('m'),
             name: String::from("Machinegun"),
             inventory_actions: vec![equip_action, drop_action],
-            equip_actions: vec!(fire_action, fire_burst_action),
+            equip_actions: vec!(aim_action, fire_action, fire_burst_action),
             equip_slots: vec!(SlotType::PrimaryHand, SlotType::SecondaryHand),
             kind: ItemKind::Firearm {ammo: 30, max_ammo: 30, damage: 5},
             proxy: false

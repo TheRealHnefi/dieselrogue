@@ -10,7 +10,8 @@ pub struct Body {
     pub inventory: Vec<Item>,
     pub parts: Vec<BodyPart>,
     pub item_slots: Vec<ItemSlot>,
-    pub abilities: HashSet<Ability>
+    pub abilities: HashSet<Ability>,
+    pub status_effects: HashSet<StatusEffect>
 }
 
 #[derive(Clone)]
@@ -37,7 +38,8 @@ impl Body {
             inventory: vec!(),
             parts: vec!(),
             item_slots: vec!(),
-            abilities: HashSet::new()
+            abilities: HashSet::new(),
+            status_effects: HashSet::new(),
         };
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
@@ -112,7 +114,8 @@ impl Body {
             inventory: vec!(),
             parts: vec!(),
             item_slots: vec!(),
-            abilities: HashSet::new()
+            abilities: HashSet::new(),
+            status_effects: HashSet::new(),
         };
 
         body.parts.push(BodyPart {
@@ -231,6 +234,14 @@ impl Body {
 
     pub fn has_ability(&self, ability: Ability) -> bool {
         self.abilities.contains(&ability)
+    }
+
+    pub fn apply_status_effect(&mut self, status: &StatusEffect) {
+        self.status_effects.insert(status.clone());
+    }
+
+    pub fn remove_status_effect(&mut self, status: &StatusEffect) {
+        self.status_effects.remove(status);
     }
 
     fn clear_slot(&mut self, slot: SlotType) {

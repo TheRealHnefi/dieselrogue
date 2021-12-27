@@ -1,4 +1,5 @@
 use rltk::Point;
+use std::hash::{Hash, Hasher};
 use crate::Animation;
 
 #[derive (PartialEq, Eq, Clone, Copy)]
@@ -72,8 +73,41 @@ pub enum Effect {
     DestroyWall(Point),
     Animation(Animation),
     Embark{pilot_id: usize, vehicle_id: usize},
-    Disembark{pilot_id: usize, vehicle_id: usize}
+    Disembark{pilot_id: usize, vehicle_id: usize},
+    ApplyStatus{target_id: usize, status: StatusEffect}
 }
+
+// Status Effects are considered Eq if they have the same enum type, even if the value is
+// different. This allows for storage of a particular kind of status effect in a hashmap with
+// pretty quick lookup without a bunch of extra logic to avoid duplicates.
+// Since the enum is a closed set, we simply make the hash an increasing integer via the to_index
+// function. Equivalence testing uses the same function, ensuring coherence between Hash and Eq.
+#[derive(Clone)]
+pub enum StatusEffect {
+    AimingAtGround(Point)
+}
+
+impl StatusEffect {
+    fn to_index(&self) -> usize {
+        match self {
+            StatusEffect::AimingAtGround(_) => 0
+        }
+    }
+}
+
+impl Hash for StatusEffect {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_usize(self.to_index());
+    }
+}
+
+impl PartialEq for StatusEffect {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_index() == other.to_index()
+    }
+}
+
+impl Eq for StatusEffect {}
 
 #[derive (PartialEq, Eq, Copy, Clone)]
 pub enum SlotType {
@@ -86,7 +120,6 @@ pub enum SlotType {
     LeftArmwear,
     RightArmwear
 }
-
 
 #[derive(Clone)]
 pub enum ItemKind {

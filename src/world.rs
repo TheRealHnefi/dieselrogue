@@ -201,6 +201,7 @@ impl World {
             match self.entities[i].driving {
                 DrivingState::Driving(_vehicle_id) => (),
                 DrivingState::DrivenBy(pilot_id) => {
+                    // TODO: This could be made simpler if I split at the higher ID instead...
                     if i < pilot_id {
                         let split_index = i + 1;
                         let (e1, e2) = self.entities.split_at_mut(split_index);
@@ -319,12 +320,21 @@ impl World {
                 },
                 Effect::Animation(animation) => {
                     animations.push(animation.clone());
+                },
+                Effect::ApplyStatus{target_id, status} => {
+                    self.entities[*target_id].apply_status_effect(status);
                 }
             }
         }
 
         self.post_resolve(deathlist);
         return animations;
+    }
+
+    pub fn resolve_status_effects(&mut self) {
+        for entity in &mut self.entities {
+            entity.resolve_status_effects();
+        }
     }
 
     fn post_resolve(&mut self, deathlist: Vec<usize>) {

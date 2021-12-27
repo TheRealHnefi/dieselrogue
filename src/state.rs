@@ -20,7 +20,8 @@ pub enum RunState {
     AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
     Resolve(IntentPhase),
-    RenderAnimations(IntentPhase)
+    RenderAnimations(IntentPhase),
+    ResolveStatusEffects
 }
 
 pub struct State {
@@ -94,6 +95,9 @@ impl GameState for State {
             },
             RunState::RenderAnimations(phase) => {
                 self.animate(phase, monotime, context);
+            },
+            RunState::ResolveStatusEffects => {
+                self.resolve_status_effects();
             }
         }
  
@@ -151,7 +155,7 @@ impl State {
         } else {
             match phase.next() {
                 Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
-                None => self.run_state = RunState::DeclareIntent
+                None => self.run_state = RunState::ResolveStatusEffects
             }
         }
     }
@@ -161,8 +165,14 @@ impl State {
         if animation_done {
             match phase.next() {
                 Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
-                None => self.run_state = RunState::DeclareIntent
+                None => self.run_state = RunState::ResolveStatusEffects
             }
         }
+    }
+
+    fn resolve_status_effects(&mut self) {
+        self.world.resolve_status_effects();
+
+        self.run_state = RunState::DeclareIntent;
     }
 }
