@@ -220,7 +220,7 @@ fn action_open_item_menu(state: &mut State) -> RunState {
 }
 
 fn action_show_inventory_item_menu(item: Item, state: &mut State) -> RunState {
-    let menu = inventory_action_menu(item);
+    let menu = inventory_action_menu(item, state);
     state.menu_stack.push(Box::new(menu));
     return RunState::AwaitingMenuInput;
 }
@@ -272,14 +272,17 @@ pub fn item_menu(world: &World) -> Option<MenuPanel<ItemRow>> {
     })
 }
 
-pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
+pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionRow> {
     let mut action_rows = vec!();
+    let player = state.world.get_player().unwrap();
     for inventory_action in &item.inventory_actions {
-        action_rows.push(ItemActionRow {
-            action: inventory_action.clone(),
-            item: item.clone(),
-            text: inventory_action.name.clone()
-        });
+        if (inventory_action.precondition)(player, &state.world.map) {
+            action_rows.push(ItemActionRow {
+                action: inventory_action.clone(),
+                item: item.clone(),
+                text: inventory_action.name.clone()
+            });
+        }
     }
 
     MenuPanel {
@@ -300,10 +303,13 @@ pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
         match &slot.item {
             Some(item) => {
                 for action in &item.equip_actions {
-                    rows.push(AbilityRow {  text: format!("{}: {}", item.name, action.name),
-                                            item: item.clone(),
-                                            action: action.clone() });
-                    no_selectable_rows = false;
+                    if (action.precondition)(player, &world.map) {
+                        rows.push(AbilityRow {
+                            text: format!("{}: {}", item.name, action.name),
+                            item: item.clone(),
+                            action: action.clone() });
+                        no_selectable_rows = false;
+                    }
                 }
             },
             None => ()

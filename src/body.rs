@@ -244,6 +244,10 @@ impl Body {
         self.status_effects.remove(status);
     }
 
+    pub fn get_status_effect(&self, status: &StatusEffect) -> Option<&StatusEffect> {
+        self.status_effects.get(status)
+    }
+
     fn clear_slot(&mut self, slot: SlotType) {
         for self_slot in &mut self.item_slots {
             if self_slot.slot_type == slot {

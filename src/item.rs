@@ -1,5 +1,7 @@
+use rltk::Point;
 use crate::components::*;
 use crate::entity::Entity;
+use crate::Map;
 use crate::intent::*;
 
 #[derive(Clone)]
@@ -20,12 +22,14 @@ impl Item {
             name: "Throw".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
+            precondition: precondition_ok,
             effects: Entity::resolve_throw_grenade
         };
         let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
             effects: Entity::resolve_drop_item
         };
         Item {
@@ -45,24 +49,28 @@ impl Item {
             name: "Equip".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
             effects: Entity::resolve_equip_item
         };
         let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
             effects: Entity::resolve_drop_item
         };
         let aim_action = IntentAction {
             name: "Aim at position".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
+            precondition: precondition_ok,
             effects: Entity::resolve_aim
         };
         let fire_action = IntentAction {
             name: "Fire".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
+            precondition: precondition_is_aiming,
             effects: Entity::resolve_rocket_fire
         };
         Item {
@@ -82,24 +90,28 @@ impl Item {
             name: "Equip".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
             effects: Entity::resolve_equip_item
         };
         let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
             effects: Entity::resolve_drop_item
         };
         let aim_action = IntentAction {
             name: "Aim at position".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
+            precondition: precondition_ok,
             effects: Entity::resolve_aim
         };
         let fire_action = IntentAction {
             name: "Fire".to_string(),
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
+            precondition: precondition_is_aiming,
             effects: Entity::resolve_single_fire
         };
         Item {
@@ -119,30 +131,35 @@ impl Item {
             name: "Equip".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
             effects: Entity::resolve_equip_item
         };
         let drop_action = IntentAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
             effects: Entity::resolve_drop_item
         };
         let aim_action = IntentAction {
             name: "Aim at position".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
+            precondition: precondition_ok,
             effects: Entity::resolve_aim
         };
         let fire_action = IntentAction {
             name: "Fire shot".to_string(),
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
+            precondition: precondition_is_aiming,
             effects: Entity::resolve_single_fire
         };
         let fire_burst_action = IntentAction {
             name: "Fire burst".to_string(),
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
+            precondition: precondition_is_aiming,
             effects: Entity::resolve_burst_fire
         };
         Item {
@@ -177,3 +194,10 @@ impl PartialEq for Item {
     }
 }
 
+pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map) -> bool {
+    let aiming = self_ref.body.get_status_effect(&StatusEffect::AimingAtGround(Point {x: 0, y: 0}));
+    match aiming {
+        Some(_) => true,
+        None => false
+    }
+}
