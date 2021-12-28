@@ -248,9 +248,25 @@ All actions are one of the following categories:
 ## Scenario:
 World is 1950's, parallel earth.
 
+### Mission option 1:
 Break into the military development base, filled with guards and other personnel. Objective is to
 stop or steal the development of new weapons (airplanes? tanks? mechs? all of the above?).
 
-The Castle consists of large battlements with many rooms and a central courtyard. Various towers
-are spread out over the property and bridges cross over the courtyard high above. At the very top,
+The Castle consists of large battlements with many rooms and a central courtyard. In the middle,
 the head scientist is waiting.
+
+### Mission option 2:
+Break out of the prison by first getting out of your cell. There are guards everywhere and you need
+to explore to find the tools necessary to escape.
+
+You start in the middle of the map, which is made up by many blocks of buildings. You escape by
+opening one of locked gates at the edges of the compound.
+
+### Map:
+1000x1000 in size, made up up 100 100*100 blocks. Each block has its own layout logic - some blocks
+are prison complexes, some are huge singular buildings such as hangars, some are open areas for
+target practice, some are filled with many small buildings etc. Some blocks have open edges, some
+are walled in.
+
+Some blocks may form large roads through the map. This metalayer of organization may be added later,
+but it's possible this one floor layout will work regardless.

@@ -54,14 +54,66 @@ World.cleanup(); // Delete dead entries
 */
 
 impl World {
-    pub fn new() -> Self {
+    /// Create new world.
+    /// # Arguments
+    /// * `size` - Number of blocks that make up one size of the map.
+    pub fn new(size: usize) -> Self {
+        let mut world = World {
+            player_id: Option::None,
+            entities: vec![],
+            item_count: 0,
+            map: Map::new_game_map(size)
+        };
+
+        let pos = Point {x: (world.map.width / 2) as i32, y: (world.map.height / 2) as i32};
+        let _result = world.create_player(pos,
+            Direction::Up,
+            String::from("Player"));
+
+        let _result = world.create_tank(Point {x: pos.x, y: pos.y - 4},
+            Direction::Up,
+            String::from("Tank"));
+
+        let _ = world.create_grenade(pos);
+        let _ = world.create_machinegun(Point{x: pos.x + 1, y: pos.y});
+        let _ = world.create_pistol(Point{x: pos.x + 2, y: pos.y});
+        let _ = world.create_rocket_launcher(Point{x: pos.x + 3, y: pos.y});
+
+        return world;
+    }
+
+    /// Create new world for performance testing.
+    pub fn new_performance_test() -> Self {
+        let mut world = World {
+            player_id: Option::None,
+            entities: vec![],
+            item_count: 0,
+            map: Map::new_game_map(10)
+        };
+
+        let pos = Point {x: 0, y: 0};
+        let _ = world.create_player(pos,
+            Direction::Up,
+            String::from("Player"));
+
+        // As of 28/12/2021, 1000 rotating zombies has acceptable performance in release mode, but more optimiziation
+        // would be good. Typical tick duration is ~88 ms.
+        for x in 0..100 {
+            for y in 1..10 {
+                let _ = world.create_zombie_goon(Point {x: pos.x + x, y: pos.y+y}, Direction::Up, String::from("Zombie"));
+            }
+        }
+
+        return world;
+    }
+
+    /// Create new world for testing purposes.
+    pub fn new_test() -> Self {
         Self {
             player_id: Option::None,
             entities: vec![],
             item_count: 0,
-            //map: Map::new_map_rooms_and_corridors(200, 100)
-            map: Map::new_map_buildings_outdoors(200, 200)
-            //map: Map::new_empty_map(2000, 2000)
+            map: Map::new_map_buildings_outdoors(100, 100)
         }
     }
 
@@ -89,7 +141,7 @@ impl World {
         Ok(())
     }
 
-    pub fn create_entity(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
+    pub fn create_zombie_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         if self.map.blocked(pos.x, pos.y) {
             return Err(GameError {
                 error: Error::BadPrecondition,
@@ -97,7 +149,8 @@ impl World {
             });
         }
 
-        let entity = Entity::new_human(self.entities.len(), pos, facing, name);
+        let mut entity = Entity::new_human(self.entities.len(), pos, facing, name);
+        entity.ai = AI::Rotator;
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 
@@ -371,7 +424,7 @@ mod tests {
 
     #[test]
     fn create_player() {
-        let mut world = World::new();
+        let mut world = World::new_test();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Direction::Up;
@@ -387,7 +440,7 @@ mod tests {
 
     #[test]
     fn create_two_players_fails() {
-        let mut world = World::new();
+        let mut world = World::new_test();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Direction::Up;
@@ -404,12 +457,12 @@ mod tests {
 
     #[test]
     fn create_entity() {
-        let mut world = World::new();
+        let mut world = World::new_test();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Direction::Up;
         let name = "Entity";
-        let result = world.create_entity(pos, facing, String::from(name));
+        let result = world.create_zombie_goon(pos, facing, String::from(name));
 
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
@@ -419,16 +472,16 @@ mod tests {
 
     #[test]
     fn create_two_entities() {
-        let mut world = World::new();
+        let mut world = World::new_test();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Direction::Up;
         let name = "Entity";
-        let result1 = world.create_entity(pos, facing, String::from(name));
+        let result1 = world.create_zombie_goon(pos, facing, String::from(name));
 
         let pos2 = Point {x: pos.x + 1, y: pos.y + 1};
         let name2 = "Entity2";
-        let result2 = world.create_entity(pos2, facing, String::from(name2));
+        let result2 = world.create_zombie_goon(pos2, facing, String::from(name2));
 
         assert!(result1.is_ok());
         assert!(result2.is_ok());
@@ -441,16 +494,16 @@ mod tests {
 
     #[test]
     fn create_two_entities_on_same_pos_fails() {
-        let mut world = World::new();
+        let mut world = World::new_test();
 
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Direction::Up;
         let name = "Entity";
-        let result1 = world.create_entity(pos, facing, String::from(name));
+        let result1 = world.create_zombie_goon(pos, facing, String::from(name));
 
         let pos2 = pos;
         let name2 = "Entity2";
-        let result2 = world.create_entity(pos2, facing, String::from(name2));
+        let result2 = world.create_zombie_goon(pos2, facing, String::from(name2));
 
         assert!(result1.is_ok());
         assert!(result2.is_err());
@@ -462,13 +515,13 @@ mod tests {
     #[test]
     fn deathlisted_entities_die_others_reordered() {
         let number_of_entities:usize = 5;
-        let mut world = World::new();
+        let mut world = World::new_test();
 
         // Create a bunch of entities, named after their id
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Direction::Up;
         for i in 0..number_of_entities {
-            assert!(world.create_entity(Point{x: pos.x+i as i32, y: pos.y}, facing, format!("{}", i)).is_ok());
+            assert!(world.create_zombie_goon(Point{x: pos.x+i as i32, y: pos.y}, facing, format!("{}", i)).is_ok());
         }
         // doom a few
         let deathlist: Vec<usize> = vec![1,3,4];
@@ -494,7 +547,7 @@ mod tests {
 
     #[test]
     fn add_item_to_floor_works() {
-        let mut world = World::new();
+        let mut world = World::new_test();
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
 
         let _ = world.create_grenade(pos);
@@ -505,7 +558,7 @@ mod tests {
 
     #[test]
     fn add_items_on_top_of_eachother_pushes_one_aside() {
-        let mut world = World::new();
+        let mut world = World::new_test();
         let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
 
         let _ = world.create_grenade(pos);

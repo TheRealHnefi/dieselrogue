@@ -5,6 +5,8 @@ use crate::entity::Pawn;
 use crate::item::Item;
 use super::{GameError, Error};
 
+const BLOCK_SIZE: usize = 100;
+
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
     Wall,
@@ -148,6 +150,22 @@ impl Map {
  *  create room cluster along corridor
  *  repeat
  */
+    pub fn new_game_map(size_in_blocks: usize) -> Map {
+        let map_width = size_in_blocks * BLOCK_SIZE;
+        let map_height = size_in_blocks * BLOCK_SIZE;
+        let tile_count = map_width * map_height;
+        Map {
+            tiles: vec![TileType::Floor; tile_count],
+            rooms: Vec::new(),
+            width: map_width,
+            height: map_height,
+            revealed_tiles: vec![true; tile_count],
+            visible_tiles: vec![false; tile_count],
+            pawns: vec![None; tile_count],
+            items: vec![None; tile_count]
+        }
+    }
+
     pub fn new_empty_map(map_width: usize, map_height: usize) -> Map {
         let tile_count = map_width * map_height;
         Map {

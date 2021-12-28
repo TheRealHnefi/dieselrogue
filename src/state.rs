@@ -42,12 +42,32 @@ pub struct State {
 }
 
 impl State {
-    pub fn new() -> Self {
+    /// Create new game state.
+    /// # Arguments
+    /// * `size` - Number of blocks that make up one size of the map.
+    pub fn new_game_state(size: usize) -> Self {
         Self {
             run_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
-            world: World::new(),
+            world: World::new(size),
+            animation_system: AnimationSystem::new(),
+            menu_stack: vec![],
+            action_being_used: None,
+            action_item: None,
+            action_slot: None,
+            last_tick: Instant::now(),
+            start_tick: Instant::now()
+        }
+    }
+
+    /// Create new game state for performance testing.
+    pub fn new_performance_test() -> Self {
+        Self {
+            run_state: RunState::AwaitingInput,
+            cursor_pos: Point {x: 0, y:0},
+            log: GameLog {entries: vec![]},
+            world: World::new_performance_test(),
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             action_being_used: None,
