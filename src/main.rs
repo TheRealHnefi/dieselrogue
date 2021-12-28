@@ -55,7 +55,7 @@ fn main() -> rltk::BError {
     
     context.set_active_font(1, true);
 
-    let mut state = State::new_game_state(10);
+    let mut state = State::new_game_state(9);
     //let mut state = State::new_performance_test();
 
     state.log.entries.push("Welcome!".to_string());
