@@ -115,7 +115,7 @@ impl World {
             player_id: Option::None,
             entities: vec![],
             item_count: 0,
-            map: Map::new_map_buildings_outdoors(100, 100)
+            map: Map::new_empty_map(100, 100)
         }
     }
 
@@ -428,7 +428,7 @@ mod tests {
     fn create_player() {
         let mut world = World::new_test();
 
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         let name = "Player";
         let result = world.create_player(pos, facing, String::from(name));
@@ -444,7 +444,7 @@ mod tests {
     fn create_two_players_fails() {
         let mut world = World::new_test();
 
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         let name = "Player";
         let _res = world.create_player(pos, facing, String::from(name));
@@ -461,7 +461,7 @@ mod tests {
     fn create_entity() {
         let mut world = World::new_test();
 
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         let name = "Entity";
         let result = world.create_zombie_goon(pos, facing, String::from(name));
@@ -476,7 +476,7 @@ mod tests {
     fn create_two_entities() {
         let mut world = World::new_test();
 
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         let name = "Entity";
         let result1 = world.create_zombie_goon(pos, facing, String::from(name));
@@ -498,7 +498,7 @@ mod tests {
     fn create_two_entities_on_same_pos_fails() {
         let mut world = World::new_test();
 
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         let name = "Entity";
         let result1 = world.create_zombie_goon(pos, facing, String::from(name));
@@ -520,7 +520,7 @@ mod tests {
         let mut world = World::new_test();
 
         // Create a bunch of entities, named after their id
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         for i in 0..number_of_entities {
             assert!(world.create_zombie_goon(Point{x: pos.x+i as i32, y: pos.y}, facing, format!("{}", i)).is_ok());
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     fn add_item_to_floor_works() {
         let mut world = World::new_test();
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 0, y: 0};
 
         let _ = world.create_grenade(pos);
 
@@ -561,7 +561,7 @@ mod tests {
     #[test]
     fn add_items_on_top_of_eachother_pushes_one_aside() {
         let mut world = World::new_test();
-        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let pos = Point {x: 1, y: 1};
 
         let _ = world.create_grenade(pos);
         let _ = world.create_grenade(pos);
