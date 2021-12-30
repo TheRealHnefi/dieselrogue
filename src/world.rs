@@ -550,7 +550,7 @@ mod tests {
     #[test]
     fn add_item_to_floor_works() {
         let mut world = World::new_test();
-        let pos = Point {x: 0, y: 0};
+        let pos = Point {x: 1, y: 1};
 
         let _ = world.create_grenade(pos);
 
@@ -570,7 +570,7 @@ mod tests {
 
         for (index, item) in world.map.items.iter().enumerate() {
             if item.is_some() {
-                assert!(world.map.tiles[index] == TileType::Floor);
+                assert!(world.map.tiles[index] == TileType::Ground);
             }
         }
     }

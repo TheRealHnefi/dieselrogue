@@ -1,9 +1,22 @@
 # Backlog
 
+* Doors
+ * Multi-tile
+ * Unlockable
+ * Closable
+* Destructible walls and doors
 * Map building
+ * Prisons
+ * Barracks
+ * Hangars
+ * Armories
+ * Firing ranges
+ * Roads
+ * Single-building maze blocks
+ * Gate blocks
+ * Metalayer - paths, locked access, etc
 * Armor system
 * Add a few non-item abilities
-* Lockable doors
 * Noise (remember, only the noisiest noise is heard by most characters)
 * Destroyable walls
 * Aiming:
