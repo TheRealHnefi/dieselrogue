@@ -150,6 +150,28 @@ impl Body {
         return body;
     }
 
+    pub fn door_body(direction: Direction) -> Self {
+        let mut body = Body {
+            facing: direction,
+            inventory: vec!(),
+            parts: vec!(),
+            item_slots: vec!(),
+            abilities: HashSet::new(),
+            status_effects: HashSet::new(),
+        };
+
+        body.parts.push(BodyPart {
+            name: "Door".to_string(),
+            vital: true,
+            slot_index: vec!(),
+            max_damage: 100,
+            damage: 0,
+            abilities: vec!()
+        });
+
+        return body;
+    }
+
     pub fn can_equip(&self, item: Item) -> bool {
         let mut unsatisfied_slots = item.equip_slots.len();
         for item_slot in item.equip_slots {

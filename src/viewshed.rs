@@ -9,9 +9,9 @@ pub struct Viewshed {
 }
 
 impl Viewshed {
-    pub fn new() -> Self {
+    pub fn new(range: u32) -> Self {
         Self {
-            range: 20,
+            range: range as i32,
             visible_tiles: vec!()
         }
     }

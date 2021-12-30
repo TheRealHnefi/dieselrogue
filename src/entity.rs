@@ -20,13 +20,21 @@ pub enum DrivingState {
     Drivable
 }
 
+#[derive(PartialEq, Clone)]
+pub enum EntityKind {
+    Player,
+    Actor,
+    Door
+}
+
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
     pub id: usize,
-    pub player: bool,
+    pub kind: EntityKind,
     pub driving: DrivingState,
     pub sprite: Sprite,
-    pub size: u32,
+    pub size_x: u32,
+    pub size_y: u32,
     pub position: Point,
     pub name: String,
     pub intent: Intent,
@@ -39,15 +47,16 @@ impl Entity {
     pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
-            player: false,
+            kind: EntityKind::Actor,
             driving: DrivingState::None,
             sprite: Sprite::Human,
-            size: 1,
+            size_x: 1,
+            size_y: 1,
             position: pos,
             name: name,
             intent: idle_intent(),
             body: Body::human_body(facing),
-            viewshed: Viewshed::new(),
+            viewshed: Viewshed::new(20),
             ai: AI::None
         }
     }
@@ -55,15 +64,16 @@ impl Entity {
     pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Self {
         Self {
             id: id,
-            player: false,
+            kind: EntityKind::Actor,
             driving: DrivingState::None,
             sprite: Sprite::Human,
-            size: 1,
+            size_x: 1,
+            size_y: 1,
             position: pos,
             name: name,
             intent: idle_intent(),
             body: Body::human_body(facing),
-            viewshed: Viewshed::new(),
+            viewshed: Viewshed::new(20),
             ai: AI::Patrolling(PatrollingAI::new(waypoints))
         }
     }
@@ -71,22 +81,53 @@ impl Entity {
     pub fn new_tank(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
-            player: false,
+            kind: EntityKind::Actor,
             driving: DrivingState::Drivable,
             sprite: Sprite::Tank,
-            size: 3,
+            size_x: 3,
+            size_y: 3,
             position: pos,
             name: name,
             intent: idle_intent(),
             body: Body::tank_body(facing),
-            viewshed: Viewshed::new(),
+            viewshed: Viewshed::new(20),
             ai: AI::Rotator
         }
     }
 
+    pub fn new_door(id: usize, pos: Point, direction: Direction, length: u32) -> Self {
+        let mut size_x = 1;
+        let mut size_y = 1;
+
+        if length > 1 {
+            match direction {
+                Direction::Up => size_y = length,
+                Direction::Down => size_y = length,
+                Direction::Left => size_x = length,
+                Direction::Right => size_x = length,
+                _ => assert!(false, "Illegal door orientation")
+            }
+        }
+
+        Self {
+            id: id,
+            kind: EntityKind::Door,
+            driving: DrivingState::None,
+            sprite: Sprite::Door,
+            size_x: size_x,
+            size_y: size_y,
+            position: pos,
+            name: "Door".to_string(),
+            intent: idle_intent(),
+            body: Body::door_body(direction),
+            viewshed: Viewshed::new(0),
+            ai: AI::None
+        }
+    }
+
     pub fn check_fit(&self, pos: Point, map: &Map) -> bool {
-        for x in 0..self.size {
-            for y in 0..self.size {
+        for x in 0..self.size_x {
+            for y in 0..self.size_y {
                 let index = map.xy_idx(pos.x + x as i32, pos.y + y as i32);
                 match &map.pawns[index] {
                     Some(pawn) => {
@@ -97,10 +138,9 @@ impl Entity {
                     None => {
                         match map.tiles[index] {
                             TileType::Wall => return false,
-                            TileType::ClosedDoor => return false,
+                            TileType::Doorway => (),
                             TileType::Floor => (),
                             TileType::Ground => (),
-                            TileType::OpenDoor => ()
                         }
                     }
                 }
@@ -111,14 +151,15 @@ impl Entity {
     }
 
     pub fn create_pawns(&self, map: &mut Map) {
-        for x in 0..self.size {
-            for y in 0..self.size {
+        for x in 0..self.size_x {
+            for y in 0..self.size_y {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = Some(Pawn {
                     entity_id: self.id,
+                    kind: self.kind.clone(),
                     driving: self.driving.clone(),
                     sprite: self.sprite.clone(),
-                    sprite_index: x + y * self.size,
+                    sprite_index: x + y * self.size_x,
                     name: self.name.clone(),
                     intent: self.intent.clone(),
                     body: self.body.clone()
@@ -128,8 +169,8 @@ impl Entity {
     }
 
     pub fn clear_pawns(&self, map: &mut Map) {
-        for x in 0..self.size {
-            for y in 0..self.size {
+        for x in 0..self.size_x {
+            for y in 0..self.size_y {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = None;
             }
@@ -145,8 +186,8 @@ impl Entity {
 
     pub fn center(&self) -> Point {
         Point {
-            x: self.position.x + self.size as i32 / 2,
-            y: self.position.y + self.size as i32 / 2
+            x: self.position.x + self.size_x as i32 / 2,
+            y: self.position.y + self.size_y as i32 / 2
         }
     }
 
@@ -201,13 +242,13 @@ impl Entity {
     }
 
     pub fn update_view(&mut self, map: &mut Map) {
-        if self.player {
+        if self.kind == EntityKind::Player {
             self.set_visible_tiles(map, false);
         }
 
         self.viewshed.update(self.center(), self.body.facing, map);
 
-        if self.player {
+        if self.kind == EntityKind::Player {
             self.set_visible_tiles(map, true);
         }
     }
@@ -750,6 +791,7 @@ impl Entity {
 #[derive(Clone)]
 pub struct Pawn {
     pub entity_id: usize,
+    pub kind: EntityKind,
     pub driving: DrivingState,
     pub sprite: Sprite,
     pub sprite_index: u32,

@@ -5,7 +5,6 @@ use crate::entity::*;
 use crate::ability::*;
 use crate::intent::*;
 use crate::World;
-use crate::TileType;
 
 pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
@@ -47,7 +46,14 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
         match &world.map.pawns[index] {
             Some(pawn) => {
-                if pawn.driving == DrivingState::Drivable {
+                if pawn.kind == EntityKind::Door {
+                    player.intent = Intent {
+                        phase: IntentPhase::Movement,
+                        data: IntentData::Target(target_pos),
+                        action: Entity::resolve_open_door
+                    };
+                }
+                else if pawn.driving == DrivingState::Drivable {
                     player.intent = Intent {
                         phase: IntentPhase::Movement,
                         data: IntentData::Target(target_pos),
@@ -62,19 +68,11 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
                 }
             },
             None => {
-                if world.map.tiles[index] == TileType::ClosedDoor {
-                    player.intent = Intent {
-                        phase: IntentPhase::Movement,
-                        data: IntentData::Target(target_pos),
-                        action: Entity::resolve_open_door
-                    };
-                } else {
-                    player.intent = Intent {
-                        phase: IntentPhase::Movement,
-                        data: IntentData::Target(target_pos),
-                        action: Entity::resolve_move
-                    };
-                }
+                player.intent = Intent {
+                    phase: IntentPhase::Movement,
+                    data: IntentData::Target(target_pos),
+                    action: Entity::resolve_move
+                };
             }
         }
     } else {

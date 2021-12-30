@@ -12,8 +12,7 @@ pub enum TileType {
     Wall,
     Floor,
     Ground,
-    OpenDoor,
-    ClosedDoor
+    Doorway
 }
 
 pub struct Block {
@@ -21,11 +20,12 @@ pub struct Block {
 }
 
 pub struct Map {
-    pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
     pub blocks: Vec<Block>,
     pub width: usize,
     pub height: usize,
+
+    pub tiles: Vec<TileType>,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub pawns: Vec<Option<Pawn>>,
@@ -70,8 +70,7 @@ impl Map {
             TileType::Floor => self.pawns[index].is_some(),
             TileType::Ground => self.pawns[index].is_some(),
             TileType::Wall => true,
-            TileType::OpenDoor => self.pawns[index].is_some(),
-            TileType::ClosedDoor => true
+            TileType::Doorway => self.pawns[index].is_some(),
         }
     }
 
@@ -374,22 +373,22 @@ impl Map {
             Side::Top => {
                 let x = rng.range(room.x1 + 1, room.x2);
                 let index = self.xy_idx(x, room.y1);
-                self.tiles[index] = TileType::ClosedDoor;
+                self.tiles[index] = TileType::Doorway;
             },
             Side::Bottom => {
                 let x = rng.range(room.x1 + 1, room.x2);
                 let index = self.xy_idx(x, room.y2);
-                self.tiles[index] = TileType::ClosedDoor;
+                self.tiles[index] = TileType::Doorway;
             },
             Side::Left => {
                 let y = rng.range(room.y1 + 1, room.y2);
                 let index = self.xy_idx(room.x1, y);
-                self.tiles[index] = TileType::ClosedDoor;
+                self.tiles[index] = TileType::Doorway;
             },
             Side::Right => {
                 let y = rng.range(room.y1 + 1, room.y2);
                 let index = self.xy_idx(room.x2, y);
-                self.tiles[index] = TileType::ClosedDoor;
+                self.tiles[index] = TileType::Doorway;
             },
         }
     }
@@ -461,13 +460,12 @@ impl Algorithm2D for Map {
 }
 
 impl BaseMap for Map {
-    fn is_opaque(&self, idx: usize) -> bool {
-        match self.tiles[idx as usize] {
+    fn is_opaque(&self, index: usize) -> bool {
+        match self.tiles[index] {
             TileType::Wall => true,
             TileType::Floor => false,
             TileType::Ground => false,
-            TileType::OpenDoor => false,
-            TileType::ClosedDoor => true,
+            TileType::Doorway => self.pawns[index].is_some(),
         }
     }
 
