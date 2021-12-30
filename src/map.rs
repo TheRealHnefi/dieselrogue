@@ -65,6 +65,11 @@ impl Map {
         self.blocked_idx(index)
     }
 
+    pub fn get_tile(&self, x: i32, y: i32) -> TileType {
+        let index = self.xy_idx(x, y);
+        return self.tiles[index];
+    }
+
     pub fn blocked_idx(&self, index: usize) -> bool {
         match self.tiles[index] {
             TileType::Floor => self.pawns[index].is_some(),
