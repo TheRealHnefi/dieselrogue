@@ -4,7 +4,7 @@ use crate::ai::*;
 use crate::intent::*;
 use crate::sprite::*;
 use crate::GameLog;
-use crate::Viewshed;
+use crate::viewshed::*;
 use crate::Ability;
 use crate::Map;
 use crate::TileType;
@@ -56,7 +56,7 @@ impl Entity {
             name: name,
             intent: idle_intent(),
             body: Body::human_body(facing),
-            viewshed: Viewshed::new(20),
+            viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::None
         }
     }
@@ -73,7 +73,7 @@ impl Entity {
             name: name,
             intent: idle_intent(),
             body: Body::human_body(facing),
-            viewshed: Viewshed::new(20),
+            viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::Patrolling(PatrollingAI::new(waypoints))
         }
     }
@@ -90,7 +90,7 @@ impl Entity {
             name: name,
             intent: idle_intent(),
             body: Body::tank_body(facing),
-            viewshed: Viewshed::new(20),
+            viewshed: Viewshed::new(20, FieldOfView::Fov90),
             ai: AI::Rotator
         }
     }
@@ -120,7 +120,7 @@ impl Entity {
             name: "Door".to_string(),
             intent: idle_intent(),
             body: Body::door_body(direction),
-            viewshed: Viewshed::new(0),
+            viewshed: Viewshed::new(0, FieldOfView::Fov360),
             ai: AI::None
         }
     }

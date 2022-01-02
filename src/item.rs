@@ -96,6 +96,7 @@ impl Item {
             proxy: true
         }
     }
+
     fn equip_action() -> IntentAction {
         IntentAction {
             name: "Equip".to_string(),
