@@ -28,4 +28,13 @@ impl Rect {
     pub fn center(&self) -> (i32, i32) {
         ((self.x1 + self.x2)/2, (self.y1 + self.y2)/2)
     }
+
+    pub fn embiggen(&self, dx: i32, dy: i32) -> Self {
+        Self {
+            x1: self.x1 - dx,
+            x2: self.x2 + dx,
+            y1: self.y1 - dy,
+            y2: self.y2 + dy
+        }
+    }
 }
