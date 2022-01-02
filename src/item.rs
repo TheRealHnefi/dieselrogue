@@ -174,6 +174,36 @@ impl Item {
         }
     }
 
+    pub fn bulletproof_vest(id: usize) -> Self {
+        let equip_action = IntentAction {
+            name: "Equip".to_string(),
+            targeting: Targeting::None,
+            phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
+            effects: Entity::resolve_equip_item
+        };
+        let drop_action = IntentAction {
+            name: "Drop".to_string(),
+            targeting: Targeting::None,
+            phase: IntentPhase::Inventory,
+            precondition: precondition_ok,
+            effects: Entity::resolve_drop_item
+        };
+
+        Item {
+            id: id,
+            renderable: Renderable::new_char('v'),
+            name: String::from("Bulletproof vest"),
+            inventory_actions: vec![equip_action, drop_action],
+            equip_actions: vec!(),
+            equip_slots: vec!(SlotType::Bodywear),
+            kind: ItemKind::Wearable {
+                armor: Armor::new(3, 0.25, 0, 0.1)
+            },
+            proxy: false
+        }
+    }
+
     pub fn proxy(&self) -> Self {
         Item {
             id: self.id,

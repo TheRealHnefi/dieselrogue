@@ -124,6 +124,7 @@ pub enum SlotType {
 #[derive(Clone)]
 pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, damage: Damage},
+    Wearable {armor: Armor},
     Misc
 }
 

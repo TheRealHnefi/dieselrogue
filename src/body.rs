@@ -25,6 +25,7 @@ pub struct BodyPart {
     pub damage: u32,
 
     pub armor: Armor,
+    pub innate_armor: Armor,
 }
 
 #[derive(Clone)]
@@ -53,6 +54,7 @@ impl Body {
             max_damage: 10,
             damage: 0,
             armor: Armor::zero(),
+            innate_armor: Armor::zero(),
             abilities: vec!()
         });
 
@@ -64,6 +66,7 @@ impl Body {
             max_damage: 15,
             damage: 0,
             armor: Armor::zero(),
+            innate_armor: Armor::zero(),
             abilities: vec!()
         });
 
@@ -76,6 +79,7 @@ impl Body {
             max_damage: 8,
             damage: 0,
             armor: Armor::zero(),
+            innate_armor: Armor::zero(),
             abilities: vec!(Ability::PickUp, Ability::Embark)
         });
 
@@ -88,6 +92,7 @@ impl Body {
             max_damage: 8,
             damage: 0,
             armor: Armor::zero(),
+            innate_armor: Armor::zero(),
             abilities: vec!(Ability::PickUp, Ability::Embark)
         });
 
@@ -100,6 +105,7 @@ impl Body {
             max_damage: 12,
             damage: 0,
             armor: Armor::zero(),
+            innate_armor: Armor::zero(),
             abilities: vec!(Ability::HumanMove)
         });
 
@@ -133,6 +139,7 @@ impl Body {
             max_damage: 12,
             damage: 0,
             armor: Armor::new(25, 0.25, 75, 0.75),
+            innate_armor: Armor::new(25, 0.25, 75, 0.75),
             abilities: vec!(Ability::VehicleMove)
         });
 
@@ -143,6 +150,7 @@ impl Body {
             max_damage: 12,
             damage: 0,
             armor: Armor::new(100, 0.5, 150, 0.95),
+            innate_armor: Armor::new(100, 0.5, 150, 0.95),
             abilities: vec!(Ability::Disembark)
         });
 
@@ -153,6 +161,7 @@ impl Body {
             max_damage: 12,
             damage: 0,
             armor: Armor::new(50, 0.25, 75, 0.75),
+            innate_armor: Armor::new(50, 0.25, 75, 0.75),
             abilities: vec!()
         });
 
@@ -178,6 +187,7 @@ impl Body {
             max_damage: 100,
             damage: 0,
             armor: Armor::zero(),
+            innate_armor: Armor::zero(),
             abilities: vec!()
         });
 
@@ -261,6 +271,25 @@ impl Body {
             if part.damage < part.max_damage {
                 for ability in &part.abilities {
                     self.abilities.insert(ability.clone());
+                }
+            }
+        }
+    }
+
+    pub fn update_armor(&mut self) {
+        for part in &mut self.parts {
+            part.armor = part.innate_armor.clone();
+            for slot_index in &part.slot_index {
+                match &self.item_slots[*slot_index].item {
+                    Some(item) => {
+                        match &item.kind {
+                            ItemKind::Wearable{armor} => {
+                                part.armor = part.armor.add(&armor);
+                            },
+                            _ => ()
+                        }
+                    },
+                    None => ()
                 }
             }
         }
