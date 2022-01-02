@@ -76,11 +76,11 @@ impl World {
             Direction::Up,
             String::from("Tank"));
 
-        let _ = world.create_grenade(pos);
-        let _ = world.create_machinegun(pos);
-        let _ = world.create_pistol(pos);
-        let _ = world.create_rocket_launcher(pos);
-        let _ = world.create_bulletproof_vest(pos);
+        let _ = world.add_item(pos, Item::grenade());
+        let _ = world.add_item(pos, Item::machinegun());
+        let _ = world.add_item(pos, Item::pistol());
+        let _ = world.add_item(pos, Item::rocket_launcher());
+        let _ = world.add_item(pos, Item::bulletproof_vest());
 
         return world;
     }
@@ -224,43 +224,13 @@ impl World {
         }
     }
 
-    pub fn create_grenade(&mut self, pos: Point) -> Result<(), GameError> {
+    pub fn add_item(&mut self, pos: Point, mut item: Item)  -> Result<(), GameError> {
         let actual_pos = self.map.nearest_free_item_position(pos)?;
-        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
-        self.map.items[index] = Some(Item::grenade(self.item_count));
-        self.item_count += 1;
-        Ok(())
-    }
 
-    pub fn create_pistol(&mut self, pos: Point) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_item_position(pos)?;
-        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
-        self.map.items[index] = Some(Item::pistol(self.item_count));
+        let index = self.map.pos_idx(actual_pos);
+        item.id = self.item_count;
         self.item_count += 1;
-        Ok(())
-    }
-
-    pub fn create_machinegun(&mut self, pos: Point) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_item_position(pos)?;
-        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
-        self.map.items[index] = Some(Item::machinegun(self.item_count));
-        self.item_count += 1;
-        Ok(())
-    }
-
-    pub fn create_rocket_launcher(&mut self, pos: Point) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_item_position(pos)?;
-        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
-        self.map.items[index] = Some(Item::rocket_launcher(self.item_count));
-        self.item_count += 1;
-        Ok(())
-    }
-
-    pub fn create_bulletproof_vest(&mut self, pos: Point) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_item_position(pos)?;
-        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
-        self.map.items[index] = Some(Item::bulletproof_vest(self.item_count));
-        self.item_count += 1;
+        self.map.items[index] = Some(item);
         Ok(())
     }
 
@@ -611,7 +581,7 @@ mod tests {
         let mut world = World::new_test();
         let pos = Point {x: 1, y: 1};
 
-        let _ = world.create_grenade(pos);
+        let _ = world.add_item(pos, Item::grenade());
 
         let index = world.map.xy_idx(pos.x, pos.y);
         assert!(world.map.items[index].is_some());
@@ -622,8 +592,8 @@ mod tests {
         let mut world = World::new_test();
         let pos = Point {x: 1, y: 1};
 
-        let _ = world.create_grenade(pos);
-        let _ = world.create_grenade(pos);
+        let _ = world.add_item(pos, Item::grenade());
+        let _ = world.add_item(pos, Item::grenade());
 
         assert!(world.map.items.iter().filter(|i| i.is_some()).count() == 2);
 
