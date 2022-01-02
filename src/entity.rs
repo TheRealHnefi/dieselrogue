@@ -287,7 +287,7 @@ impl Entity {
                     result.push(Effect::Damage{
                         entity_id: pawn.entity_id,
                         bodypart_index: part_index,
-                        raw_damage: 5
+                        raw_damage: Damage::new(5, 0)
                     });
                 }
             }
@@ -486,17 +486,23 @@ impl Entity {
             }
         }
     
-        let burst_damage;
+        let shot_damage;
+        let mut shots = 5;
         match self.get_equipped_item(item_slot) {
             Some(item) => {
                 match item.kind {
                     ItemKind::Firearm {ammo, max_ammo, damage} => {
-                        if ammo < 5 {
+                        shot_damage = damage;
+                        if ammo == 0 {
                             log.log(format!("{} pulled the trigger. 'Clickclickclickclickclick'.", self.name));
                             return result;
                         }
-                        item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo, damage};
-                        burst_damage = damage * 5;
+                        else if ammo < 5 {
+                            item.kind = ItemKind::Firearm {ammo: 0, max_ammo, damage};
+                            shots = ammo;
+                        } else {
+                            item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo, damage};
+                        }
                     },
                     _ => {
                         debug_assert!(false);
@@ -512,12 +518,14 @@ impl Entity {
 
         match &map.pawns[target_map_index] {
             Some(pawn) => {
-                result.push(Effect::Damage {
-                    entity_id: pawn.entity_id,
-                    bodypart_index: bodypart,
-                    raw_damage: burst_damage
-                });
-                log.log(format!("{} fired at {}", self.name, pawn.name));
+                for _ in 0..shots {
+                    result.push(Effect::Damage {
+                        entity_id: pawn.entity_id,
+                        bodypart_index: bodypart,
+                        raw_damage: shot_damage
+                    });
+                }
+                log.log(format!("{} fired {} shots at {}", self.name, shots, pawn.name));
             },
             _ => ()
         }
@@ -708,7 +716,7 @@ impl Entity {
                 result.push(Effect::Damage {
                     entity_id: id,
                     bodypart_index: 1,
-                    raw_damage: 1
+                    raw_damage: Damage::new(1, 0)
                 });
             },
             _ => {
@@ -743,9 +751,11 @@ impl Entity {
         self.body.has_ability(ability)
     }
 
-    pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: u32) {
+    pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: Damage) {
         let mut bodypart = &mut self.body.parts[bodypart_index];
-        bodypart.damage += raw_damage;
+
+        let actual_damage = bodypart.armor.modify_damage(raw_damage);
+        bodypart.damage += actual_damage;
 
         if bodypart.damage >= bodypart.max_damage {
             self.update_abilities();
@@ -754,7 +764,7 @@ impl Entity {
         println!("{} was hit in {} for {} damage, now has {} damage",
             self.name,
             self.body.parts[bodypart_index].name,
-            raw_damage,
+            actual_damage,
             self.body.parts[bodypart_index].damage);
     }
 

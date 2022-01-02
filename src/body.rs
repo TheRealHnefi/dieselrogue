@@ -19,9 +19,12 @@ pub struct BodyPart {
     pub name: String,
     pub vital: bool,
     pub slot_index: Vec<usize>,
+    pub abilities: Vec<Ability>,
+
     pub max_damage: u32,
     pub damage: u32,
-    pub abilities: Vec<Ability>
+
+    pub armor: Armor,
 }
 
 #[derive(Clone)]
@@ -49,6 +52,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 1),
             max_damage: 10,
             damage: 0,
+            armor: Armor::zero(),
             abilities: vec!()
         });
 
@@ -59,6 +63,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 1),
             max_damage: 15,
             damage: 0,
+            armor: Armor::zero(),
             abilities: vec!()
         });
 
@@ -70,6 +75,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
             damage: 0,
+            armor: Armor::zero(),
             abilities: vec!(Ability::PickUp, Ability::Embark)
         });
 
@@ -81,6 +87,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
             damage: 0,
+            armor: Armor::zero(),
             abilities: vec!(Ability::PickUp, Ability::Embark)
         });
 
@@ -92,6 +99,7 @@ impl Body {
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 12,
             damage: 0,
+            armor: Armor::zero(),
             abilities: vec!(Ability::HumanMove)
         });
 
@@ -124,6 +132,7 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
+            armor: Armor::new(25, 0.25, 75, 0.75),
             abilities: vec!(Ability::VehicleMove)
         });
 
@@ -133,6 +142,7 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
+            armor: Armor::new(100, 0.5, 150, 0.95),
             abilities: vec!(Ability::Disembark)
         });
 
@@ -142,6 +152,7 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
+            armor: Armor::new(50, 0.25, 75, 0.75),
             abilities: vec!()
         });
 
@@ -166,6 +177,7 @@ impl Body {
             slot_index: vec!(),
             max_damage: 100,
             damage: 0,
+            armor: Armor::zero(),
             abilities: vec!()
         });
 
