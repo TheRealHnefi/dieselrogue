@@ -1,3 +1,9 @@
+* UI redesign
+ * Minimap
+ * Better inventory screen
+ * Better ability menus
+ * Show outcome of actions
+ * Show more information about enemies and world
 * Noise (remember, only the noisiest noise is heard by most characters)
 * Map building
  * Prisons
@@ -20,19 +26,17 @@
 * Animations
  * Screen culling
 * Add a few non-item abilities
-* Aiming:
+* Aiming
  * Playtest - should I really use this aiming system?
  * Make entity able to aim at other entities (not just positions)
  * Make weapons only aimable at visible targets
  * Break aim when moving/unequipping/losing visibility/etc
  * Make weapons fireable only on targets aimed at
  * Make aiming at cone/area possible
+* Weapons
+ * Limited range
+ * Fire only in FoV
 * Refactor player functions
-* UI redesign
- * Minimap
- * Better inventory screen
- * Show outcome of actions
- * Show more information about enemies and world
 * Refactor item abilities and innate abilities
 * Refactor menu system (oh my god it sucks!)
 * Refactor action resolution

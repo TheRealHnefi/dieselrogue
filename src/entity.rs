@@ -257,6 +257,7 @@ impl Entity {
         for tile_pos in &self.viewshed.visible_tiles {
             let index = map.pos_idx(*tile_pos);
             map.visible_tiles[index] = visibility;
+            map.revealed_tiles[index] = visibility | map.revealed_tiles[index];
         }
     }
 

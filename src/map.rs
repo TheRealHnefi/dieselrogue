@@ -184,7 +184,7 @@ impl Map {
             blocks: vec!(),
             width: map_width,
             height: map_height,
-            revealed_tiles: vec![true; tile_count],
+            revealed_tiles: vec![false; tile_count],
             visible_tiles: vec![false; tile_count],
             pawns: vec![None; tile_count],
             items: vec![None; tile_count]
