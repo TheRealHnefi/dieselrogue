@@ -6,7 +6,7 @@
  * Better ability menus
  * Show outcome of actions
  * Show more information about enemies and world
- * Optimize map drawing
+ * Optimize map drawing (RLTK batched rendering does not seem to help much. Other approaches?)
 * Noise (remember, only the noisiest noise is heard by most characters)
 * Map building
  * Prisons

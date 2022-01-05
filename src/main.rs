@@ -42,7 +42,7 @@ mod animation;
 pub use animation::*;
 
 fn main() -> rltk::BError {
-    
+
     let context = rltk::RltkBuilder::new()
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
@@ -58,6 +58,6 @@ fn main() -> rltk::BError {
     //let mut state = State::new_performance_test();
 
     state.log.entries.push("Welcome!".to_string());
- 
+
     rltk::main_loop(context, state)
 }
