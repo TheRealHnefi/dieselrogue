@@ -1,9 +1,12 @@
 * UI redesign
+ * Separate layers for UI and map
+ * Better main UI
  * Minimap
  * Better inventory screen
  * Better ability menus
  * Show outcome of actions
  * Show more information about enemies and world
+ * Optimize map drawing
 * Noise (remember, only the noisiest noise is heard by most characters)
 * Map building
  * Prisons

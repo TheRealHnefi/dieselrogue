@@ -264,7 +264,7 @@ impl Entity {
     pub fn resolve_throw_grenade(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         log.log(format!("{} threw a grenade", self.name));
         let mut result = vec!();
-    
+
         let used_item;
         let target_map_index;
         let target_pos;

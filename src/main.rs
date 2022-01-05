@@ -45,12 +45,13 @@ fn main() -> rltk::BError {
     
     let context = rltk::RltkBuilder::new()
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
+        .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
         .with_dimensions(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT)
         .with_title("Diesel Rogue")
         .with_resource_path("resources")
         .with_font("rexpaint_cp437_10x10.png", 10, 10)
         .with_tile_dimensions(10, 10)
-        .with_fullscreen(true)
+        //.with_fullscreen(true)
         .build()?;
 
     let mut state = State::new_game_state(9);
