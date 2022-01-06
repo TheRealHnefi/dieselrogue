@@ -131,14 +131,16 @@ pub enum ItemKind {
 #[derive(Clone, Copy, PartialEq)]
 pub struct Damage {
     pub physical: u32,
-    pub fire: u32
+    pub fire: u32,
+    pub electrical: u32
 }
 
 impl Damage {
-    pub fn new(phys: u32, fire: u32) -> Self {
+    pub fn new(phys: u32, fire: u32, elec: u32) -> Self {
         Self {
             physical: phys,
-            fire: fire
+            fire: fire,
+            electrical: elec
         }
     }
 }
@@ -150,15 +152,20 @@ pub struct Armor {
 
     pub fire_absorption: u32,
     pub fire_resistance: f32,
+
+    pub elec_absorption: u32,
+    pub elec_resistance: f32
 }
 
 impl Armor {
-    pub fn new(phys_abs: u32, phys_res: f32, fire_abs: u32, fire_res: f32) -> Self {
+    pub fn new(phys_abs: u32, phys_res: f32, fire_abs: u32, fire_res: f32, elec_abs: u32, elec_res: f32) -> Self {
         Self {
             phys_absorption: phys_abs,
             phys_resistance: phys_res,
             fire_absorption: fire_abs,
-            fire_resistance: fire_res
+            fire_resistance: fire_res,
+            elec_absorption: elec_abs,
+            elec_resistance: elec_res,
         }
     }
 
@@ -167,7 +174,9 @@ impl Armor {
             phys_absorption: 0,
             phys_resistance: 0.0,
             fire_absorption: 0,
-            fire_resistance: 0.0
+            fire_resistance: 0.0,
+            elec_absorption: 0,
+            elec_resistance: 0.0
         }
     }
 
@@ -176,7 +185,9 @@ impl Armor {
             phys_absorption: self.phys_absorption + other.phys_absorption,
             phys_resistance: self.phys_resistance + other.phys_resistance,
             fire_absorption: self.fire_absorption + other.fire_absorption,
-            fire_resistance: self.fire_resistance + other.fire_resistance
+            fire_resistance: self.fire_resistance + other.fire_resistance,
+            elec_absorption: self.elec_absorption + other.elec_absorption,
+            elec_resistance: self.elec_resistance + other.elec_resistance
         }
     }
 
@@ -191,7 +202,8 @@ impl Armor {
 
         let physical = mod_dmg(damage.physical, self.phys_absorption, self.phys_resistance);
         let fire = mod_dmg(damage.fire, self.fire_absorption, self.fire_resistance);
+        let electrical = mod_dmg(damage.electrical, self.elec_absorption, self.elec_resistance);
 
-        return physical + fire;
+        return physical + fire + electrical;
     }
 }

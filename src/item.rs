@@ -38,7 +38,7 @@ impl Item {
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions: vec!(Item::aim_action(), Item::fire_action()),
             equip_slots: vec!(SlotType::PrimaryHand, SlotType::SecondaryHand),
-            kind: ItemKind::Firearm {ammo: 1, max_ammo: 1, damage: Damage::new(500, 0)},
+            kind: ItemKind::Firearm {ammo: 1, max_ammo: 1, damage: Damage::new(500, 0, 0)},
             proxy: false
         }
     }
@@ -51,7 +51,7 @@ impl Item {
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions: vec!(Item::aim_action(), Item::fire_action()),
             equip_slots: vec!(SlotType::PrimaryHand),
-            kind: ItemKind::Firearm {ammo: 5, max_ammo: 5, damage: Damage::new(5, 0)},
+            kind: ItemKind::Firearm {ammo: 5, max_ammo: 5, damage: Damage::new(5, 0, 0)},
             proxy: false
         }
     }
@@ -64,7 +64,7 @@ impl Item {
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions: vec!(Item::aim_action(), Item::fire_action(), Item::fire_burst_action()),
             equip_slots: vec!(SlotType::PrimaryHand, SlotType::SecondaryHand),
-            kind: ItemKind::Firearm {ammo: 30, max_ammo: 30, damage: Damage::new(5, 0)},
+            kind: ItemKind::Firearm {ammo: 30, max_ammo: 30, damage: Damage::new(5, 0, 0)},
             proxy: false
         }
     }
@@ -78,7 +78,7 @@ impl Item {
             equip_actions: vec!(),
             equip_slots: vec!(SlotType::Bodywear),
             kind: ItemKind::Wearable {
-                armor: Armor::new(3, 0.25, 0, 0.1)
+                armor: Armor::new(3, 0.25, 0, 0.1, 0, 0.0)
             },
             proxy: false
         }

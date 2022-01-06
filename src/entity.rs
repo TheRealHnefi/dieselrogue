@@ -288,7 +288,7 @@ impl Entity {
                     result.push(Effect::Damage{
                         entity_id: pawn.entity_id,
                         bodypart_index: part_index,
-                        raw_damage: Damage::new(5, 0)
+                        raw_damage: Damage::new(5, 0, 0)
                     });
                 }
             }
@@ -721,7 +721,7 @@ impl Entity {
                 result.push(Effect::Damage {
                     entity_id: id,
                     bodypart_index: 1,
-                    raw_damage: Damage::new(1, 0)
+                    raw_damage: Damage::new(1, 0, 0)
                 });
             },
             _ => {

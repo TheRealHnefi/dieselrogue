@@ -11,12 +11,38 @@ pub const SCREEN_HEIGHT: usize = 90;
 pub const VIEWPORT_HEIGHT: usize = SCREEN_HEIGHT;
 pub const VIEWPORT_WIDTH: usize = VIEWPORT_HEIGHT;
 
+const UI_HEIGHT: usize = SCREEN_HEIGHT;
 const UI_WIDTH: usize = SCREEN_WIDTH - VIEWPORT_WIDTH - 1;
 const UI_X_OFFSET: usize = VIEWPORT_WIDTH;
 const UI_Y_OFFSET: usize = 0;
 
 const MAIN_CONSOLE_INDEX: usize = 0;
 const UI_CONSOLE_INDEX: usize = 1;
+
+const LOCATION_PANEL_HEIGHT: usize = 5;
+const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 8;
+const HEALTH_PANEL_WIDTH: usize = 45;
+const STATUS_PANEL_WIDTH: usize = UI_WIDTH - HEALTH_PANEL_WIDTH;
+const INVENTORY_PANEL_HEIGHT: usize = 23;
+const EQUIPMENT_PANEL_HEIGHT: usize = 15;
+const ABILITIES_PANEL_HEIGHT: usize = 25;
+const LOG_NOISE_PANEL_HEIGHT: usize = UI_HEIGHT
+    - ABILITIES_PANEL_HEIGHT
+    - EQUIPMENT_PANEL_HEIGHT
+    - INVENTORY_PANEL_HEIGHT
+    - HEALTH_AND_STATUS_PANEL_HEIGHT
+    - LOCATION_PANEL_HEIGHT
+    - 1;
+const LOG_PANEL_WIDTH: usize = 55;
+const NOISE_PANEL_WIDTH: usize = UI_WIDTH - LOG_PANEL_WIDTH;
+const LABEL_OFFSET: usize = 2;
+
+const LINE_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
+const BG_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.0, b: 0.0};
+const LABEL_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
+const PHYS_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
+const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
+const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
 
 pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
     context.set_active_console(UI_CONSOLE_INDEX);
@@ -44,6 +70,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
     }
 
     draw_panel_geometry(context);
+    draw_panel_contents(state, context);
 
     let mut y = SCREEN_HEIGHT - 10;
     let length = max(state.log.entries.len() as i32 - 5, 0) as usize;
@@ -54,22 +81,6 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
 }
 
 fn draw_panel_geometry(context: &mut Rltk) {
-    const LOCATION_PANEL_HEIGHT: usize = 3;
-    const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 8;
-    const HEALTH_PANEL_WIDTH: usize = 35;
-    const STATUS_PANEL_WIDTH: usize = 34;
-    const INVENTORY_PANEL_HEIGHT: usize = 21;
-    const EQUIPMENT_PANEL_HEIGHT: usize = 13;
-    const ABILITIES_PANEL_HEIGHT: usize = 35;
-    const LOG_NOISE_PANEL_HEIGHT: usize = 9;
-    const LOG_PANEL_WIDTH: usize = 55;
-    const NOISE_PANEL_WIDTH: usize = UI_WIDTH - LOG_PANEL_WIDTH;
-    const LABEL_OFFSET: usize = 2;
-
-    const LINE_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
-    const BG_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.0, b: 0.0};
-    const LABEL_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
-
     let mut offset = UI_Y_OFFSET;
     // Draw scaffolding
     context.draw_hollow_box_double(UI_X_OFFSET, offset, UI_WIDTH, LOCATION_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
@@ -123,7 +134,7 @@ fn draw_panel_geometry(context: &mut Rltk) {
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Location ╠");
     offset += LOCATION_PANEL_HEIGHT;
 
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Health and armor ╠");
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Damage and armor ╠");
     context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH, offset, LABEL_COLOR, BG_COLOR, "╣ Status effects ╠");
     offset += HEALTH_AND_STATUS_PANEL_HEIGHT;
 
@@ -138,6 +149,41 @@ fn draw_panel_geometry(context: &mut Rltk) {
 
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Log ╠");
     context.print_color(UI_X_OFFSET + LABEL_OFFSET + LOG_PANEL_WIDTH, offset, LABEL_COLOR, BG_COLOR, "╣ Noise ╠");
+}
+
+fn draw_panel_contents(state: &State, context: &mut Rltk) {
+    let mut offset = UI_Y_OFFSET + 2;
+    let player = match state.world.get_player() {
+        Ok(player) => player,
+        Err(_) => return
+    };
+
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "Location: Unknown");
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
+    offset += 1;
+    let pos = player.center();
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
+
+    offset += 3;
+    const HEALTH_X_OFFSET: usize = UI_X_OFFSET + LABEL_OFFSET + 8;
+    const PHYS_X_OFFSET: usize = HEALTH_X_OFFSET + 9;
+    const ELEC_X_OFFSET: usize = PHYS_X_OFFSET + 9;
+    const FIRE_X_OFFSET: usize = ELEC_X_OFFSET + 9;
+
+    context.print_color(HEALTH_X_OFFSET, offset, LABEL_COLOR, BG_COLOR, "Damage");
+    context.print_color(PHYS_X_OFFSET, offset, PHYS_COLOR, BG_COLOR, "Physical");
+    context.print_color(ELEC_X_OFFSET, offset, ELEC_COLOR, BG_COLOR, "Electric");
+    context.print_color(FIRE_X_OFFSET, offset, FIRE_COLOR, BG_COLOR, "Fire");
+
+    offset += 1;
+    for bodypart in &player.body.parts {
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, &bodypart.name);
+        context.print_color(HEALTH_X_OFFSET, offset, LABEL_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.damage, &bodypart.max_damage));
+        context.print_color(PHYS_X_OFFSET, offset, PHYS_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.phys_absorption, &bodypart.armor.phys_resistance * 100.0));
+        context.print_color(ELEC_X_OFFSET, offset, ELEC_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.elec_absorption, &bodypart.armor.elec_resistance * 100.0));
+        context.print_color(FIRE_X_OFFSET, offset, FIRE_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.fire_absorption, &bodypart.armor.fire_resistance * 100.0));
+        offset += 1;
+    }
 }
 
 fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {
