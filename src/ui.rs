@@ -201,9 +201,57 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
     // Inventory panel
     offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + 2;
-    for item in &player.body.inventory {
-        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, &item.name);
-        offset += 1;
+    const INVENTORY_NAME_COLUMN_WIDTH: usize = 25;
+    for (i, item) in player.body.inventory.iter().enumerate() {
+        assert!(i < 20);
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset + i, LABEL_COLOR, BG_COLOR, format!("{}: {}", i, &item.name));
+        match &item.kind {
+            ItemKind::Firearm{ammo, max_ammo, damage} => {
+                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset + i, LABEL_COLOR, BG_COLOR, format!("Ammo: {}\\{}", ammo, max_ammo));
+
+                let label = String::from("Dmg: ");
+                let phys = format!("{}", damage.physical);
+                let elec = format!("{}", damage.electrical);
+                let fire = format!("{}", damage.fire);
+                let mut offset_y = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH + 15;
+                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, &label);
+                offset_y += label.len();
+
+                context.print_color(offset_y, offset + i, PHYS_COLOR, BG_COLOR, &phys);
+                offset_y += phys.len();
+
+                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_y += 1;
+
+                context.print_color(offset_y, offset + i, ELEC_COLOR, BG_COLOR, &elec);
+                offset_y += elec.len();
+
+                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_y += 1;
+
+                context.print_color(offset_y, offset + i, FIRE_COLOR, BG_COLOR, &fire);
+            },
+            ItemKind::Wearable{armor} => {
+                let label = String::from("Armor: ");
+                let phys = format!("{}\\{} ", armor.phys_absorption, armor.phys_resistance * 100.0);
+                let elec = format!("{}\\{} ", armor.elec_absorption, armor.elec_resistance * 100.0);
+                let fire = format!("{}\\{} ", armor.fire_absorption, armor.fire_resistance * 100.0);
+                let mut offset_y = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH;
+                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, &label);
+                offset_y += label.len();
+
+                context.print_color(offset_y, offset + i, PHYS_COLOR, BG_COLOR, &phys);
+                offset_y += phys.len();
+
+                context.print_color(offset_y, offset + i, ELEC_COLOR, BG_COLOR, &elec);
+                offset_y += elec.len();
+
+                context.print_color(offset_y, offset + i, FIRE_COLOR, BG_COLOR, &fire);
+            },
+            ItemKind::Misc => {
+                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset + i, LABEL_COLOR, BG_COLOR, format!("?"));
+            }
+        }
     }
 }
 
