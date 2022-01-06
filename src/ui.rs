@@ -40,6 +40,7 @@ const LABEL_OFFSET: usize = 2;
 const LINE_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
 const BG_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.0, b: 0.0};
 const LABEL_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
+const INACTIVE_COLOR: rltk::RGB = RGB {r: 0.4, g: 0.4, b: 0.4};
 const PHYS_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
 const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
@@ -251,6 +252,32 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
             ItemKind::Misc => {
                 context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset + i, LABEL_COLOR, BG_COLOR, format!("?"));
             }
+        }
+    }
+
+    // Equipment panel
+    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
+    for (i, slot) in player.body.item_slots.iter().enumerate() {
+        let mut slot_label = slot.slot_type.to_string();
+        let mut offset_y = UI_X_OFFSET + LABEL_OFFSET;
+        slot_label.push(':');
+        context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, slot_label);
+        offset_y += 15;
+
+        match &slot.item {
+            Some(item) => {
+                let color = if item.proxy { INACTIVE_COLOR } else { LABEL_COLOR };
+                context.print_color(offset_y, offset + i, color, BG_COLOR, &item.name);
+                offset_y += item.name.len();
+
+                match item.kind {
+                    ItemKind::Firearm{ammo, max_ammo, damage: _} => {
+                        context.print_color(offset_y, offset + i, color, BG_COLOR, format!("  Ammo: {}\\{}", ammo, max_ammo));
+                    },
+                    _ => ()
+                }
+            },
+            None => context.print_color(offset_y, offset + i, INACTIVE_COLOR, BG_COLOR, "---".to_string())
         }
     }
 }

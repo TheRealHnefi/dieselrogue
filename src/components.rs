@@ -141,11 +141,30 @@ pub enum SlotType {
     PrimaryHand,
     SecondaryHand,
     Headwear,
+    Facewear,
     Legwear,
     Footwear,
     Bodywear,
+    Backwear,
     LeftArmwear,
     RightArmwear
+}
+
+impl SlotType {
+    pub fn to_string(&self) -> String {
+        match self {
+            SlotType::PrimaryHand => "In r. hand",
+            SlotType::SecondaryHand => "In l. hand",
+            SlotType::Headwear => "On head",
+            SlotType::Facewear => "On Face",
+            SlotType::Legwear => "On legs",
+            SlotType::Footwear => "On feet",
+            SlotType::Bodywear => "On body",
+            SlotType::Backwear => "On back",
+            SlotType::LeftArmwear => "On l. arm",
+            SlotType::RightArmwear => "On r. arm"
+        }.to_string()
+    }
 }
 
 #[derive(Clone)]
