@@ -1,11 +1,15 @@
+* Most items
+* Refactor item abilities and innate abilities
+ * Make abilities simple enums
+* Add a few non-item abilities
 * UI redesign
- * Better main UI
  * Minimap
  * Better inventory screen
  * Better ability menus
  * Show outcome of actions
  * Show more information about enemies and world
  * Optimize map drawing (RLTK batched rendering does not seem to help much. Other approaches?)
+ * Use different fonts for different resolutions to fix scaling issues
 * Noise (remember, only the noisiest noise is heard by most characters)
 * Map building
  * Prisons
@@ -27,7 +31,6 @@
  * Openable
 * Animations
  * Screen culling
-* Add a few non-item abilities
 * Aiming
  * Playtest - should I really use this aiming system?
  * Make entity able to aim at other entities (not just positions)
@@ -40,13 +43,11 @@
  * Fire only in FoV
 * Limit inventory size to 20
 * Refactor player functions
-* Refactor item abilities and innate abilities
 * Refactor menu system (oh my god it sucks!)
 * Refactor action resolution
 * Death effects (drop items, corpses etc, game over screen)
 * Fluids (maybe)
 * Most abilities
-* Most items
 * Create AI's
  * Create new pathfinding system
  * Put AI's on worker thread

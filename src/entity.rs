@@ -288,7 +288,7 @@ impl Entity {
                     result.push(Effect::Damage{
                         entity_id: pawn.entity_id,
                         bodypart_index: part_index,
-                        raw_damage: Damage::new(5, 0, 0)
+                        raw_damage: Damage::new(5, 0, 0, 0)
                     });
                 }
             }
@@ -428,12 +428,12 @@ impl Entity {
         match self.get_equipped_item(item_slot) {
             Some(item) => {
                 match item.kind {
-                    ItemKind::Firearm {ammo, max_ammo, damage} => {
+                    ItemKind::Firearm {ammo, max_ammo, damage, range} => {
                         if ammo < 1 {
                             log.log(format!("{} pulled the trigger. 'Click'.", self.name));
                             return result;
                         }
-                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage};
+                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage, range};
                         shot_damage = damage;
                     },
                     _ => {
@@ -464,10 +464,10 @@ impl Entity {
 
         result
     }
-    
+
     pub fn resolve_burst_fire(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let mut result = vec!();
-    
+
         let target_map_index;
         let target_pos;
         let item_slot;
@@ -490,23 +490,23 @@ impl Entity {
                 return result;
             }
         }
-    
+
         let shot_damage;
         let mut shots = 5;
         match self.get_equipped_item(item_slot) {
             Some(item) => {
                 match item.kind {
-                    ItemKind::Firearm {ammo, max_ammo, damage} => {
+                    ItemKind::Firearm {ammo, max_ammo, damage, range} => {
                         shot_damage = damage;
                         if ammo == 0 {
                             log.log(format!("{} pulled the trigger. 'Clickclickclickclickclick'.", self.name));
                             return result;
                         }
                         else if ammo < 5 {
-                            item.kind = ItemKind::Firearm {ammo: 0, max_ammo, damage};
+                            item.kind = ItemKind::Firearm {ammo: 0, max_ammo, damage, range};
                             shots = ammo;
                         } else {
-                            item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo, damage};
+                            item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo, damage, range};
                         }
                     },
                     _ => {
@@ -563,12 +563,12 @@ impl Entity {
         match self.get_equipped_item(item_slot) {
             Some(item) => {
                 match item.kind {
-                    ItemKind::Firearm {ammo, max_ammo, damage} => {
+                    ItemKind::Firearm {ammo, max_ammo, damage, range} => {
                         if ammo < 1 {
                             log.log(format!("{} pulled the trigger. 'Click'.", self.name));
                             return result;
                         }
-                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage};
+                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage, range};
                         shot_damage = damage;
                     },
                     _ => {
@@ -598,6 +598,53 @@ impl Entity {
 
         result.push(Effect::DestroyWall(target_pos));
         result.push(Effect::Animation(explosion_animation(target_pos)));
+
+        result
+    }
+
+    pub fn resolve_fan_fire(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+        let mut result = vec!();
+
+        let target_map_index;
+        let target_pos;
+        let item_slot;
+        match self.intent.data {
+            IntentData::TargetWithEquipment{slot, target} => {
+                item_slot = slot;
+                target_pos = target;
+                target_map_index = map.pos_idx(target);
+            },
+            _ => {
+                debug_assert!(false);
+                return result;
+            }
+        }
+
+        let shot_damage;
+        match self.get_equipped_item(item_slot) {
+            Some(item) => {
+                match item.kind {
+                    ItemKind::Firearm {ammo, max_ammo, damage, range} => {
+                        if ammo < 1 {
+                            log.log(format!("{} pulled the trigger. 'Click'.", self.name));
+                            return result;
+                        }
+                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage, range};
+                        shot_damage = damage;
+                    },
+                    _ => {
+                        debug_assert!(false);
+                        return result;
+                    }
+                }
+            },
+            None => {
+                debug_assert!(false);
+                return result;
+            }
+        }
+
+        assert!(false, "NYI");
 
         result
     }
@@ -721,7 +768,7 @@ impl Entity {
                 result.push(Effect::Damage {
                     entity_id: id,
                     bodypart_index: 1,
-                    raw_damage: Damage::new(1, 0, 0)
+                    raw_damage: Damage::new(1, 0, 0, 0)
                 });
             },
             _ => {
