@@ -139,6 +139,7 @@ No classes!
 * Armour should be powerful. Use damage = (power - absorbtion) * resistance.
 * Simple damage calculations! No complicated formulas - make it intuitive.
 * Localized damage for body parts.
+* Heavy recoil weapons removes aiming status. Low recoil weapons keeps it.
 
 ## Stealth:
 * All actors have a viewing direction. Turning takes an action. 180 degree FOV for most.
@@ -298,3 +299,24 @@ Sum of all stuff to show:
 * Fatigue
 * Status effects
 * Location information
+
+## Menu system
+
+### Action examples
+* Instant action: move, turn
+* Instant item use: equip, pick up
+* Instant equipped item use: unequip, use medkit
+* Apply action on map: jump, teleport, look
+* Apply item on map: aim, throw
+* Apply item on detailed targeting: fire (limited by area aimed at)
+
+### Action types
+* Instant(optional action, item, equipped item)
+ * Pick source
+* Targeting (optional action, item, equipped item)
+ * Pick source
+ * Pick target tile
+* Detailed targeting (optional action, item, equipped item)
+ * Pick source
+ * Pick target tile
+ * Pick target bodypart

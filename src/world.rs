@@ -81,6 +81,8 @@ impl World {
         let _ = world.add_item(pos, Item::rocket_launcher());
         let _ = world.add_item(pos, Item::bulletproof_vest());
 
+        let _ = world.create_zombie_goon(Point {x: pos.x, y: pos.y + 4}, Direction::Up, String::from("Good"));
+
         return world;
     }
 

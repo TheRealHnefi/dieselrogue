@@ -85,7 +85,6 @@ pub enum Effect {
 #[derive(Clone)]
 pub enum StatusEffect {
     AimingAtGround(Point),
-    AimingAtEntity(usize),
     Blind(u32),
     Burning(u32),
     Dazed(u32),
@@ -99,7 +98,6 @@ impl StatusEffect {
     fn to_index(&self) -> usize {
         match self {
             StatusEffect::AimingAtGround(_) => 0,
-            StatusEffect::AimingAtEntity(_) => 0,
             StatusEffect::Blind(_) => 1,
             StatusEffect::Burning(_) => 2,
             StatusEffect::Dazed(_) => 3,
@@ -113,7 +111,6 @@ impl StatusEffect {
     pub fn to_string(&self) -> String {
         match self {
             StatusEffect::AimingAtGround(_) => "Aiming",
-            StatusEffect::AimingAtEntity(_) => "Aiming",
             StatusEffect::Blind(_) => "Blind",
             StatusEffect::Burning(_) => "Burning",
             StatusEffect::Dazed(_) => "Dazed",
