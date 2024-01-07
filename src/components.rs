@@ -1,6 +1,6 @@
 use rltk::Point;
 use std::hash::{Hash, Hasher};
-use crate::Animation;
+use crate::{Animation, Item};
 
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -84,8 +84,8 @@ pub enum Effect {
 // function. Equivalence testing uses the same function, ensuring coherence between Hash and Eq.
 #[derive(Clone)]
 pub enum StatusEffect {
-    AimingAtGround(Point),
-    AimingAtEntity(usize),
+    AimingAtGround(Point, Item),
+    AimingAtEntity(usize, Item),
     Blind(u32),
     Burning(u32),
     Dazed(u32),
@@ -98,8 +98,8 @@ pub enum StatusEffect {
 impl StatusEffect {
     fn to_index(&self) -> usize {
         match self {
-            StatusEffect::AimingAtGround(_) => 0,
-            StatusEffect::AimingAtEntity(_) => 0,
+            StatusEffect::AimingAtGround(_, _) => 0,
+            StatusEffect::AimingAtEntity(_, _) => 0,
             StatusEffect::Blind(_) => 1,
             StatusEffect::Burning(_) => 2,
             StatusEffect::Dazed(_) => 3,
@@ -112,8 +112,8 @@ impl StatusEffect {
 
     pub fn to_string(&self) -> String {
         match self {
-            StatusEffect::AimingAtGround(_) => "Aiming",
-            StatusEffect::AimingAtEntity(_) => "Aiming",
+            StatusEffect::AimingAtGround(_, _) => "Aiming",
+            StatusEffect::AimingAtEntity(_, _) => "Aiming",
             StatusEffect::Blind(_) => "Blind",
             StatusEffect::Burning(_) => "Burning",
             StatusEffect::Dazed(_) => "Dazed",
