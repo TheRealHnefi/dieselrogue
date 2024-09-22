@@ -1,5 +1,4 @@
 use rltk::Point;
-use rltk::console;
 use crate::components::*;
 use crate::entity::Entity;
 use crate::Map;

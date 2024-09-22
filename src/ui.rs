@@ -3,6 +3,7 @@ use std::cmp::max;
 use crate::components::*;
 use crate::state::*;
 use crate::map::*;
+use crate::tile::*;
 use crate::Rect;
 
 pub const SCREEN_WIDTH: usize = 160;

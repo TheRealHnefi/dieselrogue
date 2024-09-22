@@ -12,6 +12,10 @@ mod player;
 pub use player::*;
 mod map;
 pub use map::*;
+mod tile;
+pub use tile::*;
+mod block;
+pub use block::*;
 mod rect;
 pub use rect::*;
 mod ui;
@@ -44,7 +48,6 @@ mod actions;
 pub use actions::*;
 
 fn main() -> rltk::BError {
-
     let context = rltk::RltkBuilder::new()
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")

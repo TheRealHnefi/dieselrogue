@@ -163,21 +163,6 @@ impl World {
         Ok(())
     }
 
-    pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, room_indices: Vec<usize>) -> Result<(), GameError> {
-        let nearest_pos = self.map.nearest_free_pawn_position(pos)?;
-
-        let mut waypoints = vec!();
-        for room_index in room_indices {
-            let (x, y) = self.map.rooms[room_index].center();
-            waypoints.push(Point {x: x, y: y});
-        }
-
-        let entity = Entity::new_patrolling_goon(self.entities.len(), nearest_pos, facing, name, waypoints);
-        entity.create_pawns(&mut self.map);
-        self.entities.push(entity);
-
-        Ok(())
-    }
 
     pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         for x in 0..3 {
