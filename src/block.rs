@@ -1,8 +1,11 @@
 use std::fs;
+use rltk::RandomNumberGenerator;
+use crate::components::Direction;
 use crate::tile::TileType;
 
 pub const BLOCK_SIZE: usize = 32;
 
+#[derive(Clone)]
 pub struct Block {
   pub tiles: Vec<TileType>
 }
@@ -25,12 +28,20 @@ pub fn generate_blocks() -> Vec<Block> {
           block.tiles[index] = TileType::Ground;
           index += 1;
         },
+        '_' => {
+          block.tiles[index] = TileType::Road;
+          index += 1;
+        },
         '-' => {
           block.tiles[index] = TileType::Floor;
           index += 1;
         },
         'W' => {
           block.tiles[index] = TileType::Wall;
+          index += 1;
+        },
+        'D' => {
+          block.tiles[index] = TileType::Doorway;
           index += 1;
         },
         ' ' => {
@@ -46,8 +57,87 @@ pub fn generate_blocks() -> Vec<Block> {
   blocks
 }
 
-impl Block {
-  pub fn xy_idx(&self, x: i32, y: i32) -> usize {
-    (y as usize * BLOCK_SIZE) + x as usize
+// TODO: This is a horrible algorithm. Do better.
+pub fn generate_block_grid(size: usize) -> Vec<Block> {
+  let mut rng = RandomNumberGenerator::new();
+  let base_blocks = generate_blocks();
+  let mut grid: Vec<Option<Block>> = vec![None; size * size];
+
+  while grid[0].is_none() {
+    let index = rng.range(0, base_blocks.len());
+    println!("Trying block {}", index);
+    let candidate = &base_blocks[index];
+    if is_block_valid(None, Direction::Left, Some(candidate))
+      && is_block_valid(None, Direction::Up, Some(candidate)) {
+        grid[0] = Some(candidate.clone());
+    }
+  }
+  // // Top row
+  // for x in 1 .. size {
+  //   grid[x] = Some(base_blocks[1].clone());
+  // }
+
+  let mut return_grid = vec!();
+  for block in grid {
+    match block {
+      Some(block) => return_grid.push(block),
+      None => return_grid.push(Block {tiles: vec![TileType::Ground; BLOCK_SIZE * BLOCK_SIZE]})
+    }
+  }
+  return return_grid;
 }
+
+pub fn grid_xy_idx(x: i32, y: i32, grid_size: usize) -> usize {
+  (y as usize * grid_size) + x as usize
+}
+
+// Determine if placing block_1 next to block_2 would be valid given the tiles at the block edges
+// Direction is "block 1 to the direction of block 2"
+fn is_block_valid(block_1: Option<&Block>, direction: Direction, block_2: Option<&Block>) -> bool {
+  for i in 0 .. BLOCK_SIZE {
+    let (tile1_idx, tile2_idx) = match direction {
+      Direction::Left =>  (block_xy_idx(BLOCK_SIZE - 1, i), block_xy_idx(0, i)),
+      Direction::Right => (block_xy_idx(0, i),              block_xy_idx(BLOCK_SIZE - 1, i)),
+      Direction::Up =>    (block_xy_idx(i, BLOCK_SIZE - 1), block_xy_idx(i, 0)),
+      Direction::Down =>    (block_xy_idx(i, 0),              block_xy_idx(i, BLOCK_SIZE - 1)),
+      _ => panic!("Invalid direction for block comparison")
+    };
+
+    let tile_1 = match block_1 {
+      Some(block) => Some(block.tiles[tile1_idx]),
+      None => None
+    };
+    let tile_2 = match block_2 {
+      Some(block) => Some(block.tiles[tile2_idx]),
+      None => None
+    };
+    if !valid_tile_neighbors(tile_1, tile_2) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Check if two tiles are valid to be neighbors across blocks. None represents the map edge.
+// Does not check both ways, so needs to be called twice.
+fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> bool {
+  match (tile_1, tile_2) {
+    (None, Some(TileType::Wall)) => true,
+    (None, Some(TileType::Doorway)) => true,
+    (Some(TileType::Wall), Some(TileType::Ground)) => true,
+    (Some(TileType::Wall), Some(TileType::Road)) => true,
+    (Some(TileType::Wall), Some(TileType::Floor)) => true,
+    (Some(TileType::Wall), Some(TileType::Wall)) => true,
+    (Some(TileType::Floor), Some(TileType::Floor)) => true,
+    (Some(TileType::Floor), Some(TileType::Doorway)) => true,
+    (Some(TileType::Ground), Some(TileType::Ground)) => true,
+    (Some(TileType::Ground), Some(TileType::Doorway)) => true,
+    (Some(TileType::Road), Some(TileType::Road)) => true,
+    (Some(TileType::Road), Some(TileType::Doorway)) => true,
+    (_, _) => false
+  }
+}
+
+pub fn block_xy_idx(x: usize, y: usize) -> usize {
+  (y as usize * BLOCK_SIZE) + x as usize
 }

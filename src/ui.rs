@@ -306,6 +306,7 @@ fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {
                 let mut renderable = match map.tiles[index] {
                     TileType::Floor => render_open_tile(map, index, blink, '-'),
                     TileType::Ground => render_open_tile(map, index, blink, '.'),
+                    TileType::Road => render_open_tile(map, index, blink, '_'),
                     TileType::Doorway => render_open_tile(map, index, blink, ' '),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),

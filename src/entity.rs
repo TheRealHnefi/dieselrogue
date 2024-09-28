@@ -140,6 +140,7 @@ impl Entity {
                             TileType::Doorway => (),
                             TileType::Floor => (),
                             TileType::Ground => (),
+                            TileType::Road => (),
                         }
                     }
                 }

@@ -3,5 +3,6 @@ pub enum TileType {
     Wall,
     Floor,
     Ground,
+    Road,
     Doorway
 }
