@@ -57,8 +57,8 @@ pub fn generate_blocks() -> Vec<Block> {
   blocks
 }
 
-// TODO: This is a horribly inefficient algorithm which may get stuck forever.
-pub fn generate_block_grid(size: usize) -> Vec<Block> {
+pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
+  println!("Generating blocks");
   let mut rng = RandomNumberGenerator::new();
   let base_blocks = generate_blocks();
   let mut grid: Vec<Option<Block>> = vec![None; size * size];
@@ -70,34 +70,39 @@ pub fn generate_block_grid(size: usize) -> Vec<Block> {
       let below = if y < size - 1 { Some(grid_xy_idx(x, y + 1, size)) } else { None };
       let left = if x > 0 { Some(grid_xy_idx(x - 1, y, size)) } else { None };
       let right = if x < size - 1 { Some(grid_xy_idx(x + 1, y, size)) } else { None };
-      
-      while grid[index].is_none() {
-        let candidate_index = rng.range(0, base_blocks.len());
-        let candidate = &base_blocks[candidate_index];
+    
+      let block_above = match above {
+        Some(idx) => Some(grid[idx].as_ref().unwrap()),
+        None => None
+      };
+      let block_left = match left {
+        Some(idx) => Some(grid[idx].as_ref().unwrap()),
+        None => None
+      };
 
-        let block_above = match above {
-          Some(idx) => Some(grid[idx].as_ref().unwrap()),
-          None => None
-        };
-        let block_left = match left {
-          Some(idx) => Some(grid[idx].as_ref().unwrap()),
-          None => None
-        };
-
-        if is_block_valid(block_left, Direction::Left, Some(candidate))
-          && is_block_valid(block_above, Direction::Up, Some(candidate)) {
+      let mut valid_blocks = vec!();
+      for block in &base_blocks {
+        if is_block_valid(block_left, Direction::Left, Some(&block))
+          && is_block_valid(block_above, Direction::Up, Some(&block)) {
             let mut valid = true;
             if x == size - 1 {
-              valid = is_block_valid(None, Direction::Right, Some(candidate))
+              valid = is_block_valid(None, Direction::Right, Some(&block))
             }
             if valid && y == size - 1 {
-              valid = is_block_valid(None, Direction::Down, Some(candidate))
+              valid = is_block_valid(None, Direction::Down, Some(&block))
             }
             if valid {
-              grid[index] = Some(candidate.clone());
+              valid_blocks.push(block);
             }
-        }
+          }
       }
+
+      if valid_blocks.len() == 0 {
+        println!("No valid blocks found for {} {}", x, y);
+        return None;
+      }
+
+      grid[index] = Some(valid_blocks[rng.range(0, valid_blocks.len())].clone());
     }
   }
 
@@ -108,7 +113,7 @@ pub fn generate_block_grid(size: usize) -> Vec<Block> {
       None => return_grid.push(Block {tiles: vec![TileType::Ground; BLOCK_SIZE * BLOCK_SIZE]})
     }
   }
-  return return_grid;
+  return Some(return_grid);
 }
 
 fn grid_xy_idx(x: usize, y: usize, grid_size: usize) -> usize {
