@@ -73,9 +73,18 @@ pub fn generate_block_grid(size: usize) -> Vec<Block> {
     }
   }
   // // Top row
-  // for x in 1 .. size {
-  //   grid[x] = Some(base_blocks[1].clone());
-  // }
+  for x in 1 .. size {
+    while grid[x].is_none() {
+      println!("Setting block {}", x);
+      let index = rng.range(0, base_blocks.len());
+      let candidate = &base_blocks[index];
+      println!("Trying block {}", index);
+      if is_block_valid(Some(grid[x - 1].as_ref().unwrap()), Direction::Left, Some(candidate))
+        && is_block_valid(None, Direction::Up, Some(candidate)) {
+          grid[x] = Some(candidate.clone());
+      }
+    }
+  }
 
   let mut return_grid = vec!();
   for block in grid {
@@ -121,21 +130,24 @@ fn is_block_valid(block_1: Option<&Block>, direction: Direction, block_2: Option
 // Check if two tiles are valid to be neighbors across blocks. None represents the map edge.
 // Does not check both ways, so needs to be called twice.
 fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> bool {
-  match (tile_1, tile_2) {
-    (None, Some(TileType::Wall)) => true,
-    (None, Some(TileType::Doorway)) => true,
-    (Some(TileType::Wall), Some(TileType::Ground)) => true,
-    (Some(TileType::Wall), Some(TileType::Road)) => true,
-    (Some(TileType::Wall), Some(TileType::Floor)) => true,
-    (Some(TileType::Wall), Some(TileType::Wall)) => true,
-    (Some(TileType::Floor), Some(TileType::Floor)) => true,
-    (Some(TileType::Floor), Some(TileType::Doorway)) => true,
-    (Some(TileType::Ground), Some(TileType::Ground)) => true,
-    (Some(TileType::Ground), Some(TileType::Doorway)) => true,
-    (Some(TileType::Road), Some(TileType::Road)) => true,
-    (Some(TileType::Road), Some(TileType::Doorway)) => true,
-    (_, _) => false
+  fn matcher(t1: Option<TileType>, t2: Option<TileType>) -> bool {
+    match (t1, t2) {
+      (None, Some(TileType::Wall)) => true,
+      (None, Some(TileType::Doorway)) => true,
+      (Some(TileType::Wall), Some(TileType::Ground)) => true,
+      (Some(TileType::Wall), Some(TileType::Road)) => true,
+      (Some(TileType::Wall), Some(TileType::Floor)) => true,
+      (Some(TileType::Wall), Some(TileType::Wall)) => true,
+      (Some(TileType::Floor), Some(TileType::Floor)) => true,
+      (Some(TileType::Floor), Some(TileType::Doorway)) => true,
+      (Some(TileType::Ground), Some(TileType::Ground)) => true,
+      (Some(TileType::Ground), Some(TileType::Doorway)) => true,
+      (Some(TileType::Road), Some(TileType::Road)) => true,
+      (Some(TileType::Road), Some(TileType::Doorway)) => true,
+      (_, _) => false
+    }
   }
+  return matcher(tile_1, tile_2) || matcher(tile_2, tile_1);
 }
 
 pub fn block_xy_idx(x: usize, y: usize) -> usize {
