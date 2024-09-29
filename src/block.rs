@@ -57,31 +57,46 @@ pub fn generate_blocks() -> Vec<Block> {
   blocks
 }
 
-// TODO: This is a horrible algorithm. Do better.
+// TODO: This is a horribly inefficient algorithm which may get stuck forever.
 pub fn generate_block_grid(size: usize) -> Vec<Block> {
   let mut rng = RandomNumberGenerator::new();
   let base_blocks = generate_blocks();
   let mut grid: Vec<Option<Block>> = vec![None; size * size];
 
-  while grid[0].is_none() {
-    let index = rng.range(0, base_blocks.len());
-    println!("Trying block {}", index);
-    let candidate = &base_blocks[index];
-    if is_block_valid(None, Direction::Left, Some(candidate))
-      && is_block_valid(None, Direction::Up, Some(candidate)) {
-        grid[0] = Some(candidate.clone());
-    }
-  }
-  // // Top row
-  for x in 1 .. size {
-    while grid[x].is_none() {
-      println!("Setting block {}", x);
-      let index = rng.range(0, base_blocks.len());
-      let candidate = &base_blocks[index];
-      println!("Trying block {}", index);
-      if is_block_valid(Some(grid[x - 1].as_ref().unwrap()), Direction::Left, Some(candidate))
-        && is_block_valid(None, Direction::Up, Some(candidate)) {
-          grid[x] = Some(candidate.clone());
+  for y in 0 .. size {
+    for x in 0 .. size {
+      let index = grid_xy_idx(x, y, size);
+      let above = if y > 0 { Some(grid_xy_idx(x, y - 1, size)) } else { None };
+      let below = if y < size - 1 { Some(grid_xy_idx(x, y + 1, size)) } else { None };
+      let left = if x > 0 { Some(grid_xy_idx(x - 1, y, size)) } else { None };
+      let right = if x < size - 1 { Some(grid_xy_idx(x + 1, y, size)) } else { None };
+      
+      while grid[index].is_none() {
+        let candidate_index = rng.range(0, base_blocks.len());
+        let candidate = &base_blocks[candidate_index];
+
+        let block_above = match above {
+          Some(idx) => Some(grid[idx].as_ref().unwrap()),
+          None => None
+        };
+        let block_left = match left {
+          Some(idx) => Some(grid[idx].as_ref().unwrap()),
+          None => None
+        };
+
+        if is_block_valid(block_left, Direction::Left, Some(candidate))
+          && is_block_valid(block_above, Direction::Up, Some(candidate)) {
+            let mut valid = true;
+            if x == size - 1 {
+              valid = is_block_valid(None, Direction::Right, Some(candidate))
+            }
+            if valid && y == size - 1 {
+              valid = is_block_valid(None, Direction::Down, Some(candidate))
+            }
+            if valid {
+              grid[index] = Some(candidate.clone());
+            }
+        }
       }
     }
   }
@@ -96,8 +111,8 @@ pub fn generate_block_grid(size: usize) -> Vec<Block> {
   return return_grid;
 }
 
-pub fn grid_xy_idx(x: i32, y: i32, grid_size: usize) -> usize {
-  (y as usize * grid_size) + x as usize
+fn grid_xy_idx(x: usize, y: usize, grid_size: usize) -> usize {
+  (y * grid_size) + x
 }
 
 // Determine if placing block_1 next to block_2 would be valid given the tiles at the block edges
@@ -108,7 +123,7 @@ fn is_block_valid(block_1: Option<&Block>, direction: Direction, block_2: Option
       Direction::Left =>  (block_xy_idx(BLOCK_SIZE - 1, i), block_xy_idx(0, i)),
       Direction::Right => (block_xy_idx(0, i),              block_xy_idx(BLOCK_SIZE - 1, i)),
       Direction::Up =>    (block_xy_idx(i, BLOCK_SIZE - 1), block_xy_idx(i, 0)),
-      Direction::Down =>    (block_xy_idx(i, 0),              block_xy_idx(i, BLOCK_SIZE - 1)),
+      Direction::Down =>  (block_xy_idx(i, 0),              block_xy_idx(i, BLOCK_SIZE - 1)),
       _ => panic!("Invalid direction for block comparison")
     };
 
