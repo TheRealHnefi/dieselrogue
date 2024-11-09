@@ -140,7 +140,7 @@ fn is_block_valid(block_1: Option<&Block>, direction: Direction, block_2: Option
       Some(block) => Some(block.tiles[tile2_idx]),
       None => None
     };
-    if !valid_tile_neighbors(tile_1, tile_2) && !valid_tile_neighbors(tile_2, tile_1) {
+    if !valid_tile_neighbors(tile_1, tile_2) {
       return false;
     }
   }
@@ -148,14 +148,13 @@ fn is_block_valid(block_1: Option<&Block>, direction: Direction, block_2: Option
 }
 
 // Check if two tiles are valid to be neighbors across blocks. None represents the map edge.
-// Does not check both ways, so needs to be called twice.
 fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> bool {
   fn matcher(t1: Option<TileType>, t2: Option<TileType>) -> bool {
     match (t1, t2) {
       (None, Some(TileType::Wall)) => true,
       (None, Some(TileType::Doorway)) => true,
       (Some(TileType::Wall), Some(TileType::Wall)) => true,
-      (Some(TileType::Wall), Some(TileType::Ground)) => true,
+      
       (Some(TileType::Wall), Some(TileType::Floor)) => true,
       (Some(TileType::Floor), Some(TileType::Floor)) => true,
       (Some(TileType::Floor), Some(TileType::Doorway)) => true,
@@ -166,6 +165,7 @@ fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> b
       (_, _) => false
     }
   }
+  // matcher does not check both ways, so needs to be called twice.
   return matcher(tile_1, tile_2) || matcher(tile_2, tile_1);
 }
 

@@ -46,7 +46,7 @@ pub struct State {
 impl State {
     /// Create new game state.
     /// # Arguments
-    /// * `size` - Number of blocks that make up one size of the map.
+    /// * `size` - Number of blocks that make up one side of the map.
     pub fn new_game_state(size: usize) -> Self {
         Self {
             run_state: RunState::AwaitingInput,

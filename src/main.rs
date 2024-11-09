@@ -59,7 +59,7 @@ fn main() -> rltk::BError {
         //.with_fullscreen(true)
         .build()?;
 
-    let mut state = State::new_game_state(9);
+    let mut state = State::new_game_state(5);
     //let mut state = State::new_performance_test();
 
     state.log.entries.push("Welcome!".to_string());
