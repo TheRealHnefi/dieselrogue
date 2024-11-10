@@ -68,8 +68,8 @@ pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
   let corner_blocks = generate_blocks("corner");
   let mut grid: Vec<Option<Block>> = vec![None; size * size];
 
-  for y in 0 .. size {
-    for x in 0 .. size {
+  for x in 0 .. size {
+    for y in 0 .. size {
       let index = grid_xy_idx(x, y, size);
       let above = if y > 0 { Some(grid_xy_idx(x, y - 1, size)) } else { None };
       //let below = if y < size - 1 { Some(grid_xy_idx(x, y + 1, size)) } else { None };
@@ -118,10 +118,11 @@ pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
 
       if valid_blocks.len() == 0 {
         println!("No valid blocks found for {} {}", x, y);
-        return None;
+        //return None;
       }
-
-      grid[index] = Some(valid_blocks[rng.range(0, valid_blocks.len())].clone());
+      else {
+        grid[index] = Some(valid_blocks[rng.range(0, valid_blocks.len())].clone());
+      }
     }
   }
 
