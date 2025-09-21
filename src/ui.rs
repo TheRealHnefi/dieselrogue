@@ -46,15 +46,6 @@ const PHYS_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
 const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
 
-pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
-    context.set_active_console(UI_CONSOLE_INDEX);
-
-    let show_cursor = (monotime / 250) % 2 == 0;
-    for menu in &state.menu_stack {
-        menu.draw(context, show_cursor);
-    }
-}
-
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     let blink = (monotime / 250) % 2 == 0;
     let viewport = state.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);

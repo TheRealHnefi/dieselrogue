@@ -6,7 +6,6 @@ use crate::World;
 use crate::GameLog;
 use crate::IntentAction;
 use crate::Item;
-use crate::Menu;
 use crate::IntentPhase;
 use crate::ui::*;
 use crate::components::*;
@@ -17,7 +16,6 @@ use crate::Rect;
 pub enum RunState {
     DeclareIntent,
     AwaitingInput,
-    AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
     Resolve(IntentPhase),
     RenderAnimations(IntentPhase),
@@ -32,7 +30,6 @@ pub struct State {
     pub world: World,
     pub animation_system: AnimationSystem,
 
-    pub menu_stack: Vec<Box<dyn Menu>>,
     pub action_being_used: Option<IntentAction>,
     pub action_item: Option<Item>,
     pub action_slot: Option<SlotType>,
@@ -54,7 +51,6 @@ impl State {
             log: GameLog {entries: vec![]},
             world: World::new(size),
             animation_system: AnimationSystem::new(),
-            menu_stack: vec![],
             action_being_used: None,
             action_item: None,
             action_slot: None,
@@ -72,7 +68,6 @@ impl State {
             log: GameLog {entries: vec![]},
             world: World::new_performance_test(),
             animation_system: AnimationSystem::new(),
-            menu_stack: vec![],
             action_being_used: None,
             action_item: None,
             action_slot: None,
@@ -105,10 +100,6 @@ impl GameState for State {
             }
             RunState::AwaitingInput => {
                 self.run_state = main_screen_input(self, context);
-            },
-            RunState::AwaitingMenuInput => {
-                self.run_state = menu_input(self, context);
-                draw_menu(self, context, monotime);
             },
             RunState::AwaitingPositionalTargetingInput => {
                 self.run_state = positional_targeting_input(self, context);
