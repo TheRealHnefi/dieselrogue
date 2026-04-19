@@ -10,8 +10,8 @@ pub struct Item {
     pub id: usize,
     pub renderable: Renderable,
     pub name: String,
-    pub inventory_actions: Vec<IntentAction>,
-    pub equip_actions: Vec<IntentAction>,
+    pub inventory_actions: Vec<ItemAction>,
+    pub equip_actions: Vec<ItemAction>,
     pub equip_slots: Vec<SlotType>,
     pub kind: ItemKind,
     pub proxy: bool
@@ -448,74 +448,74 @@ impl Item {
         }
     }
 
-    fn equip_action() -> IntentAction {
-        IntentAction {
+    fn equip_action() -> ItemAction {
+        ItemAction {
             name: "Equip".to_string(),
             targeting: Targeting::None,
-            phase: IntentPhase::Inventory,
+            phase: ExecutionPhase::Inventory,
             precondition: precondition_ok,
             action: actions::equip_item_action
         }
     }
-    fn drop_action() -> IntentAction {
-        IntentAction {
+    fn drop_action() -> ItemAction {
+        ItemAction {
             name: "Drop".to_string(),
             targeting: Targeting::None,
-            phase: IntentPhase::Inventory,
+            phase: ExecutionPhase::Inventory,
             precondition: precondition_ok,
             action: actions::drop_item_action
         }
     }
-    fn aim_action() -> IntentAction {
-        IntentAction {
+    fn aim_action() -> ItemAction {
+        ItemAction {
             name: "Aim at position".to_string(),
             targeting: Targeting::Positional,
-            phase: IntentPhase::Attack,
+            phase: ExecutionPhase::Attack,
             precondition: precondition_ok,
             action: actions::aim_action
         }
     }
-    fn fire_action() -> IntentAction {
-        IntentAction {
+    fn fire_action() -> ItemAction {
+        ItemAction {
             name: "Fire shot".to_string(),
             targeting: Targeting::Detailed,
-            phase: IntentPhase::Attack,
+            phase: ExecutionPhase::Attack,
             precondition: precondition_is_aiming,
             action: actions::single_fire_action
         }
     }
-    fn fire_burst_action() -> IntentAction {
-        IntentAction {
+    fn fire_burst_action() -> ItemAction {
+        ItemAction {
             name: "Fire burst".to_string(),
             targeting: Targeting::Detailed,
-            phase: IntentPhase::Attack,
+            phase: ExecutionPhase::Attack,
             precondition: precondition_is_aiming,
             action: actions::burst_fire_action
         }
     }
-    fn fire_rocket_action() -> IntentAction {
-        IntentAction {
+    fn fire_rocket_action() -> ItemAction {
+        ItemAction {
             name: "Fire rocket".to_string(),
             targeting: Targeting::Positional,
-            phase: IntentPhase::Attack,
+            phase: ExecutionPhase::Attack,
             precondition: precondition_is_aiming,
             action: actions::rocket_fire_action
         }
     }
-    fn fan_fire_action() -> IntentAction {
-        IntentAction {
+    fn fan_fire_action() -> ItemAction {
+        ItemAction {
             name: "Fan fire".to_string(),
             targeting: Targeting::Positional,
-            phase: IntentPhase::Attack,
+            phase: ExecutionPhase::Attack,
             precondition: precondition_ok,
             action: actions::fan_fire_action
         }
     }
-    fn throw_action() -> IntentAction {
-        IntentAction {
+    fn throw_action() -> ItemAction {
+        ItemAction {
             name: "Throw".to_string(),
             targeting: Targeting::Positional,
-            phase: IntentPhase::Attack,
+            phase: ExecutionPhase::Attack,
             precondition: precondition_ok,
             action: actions::throw_grenade_action
         }

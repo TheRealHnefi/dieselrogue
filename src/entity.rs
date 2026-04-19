@@ -228,7 +228,7 @@ impl Entity {
             },
             AI::Rotator => {
                 self.intent = Intent {
-                    phase: IntentPhase::Movement,
+                    phase: ExecutionPhase::Movement,
                     data: IntentData::Direction(self.body.facing.clockwise()),
                     action: actions::turn_action
                 };
@@ -244,7 +244,7 @@ impl Entity {
             },
             AI::Rotator => {
                 self.intent = Intent {
-                    phase: IntentPhase::Movement,
+                    phase: ExecutionPhase::Movement,
                     data: IntentData::Direction(self.body.facing.clockwise()),
                     action: actions::turn_action
                 };

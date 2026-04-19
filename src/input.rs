@@ -34,12 +34,12 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 return handle_move_input(&mut state.world, Direction::DownLeft, &mut state.log);
             },
             VirtualKeyCode::Numpad5 => {
-                return RunState::Resolve(IntentPhase::Instant);
+                return RunState::Resolve(ExecutionPhase::Instant);
             },
 
             VirtualKeyCode::G => {
                 match getitem_player_intent(&mut state.world) {
-                    Ok(_) => return RunState::Resolve(IntentPhase::Instant),
+                    Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
                     Err(error) => {
                         state.log(error.message);
                         return RunState::AwaitingInput;
@@ -49,7 +49,7 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
 
             VirtualKeyCode::D => {
                 match disembark_player_intent(&mut state.world) {
-                    Ok(_) => return RunState::Resolve(IntentPhase::Instant),
+                    Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
                     Err(error) => {
                         state.log(error.message);
                         return RunState::AwaitingInput;
@@ -176,7 +176,7 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                                     }
                                 }
                             }
-                            return RunState::Resolve(IntentPhase::Instant);
+                            return RunState::Resolve(ExecutionPhase::Instant);
                         }
                         else if action_in_use.targeting == Targeting::Detailed {
                             state.menu_stack.clear();
@@ -251,7 +251,7 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {
     match move_player_intent(direction, world) {
-        Ok(_) => return RunState::Resolve(IntentPhase::Instant),
+        Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
         Err(error) => {
             log.log(error.message);
             return RunState::AwaitingInput;    

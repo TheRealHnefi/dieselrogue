@@ -55,14 +55,14 @@ impl PatrollingAI {
             Some(direction) => {
                 if direction != body.facing {
                     return Intent {
-                        phase: IntentPhase::Movement,
+                        phase: ExecutionPhase::Movement,
                         data: IntentData::Direction(direction),
                         action: actions::turn_action
                     };
                 }
                 else {
                     return Intent {
-                        phase: IntentPhase::Movement,
+                        phase: ExecutionPhase::Movement,
                         data: IntentData::Target(map.idx_pos(self.current_path.pop().unwrap())),
                         action: actions::move_action
                     };
@@ -70,7 +70,7 @@ impl PatrollingAI {
             },
             None => {
                 return Intent {
-                    phase: IntentPhase::Idle,
+                    phase: ExecutionPhase::Idle,
                     data: IntentData::Void,
                     action: declare_intent_noop
                 }

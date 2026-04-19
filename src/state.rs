@@ -4,10 +4,10 @@ use std::time::Instant;
 use crate::AnimationSystem;
 use crate::World;
 use crate::GameLog;
-use crate::IntentAction;
+use crate::ItemAction;
 use crate::Item;
 use crate::Menu;
-use crate::IntentPhase;
+use crate::ExecutionPhase;
 use crate::ui::*;
 use crate::components::*;
 use crate::input::*;
@@ -19,8 +19,8 @@ pub enum RunState {
     AwaitingInput,
     AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
-    Resolve(IntentPhase),
-    RenderAnimations(IntentPhase),
+    Resolve(ExecutionPhase),
+    RenderAnimations(ExecutionPhase),
     ResolveStatusEffects
 }
 
@@ -33,7 +33,7 @@ pub struct State {
     pub animation_system: AnimationSystem,
 
     pub menu_stack: Vec<Box<dyn Menu>>,
-    pub action_being_used: Option<IntentAction>,
+    pub action_being_used: Option<ItemAction>,
     pub action_item: Option<Item>,
     pub action_slot: Option<SlotType>,
 
@@ -163,7 +163,7 @@ impl State {
         }
     }
 
-    fn resolve(&mut self, phase: IntentPhase, monotime: u128) {
+    fn resolve(&mut self, phase: ExecutionPhase, monotime: u128) {
         let mut animations = vec!();
         let mut maybe_next_phase = phase.next();
         while animations.len() == 0 && maybe_next_phase.is_some() {
@@ -183,7 +183,7 @@ impl State {
         }
     }
 
-    fn animate(&mut self, phase: IntentPhase, monotime: u128, context: &mut Rltk) {
+    fn animate(&mut self, phase: ExecutionPhase, monotime: u128, context: &mut Rltk) {
         let animation_done = self.animation_system.render(
             self.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32),
             monotime,
