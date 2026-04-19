@@ -13,6 +13,8 @@ pub struct Map {
     pub tiles: Vec<TileType>,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
+    /// Tile-indexed spatial index of entity presence. Each entry mirrors part of an [`Entity`]
+    /// for O(1) lookup. See [`Entity`] and [`Pawn`] for the authoritative data and sync rules.
     pub pawns: Vec<Option<Pawn>>,
     pub items: Vec<Option<Item>>,
 }

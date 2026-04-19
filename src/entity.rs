@@ -26,7 +26,15 @@ pub enum EntityKind {
     Door
 }
 
-/// Concrete type containing all data of something that acts and moves.
+/// The authoritative record for everything that acts and moves in the world.
+///
+/// Each Entity owns its full state: position, body, inventory, AI, intent, and viewshed.
+/// Entities are stored in `World::entities` and are the only place state should be mutated.
+///
+/// Because spatial lookups directly into `World::entities` would require a linear scan,
+/// Entities project lightweight [`Pawn`] values onto `Map::pawns` for O(1) tile queries.
+/// Call [`Entity::create_pawns`] after spawning or moving, and [`Entity::clear_pawns`] before
+/// removing an entity. [`Entity::set_position`] handles both automatically.
 pub struct Entity {
     pub id: usize,
     pub kind: EntityKind,
@@ -150,6 +158,8 @@ impl Entity {
         return true;
     }
 
+    /// Writes a [`Pawn`] snapshot of this entity into every map tile it occupies.
+    /// Must be called after spawning or after [`Entity::clear_pawns`] + a position change.
     pub fn create_pawns(&self, map: &mut Map) {
         for x in 0..self.size_x {
             for y in 0..self.size_y {
@@ -168,6 +178,8 @@ impl Entity {
         }
     }
 
+    /// Removes this entity's [`Pawn`] entries from every map tile it occupies.
+    /// Must be called before the entity is moved or removed from the world.
     pub fn clear_pawns(&self, map: &mut Map) {
         for x in 0..self.size_x {
             for y in 0..self.size_y {
@@ -315,8 +327,17 @@ impl Entity {
     }
 }
 
-/// Contains information typically needed to be referenced by others. Placed on the map for quick
-/// indexing.
+/// A snapshot of an [`Entity`] placed on the map grid for fast spatial lookup.
+///
+/// `Map::pawns` is a flat tile-indexed `Vec<Option<Pawn>>`. Looking up what occupies a tile is
+/// O(1) via the tile index, without scanning `World::entities`.
+///
+/// Pawn data mirrors its Entity at the moment `create_pawns` was last called. It is **read-only
+/// from the map's perspective** — never mutate a Pawn directly. Apply changes to the owning
+/// Entity and then call `set_position` or `create_pawns`/`clear_pawns` to resync.
+///
+/// Multi-tile entities (e.g. tanks) place one Pawn per occupied tile, each with its own
+/// `sprite_index` for rendering. All of these Pawns share the same `entity_id`.
 #[derive(Clone)]
 pub struct Pawn {
     pub entity_id: usize,
