@@ -155,16 +155,16 @@ impl Item {
         ItemAction { name: "Aim at position".to_string(),  targeting: Targeting::Positional, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::aim_action           }
     }
     fn fire_action() -> ItemAction {
-        ItemAction { name: "Fire shot".to_string(),        targeting: Targeting::Detailed,   phase: ExecutionPhase::Attack,    precondition: precondition_is_aiming, action: actions::single_fire_action   }
+        ItemAction { name: "Fire shot".to_string(),        targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::single_fire_action   }
     }
     fn fire_burst_action() -> ItemAction {
-        ItemAction { name: "Fire burst".to_string(),       targeting: Targeting::Detailed,   phase: ExecutionPhase::Attack,    precondition: precondition_is_aiming, action: actions::burst_fire_action    }
+        ItemAction { name: "Fire burst".to_string(),       targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::burst_fire_action    }
     }
     fn fire_rocket_action() -> ItemAction {
-        ItemAction { name: "Fire rocket".to_string(),      targeting: Targeting::Positional, phase: ExecutionPhase::Attack,    precondition: precondition_is_aiming, action: actions::rocket_fire_action   }
+        ItemAction { name: "Fire rocket".to_string(),      targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::rocket_fire_action   }
     }
     fn fan_fire_action() -> ItemAction {
-        ItemAction { name: "Fan fire".to_string(),         targeting: Targeting::Positional, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::fan_fire_action      }
+        ItemAction { name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::fan_fire_action      }
     }
     fn throw_action() -> ItemAction {
         ItemAction { name: "Throw".to_string(),            targeting: Targeting::Positional, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }

@@ -178,6 +178,7 @@ pub fn single_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
         log.log(format!("{} fired at {}", entity.name, pawn.name));
     }
     result.push(Effect::Animation(shot_animation(entity.position, target_pos, 1)));
+    entity.clear_aiming();
     result
 }
 
@@ -202,6 +203,7 @@ pub fn burst_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) 
         log.log(format!("{} fired {} shots at {}", entity.name, shots, pawn.name));
     }
     result.push(Effect::Animation(shot_animation(entity.position, target_pos, shots as i32)));
+    entity.clear_aiming();
     result
 }
 
@@ -226,6 +228,7 @@ pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     }
     result.push(Effect::DestroyWall(target_pos));
     result.push(Effect::Animation(explosion_animation(target_pos)));
+    entity.clear_aiming();
     result
 }
 
@@ -294,6 +297,7 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
         result.push(Effect::Animation(fan_fire_animation(arc_positions)));
     }
 
+    entity.clear_aiming();
     result
 }
 
@@ -314,6 +318,7 @@ pub fn move_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
         IntentData::Target(pos) => {
             if entity.check_fit(pos, map) {
                 entity.set_position(pos, map);
+                entity.clear_aiming();
             }
         },
         _ => unreachable!("move_action called with non-target intent"),

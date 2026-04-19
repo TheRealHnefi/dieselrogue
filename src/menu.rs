@@ -164,7 +164,7 @@ impl MenuRow for AbilityRow {
                     action: self.action.action
                 }, action_apply_intent_to_player)
             },
-            Targeting::Positional | Targeting::Detailed => {
+            Targeting::Positional | Targeting::Detailed | Targeting::UseExistingAim { .. } => {
                 MenuAction::WithPendingAction(PendingAction {
                     item_action: self.action.clone(),
                     source: Some(ActionSource::EquippedSlot(self.item.equip_slots[0])),
@@ -192,7 +192,7 @@ impl MenuRow for ItemActionRow {
                     action: self.action.action
                 }, action_apply_intent_to_player)
             },
-            Targeting::Positional | Targeting::Detailed => {
+            Targeting::Positional | Targeting::Detailed | Targeting::UseExistingAim { .. } => {
                 MenuAction::WithPendingAction(PendingAction {
                     item_action: self.action.clone(),
                     source: Some(ActionSource::InventoryItem(self.item.clone())),

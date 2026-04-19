@@ -315,6 +315,18 @@ impl Entity {
         self.body.apply_status_effect(status);
     }
 
+    pub fn get_aiming_position(&self) -> Option<Point> {
+        let key = StatusEffect::AimingAtGround(Point { x: 0, y: 0 }, Item::pistol());
+        match self.body.get_status_effect(&key) {
+            Some(StatusEffect::AimingAtGround(pos, _)) => Some(*pos),
+            _ => None,
+        }
+    }
+
+    pub fn clear_aiming(&mut self) {
+        self.body.status_effects.retain(|s| !matches!(s, StatusEffect::AimingAtGround(..) | StatusEffect::AimingAtEntity(..)));
+    }
+
     pub fn resolve_status_effects(&mut self) {
         // TODO
         // for effect in &self.body.status_effects {
