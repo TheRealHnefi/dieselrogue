@@ -351,9 +351,100 @@ pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     result
 }
 
-pub fn fan_fire_action(_entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
-    assert!(false, "NYI");
-    return vec!();
+pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+    let mut result = vec!();
+
+    let item_slot;
+    let target_pos;
+    match entity.intent.data {
+        IntentData::TargetWithEquipment{slot, target} => {
+            item_slot = slot;
+            target_pos = target;
+        },
+        _ => {
+            debug_assert!(false);
+            return result;
+        }
+    }
+
+    let shot_damage;
+    let range;
+    match entity.get_equipped_item(item_slot) {
+        Some(item) => {
+            match item.kind {
+                ItemKind::Firearm {ammo, max_ammo, damage, range: r} => {
+                    if ammo < 1 {
+                        log.log(format!("{} pulled the trigger. 'Click'.", entity.name));
+                        return result;
+                    }
+                    item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage, range: r};
+                    shot_damage = damage;
+                    range = r;
+                },
+                _ => {
+                    debug_assert!(false);
+                    return result;
+                }
+            }
+        },
+        None => {
+            debug_assert!(false);
+            return result;
+        }
+    }
+
+    let src = entity.position;
+    let dx = (target_pos.x - src.x) as f32;
+    let dy = (target_pos.y - src.y) as f32;
+    let dir_len = (dx * dx + dy * dy).sqrt();
+    if dir_len == 0.0 {
+        return result;
+    }
+    let dir_x = dx / dir_len;
+    let dir_y = dy / dir_len;
+
+    // cos(22.5 degrees) — half of a 45-degree arc
+    const HALF_ARC_COS: f32 = 0.9239;
+
+    let range_i = range as i32;
+    let mut arc_positions = vec!();
+    for ty in (src.y - range_i)..=(src.y + range_i) {
+        for tx in (src.x - range_i)..=(src.x + range_i) {
+            if tx < 0 || ty < 0 || tx >= map.width as i32 || ty >= map.height as i32 {
+                continue;
+            }
+            let tdx = (tx - src.x) as f32;
+            let tdy = (ty - src.y) as f32;
+            let tile_dist = (tdx * tdx + tdy * tdy).sqrt();
+            if tile_dist < 0.5 || tile_dist > range as f32 {
+                continue;
+            }
+            let dot = (dir_x * tdx + dir_y * tdy) / tile_dist;
+            if dot < HALF_ARC_COS {
+                continue;
+            }
+
+            let tile_pos = rltk::Point::new(tx, ty);
+            let tile_idx = map.pos_idx(tile_pos);
+            if let Some(pawn) = &map.pawns[tile_idx] {
+                for part_index in 0..pawn.body.parts.len() {
+                    result.push(Effect::Damage {
+                        entity_id: pawn.entity_id,
+                        bodypart_index: part_index,
+                        raw_damage: shot_damage,
+                    });
+                }
+                log.log(format!("{} hit {} with fan fire", entity.name, pawn.name));
+            }
+            arc_positions.push(tile_pos);
+        }
+    }
+
+    if !arc_positions.is_empty() {
+        result.push(Effect::Animation(fan_fire_animation(arc_positions)));
+    }
+
+    result
 }
 
 pub fn open_door_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {

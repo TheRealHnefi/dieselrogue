@@ -42,6 +42,37 @@ pub fn shot_animation(start_pos: Point, target_pos: Point, number_of_shots: i32)
     }
 }
 
+pub fn fan_fire_animation(positions: Vec<Point>) -> Animation {
+    let particle_a = Particle::Complete(Renderable {
+        glyph: rltk::to_cp437('^'),
+        color: RGB::named(rltk::YELLOW),
+        background: RGB::named(rltk::RED)
+    });
+    let particle_b = Particle::Complete(Renderable {
+        glyph: rltk::to_cp437('*'),
+        color: RGB::named(rltk::RED),
+        background: RGB::named(rltk::YELLOW)
+    });
+
+    let frame_1 = Frame {
+        particles: positions.iter().map(|_| particle_a.clone()).collect(),
+        positions: positions.clone(),
+        duration_ms: 150
+    };
+    let frame_2 = Frame {
+        particles: positions.iter().map(|_| particle_b.clone()).collect(),
+        positions: positions.clone(),
+        duration_ms: 150
+    };
+
+    Animation {
+        frames: vec!(frame_1, frame_2),
+        current_frame: 0,
+        time_spent_in_current_frame: 0,
+        done: false
+    }
+}
+
 pub fn explosion_animation(pos: Point) -> Animation {
     let particle = Particle::Complete(
         Renderable {
