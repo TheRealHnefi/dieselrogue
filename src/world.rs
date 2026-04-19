@@ -268,92 +268,93 @@ impl World {
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {
             match effect {
-                Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} => {
-                    self.entities[*id].apply_damage(*part_index, *damage);
-                    if self.entities[*id].mortally_wounded() {
-                        log.log(format!("{} was killed!", self.entities[*id].name));
-                        deathlist.push(*id);
-                    }
-                },
-                Effect::OpenDoor(pos) => {
-                    let index = self.map.pos_idx(*pos);
-                    match &self.map.pawns[index] {
-                        Some(pawn) => {
-                            if pawn.kind == EntityKind::Door {
-                                self.entities[pawn.entity_id].clear_pawns(&mut self.map);
-                                self.update_views_near_event(*pos, 10);
-                            }
-                        },
-                        None => ()
-                    }
-                },
-                Effect::DestroyWall(pos) => {
-                    let index = self.map.pos_idx(*pos);
-                    match self.map.tiles[index] {
-                        TileType::Wall => {
-                            self.map.tiles[index] = TileType::Floor;
-                            self.update_views_near_event(*pos, 10);
-                        },
-                        _ => ()
-                    }
-                },
-                Effect::Embark{pilot_id, vehicle_id} => {
-                    self.entities[*pilot_id].driving = DrivingState::Driving(*vehicle_id);
-                    self.entities[*pilot_id].clear_pawns(&mut self.map);
-                    self.entities[*vehicle_id].driving = DrivingState::DrivenBy(*pilot_id);
-                    
-                    log.log(format!("{} entered {}",
-                        self.entities[*pilot_id].name,
-                        self.entities[*vehicle_id].name));
-
-                    if self.entities[*pilot_id].id == self.player_id.unwrap() {
-                        self.entities[*pilot_id].set_visible_tiles(&mut self.map, false);
-                        self.entities[*vehicle_id].set_visible_tiles(&mut self.map, true);
-                        self.entities[self.player_id.unwrap()].kind = EntityKind::Actor;
-                        self.player_id = Some(*vehicle_id);
-                        self.entities[*vehicle_id].kind = EntityKind::Player;
-                    }
-                },
-                Effect::Disembark{pilot_id, vehicle_id} => {
-                    let vehicle_center = self.entities[*vehicle_id].center();
-                    match self.map.nearest_free_pawn_position(vehicle_center) {
-                        Ok(pos) => {
-                            self.entities[*pilot_id].driving = DrivingState::None;
-                            self.entities[*vehicle_id].driving = DrivingState::Drivable;
-                            self.entities[*pilot_id].position = pos;
-                            self.entities[*pilot_id].create_pawns(&mut self.map);
-                            self.entities[*vehicle_id].create_pawns(&mut self.map);
-                            self.entities[*pilot_id].update_view(&mut self.map);
-
-                            if self.entities[*vehicle_id].id == self.player_id.unwrap() {
-                                self.entities[*vehicle_id].set_visible_tiles(&mut self.map, false);
-                                self.entities[*pilot_id].set_visible_tiles(&mut self.map, true);
-
-                                self.player_id = Some(*pilot_id);
-                                self.entities[*vehicle_id].kind = EntityKind::Actor;
-                                self.entities[*pilot_id].kind = EntityKind::Player;
-                            }
-
-                            log.log(format!("{} left their vehicle",
-                                self.entities[*pilot_id].name));
-                        },
-                        Err(_) => {
-                            log.log(format!("{} tried to disembark, but there is no room",
-                                self.entities[*pilot_id].name));
-                        }
-                    }
-                },
-                Effect::Animation(animation) => {
-                    animations.push(animation.clone());
-                },
-                Effect::ApplyStatus{target_id, status} => {
-                    self.entities[*target_id].apply_status_effect(status);
-                }
+                Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} =>
+                    self.handle_damage(*id, *part_index, *damage, &mut deathlist, log),
+                Effect::OpenDoor(pos) =>
+                    self.handle_open_door(*pos),
+                Effect::DestroyWall(pos) =>
+                    self.handle_destroy_wall(*pos),
+                Effect::Embark{pilot_id, vehicle_id} =>
+                    self.handle_embark(*pilot_id, *vehicle_id, log),
+                Effect::Disembark{pilot_id, vehicle_id} =>
+                    self.handle_disembark(*pilot_id, *vehicle_id, log),
+                Effect::Animation(animation) =>
+                    animations.push(animation.clone()),
+                Effect::ApplyStatus{target_id, status} =>
+                    self.entities[*target_id].apply_status_effect(status),
             }
         }
-
         self.post_resolve(deathlist);
-        return animations;
+        animations
+    }
+
+    fn handle_damage(&mut self, id: usize, part_index: usize, damage: Damage, deathlist: &mut Vec<usize>, log: &mut GameLog) {
+        self.entities[id].apply_damage(part_index, damage);
+        if self.entities[id].mortally_wounded() {
+            log.log(format!("{} was killed!", self.entities[id].name));
+            deathlist.push(id);
+        }
+    }
+
+    fn handle_open_door(&mut self, pos: Point) {
+        let index = self.map.pos_idx(pos);
+        let entity_id = match &self.map.pawns[index] {
+            Some(pawn) if pawn.kind == EntityKind::Door => pawn.entity_id,
+            _ => return,
+        };
+        self.entities[entity_id].clear_pawns(&mut self.map);
+        self.update_views_near_event(pos, 10);
+    }
+
+    fn handle_destroy_wall(&mut self, pos: Point) {
+        let index = self.map.pos_idx(pos);
+        if self.map.tiles[index] == TileType::Wall {
+            self.map.tiles[index] = TileType::Floor;
+            self.update_views_near_event(pos, 10);
+        }
+    }
+
+    fn handle_embark(&mut self, pilot_id: usize, vehicle_id: usize, log: &mut GameLog) {
+        self.entities[pilot_id].driving = DrivingState::Driving(vehicle_id);
+        self.entities[pilot_id].clear_pawns(&mut self.map);
+        self.entities[vehicle_id].driving = DrivingState::DrivenBy(pilot_id);
+
+        log.log(format!("{} entered {}", self.entities[pilot_id].name, self.entities[vehicle_id].name));
+
+        if self.entities[pilot_id].id == self.player_id.unwrap() {
+            self.entities[pilot_id].set_visible_tiles(&mut self.map, false);
+            self.entities[vehicle_id].set_visible_tiles(&mut self.map, true);
+            self.entities[self.player_id.unwrap()].kind = EntityKind::Actor;
+            self.player_id = Some(vehicle_id);
+            self.entities[vehicle_id].kind = EntityKind::Player;
+        }
+    }
+
+    fn handle_disembark(&mut self, pilot_id: usize, vehicle_id: usize, log: &mut GameLog) {
+        let vehicle_center = self.entities[vehicle_id].center();
+        match self.map.nearest_free_pawn_position(vehicle_center) {
+            Ok(pos) => {
+                self.entities[pilot_id].driving = DrivingState::None;
+                self.entities[vehicle_id].driving = DrivingState::Drivable;
+                self.entities[pilot_id].position = pos;
+                self.entities[pilot_id].create_pawns(&mut self.map);
+                self.entities[vehicle_id].create_pawns(&mut self.map);
+                self.entities[pilot_id].update_view(&mut self.map);
+
+                if self.entities[vehicle_id].id == self.player_id.unwrap() {
+                    self.entities[vehicle_id].set_visible_tiles(&mut self.map, false);
+                    self.entities[pilot_id].set_visible_tiles(&mut self.map, true);
+                    self.player_id = Some(pilot_id);
+                    self.entities[vehicle_id].kind = EntityKind::Actor;
+                    self.entities[pilot_id].kind = EntityKind::Player;
+                }
+
+                log.log(format!("{} left their vehicle", self.entities[pilot_id].name));
+            },
+            Err(_) => {
+                log.log(format!("{} tried to disembark, but there is no room", self.entities[pilot_id].name));
+            }
+        }
     }
 
     pub fn resolve_status_effects(&mut self) {
