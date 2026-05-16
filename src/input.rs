@@ -1,4 +1,4 @@
-use rltk::{VirtualKeyCode, Rltk};
+use rltk::{VirtualKeyCode, Rltk, Point};
 use super::*;
 use std::cmp::*;
 
@@ -82,6 +82,17 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 state.menu_stack.clear();
                 state.menu_stack.push(Box::new(ability_menu(&state.world)));
                 return RunState::AwaitingMenuInput;
+            },
+
+            VirtualKeyCode::J => {
+                let can_juke = state.world.get_player()
+                    .map(|p| p.has_ability(Ability::Juke))
+                    .unwrap_or(false);
+                if can_juke {
+                    state.log("Juke: choose direction.".to_string());
+                    return RunState::AwaitingJukeInput;
+                }
+                return RunState::AwaitingInput;
             },
 
             VirtualKeyCode::L => {
@@ -332,6 +343,51 @@ pub fn looking_input(state: &mut State, context: &mut Rltk) -> RunState {
         }
     }
     RunState::Looking
+}
+
+pub fn juke_direction_input(state: &mut State, context: &mut Rltk) -> RunState {
+    let key = match context.key {
+        Some(k) => k,
+        None => return RunState::AwaitingJukeInput,
+    };
+
+    let dir = match key {
+        VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 => Some(Direction::Left),
+        VirtualKeyCode::Right | VirtualKeyCode::Numpad6 => Some(Direction::Right),
+        VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 => Some(Direction::Up),
+        VirtualKeyCode::Down  | VirtualKeyCode::Numpad2 => Some(Direction::Down),
+        VirtualKeyCode::Numpad7 => Some(Direction::UpLeft),
+        VirtualKeyCode::Numpad9 => Some(Direction::UpRight),
+        VirtualKeyCode::Numpad3 => Some(Direction::DownRight),
+        VirtualKeyCode::Numpad1 => Some(Direction::DownLeft),
+        VirtualKeyCode::Escape  => return RunState::AwaitingInput,
+        _ => return RunState::AwaitingJukeInput,
+    };
+
+    if let Some(dir) = dir {
+        let (dx, dy) = match dir {
+            Direction::Up        => ( 0, -1),
+            Direction::UpRight   => ( 1, -1),
+            Direction::Right     => ( 1,  0),
+            Direction::DownRight => ( 1,  1),
+            Direction::Down      => ( 0,  1),
+            Direction::DownLeft  => (-1,  1),
+            Direction::Left      => (-1,  0),
+            Direction::UpLeft    => (-1, -1),
+        };
+        if let Ok(player) = state.world.get_player_mut() {
+            let target = Point { x: player.position.x + dx, y: player.position.y + dy };
+            player.intent = Intent {
+                phase: ExecutionPhase::Instant,
+                data: IntentData::Target(target),
+                action: actions::juke_action,
+            };
+        }
+        // Start the round from Idle so the Instant phase runs before Inventory/Attack/Movement.
+        return RunState::Resolve(ExecutionPhase::Idle);
+    }
+
+    RunState::AwaitingJukeInput
 }
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {

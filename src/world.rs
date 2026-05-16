@@ -167,6 +167,7 @@ impl World {
         player.kind = EntityKind::Player;
         player.body.parts[0].abilities.push(Ability::WideVision);   // Head
         player.body.parts[0].abilities.push(Ability::Precognition); // Head
+        player.body.parts[4].abilities.push(Ability::Juke);         // Legs
         player.body.update_abilities();
 
         // player.apply_status_effect(&StatusEffect::Blind(0));

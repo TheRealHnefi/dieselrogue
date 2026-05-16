@@ -9,6 +9,7 @@ pub enum Ability {
     // Active abilities
     Embark,
     Disembark,
+    Juke, // Allow player to move out of order and without turning. Allows dodging shots.
 }
 
 impl Ability {
@@ -21,6 +22,7 @@ impl Ability {
             Ability::Precognition => "Precognition",
             Ability::Embark     => "Embark",
             Ability::Disembark  => "Disembark",
+            Ability::Juke       => "Juke",
         }.to_string()
     }
 
@@ -33,6 +35,7 @@ impl Ability {
             Ability::Precognition => true,
             Ability::Embark     => false,
             Ability::Disembark  => false,
+            Ability::Juke       => false,
         }
     }
 }
