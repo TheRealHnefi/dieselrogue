@@ -233,6 +233,9 @@ impl Entity {
                     action: actions::turn_action
                 };
             },
+            AI::Forward => {
+                self.intent = forward_intent(self.position, self.body.facing);
+            },
             AI::None => ()
         }
     }
@@ -249,9 +252,13 @@ impl Entity {
                     action: actions::turn_action
                 };
             },
+            AI::Forward => {
+                self.intent = forward_intent(self.position, self.body.facing);
+            },
             AI::None => ()
         }
     }
+
 
     pub fn update_view(&mut self, map: &mut Map) {
         if self.kind == EntityKind::Player {
@@ -336,6 +343,24 @@ impl Entity {
         //         }
         //     }
         // }
+    }
+}
+
+fn forward_intent(pos: Point, facing: Direction) -> Intent {
+    let (dx, dy): (i32, i32) = match facing {
+        Direction::Up        => ( 0, -1),
+        Direction::UpRight   => ( 1, -1),
+        Direction::Right     => ( 1,  0),
+        Direction::DownRight => ( 1,  1),
+        Direction::Down      => ( 0,  1),
+        Direction::DownLeft  => (-1,  1),
+        Direction::Left      => (-1,  0),
+        Direction::UpLeft    => (-1, -1),
+    };
+    Intent {
+        phase: ExecutionPhase::Movement,
+        data: IntentData::Target(Point { x: pos.x + dx, y: pos.y + dy }),
+        action: actions::move_action
     }
 }
 

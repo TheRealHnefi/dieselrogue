@@ -1,5 +1,6 @@
 use super::*;
 use rltk::Point;
+use std::collections::HashMap;
 
 /// The contents of the game world itself.
 pub struct World {
@@ -188,6 +189,22 @@ impl World {
         Ok(())
     }
 
+    pub fn create_forward_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
+        if self.map.blocked(pos.x, pos.y) {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: format!("Position ({}, {}) is already occupied", pos.x, pos.y)
+            });
+        }
+
+        let mut entity = Entity::new_human(self.entities.len(), pos, facing, name);
+        entity.ai = AI::Forward;
+        entity.create_pawns(&mut self.map);
+        self.entities.push(entity);
+
+        Ok(())
+    }
+
     pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Result<(), GameError> {
         if self.map.blocked(pos.x, pos.y) {
             return Err(GameError {
@@ -283,6 +300,10 @@ impl World {
     }
 
     pub fn resolve_phase(&mut self, phase: ExecutionPhase, log: &mut GameLog) -> Vec<Animation> {
+        if phase == ExecutionPhase::Movement {
+            self.cancel_contested_moves();
+        }
+
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {
             if entity.intent.phase == phase {
@@ -293,6 +314,33 @@ impl World {
         }
 
         return self.resolve_effects(&effects, log);
+    }
+
+    fn cancel_contested_moves(&mut self) {
+        // Count how many entities intend to enter each tile this turn.
+        let mut target_counts: HashMap<(i32, i32), usize> = HashMap::new();
+        for entity in &self.entities {
+            if entity.intent.phase == ExecutionPhase::Movement
+                && std::ptr::fn_addr_eq(entity.intent.action, move_action as Action)
+            {
+                if let IntentData::Target(pos) = entity.intent.data {
+                    *target_counts.entry((pos.x, pos.y)).or_insert(0) += 1;
+                }
+            }
+        }
+
+        // Cancel every move intent whose destination is contested.
+        for entity in &mut self.entities {
+            if entity.intent.phase == ExecutionPhase::Movement
+                && std::ptr::fn_addr_eq(entity.intent.action, move_action as Action)
+            {
+                if let IntentData::Target(pos) = entity.intent.data {
+                    if target_counts[&(pos.x, pos.y)] > 1 {
+                        entity.intent = idle_intent();
+                    }
+                }
+            }
+        }
     }
 
     fn resolve_effects(&mut self, effects: &Vec<Effect>, log: &mut GameLog) -> Vec<Animation> {
@@ -620,6 +668,33 @@ mod tests {
             if item.is_some() {
                 assert!(world.map.tiles[index] == TileType::Ground);
             }
+        }
+    }
+
+    #[test]
+    fn forward_goons_blocked_by_contested_center_tile() {
+        let mut world = World::new_test();
+
+        let center = Point { x: 10, y: 10 };
+
+        // Place one goon on each cardinal side of the center, all facing inward.
+        // On the first tick every one of them will declare an intent to enter (10, 10).
+        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y - 1 }, Direction::Down,  String::from("North")).is_ok());
+        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y + 1 }, Direction::Up,    String::from("South")).is_ok());
+        assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
+        assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
+
+        let start_positions: Vec<Point> = world.entities.iter().map(|e| e.position).collect();
+
+        simulate_tick(&mut world);
+
+        // All goons must remain at their starting positions — nobody may enter the
+        // center tile because all four are trying to simultaneously.
+        for (i, entity) in world.entities.iter().enumerate() {
+            assert_eq!(
+                entity.position, start_positions[i],
+                "entity '{}' moved when it should have been blocked", entity.name
+            );
         }
     }
 
