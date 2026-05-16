@@ -1,6 +1,8 @@
 use rltk::{Rltk, RGB, Point};
+use crate::ability::Ability;
 use crate::item::*;
 use crate::intent::*;
+use crate::player::disembark_player_intent;
 use crate::state::*;
 use crate::World;
 use crate::actions;
@@ -96,8 +98,7 @@ pub struct ItemSlotRow {
 
 pub struct AbilityRow {
     pub text: String,
-    pub item: Item,
-    pub action: ItemAction
+    pub activation: fn(&mut State) -> RunState,
 }
 
 pub struct TargetingRow {
@@ -156,25 +157,11 @@ impl MenuRow for ItemSlotRow {
 
 impl MenuRow for AbilityRow {
     fn get_action(&self) -> MenuAction {
-        match self.action.targeting {
-            Targeting::None => {
-                MenuAction::WithIntent(Intent {
-                    phase: self.action.phase,
-                    data: IntentData::EquippedItem(self.item.equip_slots[0]),
-                    action: self.action.action
-                }, action_apply_intent_to_player)
-            },
-            Targeting::Positional | Targeting::Detailed | Targeting::UseExistingAim { .. } => {
-                MenuAction::WithPendingAction(PendingAction {
-                    item_action: self.action.clone(),
-                    source: Some(ActionSource::EquippedSlot(self.item.equip_slots[0])),
-                })
-            }
-        }
+        MenuAction::Simple(self.activation)
     }
 
     fn get_text(&self) -> String {
-        return self.text.clone();
+        self.text.clone()
     }
 
     fn selectable(&self) -> bool {
@@ -321,34 +308,51 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
     }
 }
 
-pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
-    let mut rows = vec!();
-    let mut no_selectable_rows = true;
-    let player = world.get_player().unwrap();
+fn action_use_juke(state: &mut State) -> RunState {
+    state.log("Juke: choose direction.".to_string());
+    RunState::AwaitingJukeInput
+}
 
-    for slot in &player.body.item_slots {
-        match &slot.item {
-            Some(item) => {
-                for action in &item.equip_actions {
-                    if (action.precondition)(player, &world.map, Some(item)) {
-                        rows.push(AbilityRow {
-                            text: format!("{}: {}", item.name, action.name),
-                            item: item.clone(),
-                            action: action.clone() });
-                        no_selectable_rows = false;
-                    }
-                }
-            },
-            None => ()
+fn action_use_disembark(state: &mut State) -> RunState {
+    match disembark_player_intent(&mut state.world) {
+        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
+        Err(e) => {
+            state.log(e.message);
+            RunState::AwaitingInput
+        }
+    }
+}
+
+pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
+    let mut rows = vec![];
+    let mut no_selectable_rows = true;
+
+    if let Ok(player) = world.get_player() {
+        for ability in &player.body.abilities {
+            let maybe_row: Option<AbilityRow> = match ability {
+                Ability::Juke => Some(AbilityRow {
+                    text: ability.to_string(),
+                    activation: action_use_juke,
+                }),
+                Ability::Disembark => Some(AbilityRow {
+                    text: ability.to_string(),
+                    activation: action_use_disembark,
+                }),
+                _ => None,
+            };
+            if let Some(row) = maybe_row {
+                rows.push(row);
+                no_selectable_rows = false;
+            }
         }
     }
 
     MenuPanel {
         x: 35,
         y: 20,
-        rows: rows,
+        rows,
         selected_row: 0,
-        no_selectable_rows: no_selectable_rows
+        no_selectable_rows,
     }
 }
 
