@@ -1,5 +1,6 @@
 use rltk::{Rltk, RGB, Point};
 use crate::ability::Ability;
+use crate::entity::Entity;
 use crate::item::*;
 use crate::intent::*;
 use crate::player::disembark_player_intent;
@@ -107,6 +108,10 @@ pub struct TargetingRow {
     pub bodypart_index: usize
 }
 
+pub struct EntityViewRow {
+    pub text: String,
+}
+
 impl MenuRow for SystemRow {
     fn get_action(&self) -> MenuAction {
         return MenuAction::Simple(self.action);
@@ -208,6 +213,20 @@ impl MenuRow for TargetingRow {
 
     fn selectable(&self) -> bool {
         true
+    }
+}
+
+impl MenuRow for EntityViewRow {
+    fn get_action(&self) -> MenuAction {
+        MenuAction::Simple(action_noop)
+    }
+
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
+
+    fn selectable(&self) -> bool {
+        false
     }
 }
 
@@ -418,6 +437,35 @@ pub fn targeting_menu(world: &World, position: Point) -> Option<MenuPanel<Target
         selected_row: 0,
         no_selectable_rows: false
     })
+}
+
+pub fn entity_equipment_view(entity: &Entity) -> MenuPanel<EntityViewRow> {
+    let mut rows = vec![];
+
+    rows.push(EntityViewRow { text: entity.name.clone() });
+
+    for bodypart in &entity.body.parts {
+        rows.push(EntityViewRow {
+            text: format!("{}: {}/{}", bodypart.name, bodypart.damage, bodypart.max_damage),
+        });
+        for slot_index in &bodypart.slot_index {
+            let item_name = match &entity.body.item_slots[*slot_index].item {
+                Some(item) => item.name.clone(),
+                None => "---".to_string(),
+            };
+            rows.push(EntityViewRow {
+                text: format!("    {}", item_name),
+            });
+        }
+    }
+
+    MenuPanel {
+        x: 35,
+        y: 20,
+        rows,
+        selected_row: 0,
+        no_selectable_rows: true,
+    }
 }
 
 impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {

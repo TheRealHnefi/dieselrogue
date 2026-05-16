@@ -336,7 +336,19 @@ pub fn looking_input(state: &mut State, context: &mut Rltk) -> RunState {
                 state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
                 state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
             },
-            VirtualKeyCode::Escape | VirtualKeyCode::Return | VirtualKeyCode::L => {
+            VirtualKeyCode::Escape | VirtualKeyCode::L => {
+                return RunState::AwaitingInput;
+            },
+            VirtualKeyCode::Return => {
+                let idx = state.world.map.pos_idx(state.cursor_pos);
+                let entity_id = state.world.map.pawns[idx].as_ref().map(|p| p.entity_id);
+                if let Some(id) = entity_id {
+                    if let Some(entity) = state.world.entities.get(id) {
+                        let menu = entity_equipment_view(entity);
+                        state.menu_stack.push(Box::new(menu));
+                        return RunState::AwaitingMenuInput;
+                    }
+                }
                 return RunState::AwaitingInput;
             },
             _ => {}
