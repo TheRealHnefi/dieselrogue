@@ -77,8 +77,8 @@ impl State {
 }
 
 impl GameState for State {
-    // Runs every frame. Raise RUST_LOG to trace to see per-frame timings.
-    #[tracing::instrument(skip_all, level = "trace")]
+    // Runs every frame.
+    #[tracing::instrument(skip_all)]
     fn tick(&mut self, context: &mut Rltk) {
         let monotime = self.start_tick.elapsed().as_millis();
         draw_main_screen(self, context, monotime);
