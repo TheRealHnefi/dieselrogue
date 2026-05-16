@@ -103,6 +103,14 @@ impl World {
         let ew_east  = Point { x: pos.x - 30, y: ew_road_y };
         let _ = world.create_patrolling_goon(Point { x: pos.x - 30, y: ew_road_y }, Direction::Left, String::from("Patrol EW-1"), vec![ew_west, ew_east]);
 
+        let center = Point { x: pos.x + 10, y: pos.y + 10 };
+
+        // Place one goon on each cardinal side of the center, all facing inward.
+        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y - 1 }, Direction::Down,  String::from("North")).is_ok());
+        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y + 1 }, Direction::Up,    String::from("South")).is_ok());
+        assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
+        assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
+
         return world;
     }
 
