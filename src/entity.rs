@@ -265,10 +265,19 @@ impl Entity {
             self.set_visible_tiles(map, false);
         }
 
-        self.viewshed.update(self.center(), self.body.facing, map);
+        let fov = self.effective_fov();
+        self.viewshed.update(self.center(), self.body.facing, &fov, map);
 
         if self.kind == EntityKind::Player {
             self.set_visible_tiles(map, true);
+        }
+    }
+
+    fn effective_fov(&self) -> FieldOfView {
+        if self.body.has_ability(Ability::WideVision) {
+            FieldOfView::Fov270
+        } else {
+            self.viewshed.fov.clone()
         }
     }
 

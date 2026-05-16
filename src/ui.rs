@@ -4,6 +4,7 @@ use crate::components::*;
 use crate::state::*;
 use crate::map::*;
 use crate::tile::*;
+use crate::Ability;
 use crate::Rect;
 
 pub const SCREEN_WIDTH: usize = 160;
@@ -300,6 +301,22 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
             },
             None => context.print_color(offset_x, offset_y + i, INACTIVE_COLOR, BG_COLOR, "---".to_string())
         }
+    }
+
+    // Abilities panel
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
+    const ABILITY_TYPE_X: usize = UI_X_OFFSET + LABEL_OFFSET + 20;
+    let mut abilities: Vec<&Ability> = player.body.abilities.iter().collect();
+    abilities.sort_by_key(|a| !a.is_passive()); // passives first
+    for ability in abilities {
+        let (name_color, type_label) = if ability.is_passive() {
+            (LABEL_COLOR, "Passive")
+        } else {
+            (ENERGY_COLOR, "Active")
+        };
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, name_color, BG_COLOR, ability.to_string());
+        context.print_color(ABILITY_TYPE_X, offset_y, INACTIVE_COLOR, BG_COLOR, type_label);
+        offset_y += 1;
     }
 
     // Log

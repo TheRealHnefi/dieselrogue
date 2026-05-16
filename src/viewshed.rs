@@ -13,7 +13,8 @@ pub struct Viewshed {
 pub enum FieldOfView {
     Fov90,
     Fov180,
-    Fov360
+    Fov270,
+    Fov360,
 }
 
 impl Viewshed {
@@ -25,11 +26,12 @@ impl Viewshed {
         }
     }
 
-    pub fn update(&mut self, pos: Point, facing: Direction, map: &Map) {
+    pub fn update(&mut self, pos: Point, facing: Direction, effective_fov: &FieldOfView, map: &Map) {
         self.visible_tiles = field_of_view(pos, self.range, map);
-        match self.fov {
-            FieldOfView::Fov90 => self.cull_90(pos, facing, map),
+        match effective_fov {
+            FieldOfView::Fov90  => self.cull_90(pos, facing, map),
             FieldOfView::Fov180 => self.cull_180(pos, facing, map),
+            FieldOfView::Fov270 => self.cull_270(pos, facing, map),
             FieldOfView::Fov360 => ()
         }
     }
@@ -84,6 +86,71 @@ impl Viewshed {
                     && p.y <= pos.y
                     && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
             }                
+        }
+    }
+
+    // Retains everything except the 90° blind spot directly behind the entity.
+    // Each arm of the retain condition is the negation of the opposite direction's cull_90.
+    // The entity's own tile (*p == pos) is always kept because both sides of the OR evaluate
+    // to false at dx=0, dy=0.
+    fn cull_270(&mut self, pos: Point, facing: Direction, map: &Map) {
+        match facing {
+            Direction::Up => {
+                // blind spot = Down-cone: dx <= dy && dx >= -dy
+                self.visible_tiles.retain(|p| {
+                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
+                    (dx > dy || dx < -dy || (dx == 0 && dy == 0))
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
+                });
+            },
+            Direction::UpRight => {
+                // blind spot = DownLeft-cone: px <= pos.x && py >= pos.y
+                self.visible_tiles.retain(|p|
+                    (p.x > pos.x || p.y < pos.y || *p == pos)
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
+            },
+            Direction::Right => {
+                // blind spot = Left-cone: dx <= -dy && dx <= dy
+                self.visible_tiles.retain(|p| {
+                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
+                    (dx > -dy || dx > dy || (dx == 0 && dy == 0))
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
+                });
+            },
+            Direction::DownRight => {
+                // blind spot = UpLeft-cone: px <= pos.x && py <= pos.y
+                self.visible_tiles.retain(|p|
+                    (p.x > pos.x || p.y > pos.y || *p == pos)
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
+            },
+            Direction::Down => {
+                // blind spot = Up-cone: dx >= dy && dx <= -dy
+                self.visible_tiles.retain(|p| {
+                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
+                    (dx < dy || dx > -dy || (dx == 0 && dy == 0))
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
+                });
+            },
+            Direction::DownLeft => {
+                // blind spot = UpRight-cone: px >= pos.x && py <= pos.y
+                self.visible_tiles.retain(|p|
+                    (p.x < pos.x || p.y > pos.y || *p == pos)
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
+            },
+            Direction::Left => {
+                // blind spot = Right-cone: dx >= -dy && dx >= dy
+                self.visible_tiles.retain(|p| {
+                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
+                    (dx < -dy || dx < dy || (dx == 0 && dy == 0))
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
+                });
+            },
+            Direction::UpLeft => {
+                // blind spot = DownRight-cone: px >= pos.x && py >= pos.y
+                self.visible_tiles.retain(|p|
+                    (p.x < pos.x || p.y < pos.y || *p == pos)
+                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
+            },
         }
     }
 

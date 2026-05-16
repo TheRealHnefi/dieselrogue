@@ -4,19 +4,32 @@ pub enum Ability {
     HumanMove,
     VehicleMove,
     PickUp,
+    WideVision,
     // Active abilities
     Embark,
-    Disembark
+    Disembark,
 }
 
 impl Ability {
     pub fn to_string(&self) -> String {
         match self {
-            Ability::HumanMove => "Move",
+            Ability::HumanMove  => "Move",
             Ability::VehicleMove => "Drive",
-            Ability::PickUp => "Pick Up",
-            Ability::Embark => "Embark",
-            Ability::Disembark => "Disembark"
+            Ability::PickUp     => "Pick Up",
+            Ability::WideVision => "Wide Vision",
+            Ability::Embark     => "Embark",
+            Ability::Disembark  => "Disembark",
         }.to_string()
+    }
+
+    pub fn is_passive(&self) -> bool {
+        match self {
+            Ability::HumanMove  => true,
+            Ability::VehicleMove => true,
+            Ability::PickUp     => true,
+            Ability::WideVision => true,
+            Ability::Embark     => false,
+            Ability::Disembark  => false,
+        }
     }
 }
