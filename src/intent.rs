@@ -42,6 +42,29 @@ pub fn precondition_ok(_self_ref: &Entity, _map: &Map, _affected_item: Option<&I
     true
 }
 
+impl Intent {
+    pub fn description(&self) -> String {
+        match &self.data {
+            IntentData::Void => match self.phase {
+                ExecutionPhase::Idle => "Idle".to_string(),
+                _                   => "Acting".to_string(),
+            },
+            IntentData::Direction(dir) => format!("Turning {}", dir.name()),
+            IntentData::Target(pos) => match self.phase {
+                ExecutionPhase::Attack   => format!("Attacking ({},{})", pos.x, pos.y),
+                ExecutionPhase::Movement => format!("Moving to ({},{})", pos.x, pos.y),
+                _                        => format!("Acting at ({},{})", pos.x, pos.y),
+            },
+            IntentData::EquippedItem(_)                              => "Using item".to_string(),
+            IntentData::InventoryItem(item)                          => format!("Using {}", item.name),
+            IntentData::TargetWithEquipment { target, .. }           => format!("Firing at ({},{})", target.x, target.y),
+            IntentData::TargetWithInventory { item, target }         => format!("{} at ({},{})", item.name, target.x, target.y),
+            IntentData::TargetBodypartWithEquipment { target, .. }   => format!("Firing at ({},{})", target.x, target.y),
+            IntentData::TargetBodypartWithInventory { item, target, .. } => format!("{} at ({},{})", item.name, target.x, target.y),
+        }
+    }
+}
+
 pub fn idle_intent() -> Intent {
     Intent {
         phase: ExecutionPhase::Idle,

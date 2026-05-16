@@ -5,6 +5,7 @@ pub enum Ability {
     VehicleMove,
     PickUp,
     WideVision,
+    Precognition,
     // Active abilities
     Embark,
     Disembark,
@@ -16,7 +17,8 @@ impl Ability {
             Ability::HumanMove  => "Move",
             Ability::VehicleMove => "Drive",
             Ability::PickUp     => "Pick Up",
-            Ability::WideVision => "Wide Vision",
+            Ability::WideVision   => "Wide Vision",
+            Ability::Precognition => "Precognition",
             Ability::Embark     => "Embark",
             Ability::Disembark  => "Disembark",
         }.to_string()
@@ -27,7 +29,8 @@ impl Ability {
             Ability::HumanMove  => true,
             Ability::VehicleMove => true,
             Ability::PickUp     => true,
-            Ability::WideVision => true,
+            Ability::WideVision   => true,
+            Ability::Precognition => true,
             Ability::Embark     => false,
             Ability::Disembark  => false,
         }

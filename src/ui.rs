@@ -166,6 +166,10 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     offset_y += 1;
     let pos = player.center();
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
+    if state.run_state == RunState::Looking {
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset_y, LABEL_COLOR, BG_COLOR,
+            format!("Cursor: {},{}", state.cursor_pos.x, state.cursor_pos.y));
+    }
 
     // Health panel
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 1;
@@ -340,31 +344,44 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
         return;
     }
 
+    let precognition = state.world.get_player()
+        .map(|p| p.has_ability(Ability::Precognition))
+        .unwrap_or(false);
+
     let idx = state.world.map.pos_idx(pos);
-    let label = if let Some(pawn) = &state.world.map.pawns[idx] {
-        pawn.name.clone()
+    let (name, intent_desc) = if let Some(pawn) = &state.world.map.pawns[idx] {
+        let desc = if precognition {
+            state.world.entities.get(pawn.entity_id)
+                .map(|e| e.intent.description())
+        } else {
+            None
+        };
+        (pawn.name.clone(), desc)
     } else if let Some(item) = &state.world.map.items[idx] {
-        item.name.clone()
+        (item.name.clone(), None)
     } else {
         return;
     };
 
     let cx = pos.x - viewport.x1;
     let cy = pos.y - viewport.y1;
-    let label_len = label.len() as i32;
+    let max_len = name.len().max(intent_desc.as_ref().map_or(0, |s| s.len())) as i32;
 
     // Prefer drawing to the right; fall back to the left near the viewport edge.
-    let label_x = if cx + 2 + label_len < VIEWPORT_WIDTH as i32 {
-        cx + 2
+    let label_x = if cx + 4 + max_len < VIEWPORT_WIDTH as i32 {
+        cx + 4
     } else {
-        cx - 1 - label_len
+        cx - 3 - max_len
     };
 
-    // Same framing as menu panels: draw_box places the border at (box_x, box_y),
-    // text lands at (box_x+2, box_y+1), so box origin is (label_x-2, cy-1).
-    context.draw_box(label_x - 2, cy - 1, label_len + 3, 2,
+    // Same framing as menu panels: text lands at (box_x+2, box_y+1).
+    let box_height = if intent_desc.is_some() { 3 } else { 2 };
+    context.draw_box(label_x - 2, cy - 1, max_len + 3, box_height,
         RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-    context.print_color(label_x, cy, LABEL_COLOR, BG_COLOR, &label);
+    context.print_color(label_x, cy, LABEL_COLOR, BG_COLOR, &name);
+    if let Some(desc) = intent_desc {
+        context.print_color(label_x, cy + 1, INACTIVE_COLOR, BG_COLOR, &desc);
+    }
 }
 
 fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {

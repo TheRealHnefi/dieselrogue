@@ -40,6 +40,19 @@ impl Direction {
             Direction::UpLeft => Direction::Up,
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Direction::Up        => "north",
+            Direction::UpRight   => "northeast",
+            Direction::Right     => "east",
+            Direction::DownRight => "southeast",
+            Direction::Down      => "south",
+            Direction::DownLeft  => "southwest",
+            Direction::Left      => "west",
+            Direction::UpLeft    => "northwest",
+        }
+    }
 }
 
 #[derive (Copy, Clone)]
