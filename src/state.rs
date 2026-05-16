@@ -17,6 +17,7 @@ pub enum RunState {
     AwaitingInput,
     AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
+    Looking,
     Resolve(ExecutionPhase),
     RenderAnimations(ExecutionPhase),
     ResolveStatusEffects
@@ -97,6 +98,9 @@ impl GameState for State {
             },
             RunState::AwaitingPositionalTargetingInput => {
                 self.run_state = positional_targeting_input(self, context);
+            },
+            RunState::Looking => {
+                self.run_state = looking_input(self, context);
             },
             RunState::Resolve(phase) => {
                 self.resolve(phase, monotime);
