@@ -84,7 +84,7 @@ impl Body {
             damage: 0,
             armor: Armor::zero(),
             innate_armor: Armor::zero(),
-            abilities: vec!(Ability::PickUp)
+            abilities: vec!(Ability::PickUp, Ability::Throw)
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::SecondaryHand, item: None});
