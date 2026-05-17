@@ -282,7 +282,7 @@ impl World {
             Ability::Embark, Ability::Disembark, Ability::Juke,
         ];
         match self.get_player() {
-            Ok(player) => all.iter().cloned().filter(|a| !player.has_ability(a.clone())).collect(),
+            Ok(player) => all.iter().cloned().filter(|a| !a.is_innate() && !player.has_ability(a.clone())).collect(),
             Err(_) => vec![],
         }
     }

@@ -26,6 +26,16 @@ impl Ability {
         }.to_string()
     }
 
+    pub fn is_innate(&self) -> bool {
+        match self {
+            Ability::HumanMove  => true,
+            Ability::VehicleMove => true,
+            Ability::PickUp     => true,
+            Ability::Disembark  => true,
+            _                   => false,
+        }
+    }
+
     pub fn is_passive(&self) -> bool {
         match self {
             Ability::HumanMove  => true,
