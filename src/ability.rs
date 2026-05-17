@@ -6,6 +6,7 @@ pub enum Ability {
     PickUp,
     WideVision,
     Precognition,
+    IronEars,
     // Active abilities
     Embark,
     Disembark,
@@ -21,6 +22,7 @@ impl Ability {
             Ability::PickUp       => "Pick Up",
             Ability::WideVision   => "Wide Vision",
             Ability::Precognition => "Precognition",
+            Ability::IronEars     => "Iron Ears",
             Ability::Embark       => "Embark",
             Ability::Disembark    => "Disembark",
             Ability::Throw        => "Throw",
@@ -46,6 +48,7 @@ impl Ability {
             Ability::PickUp       => true,
             Ability::WideVision   => true,
             Ability::Precognition => true,
+            Ability::IronEars     => true,
             Ability::Embark       => false,
             Ability::Disembark    => false,
             Ability::Throw        => false,
@@ -65,6 +68,8 @@ impl Ability {
                 "Expands your field of view to 270 degrees, leaving only a small blind spot directly behind you.",
             Ability::Precognition =>
                 "When examining an entity with the look command, you can see what action they are planning to take this turn.",
+            Ability::IronEars =>
+                "You are able to distinguish individual sounds even in a very noisy environment, greatly increasing your noise tolerance.",
             Ability::Embark =>
                 "Allows entering a vehicle. Move into a drivable vehicle to take the controls.",
             Ability::Disembark =>
@@ -81,6 +86,7 @@ impl Ability {
         match self {
             Ability::WideVision   => 0, // Head
             Ability::Precognition => 0, // Head
+            Ability::IronEars     => 0, // Head
             Ability::VehicleMove  => 1, // Torso
             Ability::Disembark    => 1, // Torso
             Ability::PickUp       => 2, // R. Arm
