@@ -97,6 +97,7 @@ impl World {
         let _ = world.add_item(pos, Item::bulletproof_vest());
         let _ = world.add_item(pos, Item::flamethrower());
         let _ = world.add_item(pos, Item::grenade());
+        let _ = world.add_item(pos, Item::flashbang());
 
         // Enemies spread in front of the player to test fan fire arc
         let _ = world.create_zombie_goon(Point {x: pos.x,     y: pos.y - 3}, Direction::Down, String::from("Goon A"));
@@ -371,6 +372,7 @@ impl World {
             location: ItemLocation,
             damage: Damage,
             timeout: u32,
+            flash: bool,
         }
 
         let mut ticks: Vec<Tick> = vec!();
@@ -380,22 +382,22 @@ impl World {
                     let idx = self.map.pos_idx(*pos);
                     self.map.items[idx].as_ref()
                         .filter(|i| i.id == active.item_id)
-                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout } = i.kind {
-                            Some((damage, timeout))
+                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout, flash } = i.kind {
+                            Some((damage, timeout, flash))
                         } else { None })
-                        .map(|(d, t)| (active.location.clone(), d, t))
+                        .map(|(d, t, f)| (active.location.clone(), d, t, f))
                 },
                 ItemLocation::InInventory(eid) => {
                     self.entities.get(*eid)
                         .and_then(|e| e.body.inventory.iter().find(|i| i.id == active.item_id))
-                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout } = i.kind {
-                            Some((damage, timeout))
+                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout, flash } = i.kind {
+                            Some((damage, timeout, flash))
                         } else { None })
-                        .map(|(d, t)| (active.location.clone(), d, t))
+                        .map(|(d, t, f)| (active.location.clone(), d, t, f))
                 },
             };
-            if let Some((location, damage, timeout)) = found {
-                ticks.push(Tick { item_id: active.item_id, location, damage, timeout });
+            if let Some((location, damage, timeout, flash)) = found {
+                ticks.push(Tick { item_id: active.item_id, location, damage, timeout, flash });
             }
         }
 
@@ -405,22 +407,37 @@ impl World {
         for tick in &ticks {
             let new_timeout = tick.timeout - 1;
             if new_timeout == 0 {
-                log.log(String::from("A grenade explodes!"));
                 let pos = match &tick.location {
                     ItemLocation::OnMap(p) => *p,
                     ItemLocation::InInventory(eid) => self.entities[*eid].position,
                 };
-                const RADIUS: i32 = 3;
-                for entity in &self.entities {
-                    let dx = entity.position.x - pos.x;
-                    let dy = entity.position.y - pos.y;
-                    if dx * dx + dy * dy <= RADIUS * RADIUS {
-                        for part in 0..entity.body.parts.len() {
-                            effects.push(Effect::Damage {
-                                entity_id: entity.id,
-                                bodypart_index: part,
-                                raw_damage: tick.damage,
+                if tick.flash {
+                    log.log(String::from("A flashbang goes off!"));
+                    const FLASH_RADIUS: i32 = 5;
+                    for entity in &self.entities {
+                        let dx = entity.position.x - pos.x;
+                        let dy = entity.position.y - pos.y;
+                        if dx * dx + dy * dy <= FLASH_RADIUS * FLASH_RADIUS {
+                            effects.push(Effect::ApplyStatus {
+                                target_id: entity.id,
+                                status: StatusEffect::Blind(5),
                             });
+                        }
+                    }
+                } else {
+                    log.log(String::from("A grenade explodes!"));
+                    const RADIUS: i32 = 3;
+                    for entity in &self.entities {
+                        let dx = entity.position.x - pos.x;
+                        let dy = entity.position.y - pos.y;
+                        if dx * dx + dy * dy <= RADIUS * RADIUS {
+                            for part in 0..entity.body.parts.len() {
+                                effects.push(Effect::Damage {
+                                    entity_id: entity.id,
+                                    bodypart_index: part,
+                                    raw_damage: tick.damage,
+                                });
+                            }
                         }
                     }
                 }
@@ -612,6 +629,9 @@ impl World {
         self.active_items_ticked = false;
         for entity in &mut self.entities {
             entity.resolve_status_effects();
+        }
+        for i in 0..self.entities.len() {
+            self.entities[i].update_view(&mut self.map);
         }
     }
 

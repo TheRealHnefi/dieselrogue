@@ -319,6 +319,10 @@ impl Body {
         self.status_effects.get(status)
     }
 
+    pub fn resolve_status_effects(&mut self) {
+        self.status_effects = self.status_effects.iter().filter_map(|e| e.tick()).collect::<HashSet<_>>();
+    }
+
     fn clear_slot(&mut self, slot: SlotType) {
         for self_slot in &mut self.item_slots {
             if self_slot.slot_type == slot {

@@ -266,7 +266,8 @@ impl Entity {
         }
 
         let fov = self.effective_fov();
-        self.viewshed.update(self.center(), self.body.facing, &fov, map);
+        let range = self.effective_range();
+        self.viewshed.update(self.center(), self.body.facing, range, &fov, map);
 
         if self.kind == EntityKind::Player {
             self.set_visible_tiles(map, true);
@@ -278,6 +279,14 @@ impl Entity {
             FieldOfView::Fov270
         } else {
             self.viewshed.fov.clone()
+        }
+    }
+
+    fn effective_range(&self) -> i32 {
+        if self.body.get_status_effect(&StatusEffect::Blind(0)).is_some() {
+            1
+        } else {
+            self.viewshed.range
         }
     }
 
@@ -344,14 +353,7 @@ impl Entity {
     }
 
     pub fn resolve_status_effects(&mut self) {
-        // TODO
-        // for effect in &self.body.status_effects {
-        //     match effect {
-        //         StatusEffect::AimingAtGround(pos) => {
-        //             println!("{} is aiming at pos {},{}", self.name, pos.x, pos.y);
-        //         }
-        //     }
-        // }
+        self.body.resolve_status_effects();
     }
 }
 
