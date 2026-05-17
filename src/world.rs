@@ -625,11 +625,13 @@ impl World {
         }
     }
 
-    pub fn resolve_status_effects(&mut self) {
+    pub fn resolve_status_effects(&mut self, log: &mut GameLog) {
         self.active_items_ticked = false;
+        let mut effects: Vec<Effect> = vec![];
         for entity in &mut self.entities {
-            entity.resolve_status_effects();
+            effects.extend(entity.resolve_status_effects());
         }
+        self.resolve_effects(&effects, log);
         for i in 0..self.entities.len() {
             self.entities[i].update_view(&mut self.map);
         }

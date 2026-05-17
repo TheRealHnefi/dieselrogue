@@ -313,6 +313,12 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
                         raw_damage: damage,
                     });
                 }
+                if damage.fire > 0 {
+                    result.push(Effect::ApplyStatus {
+                        target_id: pawn.entity_id,
+                        status: StatusEffect::Burning(5),
+                    });
+                }
                 log.log(format!("{} hit {} with fan fire", entity.name, pawn.name));
             }
             arc_positions.push(tile_pos);
