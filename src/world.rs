@@ -9,7 +9,7 @@ pub struct World {
     pub entities: Vec<Entity>,
     pub map: Map,
     pub pending_levelup: bool,
-    item_count: usize
+    next_item_id: usize
 }
 
 
@@ -64,7 +64,7 @@ impl World {
         let mut world = World {
             player_id: Option::None,
             entities: vec![],
-            item_count: 0,
+            next_item_id: 0,
             pending_levelup: false,
             map: Map::new_game_map(size)
         };
@@ -123,7 +123,7 @@ impl World {
         let mut world = World {
             player_id: Option::None,
             entities: vec![],
-            item_count: 0,
+            next_item_id: 0,
             pending_levelup: false,
             map: Map::new_game_map(10)
         };
@@ -153,7 +153,7 @@ impl World {
         Self {
             player_id: Option::None,
             entities: vec![],
-            item_count: 0,
+            next_item_id: 0,
             pending_levelup: false,
             map: Map::new_empty_map(100, 100)
         }
@@ -287,8 +287,8 @@ impl World {
         let actual_pos = self.map.nearest_free_item_position(pos)?;
 
         let index = self.map.pos_idx(actual_pos);
-        item.id = self.item_count;
-        self.item_count += 1;
+        item.id = self.next_item_id;
+        self.next_item_id += 1;
         self.map.items[index] = Some(item);
         Ok(())
     }
