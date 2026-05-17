@@ -333,7 +333,7 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
 
 pub fn open_door_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
-        IntentData::Target(pos) => vec!(Effect::OpenDoor(pos)),
+        IntentData::Target(pos) => vec!(Effect::OpenDoor { pos, actor_id: entity.id }),
         _ => unreachable!("open_door_action called with non-target intent"),
     }
 }

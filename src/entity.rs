@@ -47,7 +47,8 @@ pub struct Entity {
     pub intent: Intent,
     pub body: Body,
     pub viewshed: Viewshed,
-    pub ai: AI
+    pub ai: AI,
+    pub locked: bool,
 }
 
 impl Entity {
@@ -64,7 +65,8 @@ impl Entity {
             intent: idle_intent(),
             body: Body::human_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
-            ai: AI::None
+            ai: AI::None,
+            locked: false,
         }
     }
 
@@ -81,7 +83,8 @@ impl Entity {
             intent: idle_intent(),
             body: Body::human_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
-            ai: AI::Patrolling(PatrollingAI::new(waypoints))
+            ai: AI::Patrolling(PatrollingAI::new(waypoints)),
+            locked: false,
         }
     }
 
@@ -98,7 +101,8 @@ impl Entity {
             intent: idle_intent(),
             body: Body::tank_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov90),
-            ai: AI::Rotator
+            ai: AI::Rotator,
+            locked: false,
         }
     }
 
@@ -128,7 +132,8 @@ impl Entity {
             intent: idle_intent(),
             body: Body::door_body(direction),
             viewshed: Viewshed::new(0, FieldOfView::Fov360),
-            ai: AI::None
+            ai: AI::None,
+            locked: true,
         }
     }
 

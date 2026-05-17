@@ -90,6 +90,13 @@ impl World {
 
         world.init_static_entities();
 
+        let door_ids: Vec<usize> = world.entities.iter()
+            .filter(|e| e.kind == EntityKind::Door)
+            .map(|e| e.id)
+            .collect();
+        let key_door_ids: Vec<usize> = door_ids.into_iter().step_by(2).collect();
+        let _ = world.add_item(pos, Item::key(key_door_ids));
+
         let _result = world.create_tank(Point {x: pos.x, y: pos.y - 4},
             Direction::Up,
             String::from("Tank"));
@@ -516,8 +523,8 @@ impl World {
                         self.entities[*id].apply_status_effect(&StatusEffect::Shocked(1));
                     }
                 }
-                Effect::OpenDoor(pos) =>
-                    self.handle_open_door(*pos),
+                Effect::OpenDoor {pos, actor_id} =>
+                    self.handle_open_door(*pos, *actor_id, log),
                 Effect::DestroyWall(pos) =>
                     self.handle_destroy_wall(*pos),
                 Effect::Embark{pilot_id, vehicle_id} =>
@@ -556,12 +563,21 @@ impl World {
         }
     }
 
-    fn handle_open_door(&mut self, pos: Point) {
+    fn handle_open_door(&mut self, pos: Point, actor_id: usize, log: &mut GameLog) {
         let index = self.map.pos_idx(pos);
         let entity_id = match &self.map.pawns[index] {
             Some(pawn) if pawn.kind == EntityKind::Door => pawn.entity_id,
             _ => return,
         };
+        if self.entities[entity_id].locked {
+            let has_key = self.entities[actor_id].body.inventory.iter().any(|item| {
+                matches!(&item.kind, ItemKind::Key { door_ids } if door_ids.contains(&entity_id))
+            });
+            if !has_key {
+                log.log("The door is locked.".to_string());
+                return;
+            }
+        }
         self.entities[entity_id].clear_pawns(&mut self.map);
         self.update_views_near_event(pos, 10);
     }

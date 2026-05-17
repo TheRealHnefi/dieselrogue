@@ -308,6 +308,9 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
                 let label = if item.active { format!("Fuse: {}", timeout) } else { String::from("Inert") };
                 context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, label);
             },
+            ItemKind::Key { door_ids } => {
+                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Unlocks {} door{}", door_ids.len(), if door_ids.len() == 1 { "" } else { "s" }));
+            },
             ItemKind::Misc => {
                 context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("?"));
             }

@@ -145,6 +145,20 @@ impl Item {
         }
     }
 
+    pub fn key(door_ids: Vec<usize>) -> Self {
+        Item {
+            id: 0,
+            renderable: Renderable::new_char('k'),
+            name: String::from("Key"),
+            inventory_actions: vec![Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::Key { door_ids },
+            proxy: false,
+            active: false,
+        }
+    }
+
     pub fn bulletproof_vest() -> Self {
         Item {
             id: 0,
