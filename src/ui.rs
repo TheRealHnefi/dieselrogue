@@ -78,18 +78,21 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
     let in_cursor_mode = state.run_state == RunState::AwaitingPositionalTargetingInput
         || state.run_state == RunState::Looking;
     if in_cursor_mode && blink {
-        let out_of_range = state.pending_action.as_ref().and_then(|pa| {
-            if let crate::Targeting::Positional { max_range: Some(range) } = pa.item_action.targeting {
-                state.world.get_player().ok().map(|p| {
-                    let dx = state.cursor_pos.x - p.position.x;
-                    let dy = state.cursor_pos.y - p.position.y;
-                    dx * dx + dy * dy > (range * range) as i32
-                })
-            } else {
-                None
-            }
+        let invalid_target = state.pending_action.as_ref().map(|pa| {
+            if let crate::Targeting::Positional { max_range } = pa.item_action.targeting {
+                let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
+                let not_visible = !state.world.map.visible_tiles[cursor_idx];
+                let out_of_range = if let Some(range) = max_range {
+                    state.world.get_player().ok().map(|p| {
+                        let dx = state.cursor_pos.x - p.position.x;
+                        let dy = state.cursor_pos.y - p.position.y;
+                        dx * dx + dy * dy > (range * range) as i32
+                    }).unwrap_or(false)
+                } else { false };
+                not_visible || out_of_range
+            } else { false }
         }).unwrap_or(false);
-        let cursor_color = if out_of_range { RGB::named(rltk::RED) } else { RGB::named(rltk::PINK) };
+        let cursor_color = if invalid_target { RGB::named(rltk::RED) } else { RGB::named(rltk::PINK) };
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(rltk::BLACK), rltk::to_cp437('█'));
     }
     if state.run_state == RunState::Looking {

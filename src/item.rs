@@ -139,11 +139,11 @@ impl Item {
 impl Item {
     fn make_firearm(def: FirearmDef) -> Item {
         let equip_actions = match def.fire_mode {
-            FireMode::Single        => vec![Item::aim_action(), Item::fire_action()],
-            FireMode::Burst         => vec![Item::aim_action(), Item::fire_burst_action()],
-            FireMode::SingleAndBurst => vec![Item::aim_action(), Item::fire_action(), Item::fire_burst_action()],
-            FireMode::Rocket        => vec![Item::aim_action(), Item::fire_rocket_action()],
-            FireMode::Fan           => vec![Item::aim_action(), Item::fan_fire_action()],
+            FireMode::Single        => vec![Item::aim_action(def.range), Item::fire_action()],
+            FireMode::Burst         => vec![Item::aim_action(def.range), Item::fire_burst_action()],
+            FireMode::SingleAndBurst => vec![Item::aim_action(def.range), Item::fire_action(), Item::fire_burst_action()],
+            FireMode::Rocket        => vec![Item::aim_action(def.range), Item::fire_rocket_action()],
+            FireMode::Fan           => vec![Item::aim_action(def.range), Item::fan_fire_action()],
         };
         let equip_slots = if def.two_handed {
             vec![SlotType::PrimaryHand, SlotType::SecondaryHand]
@@ -169,8 +169,8 @@ impl Item {
     fn drop_action() -> ItemAction {
         ItemAction { name: "Drop".to_string(),             targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::drop_item_action     }
     }
-    fn aim_action() -> ItemAction {
-        ItemAction { name: "Aim at position".to_string(),  targeting: Targeting::Positional { max_range: None }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::aim_action           }
+    fn aim_action(range: u32) -> ItemAction {
+        ItemAction { name: "Aim at position".to_string(),  targeting: Targeting::Positional { max_range: Some(range) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::aim_action           }
     }
     fn fire_action() -> ItemAction {
         ItemAction { name: "Fire shot".to_string(),        targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::single_fire_action   }
