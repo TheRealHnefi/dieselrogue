@@ -99,7 +99,7 @@ impl Item {
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::FusedExplosive { damage: Damage::new(10, 0, 0, 0), timeout: 3 },
+            kind: ItemKind::FusedExplosive { damage: Damage::new(10, 0, 0, 0), timeout: 4 },
             proxy: false,
             active: false,
         }
@@ -170,7 +170,7 @@ impl Item {
         ItemAction { name: "Drop".to_string(),             targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::drop_item_action     }
     }
     fn aim_action() -> ItemAction {
-        ItemAction { name: "Aim at position".to_string(),  targeting: Targeting::Positional, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::aim_action           }
+        ItemAction { name: "Aim at position".to_string(),  targeting: Targeting::Positional { max_range: None }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::aim_action           }
     }
     fn fire_action() -> ItemAction {
         ItemAction { name: "Fire shot".to_string(),        targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::single_fire_action   }
@@ -188,7 +188,7 @@ impl Item {
         ItemAction { name: "Prime".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::prime_grenade_action }
     }
     fn throw_action() -> ItemAction {
-        ItemAction { name: "Throw".to_string(),            targeting: Targeting::Positional, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
+        ItemAction { name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
     }
 }
 
