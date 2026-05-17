@@ -618,6 +618,7 @@ impl World {
     }
 
     pub fn resolve_status_effects(&mut self, log: &mut GameLog) {
+        self.apply_noise_deafness();
         self.active_items_ticked = false;
         let mut effects: Vec<Effect> = vec![];
         for entity in &mut self.entities {
@@ -626,6 +627,34 @@ impl World {
         self.resolve_effects(&effects, log);
         for i in 0..self.entities.len() {
             self.entities[i].update_view(&mut self.map);
+        }
+    }
+
+    fn apply_noise_deafness(&mut self) {
+        let noise_per_entity: Vec<u32> = self.entities.iter().map(|entity| {
+            let pos = entity.center();
+            self.sounds_last_turn.iter()
+                .filter_map(|s| {
+                    let vol = s.volume as i32;
+                    let dx = (pos.x - s.pos.x).abs();
+                    let dy = (pos.y - s.pos.y).abs();
+                    if dx > vol || dy > vol {
+                        return None;
+                    }
+                    let dist = rltk::DistanceAlg::Pythagoras.distance2d(pos, s.pos);
+                    if dist <= s.volume as f32 {
+                        Some((s.volume as f32 - dist).max(0.0) as u32)
+                    } else {
+                        None
+                    }
+                })
+                .sum()
+        }).collect();
+
+        for (i, entity) in self.entities.iter_mut().enumerate() {
+            if noise_per_entity[i] > 2 * entity.body.noise_tolerance {
+                entity.apply_status_effect(&StatusEffect::Deaf(3));
+            }
         }
     }
 

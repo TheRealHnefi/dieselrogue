@@ -412,6 +412,16 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
         Ok(p) => p,
         Err(_) => return,
     };
+
+    if player.body.get_status_effect(&StatusEffect::Deaf(0)).is_some() {
+        let panel_x = UI_X_OFFSET + ABILITIES_PANEL_WIDTH + LABEL_OFFSET;
+        let panel_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
+            + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
+        let warn_color = RGB { r: 1.0, g: 0.2, b: 0.2 };
+        context.print_color(panel_x, panel_y, warn_color, BG_COLOR, "Deaf!");
+        return;
+    }
+
     let player_pos = player.center();
     let tolerance = player.body.noise_tolerance;
 
