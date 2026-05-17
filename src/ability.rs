@@ -1,4 +1,4 @@
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, strum::EnumIter)]
 pub enum Ability {
     // Passive abilities
     HumanMove,
