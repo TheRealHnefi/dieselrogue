@@ -109,11 +109,12 @@ impl World {
         let _ = world.create_zombie_goon(Point {x: pos.x + 5, y: pos.y - 2}, Direction::Down, String::from("Goon D"));
 
         // Two goons patrolling north-south along the road, north of the player.
-        let ns_road_x = pos.x - 1;
-        let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
-        let ns_south = Point { x: ns_road_x, y: pos.y - 40 };
-        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 15 }, Direction::Up,   String::from("Patrol NS-1"), vec![ns_north, ns_south]);
-        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 14 }, Direction::Up,   String::from("Patrol NS-2"), vec![ns_north, ns_south]);
+        // TODO: This is often slow because of badly coded AI. Fix later.
+        // let ns_road_x = pos.x - 1;
+        // let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
+        // let ns_south = Point { x: ns_road_x, y: pos.y - 40 };
+        // let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 15 }, Direction::Up,   String::from("Patrol NS-1"), vec![ns_north, ns_south]);
+        // let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 14 }, Direction::Up,   String::from("Patrol NS-2"), vec![ns_north, ns_south]);
 
         // One goon patrolling east-west along the road, a few blocks west of the player.
         let ew_road_y = pos.y - 1;
@@ -200,14 +201,8 @@ impl World {
     }
 
     pub fn create_zombie_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
-        if self.map.blocked(pos.x, pos.y) {
-            return Err(GameError {
-                error: Error::BadPrecondition,
-                message: format!("Position ({}, {}) is already occupied", pos.x, pos.y)
-            });
-        }
-
-        let mut entity = Entity::new_human(self.entities.len(), pos, facing, name);
+        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
+        let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Rotator;
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
@@ -216,14 +211,8 @@ impl World {
     }
 
     pub fn create_forward_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
-        if self.map.blocked(pos.x, pos.y) {
-            return Err(GameError {
-                error: Error::BadPrecondition,
-                message: format!("Position ({}, {}) is already occupied", pos.x, pos.y)
-            });
-        }
-
-        let mut entity = Entity::new_human(self.entities.len(), pos, facing, name);
+        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
+        let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Forward;
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
@@ -232,14 +221,8 @@ impl World {
     }
 
     pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Result<(), GameError> {
-        if self.map.blocked(pos.x, pos.y) {
-            return Err(GameError {
-                error: Error::BadPrecondition,
-                message: format!("Position ({}, {}) is already occupied", pos.x, pos.y)
-            });
-        }
-
-        let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name, waypoints);
+        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
+        let entity = Entity::new_patrolling_goon(self.entities.len(), actual_pos, facing, name, waypoints);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 
@@ -247,16 +230,7 @@ impl World {
     }
 
     pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
-        for x in 0..3 {
-            for y in 0..3 {
-                if self.map.blocked(pos.x + x, pos.y + y) {
-                    return Err(GameError {
-                        error: Error::BadPrecondition,
-                        message: format!("Tried to create entity at {},{}, but position is occupied", pos.x, pos.y)
-                    });     
-                }
-            }
-        }
+        let pos = self.map.nearest_free_pawn_position_sized(pos, 3, 3)?;
 
         let tank = Entity::new_tank(self.entities.len(), pos, facing, name);
         tank.create_pawns(&mut self.map);
@@ -792,23 +766,19 @@ mod tests {
     }
 
     #[test]
-    fn create_two_entities_on_same_pos_fails() {
+    fn create_two_entities_on_same_pos_places_second_nearby() {
         let mut world = World::new_test();
 
         let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
-        let name = "Entity";
-        let result1 = world.create_zombie_goon(pos, facing, String::from(name));
-
-        let pos2 = pos;
-        let name2 = "Entity2";
-        let result2 = world.create_zombie_goon(pos2, facing, String::from(name2));
+        let result1 = world.create_zombie_goon(pos, facing, String::from("Entity"));
+        let result2 = world.create_zombie_goon(pos, facing, String::from("Entity2"));
 
         assert!(result1.is_ok());
-        assert!(result2.is_err());
-        world = assert_worldsize(world, 1);
+        assert!(result2.is_ok());
+        world = assert_worldsize(world, 2);
         assert_eq!(world.entities[0].position, pos);
-        assert_eq!(world.entities[0].name, name);
+        assert_ne!(world.entities[1].position, pos);
     }
 
     #[test]
