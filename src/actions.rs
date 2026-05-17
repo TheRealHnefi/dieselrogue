@@ -10,39 +10,25 @@ use crate::DrivingState;
 pub type Action = fn (entity_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>;
 
 pub fn throw_grenade_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-    log.log(format!("{} threw a grenade", entity.name));
-    let mut result = vec!();
-
     let used_item;
-    let target_map_index;
     let target_pos;
     match entity.intent.data.clone() {
         IntentData::TargetWithInventory{item, target} => {
-            target_pos = target;
             used_item = item;
-            target_map_index = map.pos_idx(target);
+            target_pos = target;
         },
         _ => unreachable!("throw_grenade_action called with non-inventory-target intent"),
     }
 
-    entity.take_item(used_item);
-    
-    match &map.pawns[target_map_index] {
-        Some(pawn) => {
-            for part_index in 0..pawn.body.parts.len() {
-                result.push(Effect::Damage{
-                    entity_id: pawn.entity_id,
-                    bodypart_index: part_index,
-                    raw_damage: Damage::new(5, 0, 0, 0)
-                });
-            }
+    if let Some(item) = entity.take_item(used_item) {
+        log.log(format!("{} threw a {}", entity.name, item.name));
+        if let Ok(drop_pos) = map.nearest_free_item_position(target_pos) {
+            let idx = map.pos_idx(drop_pos);
+            map.items[idx] = Some(item);
         }
-        _ => ()
     }
 
-    result.push(Effect::Animation(explosion_animation(target_pos)));
-
-    result
+    vec!()
 }
 
 pub fn drop_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
