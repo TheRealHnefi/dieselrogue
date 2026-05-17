@@ -102,6 +102,12 @@ pub struct AbilityRow {
     pub activation: fn(&mut State) -> RunState,
 }
 
+pub struct EquippedActionRow {
+    pub text: String,
+    pub slot: SlotType,
+    pub action: ItemAction,
+}
+
 pub struct TargetingRow {
     pub text: String,
     pub entity_id: usize,
@@ -171,6 +177,46 @@ impl MenuRow for AbilityRow {
 
     fn selectable(&self) -> bool {
         true
+    }
+}
+
+impl MenuRow for EquippedActionRow {
+    fn get_action(&self) -> MenuAction {
+        match self.action.targeting {
+            Targeting::None => {
+                MenuAction::WithIntent(Intent {
+                    phase: self.action.phase,
+                    data: IntentData::EquippedItem(self.slot),
+                    action: self.action.action,
+                }, action_apply_intent_to_player)
+            },
+            Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } => {
+                MenuAction::WithPendingAction(PendingAction {
+                    item_action: self.action.clone(),
+                    source: Some(ActionSource::EquippedSlot(self.slot)),
+                })
+            }
+        }
+    }
+
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
+
+    fn selectable(&self) -> bool {
+        true
+    }
+}
+
+impl MenuRow for Box<dyn MenuRow> {
+    fn get_action(&self) -> MenuAction {
+        (**self).get_action()
+    }
+    fn get_text(&self) -> String {
+        (**self).get_text()
+    }
+    fn selectable(&self) -> bool {
+        (**self).selectable()
     }
 }
 
@@ -342,21 +388,37 @@ fn action_use_disembark(state: &mut State) -> RunState {
     }
 }
 
-pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
-    let mut rows = vec![];
+pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
+    let mut rows: Vec<Box<dyn MenuRow>> = vec![];
     let mut no_selectable_rows = true;
 
     if let Ok(player) = world.get_player() {
+        for slot in &player.body.item_slots {
+            if let Some(item) = &slot.item {
+                if item.proxy { continue; }
+                for equip_action in &item.equip_actions {
+                    if (equip_action.precondition)(player, &world.map, Some(item)) {
+                        rows.push(Box::new(EquippedActionRow {
+                            text: equip_action.name.clone(),
+                            slot: slot.slot_type,
+                            action: equip_action.clone(),
+                        }));
+                        no_selectable_rows = false;
+                    }
+                }
+            }
+        }
+
         for ability in &player.body.abilities {
-            let maybe_row: Option<AbilityRow> = match ability {
-                Ability::Juke => Some(AbilityRow {
+            let maybe_row: Option<Box<dyn MenuRow>> = match ability {
+                Ability::Juke => Some(Box::new(AbilityRow {
                     text: ability.to_string(),
                     activation: action_use_juke,
-                }),
-                Ability::Disembark => Some(AbilityRow {
+                })),
+                Ability::Disembark => Some(Box::new(AbilityRow {
                     text: ability.to_string(),
                     activation: action_use_disembark,
-                }),
+                })),
                 _ => None,
             };
             if let Some(row) = maybe_row {
