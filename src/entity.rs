@@ -356,11 +356,7 @@ impl Entity {
         let mut effects = vec![];
         if self.body.get_status_effect(&StatusEffect::Burning(0)).is_some() {
             for i in 0..self.body.parts.len() {
-                effects.push(Effect::Damage {
-                    entity_id: self.id,
-                    bodypart_index: i,
-                    raw_damage: Damage::new(0, 0, 1, 0),
-                });
+                effects.push(Effect::BurnTick { entity_id: self.id, bodypart_index: i });
             }
         }
         self.body.resolve_status_effects();
