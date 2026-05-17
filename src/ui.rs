@@ -286,6 +286,10 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
                 context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
             },
+            ItemKind::FusedExplosive{timeout, ..} => {
+                let label = if item.active { format!("Fuse: {}", timeout) } else { String::from("Inert") };
+                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, label);
+            },
             ItemKind::Misc => {
                 context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("?"));
             }
@@ -364,7 +368,13 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
         };
         (pawn.name.clone(), desc)
     } else if let Some(item) = &state.world.map.items[idx] {
-        (item.name.clone(), None)
+        let status = match &item.kind {
+            ItemKind::FusedExplosive { timeout, .. } => {
+                if item.active { Some(format!("Fuse: {}", timeout)) } else { Some(String::from("Inert")) }
+            },
+            _ => None,
+        };
+        (item.name.clone(), status)
     } else {
         return;
     };

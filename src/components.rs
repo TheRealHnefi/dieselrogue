@@ -207,6 +207,7 @@ impl SlotType {
 pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, damage: Damage, range: u32},
     Wearable {armor: Armor},
+    FusedExplosive {damage: Damage, timeout: u32},
     Misc
 }
 
