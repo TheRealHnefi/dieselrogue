@@ -350,7 +350,9 @@ pub fn move_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
             if entity.check_fit(pos, map) {
                 entity.set_position(pos, map);
                 entity.clear_aiming();
-                result.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos: entity.position, volume: 5 }));
+                let sound_kind = if entity.has_ability(Ability::VehicleMove) { SoundKind::Engine } else { SoundKind::Footstep };
+                let volume = if entity.has_ability(Ability::VehicleMove) { 15 } else { 5 };
+                result.push(Effect::Sound(SoundEvent { kind: sound_kind, pos: entity.position, volume }));
             }
         },
         _ => unreachable!("move_action called with non-target intent"),
@@ -397,7 +399,7 @@ fn slow_turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
         },
         _ => unreachable!("slow_turn_action called with non-direction intent"),
     }
-    vec!()
+    vec![Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: entity.position, volume: 15 })]
 }
 
 pub fn embark_action(entity: &mut Entity, map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
