@@ -245,6 +245,7 @@ impl Entity {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn declare_intent(&mut self, map: &Map) {
         match &mut self.ai {
             AI::Patrolling(ai) => {

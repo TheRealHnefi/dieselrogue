@@ -1,4 +1,3 @@
-* Add a few non-item abilities
 * UI redesign
  * Optimize map drawing (RLTK batched rendering does not seem to help much. Other approaches?)
  * Use different fonts for different resolutions to fix scaling issues
@@ -17,9 +16,6 @@
  * Cannon for tank
  * Mech with machineguns
  * Disembark via menu
-* Doors
- * Unlockable
- * Openable
 * Animations
  * Screen culling
 * Aiming
