@@ -53,7 +53,7 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'r', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   damage: Damage::new( 0,  0, 10, 0), range: 5  })
     }
     pub fn shock_pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'r', fire_mode: FireMode::Fan,            two_handed: false, ammo: 5,   damage: Damage::new( 0,  5,  0, 0), range: 3  })
+        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 's', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   damage: Damage::new( 0,  3,  0, 0), range: 3  })
     }
     pub fn submachine_gun() -> Self {
         Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'p', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  damage: Damage::new(10,  0,  0, 0), range: 5  })
@@ -74,7 +74,7 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'm', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, damage: Damage::new(12,  0,  0, 0), range: 10 })
     }
     pub fn shock_carbine() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  damage: Damage::new( 0, 10,  0, 0), range: 6  })
+        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  damage: Damage::new( 0,  3,  0, 0), range: 6  })
     }
     pub fn shock_cannon() -> Self {
         Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   damage: Damage::new( 0, 25,  0, 0), range: 8  })

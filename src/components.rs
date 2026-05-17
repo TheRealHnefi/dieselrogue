@@ -122,11 +122,7 @@ pub enum StatusEffect {
     AimingAtEntity(usize, Item),
     Blind(u32),
     Burning(u32),
-    Dazed(u32),
-    Deaf(u32),
-    Stuck(u32),
-    Stunned(u32),
-    Suppressed(u32)
+    Shocked(u32),
 }
 
 impl StatusEffect {
@@ -134,13 +130,9 @@ impl StatusEffect {
         match self {
             StatusEffect::AimingAtGround(_, _) => 0,
             StatusEffect::AimingAtEntity(_, _) => 0,
-            StatusEffect::Blind(_) => 1,
+            StatusEffect::Blind(_)   => 1,
             StatusEffect::Burning(_) => 2,
-            StatusEffect::Dazed(_) => 3,
-            StatusEffect::Deaf(_) => 4,
-            StatusEffect::Stuck(_) => 5,
-            StatusEffect::Stunned(_) => 6,
-            StatusEffect::Suppressed(_) => 7
+            StatusEffect::Shocked(_) => 3,
         }
     }
 
@@ -148,13 +140,9 @@ impl StatusEffect {
         match self {
             StatusEffect::AimingAtGround(_, _) => "Aiming",
             StatusEffect::AimingAtEntity(_, _) => "Aiming",
-            StatusEffect::Blind(_) => "Blind",
+            StatusEffect::Blind(_)   => "Blind",
             StatusEffect::Burning(_) => "Burning",
-            StatusEffect::Dazed(_) => "Dazed",
-            StatusEffect::Deaf(_) => "Deaf",
-            StatusEffect::Stuck(_) => "Stuck",
-            StatusEffect::Stunned(_) => "Stunned",
-            StatusEffect::Suppressed(_) => "Suppressed"
+            StatusEffect::Shocked(_) => "Shocked",
         }.to_string()
     }
 }
@@ -178,13 +166,9 @@ impl StatusEffect {
     pub fn duration(&self) -> Option<u32> {
         match self {
             StatusEffect::AimingAtGround(_, _) | StatusEffect::AimingAtEntity(_, _) => None,
-            StatusEffect::Blind(n)      => Some(*n),
-            StatusEffect::Burning(n)    => Some(*n),
-            StatusEffect::Dazed(n)      => Some(*n),
-            StatusEffect::Deaf(n)       => Some(*n),
-            StatusEffect::Stuck(n)      => Some(*n),
-            StatusEffect::Stunned(n)    => Some(*n),
-            StatusEffect::Suppressed(n) => Some(*n),
+            StatusEffect::Blind(n)   => Some(*n),
+            StatusEffect::Burning(n) => Some(*n),
+            StatusEffect::Shocked(n) => Some(*n),
         }
     }
 
@@ -193,13 +177,9 @@ impl StatusEffect {
     pub fn tick(&self) -> Option<StatusEffect> {
         match self {
             StatusEffect::AimingAtGround(_, _) | StatusEffect::AimingAtEntity(_, _) => Some(self.clone()),
-            StatusEffect::Blind(n)      => if *n > 1 { Some(StatusEffect::Blind(*n - 1))      } else { None },
-            StatusEffect::Burning(n)    => if *n > 1 { Some(StatusEffect::Burning(*n - 1))    } else { None },
-            StatusEffect::Dazed(n)      => if *n > 1 { Some(StatusEffect::Dazed(*n - 1))      } else { None },
-            StatusEffect::Deaf(n)       => if *n > 1 { Some(StatusEffect::Deaf(*n - 1))       } else { None },
-            StatusEffect::Stuck(n)      => if *n > 1 { Some(StatusEffect::Stuck(*n - 1))      } else { None },
-            StatusEffect::Stunned(n)    => if *n > 1 { Some(StatusEffect::Stunned(*n - 1))    } else { None },
-            StatusEffect::Suppressed(n) => if *n > 1 { Some(StatusEffect::Suppressed(*n - 1)) } else { None },
+            StatusEffect::Blind(n)   => if *n > 1 { Some(StatusEffect::Blind(*n - 1))   } else { None },
+            StatusEffect::Burning(n) => if *n > 1 { Some(StatusEffect::Burning(*n - 1)) } else { None },
+            StatusEffect::Shocked(n) => if *n > 1 { Some(StatusEffect::Shocked(*n - 1)) } else { None },
         }
     }
 }
@@ -306,6 +286,13 @@ impl Armor {
             elec_absorption: self.elec_absorption + other.elec_absorption,
             elec_resistance: self.elec_resistance + other.elec_resistance
         }
+    }
+
+    pub fn electrical_penetrates(&self, damage: Damage) -> bool {
+        if self.elec_absorption >= damage.electrical || self.elec_resistance >= 1.0 {
+            return false;
+        }
+        ((damage.electrical - self.elec_absorption) as f32 * (1.0 - self.elec_resistance)) as u32 > 0
     }
 
     pub fn modify_damage(&self, damage: Damage) -> u32 {
