@@ -234,11 +234,16 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 2;
     const STATUS_COLUMN_WIDTH: usize = 12;
     const STATUS_COLUMN_HEIGHT: usize = HEALTH_AND_STATUS_PANEL_HEIGHT - 2;
+    let status_x = UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH;
     for (i, status) in player.body.status_effects.iter().enumerate() {
+        let label = match status.duration() {
+            Some(n) => format!("{} ({})", status.to_string(), n),
+            None    => status.to_string(),
+        };
         if i < STATUS_COLUMN_HEIGHT {
-            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, status.to_string());
+            context.print_color(status_x, offset_y + i, LABEL_COLOR, BG_COLOR, label);
         } else {
-            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH + STATUS_COLUMN_WIDTH, offset_y + i - STATUS_COLUMN_HEIGHT, LABEL_COLOR, BG_COLOR, status.to_string());
+            context.print_color(status_x + STATUS_COLUMN_WIDTH, offset_y + i - STATUS_COLUMN_HEIGHT, LABEL_COLOR, BG_COLOR, label);
         }
     }
 

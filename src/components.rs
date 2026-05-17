@@ -173,6 +173,20 @@ impl PartialEq for StatusEffect {
 impl Eq for StatusEffect {}
 
 impl StatusEffect {
+    /// Returns the remaining duration for timed effects; `None` for persistent effects.
+    pub fn duration(&self) -> Option<u32> {
+        match self {
+            StatusEffect::AimingAtGround(_, _) | StatusEffect::AimingAtEntity(_, _) => None,
+            StatusEffect::Blind(n)      => Some(*n),
+            StatusEffect::Burning(n)    => Some(*n),
+            StatusEffect::Dazed(n)      => Some(*n),
+            StatusEffect::Deaf(n)       => Some(*n),
+            StatusEffect::Stuck(n)      => Some(*n),
+            StatusEffect::Stunned(n)    => Some(*n),
+            StatusEffect::Suppressed(n) => Some(*n),
+        }
+    }
+
     /// Decrement the duration by one tick. Returns `None` when the effect expires.
     /// Aiming effects are not duration-based and are returned unchanged.
     pub fn tick(&self) -> Option<StatusEffect> {
