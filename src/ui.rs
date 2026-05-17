@@ -41,8 +41,8 @@ const LOG_NOISE_PANEL_HEIGHT: usize = UI_HEIGHT
     - HEALTH_AND_STATUS_PANEL_HEIGHT
     - LOCATION_PANEL_HEIGHT
     - 1;
-const LOG_PANEL_WIDTH: usize = 55;
-const NOISE_PANEL_WIDTH: usize = UI_WIDTH - LOG_PANEL_WIDTH;
+const NOISE_PANEL_WIDTH: usize = 22;
+const ABILITIES_PANEL_WIDTH: usize = UI_WIDTH - NOISE_PANEL_WIDTH;
 const LABEL_OFFSET: usize = 2;
 
 const LINE_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
@@ -119,11 +119,11 @@ fn draw_panel_geometry(context: &mut Rltk) {
     context.draw_hollow_box_double(UI_X_OFFSET, offset, UI_WIDTH, EQUIPMENT_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
     offset += EQUIPMENT_PANEL_HEIGHT;
 
-    context.draw_hollow_box_double(UI_X_OFFSET, offset, UI_WIDTH, ABILITIES_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
+    context.draw_hollow_box_double(UI_X_OFFSET, offset, ABILITIES_PANEL_WIDTH, ABILITIES_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
+    context.draw_hollow_box_double(UI_X_OFFSET + ABILITIES_PANEL_WIDTH, offset, NOISE_PANEL_WIDTH, ABILITIES_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
     offset += ABILITIES_PANEL_HEIGHT;
 
-    context.draw_hollow_box_double(UI_X_OFFSET, offset, LOG_PANEL_WIDTH, LOG_NOISE_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
-    context.draw_hollow_box_double(UI_X_OFFSET + LOG_PANEL_WIDTH, offset, NOISE_PANEL_WIDTH, LOG_NOISE_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
+    context.draw_hollow_box_double(UI_X_OFFSET, offset, UI_WIDTH, LOG_NOISE_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
 
     // Draw crossing points
     offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT;
@@ -142,15 +142,13 @@ fn draw_panel_geometry(context: &mut Rltk) {
     offset += EQUIPMENT_PANEL_HEIGHT;
 
     context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
+    context.set(UI_X_OFFSET + ABILITIES_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╦'));
     context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
     offset += ABILITIES_PANEL_HEIGHT;
 
     context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(UI_X_OFFSET + LOG_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╦'));
+    context.set(UI_X_OFFSET + ABILITIES_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╩'));
     context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
-    offset += LOG_NOISE_PANEL_HEIGHT;
-
-    context.set(UI_X_OFFSET + LOG_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╩'));
 
     // Draw titles
     offset = UI_Y_OFFSET;
@@ -168,10 +166,10 @@ fn draw_panel_geometry(context: &mut Rltk) {
     offset += EQUIPMENT_PANEL_HEIGHT;
 
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Abilities ╠");
+    context.print_color(UI_X_OFFSET + ABILITIES_PANEL_WIDTH + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Noise ╠");
     offset += ABILITIES_PANEL_HEIGHT;
 
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Log ╠");
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET + LOG_PANEL_WIDTH, offset, LABEL_COLOR, BG_COLOR, "╣ Noise ╠");
 }
 
 fn draw_panel_contents(state: &State, context: &mut Rltk) {
@@ -407,10 +405,10 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
         Err(_) => return,
     };
 
-    let panel_x = UI_X_OFFSET + LOG_PANEL_WIDTH + LABEL_OFFSET;
+    let panel_x = UI_X_OFFSET + ABILITIES_PANEL_WIDTH + LABEL_OFFSET;
     let panel_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
-        + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + ABILITIES_PANEL_HEIGHT + 2;
-    let max_rows = LOG_NOISE_PANEL_HEIGHT - 2;
+        + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
+    let max_rows = ABILITIES_PANEL_HEIGHT - 2;
     let inner_width = NOISE_PANEL_WIDTH - LABEL_OFFSET - 1;
 
     let mut row = 0;
