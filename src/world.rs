@@ -99,6 +99,7 @@ impl World {
         let _ = world.add_item(pos, Item::grenade());
         let _ = world.add_item(pos, Item::flashbang());
         let _ = world.add_item(pos, Item::fire_grenade());
+        let _ = world.add_item(pos, Item::shock_grenade());
         let _ = world.add_item(pos, Item::shock_pistol());
 
         // Enemies spread in front of the player to test fan fire arc

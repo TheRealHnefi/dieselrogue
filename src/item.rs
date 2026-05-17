@@ -117,6 +117,20 @@ impl Item {
         }
     }
 
+    pub fn shock_grenade() -> Self {
+        Item {
+            id: 0,
+            renderable: Renderable::new_char('g'),
+            name: String::from("Shock grenade"),
+            inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 7, 0, 0), timeout: 4, flash: false },
+            proxy: false,
+            active: false,
+        }
+    }
+
     pub fn flashbang() -> Self {
         Item {
             id: 0,
