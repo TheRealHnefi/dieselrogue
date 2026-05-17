@@ -3,12 +3,18 @@ use rltk::Point;
 use strum::IntoEnumIterator;
 use std::collections::HashMap;
 
+pub struct ActiveItem {
+    pub item_id: usize,
+    pub location: ItemLocation,
+}
+
 /// The contents of the game world itself.
 pub struct World {
     pub player_id: Option<usize>,
     pub entities: Vec<Entity>,
     pub map: Map,
     pub pending_levelup: bool,
+    pub active_items: Vec<ActiveItem>,
     next_item_id: usize
 }
 
@@ -66,6 +72,7 @@ impl World {
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
+            active_items: vec![],
             map: Map::new_game_map(size)
         };
 
@@ -125,6 +132,7 @@ impl World {
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
+            active_items: vec![],
             map: Map::new_game_map(10)
         };
 
@@ -155,6 +163,7 @@ impl World {
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
+            active_items: vec![],
             map: Map::new_empty_map(100, 100)
         }
     }
@@ -387,10 +396,20 @@ impl World {
                     animations.push(animation.clone()),
                 Effect::ApplyStatus{target_id, status} =>
                     self.entities[*target_id].apply_status_effect(status),
+                Effect::SyncActiveItem{item_id, location} =>
+                    self.sync_active_item(*item_id, location.clone()),
             }
         }
         self.post_resolve(deathlist);
         animations
+    }
+
+    pub fn sync_active_item(&mut self, item_id: usize, location: ItemLocation) {
+        if let Some(entry) = self.active_items.iter_mut().find(|e| e.item_id == item_id) {
+            entry.location = location;
+        } else {
+            self.active_items.push(ActiveItem { item_id, location });
+        }
     }
 
     fn handle_damage(&mut self, id: usize, part_index: usize, damage: Damage, deathlist: &mut Vec<usize>, log: &mut GameLog) {

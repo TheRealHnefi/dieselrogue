@@ -14,7 +14,8 @@ pub struct Item {
     pub equip_actions: Vec<ItemAction>,
     pub equip_slots: Vec<SlotType>,
     pub kind: ItemKind,
-    pub proxy: bool
+    pub proxy: bool,
+    pub active: bool,
 }
 
 // ---- Firearm definition types -----------------------------------------------
@@ -100,6 +101,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::Misc,
             proxy: false,
+            active: false,
         }
     }
 
@@ -112,7 +114,8 @@ impl Item {
             equip_actions: vec!(),
             equip_slots: vec!(SlotType::Bodywear),
             kind: ItemKind::Wearable { armor: Armor::new(3, 0.25, 0, 0.1, 0, 0.0) },
-            proxy: false
+            proxy: false,
+            active: false,
         }
     }
 
@@ -125,7 +128,8 @@ impl Item {
             equip_actions: vec!(),
             equip_slots: self.equip_slots.clone(),
             kind: ItemKind::Misc,
-            proxy: true
+            proxy: true,
+            active: false,
         }
     }
 }
@@ -155,6 +159,7 @@ impl Item {
             equip_slots,
             kind: ItemKind::Firearm { ammo: def.ammo, max_ammo: def.ammo, damage: def.damage, range: def.range },
             proxy: false,
+            active: false,
         }
     }
 
