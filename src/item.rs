@@ -89,7 +89,7 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'r', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12 })
     }
 
-    // TODO: grenade_launcher, shock_grenade, fire_grenade, flashbang
+    // TODO: shock_grenade, fire_grenade, flashbang
 
     pub fn grenade() -> Self {
         Item {
