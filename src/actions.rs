@@ -199,6 +199,7 @@ pub fn single_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     };
 
     let mut result = vec!();
+    result.push(Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 20 }));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
         log.log(format!("{} fired at {}", entity.name, pawn.name));
@@ -222,6 +223,7 @@ pub fn burst_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) 
     };
 
     let mut result = vec!();
+    result.push(Effect::Sound(SoundEvent { kind: SoundKind::Burst, pos: entity.position, volume: 25 }));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         for _ in 0..shots {
             result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
@@ -247,6 +249,7 @@ pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     };
 
     let mut result = vec!();
+    result.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: entity.position, volume: 30 }));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         for part_index in 0..pawn.body.parts.len() {
             result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part_index, raw_damage: damage });
@@ -322,6 +325,7 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
     if !arc_positions.is_empty() {
         result.push(Effect::Animation(fan_fire_animation(arc_positions)));
     }
+    result.push(Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 15 }));
 
     entity.clear_aiming();
     result
@@ -340,17 +344,19 @@ pub fn move_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
         return vec!();
     }
 
+    let mut result = vec!();
     match entity.intent.data {
         IntentData::Target(pos) => {
             if entity.check_fit(pos, map) {
                 entity.set_position(pos, map);
                 entity.clear_aiming();
+                result.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos: entity.position, volume: 5 }));
             }
         },
         _ => unreachable!("move_action called with non-target intent"),
     }
 
-    vec!()
+    result
 }
 
 pub fn turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
@@ -443,14 +449,16 @@ pub fn juke_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
         log.log(format!("{} is too exhausted to Juke", entity.name));
         return vec!();
     }
+    let mut result = vec!();
     if let IntentData::Target(pos) = entity.intent.data {
         if entity.check_fit(pos, map) {
             entity.body.energy -= ENERGY_COST;
             entity.set_position(pos, map);
             entity.clear_aiming();
+            result.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos: entity.position, volume: 5 }));
         }
     }
-    vec!()
+    result
 }
 
 pub fn aim_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {

@@ -195,6 +195,7 @@ impl State {
     }
 
     fn resolve_status_effects(&mut self) {
+        self.world.sounds_last_turn = std::mem::take(&mut self.world.sounds);
         self.world.resolve_status_effects(&mut self.log);
 
         if self.world.pending_levelup {

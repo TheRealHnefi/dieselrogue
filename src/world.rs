@@ -15,6 +15,8 @@ pub struct World {
     pub entities: Vec<Entity>,
     pub map: Map,
     pub pending_levelup: bool,
+    pub sounds: Vec<SoundEvent>,
+    pub sounds_last_turn: Vec<SoundEvent>,
     pub active_items: Vec<ActiveItem>,
     active_items_ticked: bool,
     next_item_id: usize
@@ -74,6 +76,8 @@ impl World {
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
+            sounds: vec![],
+            sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
             map: Map::new_game_map(size)
@@ -140,6 +144,8 @@ impl World {
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
+            sounds: vec![],
+            sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
             map: Map::new_game_map(10)
@@ -172,6 +178,8 @@ impl World {
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
+            sounds: vec![],
+            sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
             map: Map::new_empty_map(100, 100)
@@ -413,6 +421,7 @@ impl World {
                     }
                 }
                 effects.push(Effect::Animation(explosion_animation(pos)));
+                effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 25 }));
                 self.remove_item_from_location(tick.item_id, &tick.location);
                 exploded.push(tick.item_id);
             } else {
@@ -523,6 +532,8 @@ impl World {
                     self.handle_damage(*id, *part_index, Damage::new(0, 0, 1, 0), &mut deathlist, log),
                 Effect::SyncActiveItem{item_id, location} =>
                     self.sync_active_item(*item_id, location.clone()),
+                Effect::Sound(sound) =>
+                    self.sounds.push(sound.clone()),
             }
         }
         self.post_resolve(deathlist);
