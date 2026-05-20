@@ -219,6 +219,7 @@ impl World {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
         let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Rotator;
+        self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 
@@ -229,6 +230,7 @@ impl World {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
         let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Forward;
+        self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 
@@ -237,11 +239,20 @@ impl World {
 
     pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Result<(), GameError> {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
-        let entity = Entity::new_patrolling_goon(self.entities.len(), actual_pos, facing, name, waypoints);
+        let mut entity = Entity::new_patrolling_goon(self.entities.len(), actual_pos, facing, name, waypoints);
+        self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 
         Ok(())
+    }
+
+    fn equip_pistol(&mut self, entity: &mut Entity) {
+        let mut pistol = Item::pistol();
+        pistol.id = self.next_item_id;
+        self.next_item_id += 1;
+        let _ = entity.body.equip(pistol);
+        entity.body.update_armor();
     }
 
     pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
