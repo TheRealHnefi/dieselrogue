@@ -205,7 +205,6 @@ pub fn single_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
         log.log(format!("{} fired at {}", entity.name, pawn.name));
     }
     result.push(Effect::Animation(shot_animation(entity.position, target_pos, 1)));
-    entity.clear_aiming();
     result
 }
 
@@ -231,7 +230,6 @@ pub fn burst_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) 
         log.log(format!("{} fired {} shots at {}", entity.name, shots, pawn.name));
     }
     result.push(Effect::Animation(shot_animation(entity.position, target_pos, shots as i32)));
-    entity.clear_aiming();
     result
 }
 
@@ -257,7 +255,6 @@ pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     }
     result.push(Effect::DestroyWall(target_pos));
     result.push(Effect::Animation(explosion_animation(target_pos)));
-    entity.clear_aiming();
     result
 }
 
@@ -326,8 +323,6 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
         result.push(Effect::Animation(fan_fire_animation(arc_positions)));
     }
     result.push(Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 15 }));
-
-    entity.clear_aiming();
     result
 }
 
@@ -377,6 +372,7 @@ pub fn turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
 fn fast_turn_action(entity: &mut Entity, map: &mut Map) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::Direction(direction) => {
+            entity.clear_aiming();
             entity.body.facing = direction;
             entity.set_position(entity.position, map);
         },
@@ -390,6 +386,7 @@ fn slow_turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
         IntentData::Direction(direction) => {
             if entity.body.facing.clockwise() == direction
                 || entity.body.facing.counter_clockwise() == direction {
+                entity.clear_aiming();
                 entity.body.facing = direction;
                 entity.set_position(entity.position, map);
             } else {
