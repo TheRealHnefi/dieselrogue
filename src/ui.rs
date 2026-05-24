@@ -288,6 +288,29 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
                 context.print_color(offset_x + 3, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Range: {}", range));
             },
+            ItemKind::MeleeWeapon{damage} => {
+                let label = String::from("Dmg: ");
+                let phys = format!("{}", damage.physical);
+                let elec = format!("{}", damage.electrical);
+                let fire = format!("{}", damage.fire);
+                let pierce = format!("{}", damage.piercing);
+                let mut offset_x = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH + 15;
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &label);
+                offset_x += label.len();
+                context.print_color(offset_x, offset_y + i, PHYS_COLOR, BG_COLOR, &phys);
+                offset_x += phys.len();
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_x += 1;
+                context.print_color(offset_x, offset_y + i, ELEC_COLOR, BG_COLOR, &elec);
+                offset_x += elec.len();
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_x += 1;
+                context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
+                offset_x += fire.len();
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_x += 1;
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &pierce);
+            },
             ItemKind::Wearable{armor} => {
                 let label = String::from("Armor: ");
                 let phys = format!("{}\\{} ", armor.phys_absorption, armor.phys_resistance * 100.0);

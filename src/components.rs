@@ -240,6 +240,7 @@ impl SlotType {
 #[derive(Clone)]
 pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, damage: Damage, range: u32},
+    MeleeWeapon {damage: Damage},
     Wearable {armor: Armor},
     FusedExplosive {damage: Damage, timeout: u32, flash: bool},
     Key {door_ids: Vec<usize>},

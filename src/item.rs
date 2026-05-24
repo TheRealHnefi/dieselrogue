@@ -195,6 +195,20 @@ impl Item {
         }
     }
 
+    pub fn knife() -> Self {
+        Item {
+            id: 0,
+            renderable: Renderable::new_char('/'),
+            name: String::from("Knife"),
+            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![SlotType::SecondaryHand],
+            kind: ItemKind::MeleeWeapon { damage: Damage::new(5, 0, 0, 0) },
+            proxy: false,
+            active: false,
+        }
+    }
+
     pub fn bulletproof_vest() -> Self {
         Item {
             id: 0,

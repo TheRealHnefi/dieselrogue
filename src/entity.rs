@@ -321,6 +321,25 @@ impl Entity {
         self.viewshed.visible_tiles.contains(&pos)
     }
 
+    /// Returns the target bodypart index and final damage for a melee attack against `target`.
+    /// Applies all attacker-side modifiers (Pugilism, Backstab, etc.) in one place.
+    pub fn melee_strike(&self, target: &Pawn) -> (usize, Damage) {
+        let bodypart_index = if self.has_ability(Ability::Pugilism) { 0 } else { 1 };
+        let base = self.body.item_slots.iter()
+            .find(|s| s.slot_type == SlotType::SecondaryHand)
+            .and_then(|s| s.item.as_ref())
+            .and_then(|item| if let ItemKind::MeleeWeapon { damage } = item.kind { Some(damage) } else { None })
+            .unwrap_or(Damage::new(1, 0, 0, 0));
+        let mut damage = base;
+        if self.has_ability(Ability::Backstab)
+            && matches!(target.sprite, Sprite::Human)
+            && !target.can_see(self.position)
+        {
+            damage.physical *= 5;
+        }
+        (bodypart_index, damage)
+    }
+
     pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: Damage) {
         let bodypart = &mut self.body.parts[bodypart_index];
 

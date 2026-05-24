@@ -101,6 +101,7 @@ impl World {
             Direction::Up,
             String::from("Tank"));
 
+        let _ = world.add_item(pos, Item::knife());
         let _ = world.add_item(pos, Item::machinegun());
         let _ = world.add_item(pos, Item::pistol());
         let _ = world.add_item(pos, Item::pistol());
