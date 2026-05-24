@@ -516,14 +516,17 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
         .unwrap_or(false);
 
     let idx = state.world.map.pos_idx(pos);
-    let (name, intent_desc) = if let Some(pawn) = &state.world.map.pawns[idx] {
+    let (name, status_line, intent_desc) = if let Some(pawn) = &state.world.map.pawns[idx] {
         let entity = &state.world.entities[pawn.entity_id];
-        let desc = if precognition {
-            Some(entity.intent.description())
-        } else {
-            None
-        };
-        (entity.name.clone(), desc)
+        let intent = if precognition { Some(entity.intent.description()) } else { None };
+        let statuses: Vec<String> = entity.body.status_effects.iter().map(|e| {
+            match e.duration() {
+                Some(n) => format!("{} ({})", e.to_string(), n),
+                None    => e.to_string(),
+            }
+        }).collect();
+        let status = if statuses.is_empty() { None } else { Some(statuses.join(", ")) };
+        (entity.name.clone(), status, intent)
     } else if let Some(item) = &state.world.map.items[idx] {
         let status = match &item.kind {
             ItemKind::FusedExplosive { timeout, .. } => {
@@ -531,14 +534,16 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
             },
             _ => None,
         };
-        (item.name.clone(), status)
+        (item.name.clone(), status, None)
     } else {
         return;
     };
 
     let cx = pos.x - viewport.x1;
     let cy = pos.y - viewport.y1;
-    let max_len = name.len().max(intent_desc.as_ref().map_or(0, |s| s.len())) as i32;
+    let max_len = name.len()
+        .max(status_line.as_ref().map_or(0, |s| s.len()))
+        .max(intent_desc.as_ref().map_or(0, |s| s.len())) as i32;
 
     // Prefer drawing to the right; fall back to the left near the viewport edge.
     let label_x = if cx + 4 + max_len < VIEWPORT_WIDTH as i32 {
@@ -547,13 +552,18 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
         cx - 3 - max_len
     };
 
-    // Same framing as menu panels: text lands at (box_x+2, box_y+1).
-    let box_height = if intent_desc.is_some() { 3 } else { 2 };
+    let extra_rows = status_line.is_some() as i32 + intent_desc.is_some() as i32;
+    let box_height = 2 + extra_rows;
     context.draw_box(label_x - 2, cy - 1, max_len + 3, box_height,
         RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
     context.print_color(label_x, cy, LABEL_COLOR, BG_COLOR, &name);
+    let mut row = cy + 1;
+    if let Some(status) = status_line {
+        context.print_color(label_x, row, INACTIVE_COLOR, BG_COLOR, &status);
+        row += 1;
+    }
     if let Some(desc) = intent_desc {
-        context.print_color(label_x, cy + 1, INACTIVE_COLOR, BG_COLOR, &desc);
+        context.print_color(label_x, row, INACTIVE_COLOR, BG_COLOR, &desc);
     }
 }
 
