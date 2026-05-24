@@ -23,6 +23,8 @@ pub enum Targeting {
     /// the bodypart menu before resolving (used by single/burst fire).
     /// If false, fires directly at the position (used by rockets, fan fire).
     UseExistingAim { ask_bodypart: bool },
+    /// Cycle the cursor among visible entities within range; confirms as AimingAtEntity.
+    EntityAim { max_range: Option<u32> },
 }
 
 #[derive(Clone)]
