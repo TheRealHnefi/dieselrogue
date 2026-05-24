@@ -278,7 +278,7 @@ impl Item {
         ItemAction { name: "Fire rocket".to_string(),      targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::rocket_fire_action   }
     }
     fn fan_fire_action() -> ItemAction {
-        ItemAction { name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::fan_fire_action      }
+        ItemAction { name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::fan_fire_action      }
     }
     fn aim_at_entity_action(range: u32) -> ItemAction {
         ItemAction { name: "Aim at entity".to_string(),    targeting: Targeting::EntityAim { max_range: Some(range) },   phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::aim_action           }
