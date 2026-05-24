@@ -431,7 +431,7 @@ impl World {
                 };
                 if tick.flash {
                     log.log(String::from("A flashbang goes off!"));
-                    const FLASH_RADIUS: i32 = 5;
+                    const FLASH_RADIUS: i32 = 7;
                     for entity in &self.entities {
                         let dx = entity.position.x - pos.x;
                         let dy = entity.position.y - pos.y;
