@@ -171,15 +171,9 @@ impl Entity {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = Some(Pawn {
                     entity_id: self.id,
-                    kind: self.kind.clone(),
-                    driving: self.driving.clone(),
-                    sprite: self.sprite.clone(),
                     sprite_index: x + y * self.size_x,
-                    name: self.name.clone(),
-                    intent: self.intent.clone(),
-                    body: self.body.clone(),
-                    visible_tiles: self.viewshed.visible_tiles.clone(),
                 });
+                map.fov_blocked[index] = self.kind == EntityKind::Door;
             }
         }
     }
@@ -191,6 +185,7 @@ impl Entity {
             for y in 0..self.size_y {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = None;
+                map.fov_blocked[index] = false;
             }
         }
     }
@@ -323,7 +318,7 @@ impl Entity {
 
     /// Returns the target bodypart index and final damage for a melee attack against `target`.
     /// Applies all attacker-side modifiers (Pugilism, Backstab, etc.) in one place.
-    pub fn melee_strike(&self, target: &Pawn) -> (usize, Damage) {
+    pub fn melee_strike(&self, target: &Entity) -> (usize, Damage) {
         let bodypart_index = if self.has_ability(Ability::Pugilism) { 0 } else { 1 };
         let base = self.body.item_slots.iter()
             .find(|s| s.slot_type == SlotType::SecondaryHand)
@@ -404,27 +399,11 @@ fn forward_intent(pos: Point, facing: Direction) -> Intent {
 /// `Map::pawns` is a flat tile-indexed `Vec<Option<Pawn>>`. Looking up what occupies a tile is
 /// O(1) via the tile index, without scanning `World::entities`.
 ///
-/// Pawn data mirrors its Entity at the moment `create_pawns` was last called. It is **read-only
-/// from the map's perspective** — never mutate a Pawn directly. Apply changes to the owning
-/// Entity and then call `set_position` or `create_pawns`/`clear_pawns` to resync.
-///
 /// Multi-tile entities (e.g. tanks) place one Pawn per occupied tile, each with its own
 /// `sprite_index` for rendering. All of these Pawns share the same `entity_id`.
+/// For any other entity data, look up `World::entities[pawn.entity_id]`.
 #[derive(Clone)]
 pub struct Pawn {
     pub entity_id: usize,
-    pub kind: EntityKind,
-    pub driving: DrivingState,
-    pub sprite: Sprite,
     pub sprite_index: u32,
-    pub name: String,
-    pub intent: Intent,
-    pub body: Body,
-    pub visible_tiles: Vec<Point>,
-}
-
-impl Pawn {
-    pub fn can_see(&self, pos: Point) -> bool {
-        self.visible_tiles.contains(&pos)
-    }
 }

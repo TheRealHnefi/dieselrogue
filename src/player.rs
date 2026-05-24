@@ -11,50 +11,55 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
-    
+
     let player_id = world.player_id.unwrap();
-    let player = &mut world.entities[player_id];
 
-    let driving = match player.driving {
-        DrivingState::DrivenBy(_) => true,
-        _ => false
-    };
+    let driving = matches!(world.entities[player_id].driving, DrivingState::DrivenBy(_));
+    let can_move = world.entities[player_id].has_ability(Ability::HumanMove)
+        || world.entities[player_id].has_ability(Ability::VehicleMove);
 
-    if !player.has_ability(Ability::HumanMove) && !player.has_ability(Ability::VehicleMove) {
+    if !can_move {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not move")});
     }
 
     let (delta_x, delta_y) = direction.delta_pos();
+    let facing = world.entities[player_id].body.facing;
+    let player_pos = world.entities[player_id].position;
 
-    if player.body.facing != direction {
-        player.intent = Intent {
+    if facing != direction {
+        world.entities[player_id].intent = Intent {
             phase: ExecutionPhase::Movement,
             data: IntentData::Direction(direction),
             action: actions::turn_action
         };
     } else if !driving {
-        let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
+        let target_pos = Point {x: player_pos.x + delta_x, y: player_pos.y + delta_y};
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
-        match &world.map.pawns[index] {
-            Some(pawn) => {
-                if pawn.kind == EntityKind::Door {
-                    player.intent = Intent {
+
+        // Determine what intent to set based on what's in the target tile.
+        // We must not hold a borrow on world.map.pawns when we later mutate world.entities,
+        // so extract just the pawn_entity_id before doing entity lookups.
+        let pawn_entity_id = world.map.pawns[index].as_ref().map(|p| p.entity_id);
+
+        match pawn_entity_id {
+            Some(pawn_entity_id) => {
+                if world.entities[pawn_entity_id].kind == EntityKind::Door {
+                    world.entities[player_id].intent = Intent {
                         phase: ExecutionPhase::Movement,
                         data: IntentData::Target(target_pos),
                         action: actions::open_door_action
                     };
-                }
-                else if pawn.driving == DrivingState::Drivable {
-                    if !player.has_ability(Ability::Embark) {
+                } else if world.entities[pawn_entity_id].driving == DrivingState::Drivable {
+                    if !world.entities[player_id].has_ability(Ability::Embark) {
                         return Err(GameError{error: Error::BadPrecondition, message: "You don't know how to operate that vehicle.".to_string()});
                     }
-                    player.intent = Intent {
+                    world.entities[player_id].intent = Intent {
                         phase: ExecutionPhase::Movement,
                         data: IntentData::Target(target_pos),
                         action: actions::embark_action
                     };
                 } else {
-                    player.intent = Intent {
+                    world.entities[player_id].intent = Intent {
                         phase: ExecutionPhase::Attack,
                         data: IntentData::Target(target_pos),
                         action: actions::melee_action
@@ -62,10 +67,10 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
                 }
             },
             None => {
-                if !player.check_fit(target_pos, &world.map) {
+                if !world.entities[player_id].check_fit(target_pos, &world.map) {
                     return Err(GameError{error: Error::BadPrecondition, message: "Bump!".to_string()});
                 }
-                player.intent = Intent {
+                world.entities[player_id].intent = Intent {
                     phase: ExecutionPhase::Movement,
                     data: IntentData::Target(target_pos),
                     action: actions::move_action
@@ -73,9 +78,9 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
             }
         }
     } else {
-        let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
-        if player.check_fit(target_pos, &world.map) {
-            player.intent = Intent {
+        let target_pos = Point {x: player_pos.x + delta_x, y: player_pos.y + delta_y};
+        if world.entities[player_id].check_fit(target_pos, &world.map) {
+            world.entities[player_id].intent = Intent {
                 phase: ExecutionPhase::Movement,
                 data: IntentData::Target(target_pos),
                 action: actions::move_action

@@ -7,9 +7,9 @@ use crate::animation::*;
 use crate::ability::*;
 use crate::DrivingState;
 
-pub type Action = fn (entity_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>;
+pub type Action = fn (entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect>;
 
-pub fn throw_grenade_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn throw_grenade_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let used_item;
     let target_pos;
     match entity.intent.data.clone() {
@@ -37,7 +37,7 @@ pub fn throw_grenade_action(entity: &mut Entity, map: &mut Map, log: &mut GameLo
     effects
 }
 
-pub fn prime_grenade_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn prime_grenade_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let inventory_item;
     match entity.intent.data.clone() {
         IntentData::InventoryItem(item) => inventory_item = item,
@@ -57,7 +57,7 @@ pub fn prime_grenade_action(entity: &mut Entity, _map: &mut Map, log: &mut GameL
     vec!()
 }
 
-pub fn drop_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn drop_item_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let inventory_item;
     match entity.intent.data.clone() {
         IntentData::InventoryItem(item) => {
@@ -84,7 +84,7 @@ pub fn drop_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -
     effects
 }
 
-pub fn get_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn get_item_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let index = map.xy_idx(entity.position.x, entity.position.y);
     if map.items[index].is_none() {
         return vec!();
@@ -102,7 +102,7 @@ pub fn get_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
     effects
 }
 
-pub fn equip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn equip_item_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let inventory_item;
     match entity.intent.data.clone() {
         IntentData::InventoryItem(item) => {
@@ -135,7 +135,7 @@ pub fn equip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog)
     vec!()
 }
 
-pub fn unequip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn unequip_item_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let equipped_item;
     match entity.intent.data.clone() {
         IntentData::EquippedItem(item) => {
@@ -194,7 +194,7 @@ fn consume_ammo(entity: &mut Entity, slot: SlotType, requested: u32) -> Option<(
     }
 }
 
-pub fn single_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn single_fire_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let (slot, target_pos, bodypart) = match extract_fire_intent(entity) {
         Some(v) => v,
         None => unreachable!("single_fire_action called with non-fire intent"),
@@ -211,13 +211,13 @@ pub fn single_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     result.push(Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 20 }));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
-        log.log(format!("{} fired at {}", entity.name, pawn.name));
+        log.log(format!("{} fired at {}", entity.name, entities[pawn.entity_id].name));
     }
     result.push(Effect::Animation(shot_animation(entity.position, target_pos, 1)));
     result
 }
 
-pub fn burst_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn burst_fire_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let (slot, target_pos, bodypart) = match extract_fire_intent(entity) {
         Some(v) => v,
         None => unreachable!("burst_fire_action called with non-fire intent"),
@@ -236,13 +236,13 @@ pub fn burst_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) 
         for _ in 0..shots {
             result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
         }
-        log.log(format!("{} fired {} shots at {}", entity.name, shots, pawn.name));
+        log.log(format!("{} fired {} shots at {}", entity.name, shots, entities[pawn.entity_id].name));
     }
     result.push(Effect::Animation(shot_animation(entity.position, target_pos, shots as i32)));
     result
 }
 
-pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let (slot, target_pos, _bodypart) = match extract_fire_intent(entity) {
         Some(v) => v,
         None => unreachable!("rocket_fire_action called with non-fire intent"),
@@ -258,7 +258,7 @@ pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     let mut result = vec!();
     result.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: entity.position, volume: 30 }));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
-        for part_index in 0..pawn.body.parts.len() {
+        for part_index in 0..entities[pawn.entity_id].body.parts.len() {
             result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part_index, raw_damage: damage });
         }
     }
@@ -267,7 +267,7 @@ pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog)
     result
 }
 
-pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let (slot, target_pos, _bodypart) = match extract_fire_intent(entity) {
         Some(v) => v,
         None => unreachable!("fan_fire_action called with non-fire intent"),
@@ -323,14 +323,14 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
 
             let tile_idx = map.pos_idx(tile_pos);
             if let Some(pawn) = &map.pawns[tile_idx] {
-                for part_index in 0..pawn.body.parts.len() {
+                for part_index in 0..entities[pawn.entity_id].body.parts.len() {
                     result.push(Effect::Damage {
                         entity_id: pawn.entity_id,
                         bodypart_index: part_index,
                         raw_damage: damage,
                     });
                 }
-                log.log(format!("{} hit {} with fan fire", entity.name, pawn.name));
+                log.log(format!("{} hit {} with fan fire", entity.name, entities[pawn.entity_id].name));
             }
             arc_positions.push(tile_pos);
         }
@@ -343,14 +343,14 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
     result
 }
 
-pub fn open_door_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+pub fn open_door_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::Target(pos) => vec!(Effect::OpenDoor { pos, actor_id: entity.id }),
         _ => unreachable!("open_door_action called with non-target intent"),
     }
 }
 
-pub fn move_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn move_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     if !entity.has_ability(Ability::HumanMove) && !entity.has_ability(Ability::VehicleMove) {
         log.log(format!("{} tried to move, but couldn't", entity.name));
         return vec!();
@@ -375,7 +375,7 @@ pub fn move_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
     result
 }
 
-pub fn turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn turn_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     if entity.has_ability(Ability::HumanMove) {
         return fast_turn_action(entity, map);
     }
@@ -418,7 +418,7 @@ fn slow_turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
     vec![Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: entity.position, volume: 15 })]
 }
 
-pub fn embark_action(entity: &mut Entity, map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+pub fn embark_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::Target(pos) => {
             let index = map.pos_idx(pos);
@@ -434,7 +434,7 @@ pub fn embark_action(entity: &mut Entity, map: &mut Map, _log: &mut GameLog) -> 
     }
 }
 
-pub fn disembark_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+pub fn disembark_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
     match entity.driving {
         DrivingState::DrivenBy(pilot) => vec!(Effect::Disembark{pilot_id: pilot, vehicle_id: entity.id}),
         _ => unreachable!("disembark_action called on entity that is not being driven"),
@@ -442,17 +442,19 @@ pub fn disembark_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog)
 }
 
 
-pub fn melee_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn melee_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     let mut result = vec!();
 
     match entity.intent.data {
         IntentData::Target(pos) => {
             let index = map.xy_idx(pos.x, pos.y);
             let pawn = map.pawns[index].as_ref().unwrap();
-            log.log(format!("{} struck {}", entity.name, pawn.name));
-            let (bodypart_index, raw_damage) = entity.melee_strike(pawn);
+            let target_id = pawn.entity_id;
+            let target = &entities[target_id];
+            log.log(format!("{} struck {}", entity.name, target.name));
+            let (bodypart_index, raw_damage) = entity.melee_strike(target);
             result.push(Effect::Damage {
-                entity_id: pawn.entity_id,
+                entity_id: target_id,
                 bodypart_index,
                 raw_damage,
             });
@@ -463,7 +465,7 @@ pub fn melee_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
     result
 }
 
-pub fn juke_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+pub fn juke_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     const ENERGY_COST: u32 = 25;
     if entity.body.energy < ENERGY_COST {
         log.log(format!("{} is too exhausted to Juke", entity.name));
@@ -483,7 +485,7 @@ pub fn juke_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
     result
 }
 
-pub fn aim_action(entity: &mut Entity, map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+pub fn aim_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::TargetWithEquipment{slot, target} => {
             let item = entity.get_equipped_item(slot).unwrap().clone();

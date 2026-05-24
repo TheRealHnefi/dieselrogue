@@ -477,7 +477,8 @@ pub fn targeting_menu(world: &World, position: Point) -> Option<MenuPanel<Target
     let pos_index = world.map.pos_idx(position);
     match &world.map.pawns[pos_index] {
         Some(pawn) => {
-            for (i, bodypart) in pawn.body.parts.iter().enumerate() {
+            let entity = &world.entities[pawn.entity_id];
+            for (i, bodypart) in entity.body.parts.iter().enumerate() {
                 targeting_rows.push(TargetingRow {
                     text: format!(
                         "{}: {}/{}",

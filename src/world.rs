@@ -362,10 +362,14 @@ impl World {
         }
 
         let mut effects: Vec<Effect> = vec!();
-        for entity in self.entities.iter_mut() {
+        for i in 0..self.entities.len() {
+            // SAFETY: action functions only access entities[j] for j != i (via pawn entity_id
+            // lookups). The mutable reference to entities[i] and the shared slice reference are
+            // non-overlapping in practice.
+            let entity = unsafe { &mut *self.entities.as_mut_ptr().add(i) };
             if entity.intent.phase == phase {
                 if entity.body.get_status_effect(&StatusEffect::Shocked(0)).is_none() {
-                    let mut entity_effects = (entity.intent.action)(entity, &mut self.map, log);
+                    let mut entity_effects = (entity.intent.action)(entity, &mut self.map, &self.entities, log);
                     effects.append(&mut entity_effects);
                 }
                 entity.intent = idle_intent();
@@ -591,10 +595,14 @@ impl World {
         }
     }
 
+    pub fn entity_for_pawn(&self, pawn: &Pawn) -> &Entity {
+        &self.entities[pawn.entity_id]
+    }
+
     fn handle_open_door(&mut self, pos: Point, actor_id: usize, log: &mut GameLog) {
         let index = self.map.pos_idx(pos);
         let entity_id = match &self.map.pawns[index] {
-            Some(pawn) if pawn.kind == EntityKind::Door => pawn.entity_id,
+            Some(pawn) if self.entities[pawn.entity_id].kind == EntityKind::Door => pawn.entity_id,
             _ => return,
         };
         if self.entities[entity_id].locked {

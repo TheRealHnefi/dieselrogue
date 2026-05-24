@@ -6,6 +6,7 @@ use crate::map::*;
 use crate::tile::*;
 use crate::Ability;
 use crate::Rect;
+use crate::entity::Entity;
 
 const LEVELUP_SELECT_COLOR: rltk::RGB = RGB { r: 0.9, g: 0.7, b: 0.0 };
 const LEVELUP_LIST_X: i32 = 4;
@@ -67,7 +68,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     let blink = (monotime / 250) % 2 == 0;
     let viewport = state.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);
 
-    draw_map(&state.world.map, viewport, context, blink);
+    draw_map(&state.world.map, &state.world.entities, viewport, context, blink);
     draw_main_ui(state, viewport, context, blink);
 }
 
@@ -516,13 +517,13 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
 
     let idx = state.world.map.pos_idx(pos);
     let (name, intent_desc) = if let Some(pawn) = &state.world.map.pawns[idx] {
+        let entity = &state.world.entities[pawn.entity_id];
         let desc = if precognition {
-            state.world.entities.get(pawn.entity_id)
-                .map(|e| e.intent.description())
+            Some(entity.intent.description())
         } else {
             None
         };
-        (pawn.name.clone(), desc)
+        (entity.name.clone(), desc)
     } else if let Some(item) = &state.world.map.items[idx] {
         let status = match &item.kind {
             ItemKind::FusedExplosive { timeout, .. } => {
@@ -556,7 +557,7 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
     }
 }
 
-fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {
+fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, blink: bool) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
 
@@ -565,10 +566,10 @@ fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {
             let index = map.xy_idx(x, y);
             if map.revealed_tiles[index] {
                 let mut renderable = match map.tiles[index] {
-                    TileType::Floor => render_open_tile(map, index, blink, '-'),
-                    TileType::Ground => render_open_tile(map, index, blink, '.'),
-                    TileType::Road => render_open_tile(map, index, blink, '_'),
-                    TileType::Doorway => render_open_tile(map, index, blink, ' '),
+                    TileType::Floor => render_open_tile(map, entities, index, blink, '-'),
+                    TileType::Ground => render_open_tile(map, entities, index, blink, '.'),
+                    TileType::Road => render_open_tile(map, entities, index, blink, '_'),
+                    TileType::Doorway => render_open_tile(map, entities, index, blink, ' '),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),
                         color: rltk::RGB::named(rltk::GREEN),
@@ -584,7 +585,7 @@ fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {
     }
 }
 
-fn render_open_tile(map: &Map, tile_index: usize, blink: bool, empty_character: char) -> Renderable {
+fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bool, empty_character: char) -> Renderable {
     let empty = Renderable {
         glyph: rltk::to_cp437(empty_character),
         color: RGB::from_f32(0.0, 0.5, 0.0),
@@ -594,10 +595,13 @@ fn render_open_tile(map: &Map, tile_index: usize, blink: bool, empty_character: 
         return empty;
     }
     match &map.pawns[tile_index] {
-        Some(pawn) => Renderable {
-            glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index, blink),
-            color: rltk::RGB::named(rltk::YELLOW),
-            background: rltk::RGB::named(rltk::BLACK)
+        Some(pawn) => {
+            let entity = &entities[pawn.entity_id];
+            Renderable {
+                glyph: entity.sprite.glyph(entity.body.facing, pawn.sprite_index, blink),
+                color: rltk::RGB::named(rltk::YELLOW),
+                background: rltk::RGB::named(rltk::BLACK)
+            }
         },
         None => match &map.items[tile_index] {
             Some(item) => item.renderable,

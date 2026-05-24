@@ -1,6 +1,6 @@
 use rltk::{BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
-use crate::entity::*;
+use crate::entity::Pawn;
 use crate::item::Item;
 use crate::tile::TileType;
 use crate::block::*;
@@ -17,6 +17,10 @@ pub struct Map {
     /// for O(1) lookup. See [`Entity`] and [`Pawn`] for the authoritative data and sync rules.
     pub pawns: Vec<Option<Pawn>>,
     pub items: Vec<Option<Item>>,
+    /// Per-tile FOV-blocking flag for doorway entities. Set to `true` when a Door entity occupies
+    /// a Doorway tile, cleared when the door is removed. Used by `is_opaque` without needing
+    /// entity access.
+    pub fov_blocked: Vec<bool>,
 }
 
 impl Map {
@@ -175,7 +179,8 @@ impl Map {
           revealed_tiles: vec![false; tile_count],
           visible_tiles: vec![false; tile_count],
           pawns: vec![None; tile_count],
-          items: vec![None; tile_count]
+          items: vec![None; tile_count],
+          fov_blocked: vec![false; tile_count],
         };
 
         let mut generated_blocks = generate_block_grid(size_in_blocks);
@@ -208,7 +213,8 @@ impl Map {
             revealed_tiles: vec![false; tile_count],
             visible_tiles: vec![false; tile_count],
             pawns: vec![None; tile_count],
-            items: vec![None; tile_count]
+            items: vec![None; tile_count],
+            fov_blocked: vec![false; tile_count],
         }
     }
 
@@ -233,12 +239,7 @@ impl BaseMap for Map {
             TileType::Floor => false,
             TileType::Ground => false,
             TileType::Road => false,
-            TileType::Doorway => {
-                match &self.pawns[index] {
-                    Some(pawn) => pawn.kind == EntityKind::Door,
-                    None => false
-                }
-            },
+            TileType::Doorway => self.fov_blocked[index],
         }
     }
 
