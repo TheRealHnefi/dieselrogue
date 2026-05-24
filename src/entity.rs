@@ -336,9 +336,16 @@ impl Entity {
     }
 
     pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: Damage) {
+        let iron_body = self.body.get_status_effect(&StatusEffect::IronBody(0)).is_some();
         let bodypart = &mut self.body.parts[bodypart_index];
-
-        let actual_damage = bodypart.armor.modify_damage(raw_damage);
+        let effective_armor = if iron_body {
+            let mut a = bodypart.armor.clone();
+            a.phys_resistance = (a.phys_resistance + 0.5).min(1.0);
+            a
+        } else {
+            bodypart.armor.clone()
+        };
+        let actual_damage = effective_armor.modify_damage(raw_damage);
         bodypart.damage += actual_damage;
 
         if bodypart.damage >= bodypart.max_damage {

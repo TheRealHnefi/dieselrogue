@@ -24,6 +24,7 @@ pub struct BodyPart {
     pub slot_index: Vec<usize>,
     pub abilities: Vec<Ability>,
 
+    pub base_max_damage: u32,
     pub max_damage: u32,
     pub damage: u32,
 
@@ -57,6 +58,7 @@ impl Body {
             name: "Head".to_string(),
             vital: true,
             slot_index: vec!(body.item_slots.len() - 1),
+            base_max_damage: 10,
             max_damage: 10,
             damage: 0,
             armor: Armor::zero(),
@@ -69,6 +71,7 @@ impl Body {
             name: "Torso".to_string(),
             vital: true,
             slot_index: vec!(body.item_slots.len() - 1),
+            base_max_damage: 15,
             max_damage: 15,
             damage: 0,
             armor: Armor::zero(),
@@ -82,6 +85,7 @@ impl Body {
             name: "R. arm".to_string(),
             vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            base_max_damage: 8,
             max_damage: 8,
             damage: 0,
             armor: Armor::zero(),
@@ -95,6 +99,7 @@ impl Body {
             name: "L. arm".to_string(),
             vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            base_max_damage: 8,
             max_damage: 8,
             damage: 0,
             armor: Armor::zero(),
@@ -108,6 +113,7 @@ impl Body {
             name: "Legs".to_string(),
             vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            base_max_damage: 12,
             max_damage: 12,
             damage: 0,
             armor: Armor::zero(),
@@ -145,6 +151,7 @@ impl Body {
             name: "Treads".to_string(),
             vital: false,
             slot_index: vec!(),
+            base_max_damage: 12,
             max_damage: 12,
             damage: 0,
             armor: Armor::new(25, 0.25, 75, 0.75, 75, 1.0),
@@ -156,6 +163,7 @@ impl Body {
             name: "Chassis".to_string(),
             vital: true,
             slot_index: vec!(),
+            base_max_damage: 12,
             max_damage: 12,
             damage: 0,
             armor: Armor::new(100, 0.5, 150, 0.95, 75, 1.0),
@@ -167,6 +175,7 @@ impl Body {
             name: "Turret".to_string(),
             vital: false,
             slot_index: vec!(),
+            base_max_damage: 12,
             max_damage: 12,
             damage: 0,
             armor: Armor::new(50, 0.25, 75, 0.75, 75, 1.0),
@@ -196,6 +205,7 @@ impl Body {
             name: "Door".to_string(),
             vital: true,
             slot_index: vec!(),
+            base_max_damage: 100,
             max_damage: 100,
             damage: 0,
             armor: Armor::zero(),
@@ -287,6 +297,14 @@ impl Body {
             }
         }
         self.noise_tolerance = if self.abilities.contains(&Ability::IronEars) { 50 } else { 15 };
+        let tough = self.abilities.contains(&Ability::Tough);
+        for part in &mut self.parts {
+            part.max_damage = if tough {
+                (part.base_max_damage * 3 + 1) / 2
+            } else {
+                part.base_max_damage
+            };
+        }
     }
 
     pub fn update_armor(&mut self) {

@@ -11,11 +11,13 @@ pub enum Ability {
     Pugilism,
     Backstab,
     Stealth,
+    Tough,
     // Active abilities
     Embark,
     Disembark,
     Throw,
     Juke, // Allow player to move out of order and without turning. Allows dodging shots.
+    IronBody,
 }
 
 impl Ability {
@@ -31,10 +33,12 @@ impl Ability {
             Ability::Pugilism     => "Pugilism",
             Ability::Backstab     => "Backstab",
             Ability::Stealth      => "Stealth",
+            Ability::Tough        => "Tough",
             Ability::Embark       => "Embark",
             Ability::Disembark    => "Disembark",
             Ability::Throw        => "Throw",
             Ability::Juke         => "Juke",
+            Ability::IronBody     => "Iron Body",
         }.to_string()
     }
 
@@ -45,6 +49,7 @@ impl Ability {
             Ability::PickUp      => true,
             Ability::Disembark   => true,
             Ability::Throw       => true,
+            Ability::IronBody    => false,
             _                    => false,
         }
     }
@@ -61,10 +66,12 @@ impl Ability {
             Ability::Pugilism     => true,
             Ability::Backstab     => true,
             Ability::Stealth      => true,
+            Ability::Tough        => true,
             Ability::Embark       => false,
             Ability::Disembark    => false,
             Ability::Throw        => false,
             Ability::Juke         => false,
+            Ability::IronBody     => false,
         }
     }
 
@@ -90,6 +97,8 @@ impl Ability {
                 "Melee attacks against humans who cannot see you deal 400% increased damage.",
             Ability::Stealth =>
                 "Your movement makes no sound.",
+            Ability::Tough =>
+                "All of your body parts have 50% more hit points.",
             Ability::Embark =>
                 "Allows entering a vehicle. Move into a drivable vehicle to take the controls.",
             Ability::Disembark =>
@@ -98,6 +107,8 @@ impl Ability {
                 "Allows throwing items such as grenades.",
             Ability::Juke =>
                 "Move instantly out of turn order. Costs 25 energy. Useful for dodging incoming fire.",
+            Ability::IronBody =>
+                "Activate to harden your body for 3 turns, increasing physical resistance by 50%.",
         }
     }
 
@@ -118,6 +129,8 @@ impl Ability {
             Ability::HumanMove    => 4, // Legs
             Ability::Juke         => 4, // Legs
             Ability::Stealth      => 4, // Legs
+            Ability::Tough        => 1, // Torso
+            Ability::IronBody     => 1, // Torso
         }
     }
 }

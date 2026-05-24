@@ -141,6 +141,7 @@ pub enum StatusEffect {
     Burning(u32),
     Shocked(u32),
     Deaf(u32),
+    IronBody(u32),
 }
 
 impl StatusEffect {
@@ -152,6 +153,7 @@ impl StatusEffect {
             StatusEffect::Burning(_) => 2,
             StatusEffect::Shocked(_) => 3,
             StatusEffect::Deaf(_)    => 4,
+            StatusEffect::IronBody(_) => 5,
         }
     }
 
@@ -163,6 +165,7 @@ impl StatusEffect {
             StatusEffect::Burning(_) => "Burning",
             StatusEffect::Shocked(_) => "Shocked",
             StatusEffect::Deaf(_)    => "Deaf",
+            StatusEffect::IronBody(_) => "Iron Body",
         }.to_string()
     }
 }
@@ -189,7 +192,8 @@ impl StatusEffect {
             StatusEffect::Blind(n)   => Some(*n),
             StatusEffect::Burning(n) => Some(*n),
             StatusEffect::Shocked(n) => Some(*n),
-            StatusEffect::Deaf(n)    => Some(*n),
+            StatusEffect::Deaf(n)     => Some(*n),
+            StatusEffect::IronBody(n) => Some(*n),
         }
     }
 
@@ -198,10 +202,11 @@ impl StatusEffect {
     pub fn tick(&self) -> Option<StatusEffect> {
         match self {
             StatusEffect::AimingAtGround(_, _) | StatusEffect::AimingAtEntity(_, _) => Some(self.clone()),
-            StatusEffect::Blind(n)   => if *n > 1 { Some(StatusEffect::Blind(*n - 1))   } else { None },
-            StatusEffect::Burning(n) => if *n > 1 { Some(StatusEffect::Burning(*n - 1)) } else { None },
-            StatusEffect::Shocked(n) => if *n > 1 { Some(StatusEffect::Shocked(*n - 1)) } else { None },
-            StatusEffect::Deaf(n)    => if *n > 1 { Some(StatusEffect::Deaf(*n - 1))    } else { None },
+            StatusEffect::Blind(n)    => if *n > 1 { Some(StatusEffect::Blind(*n - 1))    } else { None },
+            StatusEffect::Burning(n)  => if *n > 1 { Some(StatusEffect::Burning(*n - 1))  } else { None },
+            StatusEffect::Shocked(n)  => if *n > 1 { Some(StatusEffect::Shocked(*n - 1))  } else { None },
+            StatusEffect::Deaf(n)     => if *n > 1 { Some(StatusEffect::Deaf(*n - 1))     } else { None },
+            StatusEffect::IronBody(n) => if *n > 1 { Some(StatusEffect::IronBody(*n - 1)) } else { None },
         }
     }
 }
