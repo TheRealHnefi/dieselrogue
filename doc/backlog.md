@@ -15,16 +15,13 @@
 * Vehicles
  * Cannon for tank
  * Mech with machineguns
- * Disembark via menu
 * Animations
  * Screen culling
 * Aiming
  * Playtest - should I really use this aiming system?
- * Make weapons only aimable at visible targets
  * Break aim when moving/unequipping/losing visibility/etc
 * Limit inventory size to 20
-* Death effects (drop items, corpses etc, game over screen)
-* Fluids (maybe)
+* Death effects (game over screen)
 * Most abilities
 * Create AI's
  * Create new pathfinding system
