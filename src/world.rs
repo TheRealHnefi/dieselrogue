@@ -671,6 +671,53 @@ impl World {
         for i in 0..self.entities.len() {
             self.entities[i].update_view(&mut self.map);
         }
+        self.clear_stale_entity_aim();
+    }
+
+    fn clear_stale_entity_aim(&mut self) {
+        let player_id = match self.player_id {
+            Some(id) => id,
+            None => return,
+        };
+
+        let aim_info: Option<(usize, u32)> = {
+            let player = &self.entities[player_id];
+            let key = StatusEffect::AimingAtGround(Point { x: 0, y: 0 }, Item::pistol());
+            match player.body.get_status_effect(&key) {
+                Some(StatusEffect::AimingAtEntity(entity_id, item)) => {
+                    let range = match item.kind {
+                        ItemKind::Firearm { range, .. } => range,
+                        _ => 0,
+                    };
+                    Some((*entity_id, range))
+                },
+                _ => None,
+            }
+        };
+
+        let (target_id, range) = match aim_info {
+            Some(info) => info,
+            None => return,
+        };
+
+        let should_clear = match self.entities.get(target_id) {
+            None => true,
+            Some(target) => {
+                let target_center = target.center();
+                let in_sight = self.map.visible_tiles[self.map.pos_idx(target_center)];
+                if !in_sight {
+                    true
+                } else {
+                    let player_center = self.entities[player_id].center();
+                    let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_center, target_center);
+                    dist > range as f32
+                }
+            }
+        };
+
+        if should_clear {
+            self.entities[player_id].clear_aiming();
+        }
     }
 
     fn apply_noise_deafness(&mut self) {
