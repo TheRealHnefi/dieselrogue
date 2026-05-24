@@ -502,6 +502,10 @@ fn away_direction(from: Point, away_from: Point) -> Direction {
     }
 }
 
+pub fn shout_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
+    vec![Effect::Sound(SoundEvent { kind: SoundKind::Shout, pos: entity.position, volume: 15 })]
+}
+
 pub fn distract_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     const ENERGY_COST: u32 = 10;
     if entity.body.energy < ENERGY_COST {

@@ -63,7 +63,7 @@ impl Body {
             damage: 0,
             armor: Armor::zero(),
             innate_armor: Armor::zero(),
-            abilities: vec!()
+            abilities: vec!(Ability::Shout)
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Bodywear, item: None});

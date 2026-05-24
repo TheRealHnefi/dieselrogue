@@ -3,7 +3,7 @@ use crate::ability::Ability;
 use crate::entity::Entity;
 use crate::item::*;
 use crate::intent::*;
-use crate::player::{disembark_player_intent, iron_body_player_intent};
+use crate::player::{disembark_player_intent, iron_body_player_intent, shout_player_intent};
 use crate::state::*;
 use crate::World;
 use crate::actions;
@@ -410,6 +410,16 @@ fn action_use_disembark(state: &mut State) -> RunState {
     }
 }
 
+fn action_use_shout(state: &mut State) -> RunState {
+    match shout_player_intent(&mut state.world) {
+        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
+        Err(e) => {
+            state.log(e.message);
+            RunState::AwaitingInput
+        }
+    }
+}
+
 fn action_use_iron_body(state: &mut State) -> RunState {
     match iron_body_player_intent(&mut state.world) {
         Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
@@ -450,6 +460,10 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
                 Ability::Disembark => Some(Box::new(AbilityRow {
                     text: ability.to_string(),
                     activation: action_use_disembark,
+                })),
+                Ability::Shout => Some(Box::new(AbilityRow {
+                    text: ability.to_string(),
+                    activation: action_use_shout,
                 })),
                 Ability::IronBody => Some(Box::new(AbilityRow {
                     text: ability.to_string(),

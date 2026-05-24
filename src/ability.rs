@@ -21,6 +21,7 @@ pub enum Ability {
     Rush,
     Twist,
     Distract,
+    Shout,
 }
 
 impl Ability {
@@ -45,6 +46,7 @@ impl Ability {
             Ability::Rush         => "Rush",
             Ability::Twist        => "Twist",
             Ability::Distract     => "Distract",
+            Ability::Shout        => "Shout",
         }.to_string()
     }
 
@@ -55,6 +57,7 @@ impl Ability {
             Ability::PickUp      => true,
             Ability::Disembark   => true,
             Ability::Throw       => true,
+            Ability::Shout       => true,
             Ability::IronBody    => false,
             Ability::Rush        => false,
             Ability::Twist       => false,
@@ -84,6 +87,7 @@ impl Ability {
             Ability::Rush         => false,
             Ability::Twist        => false,
             Ability::Distract     => false,
+            Ability::Shout        => false,
         }
     }
 
@@ -127,6 +131,8 @@ impl Ability {
                 "Force an adjacent enemy to turn away from you, cancelling their planned action.",
             Ability::Distract =>
                 "Catch an enemy's attention within range 10, removing their aim and cancelling their action. Only works if they can see you.",
+            Ability::Shout =>
+                "Let out a loud shout, alerting nearby enemies to your presence.",
         }
     }
 
@@ -152,6 +158,7 @@ impl Ability {
             Ability::Rush         => 2, // R. Arm
             Ability::Twist        => 2, // R. Arm
             Ability::Distract     => 0, // Head
+            Ability::Shout        => 0, // Head
         }
     }
 }

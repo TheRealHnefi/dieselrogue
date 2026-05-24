@@ -121,6 +121,7 @@ pub enum SoundKind {
     Explosion,
     Footstep,
     Engine,
+    Shout,
 }
 
 #[derive(Clone)]

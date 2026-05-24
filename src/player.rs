@@ -140,6 +140,19 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     Err(GameError{error: Error::BadPrecondition, message: String::from("There is no item here")})
 }
 
+pub fn shout_player_intent(world: &mut World) -> Result<(), GameError> {
+    if world.player_id.is_none() {
+        return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
+    }
+    let player = &mut world.entities[world.player_id.unwrap()];
+    player.intent = Intent {
+        phase: ExecutionPhase::Inventory,
+        data: IntentData::Void,
+        action: actions::shout_action,
+    };
+    Ok(())
+}
+
 pub fn iron_body_player_intent(world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
