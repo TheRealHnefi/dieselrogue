@@ -815,6 +815,23 @@ impl World {
         for (i, entity) in self.entities.iter_mut().enumerate() {
             entity.id = i;
         }
+
+        // Update player_id to the player's new index after compaction.
+        if let Some(old_id) = self.player_id {
+            self.player_id = self.entities.iter().position(|e| {
+                matches!(e.kind, crate::entity::EntityKind::Player)
+            }).or(Some(old_id));
+        }
+
+        // Pawn entity_ids on the map are now stale — rebuild them all.
+        for slot in self.map.pawns.iter_mut() {
+            *slot = None;
+        }
+        let entities = &self.entities;
+        let map = &mut self.map;
+        for entity in entities {
+            entity.create_pawns(map);
+        }
     }
 
     fn update_views_near_event(&mut self, position: Point, radius: i32) {
