@@ -102,6 +102,11 @@ pub struct AbilityRow {
     pub activation: fn(&mut State) -> RunState,
 }
 
+pub struct AbilityEntityTargetRow {
+    pub text: String,
+    pub action: ItemAction,
+}
+
 pub struct EquippedActionRow {
     pub text: String,
     pub slot: SlotType,
@@ -169,6 +174,23 @@ impl MenuRow for ItemSlotRow {
 impl MenuRow for AbilityRow {
     fn get_action(&self) -> MenuAction {
         MenuAction::Simple(self.activation)
+    }
+
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
+
+    fn selectable(&self) -> bool {
+        true
+    }
+}
+
+impl MenuRow for AbilityEntityTargetRow {
+    fn get_action(&self) -> MenuAction {
+        MenuAction::WithPendingAction(PendingAction {
+            item_action: self.action.clone(),
+            source: None,
+        })
     }
 
     fn get_text(&self) -> String {
@@ -432,6 +454,16 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
                 Ability::IronBody => Some(Box::new(AbilityRow {
                     text: ability.to_string(),
                     activation: action_use_iron_body,
+                })),
+                Ability::Rush => Some(Box::new(AbilityEntityTargetRow {
+                    text: ability.to_string(),
+                    action: ItemAction {
+                        name: ability.to_string(),
+                        targeting: Targeting::EntityAim { max_range: Some(3) },
+                        phase: ExecutionPhase::Inventory,
+                        precondition: precondition_ok,
+                        action: actions::rush_action,
+                    },
                 })),
                 _ => None,
             };

@@ -567,11 +567,6 @@ fn confirm_entity_target(state: &mut State) -> RunState {
 
     let entity_id = state.entity_targets[state.entity_target_index];
 
-    let slot = match pending.source {
-        Some(ActionSource::EquippedSlot(s)) => s,
-        _ => return RunState::AwaitingInput,
-    };
-
     let entity_center = match state.world.entities.get(entity_id) {
         Some(e) => e.center(),
         None => {
@@ -580,11 +575,16 @@ fn confirm_entity_target(state: &mut State) -> RunState {
         }
     };
 
+    let intent_data = match pending.source {
+        Some(ActionSource::EquippedSlot(slot)) => IntentData::TargetWithEquipment { slot, target: entity_center },
+        _ => IntentData::Target(entity_center),
+    };
+
     match state.world.get_player_mut() {
         Ok(player) => {
             player.intent = Intent {
                 phase: pending.item_action.phase,
-                data: IntentData::TargetWithEquipment { slot, target: entity_center },
+                data: intent_data,
                 action: pending.item_action.action,
             };
         },

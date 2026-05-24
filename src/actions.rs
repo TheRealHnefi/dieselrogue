@@ -1,3 +1,4 @@
+use rltk::Point;
 use crate::Entity;
 use crate::Map;
 use crate::GameLog;
@@ -483,6 +484,38 @@ pub fn juke_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log
         }
     }
     result
+}
+
+pub fn rush_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
+    const ENERGY_COST: u32 = 25;
+    if entity.body.energy < ENERGY_COST {
+        log.log(format!("{} is too exhausted to Rush", entity.name));
+        return vec![];
+    }
+    entity.body.energy -= ENERGY_COST;
+    let target_pos = match entity.intent.data {
+        IntentData::Target(pos) => pos,
+        _ => return vec![],
+    };
+    let target_id = match &map.pawns[map.pos_idx(target_pos)] {
+        Some(pawn) => pawn.entity_id,
+        None => return vec![],
+    };
+    let current_pos = entity.position;
+    let deltas: [(i32, i32); 8] = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)];
+    let best_pos = deltas.iter()
+        .map(|(dx, dy)| Point { x: target_pos.x + dx, y: target_pos.y + dy })
+        .filter(|&pos| entity.check_fit(pos, map))
+        .min_by_key(|pos| {
+            let dx = pos.x - current_pos.x;
+            let dy = pos.y - current_pos.y;
+            dx * dx + dy * dy
+        });
+    if let Some(land_pos) = best_pos {
+        entity.set_position(land_pos, map);
+    }
+    let (bodypart_index, damage) = entity.melee_strike(&entities[target_id]);
+    vec![Effect::Damage { entity_id: target_id, bodypart_index, raw_damage: damage }]
 }
 
 pub fn iron_body_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
