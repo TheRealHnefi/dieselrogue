@@ -10,6 +10,7 @@ pub enum Ability {
     EagleEyes,
     Pugilism,
     Backstab,
+    Stealth,
     // Active abilities
     Embark,
     Disembark,
@@ -29,6 +30,7 @@ impl Ability {
             Ability::EagleEyes    => "Eagle Eyes",
             Ability::Pugilism     => "Pugilism",
             Ability::Backstab     => "Backstab",
+            Ability::Stealth      => "Stealth",
             Ability::Embark       => "Embark",
             Ability::Disembark    => "Disembark",
             Ability::Throw        => "Throw",
@@ -58,6 +60,7 @@ impl Ability {
             Ability::EagleEyes    => true,
             Ability::Pugilism     => true,
             Ability::Backstab     => true,
+            Ability::Stealth      => true,
             Ability::Embark       => false,
             Ability::Disembark    => false,
             Ability::Throw        => false,
@@ -85,6 +88,8 @@ impl Ability {
                 "Your melee strikes target the head instead of the torso.",
             Ability::Backstab =>
                 "Melee attacks against humans who cannot see you deal 400% increased damage.",
+            Ability::Stealth =>
+                "Your movement makes no sound.",
             Ability::Embark =>
                 "Allows entering a vehicle. Move into a drivable vehicle to take the controls.",
             Ability::Disembark =>
@@ -112,6 +117,7 @@ impl Ability {
             Ability::Throw        => 2, // R. Arm
             Ability::HumanMove    => 4, // Legs
             Ability::Juke         => 4, // Legs
+            Ability::Stealth      => 4, // Legs
         }
     }
 }
