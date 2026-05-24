@@ -580,6 +580,11 @@ impl World {
                         action: actions::turn_action,
                     };
                 },
+                Effect::Distract{entity_id} => {
+                    let entity = &mut self.entities[*entity_id];
+                    entity.clear_aiming();
+                    entity.intent = idle_intent();
+                },
             }
         }
         self.post_resolve(deathlist);

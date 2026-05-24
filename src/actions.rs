@@ -502,6 +502,28 @@ fn away_direction(from: Point, away_from: Point) -> Direction {
     }
 }
 
+pub fn distract_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
+    const ENERGY_COST: u32 = 10;
+    if entity.body.energy < ENERGY_COST {
+        log.log(format!("{} is too exhausted to Distract", entity.name));
+        return vec![];
+    }
+    let target_pos = match entity.intent.data {
+        IntentData::Target(pos) => pos,
+        _ => return vec![],
+    };
+    let target_id = match &map.pawns[map.pos_idx(target_pos)] {
+        Some(pawn) => pawn.entity_id,
+        None => return vec![],
+    };
+    if !entities[target_id].can_see(entity.position) {
+        log.log(format!("{} cannot be distracted — they can't see you", entities[target_id].name));
+        return vec![];
+    }
+    entity.body.energy -= ENERGY_COST;
+    vec![Effect::Distract { entity_id: target_id }]
+}
+
 pub fn twist_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     const ENERGY_COST: u32 = 10;
     if entity.body.energy < ENERGY_COST {

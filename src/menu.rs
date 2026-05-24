@@ -475,6 +475,16 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
                         action: actions::twist_action,
                     },
                 })),
+                Ability::Distract => Some(Box::new(AbilityEntityTargetRow {
+                    text: ability.to_string(),
+                    action: ItemAction {
+                        name: ability.to_string(),
+                        targeting: Targeting::EntityAim { max_range: Some(10) },
+                        phase: ExecutionPhase::Inventory,
+                        precondition: precondition_ok,
+                        action: actions::distract_action,
+                    },
+                })),
                 _ => None,
             };
             if let Some(row) = maybe_row {

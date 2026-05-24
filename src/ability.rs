@@ -20,6 +20,7 @@ pub enum Ability {
     IronBody,
     Rush,
     Twist,
+    Distract,
 }
 
 impl Ability {
@@ -43,6 +44,7 @@ impl Ability {
             Ability::IronBody     => "Iron Body",
             Ability::Rush         => "Rush",
             Ability::Twist        => "Twist",
+            Ability::Distract     => "Distract",
         }.to_string()
     }
 
@@ -56,6 +58,7 @@ impl Ability {
             Ability::IronBody    => false,
             Ability::Rush        => false,
             Ability::Twist       => false,
+            Ability::Distract    => false,
             _                    => false,
         }
     }
@@ -80,6 +83,7 @@ impl Ability {
             Ability::IronBody     => false,
             Ability::Rush         => false,
             Ability::Twist        => false,
+            Ability::Distract     => false,
         }
     }
 
@@ -121,6 +125,8 @@ impl Ability {
                 "Teleport to a visible enemy and immediately strike them in melee.",
             Ability::Twist =>
                 "Force an adjacent enemy to turn away from you, cancelling their planned action.",
+            Ability::Distract =>
+                "Catch an enemy's attention within range 10, removing their aim and cancelling their action. Only works if they can see you.",
         }
     }
 
@@ -145,6 +151,7 @@ impl Ability {
             Ability::IronBody     => 1, // Torso
             Ability::Rush         => 2, // R. Arm
             Ability::Twist        => 2, // R. Arm
+            Ability::Distract     => 0, // Head
         }
     }
 }

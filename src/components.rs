@@ -111,6 +111,7 @@ pub enum Effect {
     SyncActiveItem{item_id: usize, location: ItemLocation},
     Sound(SoundEvent),
     Twist{entity_id: usize, direction: Direction},
+    Distract{entity_id: usize},
 }
 
 #[derive(Clone)]
