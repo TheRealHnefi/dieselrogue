@@ -177,7 +177,8 @@ impl Entity {
                     sprite_index: x + y * self.size_x,
                     name: self.name.clone(),
                     intent: self.intent.clone(),
-                    body: self.body.clone()
+                    body: self.body.clone(),
+                    visible_tiles: self.viewshed.visible_tiles.clone(),
                 });
             }
         }
@@ -316,6 +317,10 @@ impl Entity {
         self.body.has_ability(ability)
     }
 
+    pub fn can_see(&self, pos: Point) -> bool {
+        self.viewshed.visible_tiles.contains(&pos)
+    }
+
     pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: Damage) {
         let bodypart = &mut self.body.parts[bodypart_index];
 
@@ -395,5 +400,12 @@ pub struct Pawn {
     pub sprite_index: u32,
     pub name: String,
     pub intent: Intent,
-    pub body: Body
+    pub body: Body,
+    pub visible_tiles: Vec<Point>,
+}
+
+impl Pawn {
+    pub fn can_see(&self, pos: Point) -> bool {
+        self.visible_tiles.contains(&pos)
+    }
 }

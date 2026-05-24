@@ -8,6 +8,8 @@ pub enum Ability {
     Precognition,
     IronEars,
     EagleEyes,
+    Pugilism,
+    Backstab,
     // Active abilities
     Embark,
     Disembark,
@@ -25,6 +27,8 @@ impl Ability {
             Ability::Precognition => "Precognition",
             Ability::IronEars     => "Iron Ears",
             Ability::EagleEyes    => "Eagle Eyes",
+            Ability::Pugilism     => "Pugilism",
+            Ability::Backstab     => "Backstab",
             Ability::Embark       => "Embark",
             Ability::Disembark    => "Disembark",
             Ability::Throw        => "Throw",
@@ -52,6 +56,8 @@ impl Ability {
             Ability::Precognition => true,
             Ability::IronEars     => true,
             Ability::EagleEyes    => true,
+            Ability::Pugilism     => true,
+            Ability::Backstab     => true,
             Ability::Embark       => false,
             Ability::Disembark    => false,
             Ability::Throw        => false,
@@ -75,6 +81,10 @@ impl Ability {
                 "You are able to distinguish individual sounds even in a very noisy environment, greatly increasing your noise tolerance.",
             Ability::EagleEyes =>
                 "Your viewing range is increased by 50%.",
+            Ability::Pugilism =>
+                "Your melee strikes target the head instead of the torso.",
+            Ability::Backstab =>
+                "Melee attacks against humans who cannot see you deal 400% increased damage.",
             Ability::Embark =>
                 "Allows entering a vehicle. Move into a drivable vehicle to take the controls.",
             Ability::Disembark =>
@@ -93,6 +103,8 @@ impl Ability {
             Ability::Precognition => 0, // Head
             Ability::IronEars     => 0, // Head
             Ability::EagleEyes    => 0, // Head
+            Ability::Pugilism     => 2, // R. Arm
+            Ability::Backstab     => 4, // Legs
             Ability::VehicleMove  => 1, // Torso
             Ability::Disembark    => 1, // Torso
             Ability::PickUp       => 2, // R. Arm
