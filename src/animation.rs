@@ -73,7 +73,19 @@ pub fn fan_fire_animation(positions: Vec<Point>) -> Animation {
     }
 }
 
-pub fn flashbang_animation(pos: Point) -> Animation {
+fn chebyshev_ring(pos: Point, radius: i32) -> Vec<Point> {
+    let mut pts = vec![];
+    for dx in -radius..=radius {
+        for dy in -radius..=radius {
+            if dx.abs().max(dy.abs()) == radius {
+                pts.push(Point { x: pos.x + dx, y: pos.y + dy });
+            }
+        }
+    }
+    pts
+}
+
+pub fn flashbang_animation(pos: Point, radius: u32) -> Animation {
     let bright = Particle::Complete(Renderable {
         glyph: rltk::to_cp437('█'),
         color: RGB::named(rltk::WHITE),
@@ -85,38 +97,20 @@ pub fn flashbang_animation(pos: Point) -> Animation {
         background: RGB::from_f32(0.65, 0.65, 0.65),
     });
 
-    fn ring(pos: Point, radius: i32) -> Vec<Point> {
-        let r = radius;
-        let mut pts = vec![];
-        for dx in -r..=r {
-            for dy in -r..=r {
-                if dx.abs().max(dy.abs()) == r {
-                    pts.push(Point { x: pos.x + dx, y: pos.y + dy });
-                }
-            }
-        }
-        pts
+    let mut frames = vec![
+        Frame { particles: vec![bright.clone()], positions: vec![pos], duration_ms: 80 },
+    ];
+    for r in 1..radius as i32 {
+        let pts = chebyshev_ring(pos, r);
+        frames.push(Frame { particles: vec![bright.clone(); pts.len()], positions: pts, duration_ms: 80 });
     }
+    let outer = chebyshev_ring(pos, radius as i32);
+    frames.push(Frame { particles: vec![fade.clone(); outer.len()], positions: outer, duration_ms: 120 });
 
-    let r1 = vec![pos];
-    let r2 = ring(pos, 1).into_iter().chain(std::iter::once(pos)).collect::<Vec<_>>();
-    let r3 = ring(pos, 2);
-    let r4 = ring(pos, 3);
-
-    Animation {
-        frames: vec![
-            Frame { particles: vec![bright.clone(); r1.len()], positions: r1, duration_ms: 80  },
-            Frame { particles: vec![bright.clone(); r2.len()], positions: r2, duration_ms: 80  },
-            Frame { particles: vec![bright.clone(); r3.len()], positions: r3, duration_ms: 80  },
-            Frame { particles: vec![fade.clone();  r4.len()], positions: r4, duration_ms: 120 },
-        ],
-        current_frame: 0,
-        time_spent_in_current_frame: 0,
-        done: false,
-    }
+    Animation { frames, current_frame: 0, time_spent_in_current_frame: 0, done: false }
 }
 
-pub fn explosion_animation(pos: Point) -> Animation {
+pub fn explosion_animation(pos: Point, radius: u32) -> Animation {
     let particle = Particle::Complete(
         Renderable {
             glyph: rltk::to_cp437('*'),
@@ -125,60 +119,15 @@ pub fn explosion_animation(pos: Point) -> Animation {
         }
     );
 
-    let frame_1 = Frame {
-        particles: vec!(particle.clone()),
-        positions: vec!(pos),
-        duration_ms: 250
-    };
-
-    let frame_2 = Frame {
-        particles: vec!(
-            particle.clone(),
-            particle.clone(),
-            particle.clone(),
-            particle.clone(),
-            particle.clone()
-        ),
-        positions: vec!(
-            pos,
-            Point {x: pos.x + 1, y: pos.y},
-            Point {x: pos.x - 1, y: pos.y},
-            Point {x: pos.x, y: pos.y + 1},
-            Point {x: pos.x, y: pos.y - 1},
-        ),
-        duration_ms: 250
-    };
-
-    let frame_3 = Frame {
-        particles: vec!(
-            particle.clone(),
-            particle.clone(),
-            particle.clone(),
-            particle.clone(),
-            particle.clone(),
-            particle.clone(),
-            particle.clone(),
-            particle.clone()
-        ),
-        positions: vec!(
-            Point {x: pos.x + 1, y: pos.y},
-            Point {x: pos.x + 1, y: pos.y + 1},
-            Point {x: pos.x, y: pos.y + 1},
-            Point {x: pos.x - 1, y: pos.y + 1},
-            Point {x: pos.x - 1, y: pos.y},
-            Point {x: pos.x - 1, y: pos.y - 1},
-            Point {x: pos.x, y: pos.y - 1},
-            Point {x: pos.x + 1, y: pos.y - 1},
-        ),
-        duration_ms: 250
-    };
-
-    Animation {
-        frames: vec!(frame_1, frame_2, frame_3),
-        current_frame: 0,
-        time_spent_in_current_frame: 0,
-        done: false
+    let mut frames = vec![
+        Frame { particles: vec![particle.clone()], positions: vec![pos], duration_ms: 250 },
+    ];
+    for r in 1..=radius as i32 {
+        let pts = chebyshev_ring(pos, r);
+        frames.push(Frame { particles: vec![particle.clone(); pts.len()], positions: pts, duration_ms: 250 });
     }
+
+    Animation { frames, current_frame: 0, time_spent_in_current_frame: 0, done: false }
 }
 
 #[derive(Clone)]

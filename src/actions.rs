@@ -264,7 +264,7 @@ pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, entities: &[Entity
         }
     }
     result.push(Effect::DestroyWall(target_pos));
-    result.push(Effect::Animation(explosion_animation(target_pos)));
+    result.push(Effect::Animation(explosion_animation(target_pos, 1)));
     result
 }
 

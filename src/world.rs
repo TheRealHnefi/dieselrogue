@@ -455,7 +455,7 @@ impl World {
                     effects.push(Effect::ApplyStatus { target_id: entity.id, status: StatusEffect::Blind(5) });
                 }
             }
-            effects.push(Effect::Animation(flashbang_animation(pos)));
+            effects.push(Effect::Animation(flashbang_animation(pos, radius)));
         } else {
             log.log(String::from("A grenade explodes!"));
             for entity in &self.entities {
@@ -467,7 +467,7 @@ impl World {
                     }
                 }
             }
-            effects.push(Effect::Animation(explosion_animation(pos)));
+            effects.push(Effect::Animation(explosion_animation(pos, radius)));
         }
         effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 25 }));
         effects
