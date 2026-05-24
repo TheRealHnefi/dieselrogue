@@ -73,6 +73,49 @@ pub fn fan_fire_animation(positions: Vec<Point>) -> Animation {
     }
 }
 
+pub fn flashbang_animation(pos: Point) -> Animation {
+    let bright = Particle::Complete(Renderable {
+        glyph: rltk::to_cp437('█'),
+        color: RGB::named(rltk::WHITE),
+        background: RGB::named(rltk::WHITE),
+    });
+    let fade = Particle::Complete(Renderable {
+        glyph: rltk::to_cp437('█'),
+        color: RGB::from_f32(0.8, 0.8, 0.8),
+        background: RGB::from_f32(0.65, 0.65, 0.65),
+    });
+
+    fn ring(pos: Point, radius: i32) -> Vec<Point> {
+        let r = radius;
+        let mut pts = vec![];
+        for dx in -r..=r {
+            for dy in -r..=r {
+                if dx.abs().max(dy.abs()) == r {
+                    pts.push(Point { x: pos.x + dx, y: pos.y + dy });
+                }
+            }
+        }
+        pts
+    }
+
+    let r1 = vec![pos];
+    let r2 = ring(pos, 1).into_iter().chain(std::iter::once(pos)).collect::<Vec<_>>();
+    let r3 = ring(pos, 2);
+    let r4 = ring(pos, 3);
+
+    Animation {
+        frames: vec![
+            Frame { particles: vec![bright.clone(); r1.len()], positions: r1, duration_ms: 80  },
+            Frame { particles: vec![bright.clone(); r2.len()], positions: r2, duration_ms: 80  },
+            Frame { particles: vec![bright.clone(); r3.len()], positions: r3, duration_ms: 80  },
+            Frame { particles: vec![fade.clone();  r4.len()], positions: r4, duration_ms: 120 },
+        ],
+        current_frame: 0,
+        time_spent_in_current_frame: 0,
+        done: false,
+    }
+}
+
 pub fn explosion_animation(pos: Point) -> Animation {
     let particle = Particle::Complete(
         Renderable {

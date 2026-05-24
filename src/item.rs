@@ -97,7 +97,7 @@ impl Item {
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::FusedExplosive { damage: Damage::new(10, 0, 0, 0), timeout: 4, flash: false },
+            kind: ItemKind::FusedExplosive { damage: Damage::new(10, 0, 0, 0), timeout: 4, radius: 3, flash: false },
             proxy: false,
             active: false,
         }
@@ -111,7 +111,7 @@ impl Item {
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 3, 0), timeout: 4, flash: false },
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 3, 0), timeout: 4, radius: 3, flash: false },
             proxy: false,
             active: false,
         }
@@ -125,7 +125,7 @@ impl Item {
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 7, 0, 0), timeout: 4, flash: false },
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 7, 0, 0), timeout: 4, radius: 3, flash: false },
             proxy: false,
             active: false,
         }
@@ -139,7 +139,7 @@ impl Item {
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 0, 0), timeout: 4, flash: true },
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 0, 0), timeout: 4, radius: 10, flash: true },
             proxy: false,
             active: false,
         }
