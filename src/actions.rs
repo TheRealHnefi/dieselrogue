@@ -486,6 +486,41 @@ pub fn juke_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log
     result
 }
 
+fn away_direction(from: Point, away_from: Point) -> Direction {
+    let dx = (from.x - away_from.x).signum();
+    let dy = (from.y - away_from.y).signum();
+    match (dx, dy) {
+        ( 0, -1) => Direction::Up,
+        ( 1, -1) => Direction::UpRight,
+        ( 1,  0) => Direction::Right,
+        ( 1,  1) => Direction::DownRight,
+        ( 0,  1) => Direction::Down,
+        (-1,  1) => Direction::DownLeft,
+        (-1,  0) => Direction::Left,
+        (-1, -1) => Direction::UpLeft,
+        _        => Direction::Up,
+    }
+}
+
+pub fn twist_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
+    const ENERGY_COST: u32 = 10;
+    if entity.body.energy < ENERGY_COST {
+        log.log(format!("{} is too exhausted to Twist", entity.name));
+        return vec![];
+    }
+    entity.body.energy -= ENERGY_COST;
+    let target_pos = match entity.intent.data {
+        IntentData::Target(pos) => pos,
+        _ => return vec![],
+    };
+    let target_id = match &map.pawns[map.pos_idx(target_pos)] {
+        Some(pawn) => pawn.entity_id,
+        None => return vec![],
+    };
+    let direction = away_direction(target_pos, entity.position);
+    vec![Effect::Twist { entity_id: target_id, direction }]
+}
+
 pub fn rush_action(entity: &mut Entity, map: &mut Map, entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
     const ENERGY_COST: u32 = 25;
     if entity.body.energy < ENERGY_COST {

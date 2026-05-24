@@ -573,6 +573,13 @@ impl World {
                     self.sync_active_item(*item_id, location.clone()),
                 Effect::Sound(sound) =>
                     self.sounds.push(sound.clone()),
+                Effect::Twist{entity_id, direction} => {
+                    self.entities[*entity_id].intent = Intent {
+                        phase: ExecutionPhase::Movement,
+                        data: IntentData::Direction(*direction),
+                        action: actions::turn_action,
+                    };
+                },
             }
         }
         self.post_resolve(deathlist);

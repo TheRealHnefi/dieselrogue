@@ -19,6 +19,7 @@ pub enum Ability {
     Juke, // Allow player to move out of order and without turning. Allows dodging shots.
     IronBody,
     Rush,
+    Twist,
 }
 
 impl Ability {
@@ -41,6 +42,7 @@ impl Ability {
             Ability::Juke         => "Juke",
             Ability::IronBody     => "Iron Body",
             Ability::Rush         => "Rush",
+            Ability::Twist        => "Twist",
         }.to_string()
     }
 
@@ -53,6 +55,7 @@ impl Ability {
             Ability::Throw       => true,
             Ability::IronBody    => false,
             Ability::Rush        => false,
+            Ability::Twist       => false,
             _                    => false,
         }
     }
@@ -76,6 +79,7 @@ impl Ability {
             Ability::Juke         => false,
             Ability::IronBody     => false,
             Ability::Rush         => false,
+            Ability::Twist        => false,
         }
     }
 
@@ -115,6 +119,8 @@ impl Ability {
                 "Activate to harden your body for 3 turns, increasing physical resistance by 50%.",
             Ability::Rush =>
                 "Teleport to a visible enemy and immediately strike them in melee.",
+            Ability::Twist =>
+                "Force an adjacent enemy to turn away from you, cancelling their planned action.",
         }
     }
 
@@ -138,6 +144,7 @@ impl Ability {
             Ability::Tough        => 1, // Torso
             Ability::IronBody     => 1, // Torso
             Ability::Rush         => 2, // R. Arm
+            Ability::Twist        => 2, // R. Arm
         }
     }
 }
