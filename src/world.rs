@@ -119,6 +119,8 @@ impl World {
         let _ = world.create_zombie_goon(Point {x: pos.x - 2, y: pos.y - 3}, Direction::Down, String::from("Goon C"));
         let _ = world.create_zombie_goon(Point {x: pos.x + 5, y: pos.y - 2}, Direction::Down, String::from("Goon D"));
 
+        assert!(world.create_forward_goon(Point { x: pos.x, y: pos.y + 2 }, Direction::Left,  String::from("Walker")).is_ok());
+
         // Two goons patrolling north-south along the road, north of the player.
         // TODO: This is often slow because of badly coded AI. Fix later.
         // let ns_road_x = pos.x - 1;
@@ -272,6 +274,20 @@ impl World {
                 error: Error::BadPrecondition,
                 message: format!("No player exists")
             })
+        }
+    }
+
+    /// Resolves the player's current aim target position.
+    /// For `AimingAtGround` returns the stored point; for `AimingAtEntity` looks up
+    /// the entity's current center so the aim tracks movement.
+    pub fn get_player_aim_position(&self) -> Option<Point> {
+        let player = self.get_player().ok()?;
+        let key = StatusEffect::AimingAtGround(Point { x: 0, y: 0 }, Item::pistol());
+        match player.body.get_status_effect(&key) {
+            Some(StatusEffect::AimingAtGround(pos, _))     => Some(*pos),
+            Some(StatusEffect::AimingAtEntity(entity_id, _)) =>
+                self.entities.get(*entity_id).map(|e| e.center()),
+            _ => None,
         }
     }
 

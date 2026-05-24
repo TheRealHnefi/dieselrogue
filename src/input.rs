@@ -294,15 +294,12 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
 /// selection menu (Phase 2b of the targeting flow) before resolving.
 /// Otherwise fires directly at the aimed position.
 fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) -> RunState {
-    let aim_pos = match state.world.get_player() {
-        Ok(player) => match player.get_aiming_position() {
-            Some(pos) => pos,
-            None => {
-                state.log("Not aiming at anything.".to_string());
-                return RunState::AwaitingMenuInput;
-            }
-        },
-        Err(_) => return RunState::AwaitingInput,
+    let aim_pos = match state.world.get_player_aim_position() {
+        Some(pos) => pos,
+        None => {
+            state.log("Not aiming at anything.".to_string());
+            return RunState::AwaitingMenuInput;
+        }
     };
 
     state.cursor_pos = aim_pos;
