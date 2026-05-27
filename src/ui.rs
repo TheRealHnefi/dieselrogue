@@ -68,7 +68,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     let blink = (monotime / 250) % 2 == 0;
     let viewport = state.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);
 
-    draw_map(&state.world.map, &state.world.entities, viewport, context, blink, monotime);
+    draw_map(&state.world.map, &state.world.entities, viewport, context, blink, monotime, state.world.debug_mode);
     draw_main_ui(state, viewport, context, blink);
 }
 
@@ -184,6 +184,9 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     // Location panel
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "Location: Unknown");
     context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset_y, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
+    if state.world.debug_mode {
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET + 55, offset_y, RGB::named(rltk::RED), BG_COLOR, "DEBUG");
+    }
     offset_y += 1;
     let pos = player.center();
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
@@ -579,26 +582,26 @@ fn flame_background(monotime: u128) -> RGB {
     }
 }
 
-fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, blink: bool, monotime: u128) {
+fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, blink: bool, monotime: u128, debug_mode: bool) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
 
     for x in viewport.x1..viewport.x2 {
         for y in viewport.y1..viewport.y2 {
             let index = map.xy_idx(x, y);
-            if map.revealed_tiles[index] {
+            if debug_mode || map.revealed_tiles[index] {
                 let mut renderable = match map.tiles[index] {
-                    TileType::Floor => render_open_tile(map, entities, index, blink, monotime, '-'),
-                    TileType::Ground => render_open_tile(map, entities, index, blink, monotime, '.'),
-                    TileType::Road => render_open_tile(map, entities, index, blink, monotime, '_'),
-                    TileType::Doorway => render_open_tile(map, entities, index, blink, monotime, ' '),
+                    TileType::Floor => render_open_tile(map, entities, index, blink, monotime, '-', debug_mode),
+                    TileType::Ground => render_open_tile(map, entities, index, blink, monotime, '.', debug_mode),
+                    TileType::Road => render_open_tile(map, entities, index, blink, monotime, '_', debug_mode),
+                    TileType::Doorway => render_open_tile(map, entities, index, blink, monotime, ' ', debug_mode),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),
                         color: rltk::RGB::named(rltk::GREEN),
                         background: rltk::RGB::named(rltk::BLACK)
                     },
                 };
-                if !map.visible_tiles[index] {
+                if !debug_mode && !map.visible_tiles[index] {
                     renderable.color = renderable.color.to_greyscale();
                 }
                 context.set(x - viewport.x1, y - viewport.y1, renderable.color, renderable.background, renderable.glyph);
@@ -607,13 +610,13 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
     }
 }
 
-fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bool, monotime: u128, empty_character: char) -> Renderable {
+fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bool, monotime: u128, empty_character: char, debug_mode: bool) -> Renderable {
     let empty = Renderable {
         glyph: rltk::to_cp437(empty_character),
         color: RGB::from_f32(0.0, 0.5, 0.0),
         background: rltk::RGB::named(rltk::BLACK),
     };
-    if !map.visible_tiles[tile_index] {
+    if !debug_mode && !map.visible_tiles[tile_index] {
         return empty;
     }
     match &map.pawns[tile_index] {

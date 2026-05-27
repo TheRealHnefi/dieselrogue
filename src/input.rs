@@ -118,6 +118,13 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 return RunState::AwaitingMenuInput;
             }
 
+            VirtualKeyCode::F12 => {
+                state.world.debug_mode = !state.world.debug_mode;
+                let msg = if state.world.debug_mode { "Debug mode ON." } else { "Debug mode OFF." };
+                state.log(msg.to_string());
+                return RunState::AwaitingInput;
+            }
+
             _ => {
                 return RunState::AwaitingInput;
             }

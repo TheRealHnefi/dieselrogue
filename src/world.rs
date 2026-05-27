@@ -19,7 +19,8 @@ pub struct World {
     pub sounds_last_turn: Vec<SoundEvent>,
     pub active_items: Vec<ActiveItem>,
     active_items_ticked: bool,
-    next_item_id: usize
+    next_item_id: usize,
+    pub debug_mode: bool,
 }
 
 
@@ -80,7 +81,8 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
-            map: Map::new_game_map(size)
+            map: Map::new_game_map(size),
+            debug_mode: false,
         };
 
         let pos = Point {x: (world.map.width / 2) as i32, y: (world.map.height / 2) as i32};
@@ -158,7 +160,8 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
-            map: Map::new_game_map(10)
+            map: Map::new_game_map(10),
+            debug_mode: false,
         };
 
         let pos = Point {x: 0, y: 0};
@@ -192,7 +195,8 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
-            map: Map::new_empty_map(100, 100)
+            map: Map::new_empty_map(100, 100),
+            debug_mode: false,
         }
     }
 
@@ -601,9 +605,14 @@ impl World {
 
     fn handle_damage(&mut self, id: usize, part_index: usize, damage: Damage, deathlist: &mut Vec<usize>, log: &mut GameLog) {
         self.entities[id].apply_damage(part_index, damage);
+        let is_player = Some(id) == self.player_id;
         if self.entities[id].mortally_wounded() && !deathlist.contains(&id) {
-            log.log(format!("{} was killed!", self.entities[id].name));
-            deathlist.push(id);
+            if self.debug_mode && is_player {
+                log.log(format!("{} would have died (debug mode).", self.entities[id].name));
+            } else {
+                log.log(format!("{} was killed!", self.entities[id].name));
+                deathlist.push(id);
+            }
         }
     }
 
