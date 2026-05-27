@@ -608,6 +608,11 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
                         color: rltk::RGB::named(rltk::GREEN),
                         background: rltk::RGB::named(rltk::BLACK)
                     },
+                    TileType::Window => Renderable {
+                        glyph: 255,
+                        color: rltk::RGB::named(rltk::GREEN),
+                        background: rltk::RGB::named(rltk::BLACK)
+                    }
                 };
                 if !debug_mode && !map.visible_tiles[index] {
                     renderable.color = renderable.color.to_greyscale();

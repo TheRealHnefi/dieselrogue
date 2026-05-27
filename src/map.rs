@@ -56,7 +56,8 @@ impl Map {
             TileType::Road => self.pawns[index].is_some(),
             TileType::Wall => true,
             TileType::Doorway => self.pawns[index].is_some(),
-            TileType::Fence => true
+            TileType::Fence => true,
+            TileType::Window => true
         }
     }
 
@@ -241,7 +242,8 @@ impl BaseMap for Map {
             TileType::Ground => false,
             TileType::Road => false,
             TileType::Doorway => self.fov_blocked[index],
-            TileType::Fence => false
+            TileType::Fence => false,
+            TileType::Window => false
         }
     }
 

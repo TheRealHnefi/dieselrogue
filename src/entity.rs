@@ -154,7 +154,8 @@ impl Entity {
                             TileType::Floor => (),
                             TileType::Ground => (),
                             TileType::Road => (),
-                            TileType::Fence => return false
+                            TileType::Fence => return false,
+                            TileType::Window => return false,
                         }
                     }
                 }
