@@ -46,6 +46,9 @@ pub struct State {
 
     pub turn: u32,
 
+    pub freelook: bool,
+    pub freelook_pos: Point,
+
     start_tick: Instant
 }
 
@@ -67,6 +70,8 @@ impl State {
             entity_targets: vec![],
             entity_target_index: 0,
             turn: 0,
+            freelook: false,
+            freelook_pos: Point {x: 0, y: 0},
             start_tick: Instant::now()
         }
     }
@@ -86,6 +91,8 @@ impl State {
             entity_targets: vec![],
             entity_target_index: 0,
             turn: 0,
+            freelook: false,
+            freelook_pos: Point {x: 0, y: 0},
             start_tick: Instant::now()
         }
     }
@@ -145,9 +152,13 @@ impl GameState for State {
 
 impl State {
     pub fn get_viewport(&self, width: i32, height: i32) -> Rect {
-        let camera_pos = match self.world.get_player() {
-            Ok(player) => player.center(),
-            Err(_) => Point{x: width / 2, y: height / 2}
+        let camera_pos = if self.freelook {
+            self.freelook_pos
+        } else {
+            match self.world.get_player() {
+                Ok(player) => player.center(),
+                Err(_) => Point{x: width / 2, y: height / 2}
+            }
         };
 
         let mut top = max(camera_pos.y - height / 2, 0);
