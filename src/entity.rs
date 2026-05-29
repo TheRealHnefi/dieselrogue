@@ -48,7 +48,7 @@ pub struct Entity {
     pub body: Body,
     pub viewshed: Viewshed,
     pub ai: AI,
-    pub locked: bool,
+    pub key_color: Option<usize>,
 }
 
 impl Entity {
@@ -66,7 +66,7 @@ impl Entity {
             body: Body::human_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::None,
-            locked: false,
+            key_color: None,
         }
     }
 
@@ -84,7 +84,7 @@ impl Entity {
             body: Body::human_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::Patrolling(PatrollingAI::new(waypoints)),
-            locked: false,
+            key_color: None,
         }
     }
 
@@ -102,7 +102,7 @@ impl Entity {
             body: Body::tank_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov90),
             ai: AI::Rotator,
-            locked: false,
+            key_color: None,
         }
     }
 
@@ -133,7 +133,7 @@ impl Entity {
             body: Body::door_body(direction),
             viewshed: Viewshed::new(0, FieldOfView::Fov360),
             ai: AI::None,
-            locked: true,
+            key_color: None,
         }
     }
 

@@ -339,8 +339,10 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
                 let label = if item.active { format!("Fuse: {}", timeout) } else { String::from("Inert") };
                 context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, label);
             },
-            ItemKind::Key { door_ids } => {
-                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Unlocks {} door{}", door_ids.len(), if door_ids.len() == 1 { "" } else { "s" }));
+            ItemKind::Key { color } => {
+                let (r, g, b) = crate::components::KEY_COLORS[*color];
+                let key_color = rltk::RGB::from_u8(r, g, b);
+                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, key_color, BG_COLOR, crate::components::KEY_COLOR_NAMES[*color]);
             },
             ItemKind::Misc => {
                 context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("?"));
@@ -636,9 +638,15 @@ fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bo
         Some(pawn) => {
             let entity = &entities[pawn.entity_id];
             let burning = entity.body.get_status_effect(&StatusEffect::Burning(0)).is_some();
+            let color = if let Some(c) = entity.key_color {
+                let (r, g, b) = crate::components::KEY_COLORS[c];
+                rltk::RGB::from_u8(r, g, b)
+            } else {
+                rltk::RGB::named(rltk::YELLOW)
+            };
             Renderable {
                 glyph: entity.sprite.glyph(entity.body.facing, pawn.sprite_index, blink),
-                color: rltk::RGB::named(rltk::YELLOW),
+                color,
                 background: if burning { flame_background(monotime) } else { rltk::RGB::named(rltk::BLACK) },
             }
         },

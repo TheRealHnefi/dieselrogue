@@ -2,6 +2,30 @@ use rltk::Point;
 use std::hash::{Hash, Hasher};
 use crate::{Animation, Item};
 
+pub const KEY_COLORS: [(u8, u8, u8); 16] = [
+    (220,  50,  50),  // 0  Red
+    (230, 140,  30),  // 1  Orange
+    (220, 220,  50),  // 2  Yellow
+    (130, 220,  50),  // 3  Lime
+    ( 50, 180,  50),  // 4  Green
+    ( 50, 220, 180),  // 5  Teal
+    ( 50, 180, 230),  // 6  Sky
+    ( 60,  60, 220),  // 7  Blue
+    (150,  60, 220),  // 8  Purple
+    (220,  60, 220),  // 9  Magenta
+    (230, 120, 180),  // 10 Pink
+    (150,  90,  30),  // 11 Brown
+    (240, 240, 240),  // 12 White
+    (180, 180, 180),  // 13 Silver
+    (110, 110, 110),  // 14 Gray
+    (230, 190,  40),  // 15 Gold
+];
+
+pub const KEY_COLOR_NAMES: [&str; 16] = [
+    "Red", "Orange", "Yellow", "Lime", "Green", "Teal", "Sky", "Blue",
+    "Purple", "Magenta", "Pink", "Brown", "White", "Silver", "Gray", "Gold",
+];
+
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Up,
@@ -251,7 +275,7 @@ pub enum ItemKind {
     MeleeWeapon {damage: Damage},
     Wearable {armor: Armor},
     FusedExplosive {damage: Damage, timeout: u32, radius: u32, flash: bool},
-    Key {door_ids: Vec<usize>},
+    Key {color: usize},
     Misc
 }
 
