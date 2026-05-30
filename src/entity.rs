@@ -9,7 +9,6 @@ use crate::Map;
 use crate::tile::TileType;
 use crate::Item;
 use crate::Body;
-use crate::actions;
 
 #[derive(PartialEq, Clone)]
 pub enum DrivingState {
@@ -224,44 +223,6 @@ impl Entity {
         }
     }
 
-    pub fn declare_intent_by_pilot(&mut self, map: &Map, pilot_ai: &mut AI) {
-        match pilot_ai {
-            AI::Patrolling(ai) => {
-                self.intent = ai.declare_intent(self.position, &self.body, map);
-            },
-            AI::Rotator => {
-                self.intent = Intent {
-                    phase: ExecutionPhase::Movement,
-                    data: IntentData::Direction(self.body.facing.clockwise()),
-                    action: actions::turn_action
-                };
-            },
-            AI::Forward => {
-                self.intent = forward_intent(self.position, self.body.facing);
-            },
-            AI::None => ()
-        }
-    }
-
-    #[tracing::instrument(skip_all)]
-    pub fn declare_intent(&mut self, map: &Map) {
-        match &mut self.ai {
-            AI::Patrolling(ai) => {
-                self.intent = ai.declare_intent(self.position, &self.body, map);
-            },
-            AI::Rotator => {
-                self.intent = Intent {
-                    phase: ExecutionPhase::Movement,
-                    data: IntentData::Direction(self.body.facing.clockwise()),
-                    action: actions::turn_action
-                };
-            },
-            AI::Forward => {
-                self.intent = forward_intent(self.position, self.body.facing);
-            },
-            AI::None => ()
-        }
-    }
 
 
     pub fn update_view(&mut self, map: &mut Map) {
@@ -394,14 +355,6 @@ impl Entity {
     }
 }
 
-fn forward_intent(pos: Point, facing: Direction) -> Intent {
-    let (dx, dy): (i32, i32) = facing.delta_pos();
-    Intent {
-        phase: ExecutionPhase::Movement,
-        data: IntentData::Target(Point { x: pos.x + dx, y: pos.y + dy }),
-        action: actions::move_action
-    }
-}
 
 /// A snapshot of an [`Entity`] placed on the map grid for fast spatial lookup.
 ///
