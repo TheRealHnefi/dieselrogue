@@ -139,6 +139,13 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 return RunState::AwaitingInput;
             }
 
+            VirtualKeyCode::F10 => {
+                state.world.parallel_ai = !state.world.parallel_ai;
+                let msg = if state.world.parallel_ai { "Parallel AI ON." } else { "Parallel AI OFF." };
+                state.log(msg.to_string());
+                return RunState::AwaitingInput;
+            }
+
             VirtualKeyCode::F12 => {
                 state.world.debug_mode = !state.world.debug_mode;
                 let msg = if state.world.debug_mode { "Debug mode ON." } else { "Debug mode OFF." };

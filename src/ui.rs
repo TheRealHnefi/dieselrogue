@@ -197,6 +197,9 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     // Location panel — right-align indicators against the inner panel edge (UI_WIDTH - 1)
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "Location: Unknown");
     context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset_y, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
+    if state.world.parallel_ai {
+        context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5 - 1 - 8, offset_y, RGB::named(rltk::GREEN), BG_COLOR, "PARALLEL");
+    }
     if state.world.debug_mode {
         context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5, offset_y, RGB::named(rltk::RED), BG_COLOR, "DEBUG");
     }
