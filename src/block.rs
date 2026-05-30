@@ -124,81 +124,212 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
 pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
   println!("Generating blocks");
   let mut rng = RandomNumberGenerator::new();
+
+  let corner_blocks = generate_blocks("corner");
+  let edge_blocks   = generate_blocks("edge");
   let mut base_blocks = generate_blocks("road");
   base_blocks.extend(generate_blocks("building"));
-  let edge_blocks = generate_blocks("edge");
-  let corner_blocks = generate_blocks("corner");
-  let mut grid: Vec<Option<Block>> = vec![None; size * size];
 
-  for x in 0 .. size {
-    for y in 0 .. size {
-      let index = grid_xy_idx(x, y, size);
-      let above = if y > 0 { Some(grid_xy_idx(x, y - 1, size)) } else { None };
-      //let below = if y < size - 1 { Some(grid_xy_idx(x, y + 1, size)) } else { None };
-      let left = if x > 0 { Some(grid_xy_idx(x - 1, y, size)) } else { None };
-      //let right = if x < size - 1 { Some(grid_xy_idx(x + 1, y, size)) } else { None };
-    
-      let block_above = match above {
-        Some(idx) => Some(grid[idx].as_ref().unwrap()),
-        None => None
-      };
-      let block_left = match left {
-        Some(idx) => Some(grid[idx].as_ref().unwrap()),
-        None => None
-      };
+  let nc = corner_blocks.len();
+  let ne = edge_blocks.len();
 
-      let active_blocks;
-      if (x == 0 && y == 0)
-        || (x == size - 1 && y == 0)
-        || (x == size - 1 && y == size - 1)
-        || (x == 0 && y == size - 1) {
-          active_blocks = &corner_blocks;
-        }
-      else if x == 0 || x == size - 1 || y == 0 || y == size - 1 {
-        active_blocks = &edge_blocks;
-      }
-      else {
-        active_blocks = &base_blocks;
-      }
+  // Single pool: corners first, then edges, then base.
+  let mut all_blocks: Vec<Block> = corner_blocks;
+  all_blocks.extend(edge_blocks);
+  all_blocks.extend(base_blocks);
+  let nb = all_blocks.len();
 
-      let mut valid_blocks = vec!();
-      for block in active_blocks {
-        if is_block_valid(block_left, Direction::Left, Some(&block))
-          && is_block_valid(block_above, Direction::Up, Some(&block)) {
-            let mut valid = true;
-            if x == size - 1 {
-              valid = is_block_valid(None, Direction::Right, Some(&block))
-            }
-            if valid && y == size - 1 {
-              valid = is_block_valid(None, Direction::Down, Some(&block))
-            }
-            if valid {
-              valid_blocks.push(block);
-            }
-          }
-      }
-
-      if valid_blocks.len() == 0 {
-        println!("No valid blocks found for {} {}", x, y);
-        //return None;
-      }
-      else {
-        grid[index] = Some(valid_blocks[rng.range(0, valid_blocks.len())].clone());
+  // Pre-compute pairwise compatibility for all 4 directions.
+  // compat[d][a * nb + b] = is_block_valid(all_blocks[a], dirs[d], all_blocks[b])
+  // Directions indexed: 0=Left, 1=Right, 2=Up, 3=Down
+  let dirs = [Direction::Left, Direction::Right, Direction::Up, Direction::Down];
+  let compat: Vec<Vec<bool>> = dirs.iter().map(|&dir| {
+    let mut t = vec![false; nb * nb];
+    for a in 0..nb {
+      for b in 0..nb {
+        t[a * nb + b] = is_block_valid(Some(&all_blocks[a]), dir, Some(&all_blocks[b]));
       }
     }
+    t
+  }).collect();
+
+  // Pre-compute map-edge compatibility.
+  // edge_compat[d][b] = is_block_valid(None, dirs[d], all_blocks[b])
+  let edge_compat: Vec<Vec<bool>> = dirs.iter().map(|&dir| {
+    (0..nb).map(|b| is_block_valid(None, dir, Some(&all_blocks[b]))).collect()
+  }).collect();
+
+  // Inner ring parameters.
+  let inner_margin = size / 4;
+  let inner_min = inner_margin;
+  let inner_max = size - 1 - inner_margin;
+  let has_inner_ring = inner_margin > 0 && inner_min < inner_max;
+
+  let n = size * size;
+
+  // Initialise candidate sets: each cell holds the indices of all blocks it may use.
+  let mut candidates: Vec<Vec<usize>> = (0..n).map(|idx| {
+    let x = idx % size;
+    let y = idx / size;
+
+    let is_outer_corner = (x == 0 && y == 0) || (x == size-1 && y == 0)
+                       || (x == size-1 && y == size-1) || (x == 0 && y == size-1);
+    let is_outer_edge = !is_outer_corner && (x == 0 || x == size-1 || y == 0 || y == size-1);
+    let on_inner_ring = has_inner_ring
+      && x >= inner_min && x <= inner_max
+      && y >= inner_min && y <= inner_max
+      && (x == inner_min || x == inner_max || y == inner_min || y == inner_max);
+    let is_inner_corner = on_inner_ring
+      && (x == inner_min || x == inner_max) && (y == inner_min || y == inner_max);
+
+    let mut pool: Vec<usize> = if is_outer_corner || is_inner_corner {
+      (0..nc).collect()
+    } else if is_outer_edge || on_inner_ring {
+      (nc..nc + ne).collect()
+    } else {
+      (nc + ne..nb).collect()
+    };
+
+    // Pre-filter for map boundary: the block's face on the map edge must be wall-like.
+    // edge_compat[0] = Left, [1] = Right, [2] = Up, [3] = Down.
+    if x == 0      { pool.retain(|&b| edge_compat[0][b]); }
+    if x == size-1 { pool.retain(|&b| edge_compat[1][b]); }
+    if y == 0      { pool.retain(|&b| edge_compat[2][b]); }
+    if y == size-1 { pool.retain(|&b| edge_compat[3][b]); }
+
+    pool
+  }).collect();
+
+  if candidates.iter().any(|c| c.is_empty()) {
+    println!("Block files cannot satisfy boundary constraints — giving up.");
+    return None;
   }
 
-  let mut return_grid = vec!();
-  for block in grid {
-    match block {
-      Some(block) => return_grid.push(block),
-      None => return_grid.push(Block {tiles: vec![TileType::Ground; BLOCK_SIZE * BLOCK_SIZE]})
-    }
+  // Seed propagation from every ring cell so interior candidates are pruned before WFC starts.
+  let ring_cells: Vec<usize> = (0..n).filter(|&idx| {
+    let x = idx % size;
+    let y = idx / size;
+    let on_outer = x == 0 || x == size-1 || y == 0 || y == size-1;
+    let on_inner = has_inner_ring
+      && x >= inner_min && x <= inner_max
+      && y >= inner_min && y <= inner_max
+      && (x == inner_min || x == inner_max || y == inner_min || y == inner_max);
+    on_outer || on_inner
+  }).collect();
+
+  if wfc_propagate(&ring_cells, &mut candidates, size, nb, &compat).is_err() {
+    println!("Initial propagation failed — block files may be incompatible.");
+    return None;
   }
-  return Some(return_grid);
+
+  // WFC with backtracking.
+  wfc_solve(size, nb, &compat, candidates, &mut rng)
+    .map(|indices| indices.into_iter().map(|i| all_blocks[i].clone()).collect())
 }
 
-fn grid_xy_idx(x: usize, y: usize, grid_size: usize) -> usize {
+/// WFC main loop. Collapses minimum-entropy cells and backtracks on contradiction.
+fn wfc_solve(
+  size: usize,
+  nb: usize,
+  compat: &[Vec<bool>],
+  mut candidates: Vec<Vec<usize>>,
+  rng: &mut RandomNumberGenerator,
+) -> Option<Vec<usize>> {
+  let n = size * size;
+  // History entry: (cell, block chosen, full candidates snapshot before collapse).
+  let mut history: Vec<(usize, usize, Vec<Vec<usize>>)> = vec![];
+
+  loop {
+    // Find the uncollapsed cell with the fewest remaining candidates (min entropy).
+    let min_cell = (0..n)
+      .filter(|&i| candidates[i].len() > 1)
+      .min_by_key(|&i| candidates[i].len());
+
+    match min_cell {
+      None => {
+        // Every cell has exactly one candidate — done.
+        return Some(candidates.into_iter().map(|c| c[0]).collect());
+      }
+      Some(cell) => {
+        let pick = rng.range(0, candidates[cell].len());
+        let chosen = candidates[cell][pick];
+
+        history.push((cell, chosen, candidates.clone()));
+        candidates[cell] = vec![chosen];
+
+        if wfc_propagate(&[cell], &mut candidates, size, nb, compat).is_err() {
+          // Contradiction — backtrack until we find a cell with untried candidates.
+          loop {
+            match history.pop() {
+              None => return None, // exhausted all possibilities
+              Some((bc, bb, mut saved)) => {
+                saved[bc].retain(|&x| x != bb);
+                if saved[bc].is_empty() {
+                  continue; // this level is also exhausted, keep popping
+                }
+                candidates = saved;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/// AC-3 constraint propagation. Removes candidates that have no compatible partner
+/// in any adjacent cell. Propagates until stable or a contradiction is found.
+/// `starts` is the set of cells whose candidates have just changed.
+fn wfc_propagate(
+  starts: &[usize],
+  candidates: &mut Vec<Vec<usize>>,
+  size: usize,
+  nb: usize,
+  compat: &[Vec<bool>],
+) -> Result<(), ()> {
+  let mut queue: Vec<usize> = starts.to_vec();
+  let mut in_queue = vec![false; size * size];
+  for &s in starts { in_queue[s] = true; }
+
+  while let Some(cell) = queue.pop() {
+    in_queue[cell] = false;
+    let x = cell % size;
+    let y = cell / size;
+
+    // Each entry: (neighbour index, compat direction index).
+    // The direction index encodes "cell is in that direction of the neighbour",
+    // matching the compat table layout (0=Left,1=Right,2=Up,3=Down).
+    let mut nbrs: Vec<(usize, usize)> = vec![];
+    if x > 0      { nbrs.push((cell - 1,    1)); } // cell is RIGHT of left-nbr  → dir Right(1)
+    if x < size-1 { nbrs.push((cell + 1,    0)); } // cell is LEFT  of right-nbr → dir Left(0)
+    if y > 0      { nbrs.push((cell - size,  3)); } // cell is DOWN  of above-nbr → dir Down(3)
+    if y < size-1 { nbrs.push((cell + size,  2)); } // cell is UP    of below-nbr → dir Up(2)
+
+    let cell_cands = candidates[cell].clone();
+
+    for (nbr, dir_idx) in nbrs {
+      let prev_len = candidates[nbr].len();
+      let row = &compat[dir_idx];
+
+      // Keep only neighbour candidates that are compatible with at least one cell candidate.
+      candidates[nbr].retain(|&b| {
+        cell_cands.iter().any(|&a| row[a * nb + b])
+      });
+
+      if candidates[nbr].is_empty() {
+        return Err(());
+      }
+      if candidates[nbr].len() < prev_len && !in_queue[nbr] {
+        queue.push(nbr);
+        in_queue[nbr] = true;
+      }
+    }
+  }
+  Ok(())
+}
+
+fn _grid_xy_idx(x: usize, y: usize, grid_size: usize) -> usize {
   (y * grid_size) + x
 }
 
@@ -239,6 +370,7 @@ fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> b
       (Some(TileType::Wall), Some(TileType::Wall)) => true,
       (Some(TileType::Wall), Some(TileType::Floor)) => true,
       (Some(TileType::Wall), Some(TileType::Fence)) => true,
+      (Some(TileType::Wall), Some(TileType::Ground)) => true,
       (Some(TileType::Floor), Some(TileType::Floor)) => true,
       (Some(TileType::Floor), Some(TileType::Doorway)) => true,
       (Some(TileType::Ground), Some(TileType::Ground)) => true,
