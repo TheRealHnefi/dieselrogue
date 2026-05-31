@@ -215,10 +215,23 @@ impl Entity {
     }
 
     pub fn get_equipped_item(&mut self, slot: SlotType) -> Option<&mut Item> {
-        if let Some(item_index) = self.body.item_slots.iter().position(|value| value.slot_type == slot) {
+        if let Some(item_index) = self.body.item_slots.iter().position(|s| s.slot_type == slot) {
             self.body.item_slots[item_index].item.as_mut()
+        } else {
+            None
         }
-        else {
+    }
+
+    pub fn get_equipped_item_ref(&self, slot: SlotType) -> Option<&Item> {
+        self.body.item_slots.iter()
+            .find(|s| s.slot_type == slot)
+            .and_then(|s| s.item.as_ref())
+    }
+
+    pub fn take_item_by_id(&mut self, item_id: usize) -> Option<Item> {
+        if let Some(pos) = self.body.inventory.iter().position(|i| i.id == item_id) {
+            Some(self.body.inventory.remove(pos))
+        } else {
             None
         }
     }

@@ -418,6 +418,7 @@ impl World {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn resolve_phase(&mut self, phase: ExecutionPhase, log: &mut GameLog) -> Vec<Animation> {
         if phase == ExecutionPhase::Movement {
             self.cancel_contested_moves();
@@ -427,17 +428,27 @@ impl World {
             return self.resolve_active_items(log);
         }
 
-        let mut effects: Vec<Effect> = vec!();
-        for i in 0..self.entities.len() {
-            // SAFETY: action functions only access entities[j] for j != i (via pawn entity_id
-            // lookups). The mutable reference to entities[i] and the shared slice reference are
-            // non-overlapping in practice.
-            let entity = unsafe { &mut *self.entities.as_mut_ptr().add(i) };
+        // Collect effects from all entities whose intent fires this phase.
+        // Action functions are pure (&Entity, &Map, &[Entity]) so this is safe
+        // to run in parallel — no shared mutable state.
+        let effects: Vec<Effect> = if self.parallel_ai {
+            use rayon::prelude::*;
+            self.entities.par_iter()
+                .filter(|e| e.intent.phase == phase
+                         && e.body.get_status_effect(&StatusEffect::Shocked(0)).is_none())
+                .flat_map(|e| (e.intent.action)(e, &self.map, &self.entities))
+                .collect()
+        } else {
+            self.entities.iter()
+                .filter(|e| e.intent.phase == phase
+                         && e.body.get_status_effect(&StatusEffect::Shocked(0)).is_none())
+                .flat_map(|e| (e.intent.action)(e, &self.map, &self.entities))
+                .collect()
+        };
+
+        // Reset intents for entities that fired this phase.
+        for entity in self.entities.iter_mut() {
             if entity.intent.phase == phase {
-                if entity.body.get_status_effect(&StatusEffect::Shocked(0)).is_none() {
-                    let mut entity_effects = (entity.intent.action)(entity, &mut self.map, &self.entities, log);
-                    effects.append(&mut entity_effects);
-                }
                 entity.intent = idle_intent();
             }
         }
@@ -606,6 +617,7 @@ impl World {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     fn resolve_effects(&mut self, effects: &Vec<Effect>, log: &mut GameLog) -> Vec<Animation> {
         let mut animations = vec!();
         let mut deathlist: Vec<usize> = vec!();
@@ -650,6 +662,109 @@ impl World {
                     let entity = &mut self.entities[*entity_id];
                     entity.clear_aiming();
                     entity.intent = idle_intent();
+                },
+                Effect::Log(msg) => log.log(msg.clone()),
+                Effect::Move { entity_id, pos } => {
+                    self.entities[*entity_id].set_position(*pos, &mut self.map);
+                    self.entities[*entity_id].clear_aiming();
+                },
+                Effect::SetFacing { entity_id, direction } => {
+                    self.entities[*entity_id].body.facing = *direction;
+                    let pos = self.entities[*entity_id].position;
+                    self.entities[*entity_id].set_position(pos, &mut self.map);
+                    self.entities[*entity_id].clear_aiming();
+                },
+                Effect::ConsumeAmmo { entity_id, slot, shots } => {
+                    if let Some(item) = self.entities[*entity_id].get_equipped_item(*slot) {
+                        if let ItemKind::Firearm { ref mut ammo, .. } = item.kind {
+                            *ammo = ammo.saturating_sub(*shots);
+                        }
+                    }
+                },
+                Effect::SpendEnergy { entity_id, amount } => {
+                    self.entities[*entity_id].body.energy =
+                        self.entities[*entity_id].body.energy.saturating_sub(*amount);
+                },
+                Effect::PickUpItem { entity_id } => {
+                    let pos = self.entities[*entity_id].position;
+                    let idx = self.map.xy_idx(pos.x, pos.y);
+                    if let Some(item) = self.map.items[idx].take() {
+                        log.log(format!("{} picked up {}", self.entities[*entity_id].name, item.name));
+                        if item.active {
+                            self.sync_active_item(item.id, ItemLocation::InInventory(*entity_id));
+                        }
+                        self.entities[*entity_id].body.inventory.push(item);
+                    }
+                },
+                Effect::DropItem { entity_id, item_id } => {
+                    let pos = self.entities[*entity_id].position;
+                    if let Some(item) = self.entities[*entity_id].take_item_by_id(*item_id) {
+                        if let Ok(drop_pos) = self.map.nearest_free_item_position(pos) {
+                            if item.active {
+                                self.sync_active_item(item.id, ItemLocation::OnMap(drop_pos));
+                            }
+                            let map_idx = self.map.pos_idx(drop_pos);
+                            self.map.items[map_idx] = Some(item);
+                        }
+                    }
+                },
+                Effect::ThrowItem { entity_id, item_id, target_pos } => {
+                    if let Some(item) = self.entities[*entity_id].take_item_by_id(*item_id) {
+                        if let Ok(drop_pos) = self.map.nearest_free_item_position(*target_pos) {
+                            if item.active {
+                                self.sync_active_item(item.id, ItemLocation::OnMap(drop_pos));
+                            }
+                            let map_idx = self.map.pos_idx(drop_pos);
+                            self.map.items[map_idx] = Some(item);
+                        }
+                    }
+                },
+                Effect::PrimeItem { entity_id, item_id } => {
+                    if let Some(item) = self.entities[*entity_id].body.inventory.iter_mut()
+                        .find(|i| i.id == *item_id)
+                    {
+                        item.active = true;
+                        item.inventory_actions.retain(|a| a.name != "Prime");
+                        self.sync_active_item(*item_id, ItemLocation::InInventory(*entity_id));
+                    }
+                },
+                Effect::EquipItem { entity_id, item_id } => {
+                    if let Some(item) = self.entities[*entity_id].take_item_by_id(*item_id) {
+                        let item_name = item.name.clone();
+                        match self.entities[*entity_id].body.equip(item.clone()) {
+                            Ok(displaced) => {
+                                log.log(format!("{} equipped {}", self.entities[*entity_id].name, item_name));
+                                for d in displaced {
+                                    log.log(format!("{} unequipped {}", self.entities[*entity_id].name, d.name));
+                                    self.entities[*entity_id].body.inventory.push(d);
+                                }
+                            },
+                            Err(_) => self.entities[*entity_id].body.inventory.push(item),
+                        }
+                        self.entities[*entity_id].body.update_armor();
+                    }
+                },
+                Effect::UnequipItem { entity_id, item_id } => {
+                    // Find which slot holds this item, then unequip.
+                    let slot = self.entities[*entity_id].body.item_slots.iter()
+                        .find(|s| s.item.as_ref().map_or(false, |i| i.id == *item_id))
+                        .map(|s| s.slot_type);
+                    if let Some(slot) = slot {
+                        if let Some(item) = self.entities[*entity_id].body.unequip(SlotType::from(slot)) {
+                            let was_aiming_at = self.entities[*entity_id].body.status_effects.iter()
+                                .find_map(|s| match s {
+                                    StatusEffect::AimingAtGround(_, i) => Some(i.id),
+                                    StatusEffect::AimingAtEntity(_, i) => Some(i.id),
+                                    _ => None,
+                                });
+                            if was_aiming_at == Some(item.id) {
+                                self.entities[*entity_id].clear_aiming();
+                            }
+                            log.log(format!("{} unequipped {}", self.entities[*entity_id].name, item.name));
+                            self.entities[*entity_id].body.inventory.push(item);
+                            self.entities[*entity_id].body.update_armor();
+                        }
+                    }
                 },
             }
         }

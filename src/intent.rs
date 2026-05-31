@@ -3,7 +3,6 @@ use crate::Item;
 use crate::Entity;
 use crate::Map;
 use crate::components::*;
-use crate::GameLog;
 use crate::actions::Action;
 
 #[derive (Clone)]
@@ -36,7 +35,7 @@ pub struct ItemAction {
     pub action: Action
 }
 
-fn noop_action(_entity: &mut Entity, _map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
+fn noop_action(_entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     vec!()
 }
 

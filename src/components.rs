@@ -126,18 +126,52 @@ pub enum ItemLocation {
 }
 
 pub enum Effect {
-    Damage {entity_id: usize, bodypart_index: usize, raw_damage: Damage},
-    OpenDoor {pos: Point, actor_id: usize},
+    /// Apply damage to entity
+    Damage      { entity_id: usize, bodypart_index: usize, raw_damage: Damage },
+    /// Open door at position
+    OpenDoor    { pos: Point, actor_id: usize },
+    /// Remove wall
     DestroyWall(Point),
+    /// Run animation
     Animation(Animation),
-    Embark{pilot_id: usize, vehicle_id: usize},
-    Disembark{pilot_id: usize, vehicle_id: usize},
-    ApplyStatus{target_id: usize, status: StatusEffect},
-    BurnTick{entity_id: usize, bodypart_index: usize},
-    SyncActiveItem{item_id: usize, location: ItemLocation},
+    /// Enter vehicle
+    Embark      { pilot_id: usize, vehicle_id: usize },
+    /// Hop out of vehicle
+    Disembark   { pilot_id: usize, vehicle_id: usize },
+    /// Apply status effect
+    ApplyStatus { target_id: usize, status: StatusEffect },
+    /// Handle burning status effect
+    BurnTick    { entity_id: usize, bodypart_index: usize },
+    /// Handle active items such as ticking grenades
+    SyncActiveItem { item_id: usize, location: ItemLocation },
+    /// Fire sound
     Sound(SoundEvent),
-    Twist{entity_id: usize, direction: Direction},
-    Distract{entity_id: usize},
+    /// Turn target entity in given direction
+    Twist       { entity_id: usize, direction: Direction },
+    /// Remove the aim of target entity
+    Distract    { entity_id: usize },
+    /// Move entity to pos (updates pawns + clears aiming).
+    Move        { entity_id: usize, pos: Point },
+    /// Change entity facing and refresh pawns (clears aiming).
+    SetFacing   { entity_id: usize, direction: Direction },
+    /// Decrement ammo in the weapon held in `slot` by `shots`.
+    ConsumeAmmo { entity_id: usize, slot: SlotType, shots: u32 },
+    /// Subtract energy from entity (ability cost).
+    SpendEnergy { entity_id: usize, amount: u32 },
+    /// Pick up the item at entity's current map tile.
+    PickUpItem  { entity_id: usize },
+    /// Drop the inventory item with the given id to the nearest free tile.
+    DropItem    { entity_id: usize, item_id: usize },
+    /// Take the inventory item with the given id and place it near `target_pos`.
+    ThrowItem   { entity_id: usize, item_id: usize, target_pos: Point },
+    /// Activate (prime) the explosive item with the given id in entity's inventory.
+    PrimeItem   { entity_id: usize, item_id: usize },
+    /// Equip the inventory item with the given id.
+    EquipItem   { entity_id: usize, item_id: usize },
+    /// Unequip the item with the given id back to inventory.
+    UnequipItem { entity_id: usize, item_id: usize },
+    /// Append a message to the game log.
+    Log(String),
 }
 
 #[derive(Clone)]
