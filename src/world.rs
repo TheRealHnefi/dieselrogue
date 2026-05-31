@@ -731,17 +731,44 @@ impl World {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn resolve_status_effects(&mut self, log: &mut GameLog) {
         self.apply_noise_deafness();
         self.active_items_ticked = false;
-        let mut effects: Vec<Effect> = vec![];
-        for entity in &mut self.entities {
-            effects.extend(entity.resolve_status_effects());
-        }
+
+        // Collect burn/status effects. Each entity only reads and writes its own
+        // state, so this is safe to run across the thread pool.
+        let effects: Vec<Effect> = if self.parallel_ai {
+            use rayon::prelude::*;
+            self.entities.par_iter_mut()
+                .flat_map(|e| e.resolve_status_effects())
+                .collect()
+        } else {
+            self.entities.iter_mut()
+                .flat_map(|e| e.resolve_status_effects())
+                .collect()
+        };
         self.resolve_effects(&effects, log);
-        for i in 0..self.entities.len() {
-            self.entities[i].update_view(&mut self.map);
+
+        // Update viewsheds:
+        //   1. Clear the player's tile markings from the map (sequential — writes map).
+        //   2. Recompute every viewshed (parallel — read-only map, writes own viewshed).
+        //   3. Re-mark the player's freshly computed tiles (sequential — writes map).
+        if let Some(id) = self.player_id {
+            self.entities[id].set_visible_tiles(&mut self.map, false);
         }
+        if self.parallel_ai {
+            use rayon::prelude::*;
+            let map = &self.map;
+            self.entities.par_iter_mut().for_each(|e| e.update_viewshed_only(map));
+        } else {
+            let map = &self.map;
+            self.entities.iter_mut().for_each(|e| e.update_viewshed_only(map));
+        }
+        if let Some(id) = self.player_id {
+            self.entities[id].set_visible_tiles(&mut self.map, true);
+        }
+
         self.clear_stale_entity_aim();
     }
 

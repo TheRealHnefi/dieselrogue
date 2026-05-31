@@ -229,14 +229,21 @@ impl Entity {
         if self.kind == EntityKind::Player {
             self.set_visible_tiles(map, false);
         }
-
         let fov = self.effective_fov();
         let range = self.effective_range();
         self.viewshed.update(self.center(), self.body.facing, range, &fov, map);
-
         if self.kind == EntityKind::Player {
             self.set_visible_tiles(map, true);
         }
+    }
+
+    /// Recomputes this entity's viewshed using a shared map reference.
+    /// Does not touch `map.visible_tiles` — caller is responsible for
+    /// updating the player's tile markings around the parallel viewshed pass.
+    pub fn update_viewshed_only(&mut self, map: &Map) {
+        let fov = self.effective_fov();
+        let range = self.effective_range();
+        self.viewshed.update(self.center(), self.body.facing, range, &fov, map);
     }
 
     fn effective_fov(&self) -> FieldOfView {
