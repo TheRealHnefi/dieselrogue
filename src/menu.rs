@@ -8,6 +8,7 @@ use crate::state::*;
 use crate::World;
 use crate::actions;
 use crate::SlotType;
+use crate::{FontSize, Settings};
 
 /**
  * Menu overview:
@@ -302,6 +303,19 @@ fn action_noop(_state: &mut State) -> RunState {
     return RunState::AwaitingMenuInput;
 }
 
+fn action_cycle_font_size(state: &mut State) -> RunState {
+    let current = state.pending_font_size
+        .unwrap_or_else(|| Settings::load().font_size);
+    let next = current.next();
+    state.pending_font_size = Some(next);
+    let mut settings = Settings::load();
+    settings.font_size = next;
+    settings.save();
+    state.menu_stack.clear();
+    state.menu_stack.push(Box::new(main_menu(state.pending_font_size)));
+    RunState::AwaitingMenuInput
+}
+
 fn action_quit(_state: &mut State) -> RunState {
     ::std::process::exit(0);
 }
@@ -326,21 +340,23 @@ fn action_show_inventory_item_menu(item: Item, state: &mut State) -> RunState {
     return RunState::AwaitingMenuInput;
 }
 
-pub fn main_menu() -> MenuPanel<SystemRow> {
-    let quit_row = SystemRow {
-        text: "Quit".to_string(),
-        action: action_quit
-    };
-
-    let useitem_row = SystemRow {
-        text: "Use item".to_string(),
-        action: action_open_item_menu
+pub fn main_menu(pending_font_size: Option<FontSize>) -> MenuPanel<SystemRow> {
+    let current_size = pending_font_size
+        .unwrap_or_else(|| Settings::load().font_size);
+    let font_label = if pending_font_size.is_some() {
+        format!("Font size: {} (restart to apply)", current_size.label())
+    } else {
+        format!("Font size: {}", current_size.label())
     };
 
     MenuPanel {
         x: 35,
         y: 20,
-        rows: vec![quit_row, useitem_row],
+        rows: vec![
+            SystemRow { text: "Use item".to_string(),  action: action_open_item_menu  },
+            SystemRow { text: font_label,               action: action_cycle_font_size },
+            SystemRow { text: "Quit".to_string(),       action: action_quit            },
+        ],
         selected_row: 0,
         no_selectable_rows: false
     }
