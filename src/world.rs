@@ -156,6 +156,27 @@ impl World {
         assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
         assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
 
+        // 100 rotating zombie goons spread across the map in a 10×10 grid.
+        let dirs = [
+            Direction::Up, Direction::UpRight, Direction::Right, Direction::DownRight,
+            Direction::Down, Direction::DownLeft, Direction::Left, Direction::UpLeft,
+        ];
+        let grid = 10usize;
+        let cell_w = world.map.width / grid;
+        let cell_h = world.map.height / grid;
+        for gy in 0..grid {
+            for gx in 0..grid {
+                let cx = (gx * cell_w + cell_w / 2) as i32;
+                let cy = (gy * cell_h + cell_h / 2) as i32;
+                let facing = dirs[(gy * grid + gx) % dirs.len()];
+                let _ = world.create_zombie_goon(
+                    Point { x: cx, y: cy },
+                    facing,
+                    format!("Zombie {}", gy * grid + gx),
+                );
+            }
+        }
+
         return world;
     }
 
