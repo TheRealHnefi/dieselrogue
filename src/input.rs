@@ -2,6 +2,7 @@ use rltk::{VirtualKeyCode, Rltk, Point};
 use super::*;
 use std::cmp::*;
 
+#[tracing::instrument(skip_all)]
 pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
     match context.key {
         Some(key) => match key {

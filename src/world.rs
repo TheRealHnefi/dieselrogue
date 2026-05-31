@@ -345,10 +345,11 @@ impl World {
             .map(|e| std::mem::replace(&mut e.ai, AI::None))
             .collect();
 
-        // Step 2: Compute intents. Each closure only reads map and entities,
+        // Step 2: Compute intents. Each closure only reads map, entities, and sounds,
         // so it is safe to run across a thread pool.
         let map = &self.map;
         let entities = &self.entities;
+        let sounds = &self.sounds_last_turn[..];
 
         let compute = |(ai, entity): (&mut AI, &Entity)| -> Option<Intent> {
             match entity.driving {
@@ -356,7 +357,7 @@ impl World {
                 DrivingState::Driving(_) => None,
                 // Vehicles are handled separately in step 3 (cross-entity dependency).
                 DrivingState::DrivenBy(_) => None,
-                _ => ai.compute_intent(entity, map, entities),
+                _ => ai.compute_intent(entity, map, entities, sounds),
             }
         };
 
@@ -379,7 +380,7 @@ impl World {
         for i in 0..entities.len() {
             if let DrivingState::DrivenBy(pilot_id) = entities[i].driving {
                 intents[i] = ai_states[pilot_id].compute_intent(
-                    &entities[i], map, entities,
+                    &entities[i], map, entities, sounds,
                 );
             }
         }

@@ -66,6 +66,7 @@ pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     let blink = (monotime / 250) % 2 == 0;
     let viewport = state.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);

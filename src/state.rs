@@ -183,6 +183,7 @@ impl State {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     fn resolve(&mut self, phase: ExecutionPhase, monotime: u128) {
         let mut animations = vec!();
         let mut maybe_next_phase = phase.next();
@@ -203,6 +204,7 @@ impl State {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     fn animate(&mut self, phase: ExecutionPhase, monotime: u128, context: &mut Rltk) {
         let animation_done = self.animation_system.render(
             self.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32),
@@ -216,6 +218,7 @@ impl State {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     fn resolve_status_effects(&mut self) {
         self.world.sounds_last_turn = std::mem::take(&mut self.world.sounds);
         self.world.resolve_status_effects(&mut self.log);
