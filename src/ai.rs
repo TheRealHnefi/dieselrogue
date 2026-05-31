@@ -1,159 +1,533 @@
 use rltk::Point;
-use crate::Body;
 use crate::Map;
 use crate::Entity;
-use crate::util::*;
+use crate::EntityKind;
+use crate::util::adjacent;
 use crate::components::*;
 use crate::intent::*;
 use crate::actions;
 
-pub enum AI {
-    None,
-    Rotator,
-    Forward,
-    Patrolling(PatrollingAI),
+const SUSPICIOUS_TURNS: u32 = 15;
+const ALERT_TURNS:      u32 = 30;
+const SHOUT_VOLUME:     u32 = 20;
+
+// ---------------------------------------------------------------------------
+// AlertLevel
+// ---------------------------------------------------------------------------
+
+pub enum AlertLevel {
+    Unaware,
+    Suspicious { origin: Point, turns_remaining: u32 },
+    Alert      { last_known: Point, turns_remaining: u32, search: SearchBehavior },
+    Combat     { target_id: usize, last_seen: Point },
 }
 
-impl AI {
-    /// Compute the next intent for this entity.
-    /// Returns `None` for `AI::None` (entity keeps its existing intent).
-    /// Takes an immutable view of all entities so future AI variants can
-    /// react to other entities without requiring mutable world access.
-    pub fn compute_intent(
-        &mut self,
-        entity: &Entity,
-        map: &Map,
-        entities: &[Entity],
-        sounds: &[SoundEvent],
-    ) -> Option<Intent> {
-        let _ = entities; // not yet used; available for future AI variants
-        let _ = sounds;   // not yet used; available for future AI variants
+impl AlertLevel {
+    fn priority(&self) -> u8 {
         match self {
-            AI::None => None,
-            AI::Rotator => Some(Intent {
-                phase: ExecutionPhase::Movement,
-                data: IntentData::Direction(entity.body.facing.clockwise()),
-                action: actions::turn_action,
-            }),
-            AI::Forward => Some(forward_intent(entity.position, entity.body.facing)),
-            AI::Patrolling(ai) => Some(ai.compute_intent(entity.position, &entity.body, map)),
+            AlertLevel::Unaware           => 0,
+            AlertLevel::Suspicious { .. } => 1,
+            AlertLevel::Alert { .. }      => 2,
+            AlertLevel::Combat { .. }     => 3,
         }
     }
+
+    /// Only escalate; never de-escalate through this method.
+    fn try_escalate(&mut self, candidate: AlertLevel) {
+        if candidate.priority() >= self.priority() {
+            *self = candidate;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SearchBehavior — Copy so it can be extracted before borrowing self mutably
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy)]
+pub enum SearchBehavior {
+    MoveToLastKnown,
+    HoldAndWatch,
+    Flank,
+}
+
+impl SearchBehavior {
+    fn for_entity(entity_id: usize) -> Self {
+        match entity_id % 3 {
+            0 => SearchBehavior::MoveToLastKnown,
+            1 => SearchBehavior::HoldAndWatch,
+            _ => SearchBehavior::Flank,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CombatTactic
+// ---------------------------------------------------------------------------
+
+#[derive(Clone)]
+pub enum CombatTactic {
+    Pursue,
+    Hold,
+    Flee,
+}
+
+// ---------------------------------------------------------------------------
+// Profile
+// ---------------------------------------------------------------------------
+
+pub enum Profile {
+    Patrol {
+        waypoints: Vec<Point>,
+        waypoint_index: usize,
+        combat_tactic: CombatTactic,
+    },
+    Guard {
+        anchor: Point,
+        combat_tactic: CombatTactic,
+    },
+    Follow {
+        target_id: usize,
+        last_known_pos: Point,
+        combat_tactic: CombatTactic,
+    },
+    Stationary {
+        combat_tactic: CombatTactic,
+    },
+}
+
+impl Profile {
+    fn combat_tactic(&self) -> &CombatTactic {
+        match self {
+            Profile::Patrol    { combat_tactic, .. } => combat_tactic,
+            Profile::Guard     { combat_tactic, .. } => combat_tactic,
+            Profile::Follow    { combat_tactic, .. } => combat_tactic,
+            Profile::Stationary{ combat_tactic }     => combat_tactic,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ActorAI
+// ---------------------------------------------------------------------------
+
+pub struct ActorAI {
+    pub profile: Profile,
+    pub alert:   AlertLevel,
+    // Shared path cache — destination tracked to avoid redundant A* calls.
+    current_path: Vec<usize>,    // reversed; .last() = next step index
+    path_target:  Option<usize>, // map idx of current destination
+}
+
+impl ActorAI {
+    pub fn new(profile: Profile) -> Self {
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None }
+    }
+
+    pub fn compute_intent(
+        &mut self,
+        entity:   &Entity,
+        map:      &Map,
+        entities: &[Entity],
+        sounds:   &[SoundEvent],
+    ) -> (Option<Intent>, Vec<SoundEvent>) {
+        let prev_priority = self.alert.priority();
+
+        self.process_sounds(entity, sounds);
+        self.process_vision(entity, entities);
+        self.check_follow_target(entities);
+        self.tick_alert(entity, entities);
+
+        // Emit shout when first reaching Alert or Combat.
+        let mut emitted = vec![];
+        if self.alert.priority() >= 2 && prev_priority < 2 {
+            emitted.push(SoundEvent { kind: SoundKind::Shout, pos: entity.center(), volume: SHOUT_VOLUME });
+        }
+
+        let intent = self.dispatch_intent(entity, map, entities);
+        (intent, emitted)
+    }
+
+    // --- Stimulus processing ---
+
+    fn process_sounds(&mut self, entity: &Entity, sounds: &[SoundEvent]) {
+        for s in sounds {
+            let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
+            if dist > s.volume as f32 { continue; }
+
+            let candidate = match s.kind {
+                SoundKind::Shout =>
+                    AlertLevel::Suspicious { origin: s.pos, turns_remaining: SUSPICIOUS_TURNS },
+                SoundKind::Gunshot | SoundKind::Burst | SoundKind::Explosion =>
+                    AlertLevel::Alert {
+                        last_known: s.pos,
+                        turns_remaining: ALERT_TURNS,
+                        search: SearchBehavior::for_entity(entity.id),
+                    },
+                SoundKind::Footstep | SoundKind::Engine =>
+                    AlertLevel::Suspicious { origin: s.pos, turns_remaining: SUSPICIOUS_TURNS },
+            };
+            self.alert.try_escalate(candidate);
+        }
+    }
+
+    fn process_vision(&mut self, entity: &Entity, entities: &[Entity]) {
+        if let Some(player) = entities.iter().find(|e| e.kind == EntityKind::Player) {
+            let pc = player.center();
+            if entity.viewshed.visible_tiles.contains(&pc) {
+                self.alert.try_escalate(AlertLevel::Combat { target_id: player.id, last_seen: pc });
+            }
+        }
+    }
+
+    fn check_follow_target(&mut self, entities: &[Entity]) {
+        if let Profile::Follow { target_id, last_known_pos, .. } = &mut self.profile {
+            match entities.iter().find(|e| e.id == *target_id) {
+                Some(t) => *last_known_pos = t.center(),
+                None    => {
+                    let lkp = *last_known_pos;
+                    self.alert.try_escalate(AlertLevel::Alert {
+                        last_known: lkp,
+                        turns_remaining: ALERT_TURNS,
+                        search: SearchBehavior::MoveToLastKnown,
+                    });
+                }
+            }
+        }
+    }
+
+    fn tick_alert(&mut self, entity: &Entity, entities: &[Entity]) {
+        // Combat → Alert when target leaves sight.
+        if let AlertLevel::Combat { target_id, last_seen } = &self.alert {
+            let (tid, ls) = (*target_id, *last_seen);
+            let still_visible = entities.iter()
+                .find(|e| e.id == tid)
+                .map_or(false, |t| entity.viewshed.visible_tiles.contains(&t.center()));
+            if !still_visible {
+                self.alert = AlertLevel::Alert {
+                    last_known: ls,
+                    turns_remaining: ALERT_TURNS,
+                    search: SearchBehavior::for_entity(entity.id),
+                };
+            }
+            return;
+        }
+
+        // Decay timed states.
+        let transition: Option<AlertLevel> = match &self.alert {
+            AlertLevel::Suspicious { turns_remaining, origin } if *turns_remaining == 0 =>
+                Some(AlertLevel::Unaware),
+            AlertLevel::Alert { turns_remaining, last_known, .. } if *turns_remaining == 0 =>
+                Some(AlertLevel::Suspicious { origin: *last_known, turns_remaining: SUSPICIOUS_TURNS }),
+            _ => None,
+        };
+
+        if let Some(new) = transition {
+            self.alert = new;
+        } else {
+            match &mut self.alert {
+                AlertLevel::Suspicious { turns_remaining, .. } => *turns_remaining -= 1,
+                AlertLevel::Alert      { turns_remaining, .. } => *turns_remaining -= 1,
+                _ => {}
+            }
+        }
+    }
+
+    // --- Intent dispatch ---
+
+    /// Extracts a Copy snapshot of the alert state so we can call &mut self methods
+    /// without a lingering borrow on self.alert.
+    fn alert_snapshot(&self) -> AlertSnapshot {
+        match &self.alert {
+            AlertLevel::Unaware =>
+                AlertSnapshot::Unaware,
+            AlertLevel::Suspicious { origin, .. } =>
+                AlertSnapshot::Suspicious { origin: *origin },
+            AlertLevel::Alert { last_known, search, .. } =>
+                AlertSnapshot::Alert { last_known: *last_known, search: *search },
+            AlertLevel::Combat { target_id, last_seen } =>
+                AlertSnapshot::Combat { target_id: *target_id, last_seen: *last_seen },
+        }
+    }
+
+    fn dispatch_intent(&mut self, entity: &Entity, map: &Map, entities: &[Entity]) -> Option<Intent> {
+        match self.alert_snapshot() {
+            AlertSnapshot::Unaware =>
+                self.unaware_intent(entity, map, entities),
+            AlertSnapshot::Suspicious { origin } =>
+                self.navigate_to(entity, origin, map),
+            AlertSnapshot::Alert { last_known, search } =>
+                self.search_intent(entity, map, last_known, search),
+            AlertSnapshot::Combat { target_id, last_seen } =>
+                self.combat_intent(entity, map, entities, target_id, last_seen),
+        }
+    }
+
+    // --- Behaviour: Unaware ---
+
+    fn unaware_intent(&mut self, entity: &Entity, map: &Map, entities: &[Entity]) -> Option<Intent> {
+        match &mut self.profile {
+            Profile::Patrol { waypoints, waypoint_index, .. } => {
+                // Advance waypoint if arrived.
+                if waypoints[*waypoint_index] == entity.position {
+                    *waypoint_index = (*waypoint_index + 1) % waypoints.len();
+                    self.path_target = None;
+                }
+                let dest = waypoints[*waypoint_index];
+                self.navigate_to(entity, dest, map)
+            },
+            Profile::Guard { anchor, .. } => {
+                let anchor = *anchor;
+                if entity.position == anchor {
+                    None // already at post
+                } else {
+                    self.navigate_to(entity, anchor, map)
+                }
+            },
+            Profile::Follow { target_id, last_known_pos, .. } => {
+                let dest = entities.iter()
+                    .find(|e| e.id == *target_id)
+                    .map(|t| t.center())
+                    .unwrap_or(*last_known_pos);
+                if adjacent(entity.position, dest) {
+                    None
+                } else {
+                    self.navigate_to(entity, dest, map)
+                }
+            },
+            Profile::Stationary { .. } => None,
+        }
+    }
+
+    // --- Behaviour: Alert (lost target / investigating) ---
+
+    fn search_intent(&mut self, entity: &Entity, map: &Map, last_known: Point, search: SearchBehavior) -> Option<Intent> {
+        match search {
+            SearchBehavior::HoldAndWatch => None, // stand still, weapon ready
+            SearchBehavior::MoveToLastKnown => self.navigate_to(entity, last_known, map),
+            SearchBehavior::Flank => {
+                let flank_dest = self.flank_destination(entity.position, last_known, map);
+                self.navigate_to(entity, flank_dest, map)
+            },
+        }
+    }
+
+    fn flank_destination(&self, from: Point, target: Point, map: &Map) -> Point {
+        // Approach last-known from a perpendicular angle (5 tiles offset).
+        let dx = target.x - from.x;
+        let dy = target.y - from.y;
+        let (perp_x, perp_y) = if dx.abs() >= dy.abs() {
+            (0i32, if dy >= 0 { -5 } else { 5 })
+        } else {
+            (if dx >= 0 { -5 } else { 5 }, 0i32)
+        };
+        Point {
+            x: (target.x + perp_x).clamp(0, map.width as i32 - 1),
+            y: (target.y + perp_y).clamp(0, map.height as i32 - 1),
+        }
+    }
+
+    // --- Behaviour: Combat ---
+
+    fn combat_intent(
+        &mut self,
+        entity:    &Entity,
+        map:       &Map,
+        entities:  &[Entity],
+        target_id: usize,
+        last_seen: Point,
+    ) -> Option<Intent> {
+        let tactic = self.profile.combat_tactic().clone();
+
+        if let CombatTactic::Flee = tactic {
+            let flee_pos = self.flee_pos(entity, last_seen, map);
+            return self.navigate_to(entity, flee_pos, map);
+        }
+
+        // Try melee if adjacent to target.
+        if let Some(target) = entities.iter().find(|e| e.id == target_id) {
+            let tc = target.center();
+            if adjacent(entity.position, tc) {
+                return Some(Intent {
+                    phase:  ExecutionPhase::Attack,
+                    data:   IntentData::Target(tc),
+                    action: actions::melee_action,
+                });
+            }
+
+            // Try ranged attack if weapon equipped and target in range.
+            if let Some((slot, range)) = find_weapon(entity) {
+                let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
+                if dist <= range as f32 {
+                    return Some(Intent {
+                        phase:  ExecutionPhase::Attack,
+                        data:   IntentData::TargetWithEquipment { slot, target: tc },
+                        action: actions::single_fire_action,
+                    });
+                }
+            }
+        }
+
+        // No attack available — move or hold.
+        match tactic {
+            CombatTactic::Pursue => {
+                let dest = entities.iter().find(|e| e.id == target_id)
+                    .map(|t| t.center())
+                    .unwrap_or(last_seen);
+                self.navigate_to(entity, dest, map)
+            },
+            CombatTactic::Hold => None,
+            CombatTactic::Flee => unreachable!(),
+        }
+    }
+
+    fn flee_pos(&self, entity: &Entity, threat: Point, map: &Map) -> Point {
+        let deltas: [(i32,i32);8] = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)];
+        deltas.iter()
+            .map(|(dx,dy)| Point { x: entity.position.x + dx, y: entity.position.y + dy })
+            .filter(|&p| {
+                p.x >= 0 && p.y >= 0
+                && p.x < map.width as i32 && p.y < map.height as i32
+                && !map.blocked(p.x, p.y)
+            })
+            .max_by_key(|p| {
+                let dx = p.x - threat.x;
+                let dy = p.y - threat.y;
+                dx * dx + dy * dy
+            })
+            .unwrap_or(entity.position)
+    }
+
+    // --- Navigation ---
+
+    fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map) -> Option<Intent> {
+        if entity.position == destination {
+            return None;
+        }
+
+        let dest_idx = map.pos_idx(destination);
+
+        // Consume the path step we just reached.
+        if let Some(&next_idx) = self.current_path.last() {
+            if map.idx_pos(next_idx) == entity.position {
+                self.current_path.pop();
+            }
+        }
+
+        // Recompute path if destination changed or path is stale/blocked.
+        let needs_repath = self.path_target != Some(dest_idx)
+            || self.current_path.is_empty()
+            || self.current_path.last().map_or(false, |&i| map.blocked_idx(i));
+
+        if needs_repath {
+            self.path_target = Some(dest_idx);
+            let from_idx = map.pos_idx(entity.position);
+            let path = rltk::a_star_search(from_idx, dest_idx, map);
+            self.current_path = if path.success {
+                let mut steps: Vec<usize> = path.steps.iter().rev().cloned().collect();
+                steps.pop(); // remove starting position
+                steps
+            } else {
+                vec![]
+            };
+        }
+
+        let next_pos = self.current_path.last().map(|&i| map.idx_pos(i))?;
+
+        match direction_to(entity.position, next_pos) {
+            Some(dir) if dir != entity.body.facing => Some(Intent {
+                phase:  ExecutionPhase::Movement,
+                data:   IntentData::Direction(dir),
+                action: actions::turn_action,
+            }),
+            Some(_) => Some(Intent {
+                phase:  ExecutionPhase::Movement,
+                data:   IntentData::Target(next_pos),
+                action: actions::move_action,
+            }),
+            None => None,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+#[derive(Copy, Clone)]
+enum AlertSnapshot {
+    Unaware,
+    Suspicious { origin: Point },
+    Alert      { last_known: Point, search: SearchBehavior },
+    Combat     { target_id: usize, last_seen: Point },
+}
+
+fn direction_to(from: Point, to: Point) -> Option<Direction> {
+    match (to.x - from.x, to.y - from.y) {
+        ( 0, -1) => Some(Direction::Up),
+        ( 1, -1) => Some(Direction::UpRight),
+        ( 1,  0) => Some(Direction::Right),
+        ( 1,  1) => Some(Direction::DownRight),
+        ( 0,  1) => Some(Direction::Down),
+        (-1,  1) => Some(Direction::DownLeft),
+        (-1,  0) => Some(Direction::Left),
+        (-1, -1) => Some(Direction::UpLeft),
+        (dx, dy) => {
+            debug_assert!(false, "non-adjacent delta ({},{}) from {:?} to {:?}", dx, dy, from, to);
+            None
+        }
+    }
+}
+
+/// Returns the first equipped firearm with remaining ammo, and its range.
+fn find_weapon(entity: &Entity) -> Option<(SlotType, u32)> {
+    entity.body.item_slots.iter().find_map(|slot| {
+        if let Some(item) = &slot.item {
+            if let ItemKind::Firearm { ammo, range, .. } = item.kind {
+                if ammo > 0 { return Some((slot.slot_type, range)); }
+            }
+        }
+        None
+    })
 }
 
 fn forward_intent(pos: Point, facing: Direction) -> Intent {
     let (dx, dy) = facing.delta_pos();
     Intent {
-        phase: ExecutionPhase::Movement,
-        data: IntentData::Target(Point { x: pos.x + dx, y: pos.y + dy }),
+        phase:  ExecutionPhase::Movement,
+        data:   IntentData::Target(Point { x: pos.x + dx, y: pos.y + dy }),
         action: actions::move_action,
     }
 }
 
-pub struct PatrollingAI {
-    waypoints: Vec<Point>,
-    waypoint_index: usize,
-    current_path: Vec<usize>,
+// ---------------------------------------------------------------------------
+// AI enum — public entry point
+// ---------------------------------------------------------------------------
+
+pub enum AI {
+    None,
+    Rotator,
+    Forward,
+    Actor(ActorAI),
 }
 
-impl PatrollingAI {
-    pub fn new(waypoints: Vec<Point>) -> Self {
-        Self {
-            waypoints,
-            waypoint_index: 0,
-            current_path: vec![],
-        }
-    }
-
-    pub fn compute_intent(&mut self, position: Point, body: &Body, map: &Map) -> Intent {
-        // Consume the path step we're standing on, if any. This is how we detect that a
-        // move succeeded: the entity's position now matches what we declared last tick.
-        //
-        // NOTE — one-tick commit: an entity is committed to its declared target for one full
-        // tick. If a move is blocked (contested or check_fit fails), the same step is retried
-        // next tick rather than reconsidered mid-tick. Future AI variants that need to abort
-        // or redirect a move mid-cycle will need a different mechanism (e.g. a post-resolution
-        // callback, or storing the last declared target and comparing against it here).
-        if let Some(&next_idx) = self.current_path.last() {
-            if map.idx_pos(next_idx) == position {
-                self.current_path.pop();
-            }
-        }
-
-        if self.waypoints[self.waypoint_index] == position {
-            self.waypoint_index += 1;
-            if self.waypoint_index >= self.waypoints.len() {
-                self.waypoint_index = 0;
-            }
-            self.update_path(position, map);
-        } else {
-            match self.current_path.last() {
-                Some(pos_index) => {
-                    if map.blocked_idx(*pos_index) || !adjacent(map.idx_pos(*pos_index), position) {
-                        self.update_path(position, map);
-                    }
-                },
-                None => self.update_path(position, map),
-            }
-        }
-
-        match self.decide_direction(position, map) {
-            Some(direction) => {
-                if direction != body.facing {
-                    Intent {
-                        phase: ExecutionPhase::Movement,
-                        data: IntentData::Direction(direction),
-                        action: actions::turn_action,
-                    }
-                } else {
-                    Intent {
-                        phase: ExecutionPhase::Movement,
-                        data: IntentData::Target(map.idx_pos(*self.current_path.last().unwrap())),
-                        action: actions::move_action,
-                    }
-                }
-            },
-            None => idle_intent(),
-        }
-    }
-
-    fn update_path(&mut self, position: Point, map: &Map) {
-        let path = rltk::a_star_search(
-            map.pos_idx(position),
-            map.pos_idx(self.waypoints[self.waypoint_index]),
-            map);
-
-        self.current_path = vec![];
-        if path.success {
-            for step in path.steps.iter().rev() {
-                self.current_path.push(*step);
-            }
-            // Remove starting position
-            self.current_path.pop();
-        }
-    }
-
-    fn decide_direction(&self, position: Point, map: &Map) -> Option<Direction> {
-        match self.current_path.last() {
-            Some(next_step) => {
-                let step = map.idx_pos(*next_step);
-                match (position.x - step.x, position.y - step.y) {
-                    ( 0, -1) => Some(Direction::Down),
-                    ( 0,  1) => Some(Direction::Up),
-                    (-1, -1) => Some(Direction::DownRight),
-                    (-1,  1) => Some(Direction::UpRight),
-                    (-1,  0) => Some(Direction::Right),
-                    ( 1, -1) => Some(Direction::DownLeft),
-                    ( 1,  1) => Some(Direction::UpLeft),
-                    ( 1,  0) => Some(Direction::Left),
-                    (dx, dy) => {
-                        debug_assert!(false, "unexpected delta ({},{}) pos:{},{} step:{},{}",
-                            dx, dy, position.x, position.y, step.x, step.y);
-                        None
-                    }
-                }
-            },
-            None => None,
+impl AI {
+    pub fn compute_intent(
+        &mut self,
+        entity:   &Entity,
+        map:      &Map,
+        entities: &[Entity],
+        sounds:   &[SoundEvent],
+    ) -> (Option<Intent>, Vec<SoundEvent>) {
+        match self {
+            AI::None => (None, vec![]),
+            AI::Rotator => (Some(Intent {
+                phase:  ExecutionPhase::Movement,
+                data:   IntentData::Direction(entity.body.facing.clockwise()),
+                action: actions::turn_action,
+            }), vec![]),
+            AI::Forward => (Some(forward_intent(entity.position, entity.body.facing)), vec![]),
+            AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds),
         }
     }
 }

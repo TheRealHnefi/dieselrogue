@@ -82,7 +82,11 @@ impl Entity {
             intent: idle_intent(),
             body: Body::human_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
-            ai: AI::Patrolling(PatrollingAI::new(waypoints)),
+            ai: AI::Actor(ActorAI::new(Profile::Patrol {
+                waypoints,
+                waypoint_index: 0,
+                combat_tactic: CombatTactic::Pursue,
+            })),
             key_color: None,
         }
     }
