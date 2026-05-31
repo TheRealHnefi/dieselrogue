@@ -93,15 +93,20 @@ fn main() -> rltk::BError {
     let font_file      = settings.font_size.font_file();
     let font_native_px = settings.font_size.font_native_px();
 
-    let context = rltk::RltkBuilder::new()
+    let mut builder = rltk::RltkBuilder::new()
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
         .with_dimensions(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT)
         .with_title("Diesel Rogue")
         .with_resource_path("resources")
         .with_font(font_file, font_native_px, font_native_px)
-        .with_tile_dimensions(tile_px, tile_px)
-        .build()?;
+        .with_tile_dimensions(tile_px, tile_px);
+
+    if settings.fullscreen {
+        builder = builder.with_fullscreen(true);
+    }
+
+    let context = builder.build()?;
 
     let mut state = State::new_game_state(25);
 

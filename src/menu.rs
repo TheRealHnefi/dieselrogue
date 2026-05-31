@@ -303,6 +303,19 @@ fn action_noop(_state: &mut State) -> RunState {
     return RunState::AwaitingMenuInput;
 }
 
+fn action_toggle_fullscreen(state: &mut State) -> RunState {
+    let current = state.pending_fullscreen
+        .unwrap_or_else(|| Settings::load().fullscreen);
+    let next = !current;
+    state.pending_fullscreen = Some(next);
+    let mut settings = Settings::load();
+    settings.fullscreen = next;
+    settings.save();
+    state.menu_stack.clear();
+    state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
+    RunState::AwaitingMenuInput
+}
+
 fn action_cycle_font_size(state: &mut State) -> RunState {
     let current = state.pending_font_size
         .unwrap_or_else(|| Settings::load().font_size);
@@ -312,7 +325,7 @@ fn action_cycle_font_size(state: &mut State) -> RunState {
     settings.font_size = next;
     settings.save();
     state.menu_stack.clear();
-    state.menu_stack.push(Box::new(main_menu(state.pending_font_size)));
+    state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
     RunState::AwaitingMenuInput
 }
 
@@ -340,22 +353,31 @@ fn action_show_inventory_item_menu(item: Item, state: &mut State) -> RunState {
     return RunState::AwaitingMenuInput;
 }
 
-pub fn main_menu(pending_font_size: Option<FontSize>) -> MenuPanel<SystemRow> {
-    let current_size = pending_font_size
-        .unwrap_or_else(|| Settings::load().font_size);
+pub fn main_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Option<bool>) -> MenuPanel<SystemRow> {
+    let settings = Settings::load();
+
+    let current_size = pending_font_size.unwrap_or(settings.font_size);
     let font_label = if pending_font_size.is_some() {
         format!("Font size: {} (restart to apply)", current_size.label())
     } else {
         format!("Font size: {}", current_size.label())
     };
 
+    let current_fs = pending_fullscreen.unwrap_or(settings.fullscreen);
+    let fs_label = if pending_fullscreen.is_some() {
+        format!("Fullscreen: {} (restart to apply)", if current_fs { "On" } else { "Off" })
+    } else {
+        format!("Fullscreen: {}", if current_fs { "On" } else { "Off" })
+    };
+
     MenuPanel {
         x: 35,
         y: 20,
         rows: vec![
-            SystemRow { text: "Use item".to_string(),  action: action_open_item_menu  },
-            SystemRow { text: font_label,               action: action_cycle_font_size },
-            SystemRow { text: "Quit".to_string(),       action: action_quit            },
+            SystemRow { text: "Use item".to_string(), action: action_open_item_menu   },
+            SystemRow { text: font_label,              action: action_cycle_font_size  },
+            SystemRow { text: fs_label,                action: action_toggle_fullscreen },
+            SystemRow { text: "Quit".to_string(),      action: action_quit             },
         ],
         selected_row: 0,
         no_selectable_rows: false

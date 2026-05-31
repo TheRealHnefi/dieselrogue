@@ -123,7 +123,7 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
 
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
-                state.menu_stack.push(Box::new(main_menu(state.pending_font_size)));
+                state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
                 return RunState::AwaitingMenuInput;
             }
 
