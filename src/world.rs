@@ -210,6 +210,7 @@ impl World {
 
         let mut player = Entity::new_human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
+        player.paper_doll = Some(PaperDoll::Player);
         player.body.update_abilities();
 
         player.create_pawns(&mut self.map);
@@ -224,6 +225,7 @@ impl World {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
         let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Rotator;
+        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
         self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
@@ -235,6 +237,7 @@ impl World {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
         let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Forward;
+        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
         self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
@@ -256,6 +259,7 @@ impl World {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
         let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Actor(ActorAI::new(profile));
+        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
         self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);

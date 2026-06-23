@@ -67,9 +67,9 @@ pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
 
     let show_cursor = (monotime / 250) % 2 == 0;
     for menu in &state.menu_stack {
-        if menu.shows_paper_doll() {
+        if let Some(doll_kind) = menu.paper_doll_kind() {
             if let Some((mx, my, mw, mh)) = menu.bounds() {
-                draw_equipment_panel(context, &state.rex_assets.player_doll, mx, my, mw, mh);
+                draw_equipment_panel(context, state.rex_assets.get_doll(doll_kind), mx, my, mw, mh);
             }
         }
         menu.draw(context, show_cursor);
