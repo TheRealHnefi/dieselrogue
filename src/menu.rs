@@ -25,6 +25,7 @@ pub trait Menu {
     fn no_selectable_exists(&self) -> bool;
     fn get_action(&self) -> MenuAction;
     fn draw(&self, context: &mut Rltk, show_cursor: bool);
+    fn shows_paper_doll(&self) -> bool { false }
 }
 
 pub trait MenuRow {
@@ -74,7 +75,8 @@ pub struct MenuPanel<T: MenuRow> {
     pub y: i32,
     pub rows: Vec<T>,
     pub selected_row: usize,
-    no_selectable_rows: bool
+    no_selectable_rows: bool,
+    pub paper_doll: bool,
 }
 
 pub struct SystemRow {
@@ -380,7 +382,8 @@ pub fn main_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Option
             SystemRow { text: "Quit".to_string(),      action: action_quit             },
         ],
         selected_row: 0,
-        no_selectable_rows: false
+        no_selectable_rows: false,
+        paper_doll: false,
     }
 }
 
@@ -407,7 +410,8 @@ pub fn item_menu(world: &World) -> Option<MenuPanel<ItemRow>> {
         y: 20,
         rows: item_rows,
         selected_row: 0,
-        no_selectable_rows: false
+        no_selectable_rows: false,
+        paper_doll: false,
     })
 }
 
@@ -429,7 +433,8 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
         y: 20,
         rows: action_rows,
         selected_row: 0,
-        no_selectable_rows: false
+        no_selectable_rows: false,
+        paper_doll: false,
     }
 }
 
@@ -552,6 +557,7 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
         rows,
         selected_row: 0,
         no_selectable_rows,
+        paper_doll: false,
     }
 }
 
@@ -586,7 +592,8 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
         y: 20,
         rows: slot_rows,
         selected_row: first_selectable_row as usize,
-        no_selectable_rows: first_selectable_row == -1
+        no_selectable_rows: first_selectable_row == -1,
+        paper_doll: true,
     }
 }
 
@@ -616,7 +623,8 @@ pub fn targeting_menu(world: &World, position: Point) -> Option<MenuPanel<Target
         y: 20,
         rows: targeting_rows,
         selected_row: 0,
-        no_selectable_rows: false
+        no_selectable_rows: false,
+        paper_doll: false,
     })
 }
 
@@ -646,6 +654,7 @@ pub fn entity_equipment_view(entity: &Entity) -> MenuPanel<EntityViewRow> {
         rows,
         selected_row: 0,
         no_selectable_rows: true,
+        paper_doll: false,
     }
 }
 
@@ -680,6 +689,10 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
 
     fn no_selectable_exists(&self) -> bool {
         self.no_selectable_rows
+    }
+
+    fn shows_paper_doll(&self) -> bool {
+        self.paper_doll
     }
 
     fn get_action(&self) -> MenuAction {
