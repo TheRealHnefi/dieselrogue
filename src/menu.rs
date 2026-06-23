@@ -26,6 +26,8 @@ pub trait Menu {
     fn get_action(&self) -> MenuAction;
     fn draw(&self, context: &mut Rltk, show_cursor: bool);
     fn shows_paper_doll(&self) -> bool { false }
+    /// Returns (x, y, width, height) of the menu box, matching what draw() renders.
+    fn bounds(&self) -> Option<(i32, i32, i32, i32)> { None }
 }
 
 pub trait MenuRow {
@@ -693,6 +695,12 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
 
     fn shows_paper_doll(&self) -> bool {
         self.paper_doll
+    }
+
+    fn bounds(&self) -> Option<(i32, i32, i32, i32)> {
+        let w = self.rows.iter().map(|r| r.get_text().len()).max().unwrap_or(0) as i32 + 3;
+        let h = self.rows.len() as i32 + 1;
+        Some((self.x, self.y, w, h))
     }
 
     fn get_action(&self) -> MenuAction {
