@@ -294,7 +294,8 @@ impl World {
     pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         let pos = self.map.nearest_free_pawn_position_sized(pos, 3, 3)?;
 
-        let tank = Entity::new_tank(self.entities.len(), pos, facing, name);
+        let mut tank = Entity::new_tank(self.entities.len(), pos, facing, name);
+        tank.paper_doll = Some(PaperDoll::Tank);
         tank.create_pawns(&mut self.map);
         self.entities.push(tank);
 
