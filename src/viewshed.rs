@@ -1,4 +1,4 @@
-use rltk::{Point, field_of_view};
+use rltk::{Point, BaseMap};
 use crate::components::*;
 use crate::Map;
 
@@ -40,167 +40,139 @@ impl Viewshed {
     }
 
     pub fn update(&mut self, pos: Point, facing: Direction, range: i32, effective_fov: &FieldOfView, map: &Map) {
-        self.visible_tiles = field_of_view(pos, range, map);
-        match effective_fov {
-            FieldOfView::Fov90  => self.cull_90(pos, facing, map),
-            FieldOfView::Fov180 => self.cull_180(pos, facing, map),
-            FieldOfView::Fov270 => self.cull_270(pos, facing, map),
-            FieldOfView::Fov360 => ()
-        }
+        compute_fov(pos, range, facing, effective_fov, map, &mut self.visible_tiles);
     }
+}
 
-    fn cull_90(&mut self, pos: Point, facing: Direction, map: &Map) {
-        match facing {
-            Direction::Up => {
-                self.visible_tiles.retain(|p|
-                    p.x - pos.x >= p.y - pos.y
-                    && p.x - pos.x <= -(p.y - pos.y)
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::UpRight => {
-                self.visible_tiles.retain(|p|
-                    p.x >= pos.x
-                    && p.y <= pos.y
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Right => {
-                self.visible_tiles.retain(|p|
-                    p.x - pos.x >= -(p.y - pos.y)
-                    && p.x - pos.x >= p.y - pos.y
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::DownRight => {
-                self.visible_tiles.retain(|p|
-                    p.x >= pos.x
-                    && p.y >= pos.y
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Down => {
-                self.visible_tiles.retain(|p|
-                    p.x - pos.x <= p.y - pos.y
-                    && p.x - pos.x >= -(p.y - pos.y)
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::DownLeft => {
-                self.visible_tiles.retain(|p|
-                    p.x <= pos.x
-                    && p.y >= pos.y
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Left => {
-                self.visible_tiles.retain(|p|
-                    p.x - pos.x <= -(p.y - pos.y)
-                    && p.x - pos.x <= p.y - pos.y
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::UpLeft => {
-                self.visible_tiles.retain(|p|
-                    p.x <= pos.x
-                    && p.y <= pos.y
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            }                
-        }
-    }
+// Per-octant coordinate transforms: (dx_row, dx_col, dy_row, dy_col)
+// Tile offset from origin: dx = dx_row*row + dx_col*col, dy = dy_row*row + dy_col*col
+// row ∈ [1, range] = distance; col ∈ [0, row]; slope = col/row ∈ [0, 1]
+// col=0 is the octant's primary axis, col=row is the 45° boundary.
+// Y increases downward (screen coordinates).
+const OCTANT_TRANSFORMS: [(i32, i32, i32, i32); 8] = [
+    ( 1,  0,  0, -1), // 0: E→NE  (right, trending up)
+    ( 0,  1, -1,  0), // 1: N→NE  (up, trending right)
+    ( 0, -1, -1,  0), // 2: N→NW  (up, trending left)
+    (-1,  0,  0, -1), // 3: W→NW  (left, trending up)
+    (-1,  0,  0,  1), // 4: W→SW  (left, trending down)
+    ( 0, -1,  1,  0), // 5: S→SW  (down, trending left)
+    ( 0,  1,  1,  0), // 6: S→SE  (down, trending right)
+    ( 1,  0,  0,  1), // 7: E→SE  (right, trending down)
+];
 
-    // Retains everything except the 90° blind spot directly behind the entity.
-    // Each arm of the retain condition is the negation of the opposite direction's cull_90.
-    // The entity's own tile (*p == pos) is always kept because both sides of the OR evaluate
-    // to false at dx=0, dy=0.
-    fn cull_270(&mut self, pos: Point, facing: Direction, map: &Map) {
-        match facing {
-            Direction::Up => {
-                // blind spot = Down-cone: dx <= dy && dx >= -dy
-                self.visible_tiles.retain(|p| {
-                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
-                    (dx > dy || dx < -dy || (dx == 0 && dy == 0))
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
-                });
-            },
-            Direction::UpRight => {
-                // blind spot = DownLeft-cone: px <= pos.x && py >= pos.y
-                self.visible_tiles.retain(|p|
-                    (p.x > pos.x || p.y < pos.y || *p == pos)
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Right => {
-                // blind spot = Left-cone: dx <= -dy && dx <= dy
-                self.visible_tiles.retain(|p| {
-                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
-                    (dx > -dy || dx > dy || (dx == 0 && dy == 0))
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
-                });
-            },
-            Direction::DownRight => {
-                // blind spot = UpLeft-cone: px <= pos.x && py <= pos.y
-                self.visible_tiles.retain(|p|
-                    (p.x > pos.x || p.y > pos.y || *p == pos)
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Down => {
-                // blind spot = Up-cone: dx >= dy && dx <= -dy
-                self.visible_tiles.retain(|p| {
-                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
-                    (dx < dy || dx > -dy || (dx == 0 && dy == 0))
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
-                });
-            },
-            Direction::DownLeft => {
-                // blind spot = UpRight-cone: px >= pos.x && py <= pos.y
-                self.visible_tiles.retain(|p|
-                    (p.x < pos.x || p.y > pos.y || *p == pos)
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Left => {
-                // blind spot = Right-cone: dx >= -dy && dx >= dy
-                self.visible_tiles.retain(|p| {
-                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
-                    (dx < -dy || dx < dy || (dx == 0 && dy == 0))
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32
-                });
-            },
-            Direction::UpLeft => {
-                // blind spot = DownRight-cone: px >= pos.x && py >= pos.y
-                self.visible_tiles.retain(|p|
-                    (p.x < pos.x || p.y < pos.y || *p == pos)
-                    && p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-        }
+// Maps each (facing, fov) pair to the octants that fall entirely inside the viewing cone.
+// Cardinal facings align with octant boundaries, so the cone is covered by exactly 2/4/6 full
+// octants with no per-tile trimming needed.  Diagonal facings use 4/6 octants for the same reason.
+fn octants_for(facing: Direction, fov: &FieldOfView) -> &'static [usize] {
+    match fov {
+        FieldOfView::Fov360 => &[0, 1, 2, 3, 4, 5, 6, 7],
+        FieldOfView::Fov90 => match facing {
+            Direction::Right     => &[0, 7],
+            Direction::UpRight   => &[0, 1],
+            Direction::Up        => &[1, 2],
+            Direction::UpLeft    => &[2, 3],
+            Direction::Left      => &[3, 4],
+            Direction::DownLeft  => &[4, 5],
+            Direction::Down      => &[5, 6],
+            Direction::DownRight => &[6, 7],
+        },
+        FieldOfView::Fov180 => match facing {
+            Direction::Right     => &[0, 1, 6, 7],
+            Direction::UpRight   => &[0, 1, 2, 7],
+            Direction::Up        => &[0, 1, 2, 3],
+            Direction::UpLeft    => &[1, 2, 3, 4],
+            Direction::Left      => &[2, 3, 4, 5],
+            Direction::DownLeft  => &[3, 4, 5, 6],
+            Direction::Down      => &[4, 5, 6, 7],
+            Direction::DownRight => &[0, 5, 6, 7],
+        },
+        FieldOfView::Fov270 => match facing {
+            Direction::Right     => &[0, 1, 2, 5, 6, 7],
+            Direction::UpRight   => &[0, 1, 2, 3, 6, 7],
+            Direction::Up        => &[0, 1, 2, 3, 4, 7],
+            Direction::UpLeft    => &[0, 1, 2, 3, 4, 5],
+            Direction::Left      => &[1, 2, 3, 4, 5, 6],
+            Direction::DownLeft  => &[2, 3, 4, 5, 6, 7],
+            Direction::Down      => &[0, 3, 4, 5, 6, 7],
+            Direction::DownRight => &[0, 1, 4, 5, 6, 7],
+        },
     }
+}
 
-    fn cull_180(&mut self, pos: Point, facing: Direction, map: &Map) {
-        match facing {
-            Direction::Up => {
-                self.visible_tiles.retain(|p| p.y <= pos.y &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::UpRight => {
-                self.visible_tiles.retain(|p| p.x - pos.x >= p.y - pos.y &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Right => {
-                self.visible_tiles.retain(|p| p.x >= pos.x &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::DownRight => {
-                self.visible_tiles.retain(|p| p.x - pos.x >= -(p.y - pos.y) &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Down => {
-                self.visible_tiles.retain(|p| p.y >= pos.y &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::DownLeft => {
-                self.visible_tiles.retain(|p| p.x - pos.x <= p.y - pos.y &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::Left => {
-                self.visible_tiles.retain(|p| p.x <= pos.x &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            },
-            Direction::UpLeft => {
-                self.visible_tiles.retain(|p| p.x - pos.x <= -(p.y - pos.y) &&
-                    p.x >= 0 && p.x < map.width as i32 && p.y > 0 && p.y < map.height as i32);
-            }                
+fn compute_fov(
+    origin: Point,
+    range: i32,
+    facing: Direction,
+    effective_fov: &FieldOfView,
+    map: &Map,
+    out: &mut Vec<Point>,
+) {
+    out.clear();
+    out.push(origin);
+    let range_sq = range * range;
+    for &oct in octants_for(facing, effective_fov) {
+        cast_light_octant(origin, range, range_sq, OCTANT_TRANSFORMS[oct], map, out);
+    }
+}
+
+// Scans one octant using recursive shadowcasting.
+// Tracks shadow intervals in slope-space [0, 1] accumulated from opaque tiles.
+// A tile's shadow spans [(col-0.5)/row, (col+0.5)/row]; visibility is tested at center slope col/row.
+fn cast_light_octant(
+    origin: Point,
+    range: i32,
+    range_sq: i32,
+    t: (i32, i32, i32, i32),
+    map: &Map,
+    out: &mut Vec<Point>,
+) {
+    let (dx_row, dx_col, dy_row, dy_col) = t;
+    let map_w = map.width as i32;
+    let map_h = map.height as i32;
+    let mut shadows: Vec<(f32, f32)> = Vec::with_capacity(8);
+
+    for row in 1..=range {
+        if shadows.len() == 1 && shadows[0].0 <= 0.0 && shadows[0].1 >= 1.0 {
+            break; // entire octant is in shadow
+        }
+        for col in 0..=row {
+            let slope = col as f32 / row as f32;
+            if shadows.iter().any(|&(lo, hi)| lo <= slope && slope <= hi) {
+                continue;
+            }
+            let dx = dx_row * row + dx_col * col;
+            let dy = dy_row * row + dy_col * col;
+            let x = origin.x + dx;
+            let y = origin.y + dy;
+            if x < 0 || y < 0 || x >= map_w || y >= map_h {
+                continue;
+            }
+            if dx * dx + dy * dy <= range_sq {
+                out.push(Point::new(x, y));
+            }
+            if map.is_opaque(map.xy_idx(x, y)) {
+                let lo = ((col as f32 - 0.5) / row as f32).max(0.0);
+                let hi = (col as f32 + 0.5) / row as f32;
+                add_shadow(&mut shadows, lo, hi);
+            }
         }
     }
+}
+
+// Inserts a new shadow interval and merges any overlapping existing ones.
+fn add_shadow(shadows: &mut Vec<(f32, f32)>, new_lo: f32, new_hi: f32) {
+    let mut lo = new_lo;
+    let mut hi = new_hi;
+    let mut i = 0;
+    while i < shadows.len() {
+        let (slo, shi) = shadows[i];
+        if slo <= hi && shi >= lo {
+            lo = lo.min(slo);
+            hi = hi.max(shi);
+            shadows.swap_remove(i);
+        } else {
+            i += 1;
+        }
+    }
+    shadows.push((lo, hi));
 }
