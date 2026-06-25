@@ -1,4 +1,4 @@
-use rltk::{Rltk, GameState, Point};
+use rltk::{Rltk, GameState, Point, VirtualKeyCode};
 use std::cmp::max;
 use std::time::Instant;
 use crate::Ability;
@@ -58,6 +58,10 @@ pub struct State {
     /// Fullscreen toggle chosen in the menu but not yet applied (requires restart).
     pub pending_fullscreen: Option<bool>,
 
+    /// Last key pressed, captured every tick before the state machine runs.
+    /// Persists across non-input states so a press during AI/resolve is not dropped.
+    pub last_input: Option<VirtualKeyCode>,
+
     start_tick: Instant
 }
 
@@ -84,6 +88,7 @@ impl State {
             rex_assets: RexAssets::new(),
             pending_font_size: None,
             pending_fullscreen: None,
+            last_input: None,
             start_tick: Instant::now()
         }
     }
@@ -97,6 +102,10 @@ impl GameState for State {
     // Runs every frame.
     #[tracing::instrument(skip_all)]
     fn tick(&mut self, context: &mut Rltk) {
+        if context.key.is_some() {
+            self.last_input = context.key;
+        }
+
         let monotime = self.start_tick.elapsed().as_millis();
         draw_main_screen(self, context, monotime);
 

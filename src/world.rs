@@ -156,12 +156,12 @@ impl World {
         assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
         assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
 
-        // 400 enemies across the map in a 10×10 grid.
+        // 900 enemies across the map.
         let dirs = [
             Direction::Up, Direction::UpRight, Direction::Right, Direction::DownRight,
             Direction::Down, Direction::DownLeft, Direction::Left, Direction::UpLeft,
         ];
-        let grid = 20usize;
+        let grid = 30usize;
         let cell_w = world.map.width / grid;
         let cell_h = world.map.height / grid;
         for gy in 0..grid {

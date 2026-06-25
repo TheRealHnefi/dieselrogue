@@ -3,8 +3,8 @@ use super::*;
 use std::cmp::*;
 
 #[tracing::instrument(skip_all)]
-pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
-    match context.key {
+pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    match state.last_input.take() {
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 => {
@@ -164,8 +164,8 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
     }
 }
 
-pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunState {
-    match context.key {
+pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    match state.last_input.take() {
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 => {
@@ -267,12 +267,12 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
     RunState::AwaitingPositionalTargetingInput
 }
 
-pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
+pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
     assert!(!state.menu_stack.is_empty());
     let index = state.menu_stack.len() - 1;
     let menu = &mut state.menu_stack[index];
 
-    match context.key {
+    match state.last_input.take() {
         Some(key) => match key {
             VirtualKeyCode::Escape => {
                 state.menu_stack.pop();
@@ -368,8 +368,8 @@ fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) 
     RunState::Resolve(ExecutionPhase::Instant)
 }
 
-pub fn looking_input(state: &mut State, context: &mut Rltk) -> RunState {
-    if let Some(key) = context.key {
+pub fn looking_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    if let Some(key) = state.last_input.take() {
         match key {
             VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 => {
                 state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
@@ -420,8 +420,8 @@ pub fn looking_input(state: &mut State, context: &mut Rltk) -> RunState {
     RunState::Looking
 }
 
-pub fn juke_direction_input(state: &mut State, context: &mut Rltk) -> RunState {
-    let key = match context.key {
+pub fn juke_direction_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let key = match state.last_input.take() {
         Some(k) => k,
         None => return RunState::AwaitingJukeInput,
     };
@@ -465,8 +465,8 @@ pub fn juke_direction_input(state: &mut State, context: &mut Rltk) -> RunState {
     RunState::AwaitingJukeInput
 }
 
-pub fn level_up_input(state: &mut State, context: &mut Rltk) -> RunState {
-    let key = match context.key {
+pub fn level_up_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let key = match state.last_input.take() {
         Some(k) => k,
         None => return RunState::AwaitingLevelUpInput,
     };
@@ -499,8 +499,8 @@ pub fn level_up_input(state: &mut State, context: &mut Rltk) -> RunState {
     }
 }
 
-pub fn entity_targeting_input(state: &mut State, context: &mut Rltk) -> RunState {
-    if let Some(key) = context.key {
+pub fn entity_targeting_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    if let Some(key) = state.last_input.take() {
         match key {
             VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 |
             VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 |
