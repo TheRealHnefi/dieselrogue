@@ -120,9 +120,9 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
   blocks
 }
 
-pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
+pub fn generate_block_grid(size: usize, seed: u64) -> Option<Vec<Block>> {
   println!("Generating blocks");
-  let mut rng = RandomNumberGenerator::new();
+  let mut rng = RandomNumberGenerator::seeded(seed);
 
   let corner_blocks = generate_blocks("corner");
   let edge_blocks   = generate_blocks("edge");

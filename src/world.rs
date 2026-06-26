@@ -72,7 +72,7 @@ impl World {
     /// Create new world.
     /// # Arguments
     /// * `size` - Number of blocks that make up one size of the map.
-    pub fn new(size: usize) -> Self {
+    pub fn new(size: usize, seed: u64) -> Self {
         let mut world = World {
             player_id: Option::None,
             entities: vec![],
@@ -82,7 +82,7 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
-            map: Map::new_game_map(size),
+            map: Map::new_game_map(size, seed),
             debug_mode: false,
             parallel_ai: false,
         };
