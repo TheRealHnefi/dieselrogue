@@ -2,6 +2,43 @@ use rltk::{VirtualKeyCode, Rltk, Point};
 use super::*;
 use std::cmp::*;
 
+pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let key = match state.last_input.take() {
+        Some(k) => k,
+        None => return RunState::WelcomeScreen,
+    };
+
+    match key {
+        VirtualKeyCode::Up | VirtualKeyCode::Numpad8 => {
+            if state.welcome_selected > 0 {
+                state.welcome_selected -= 1;
+            }
+            RunState::WelcomeScreen
+        },
+        VirtualKeyCode::Down | VirtualKeyCode::Numpad2 => {
+            if state.welcome_selected < 1 {
+                state.welcome_selected += 1;
+            }
+            RunState::WelcomeScreen
+        },
+        VirtualKeyCode::Return | VirtualKeyCode::Space => {
+            match state.welcome_selected {
+                0 => RunState::WelcomeSplash,
+                _ => std::process::exit(0),
+            }
+        },
+        VirtualKeyCode::Escape => std::process::exit(0),
+        _ => RunState::WelcomeScreen,
+    }
+}
+
+pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    match state.last_input.take() {
+        Some(_) => RunState::AwaitingInput,
+        None => RunState::WelcomeSplash,
+    }
+}
+
 #[tracing::instrument(skip_all)]
 pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
     match state.last_input.take() {

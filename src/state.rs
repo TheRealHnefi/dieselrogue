@@ -16,6 +16,8 @@ use crate::RexAssets;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
+    WelcomeScreen,
+    WelcomeSplash,
     DeclareIntent,
     AwaitingInput,
     AwaitingMenuInput,
@@ -31,6 +33,7 @@ pub enum RunState {
 
 pub struct State {
     pub run_state: RunState,
+    pub welcome_selected: usize,
     pub cursor_pos: Point,
     pub log: GameLog,
 
@@ -69,9 +72,10 @@ impl State {
     /// Create new game state.
     /// # Arguments
     /// * `size` - Number of blocks that make up one side of the map.
-    pub fn new_game_state(size: usize, seed: u64) -> Self {
+    pub fn new_game_state(size: usize, seed: u64, skip_intro: bool) -> Self {
         Self {
-            run_state: RunState::AwaitingInput,
+            run_state: if skip_intro { RunState::AwaitingInput } else { RunState::WelcomeScreen },
+            welcome_selected: 0,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(size, seed),
@@ -107,6 +111,21 @@ impl GameState for State {
         }
 
         let monotime = self.start_tick.elapsed().as_millis();
+
+        match self.run_state {
+            RunState::WelcomeScreen => {
+                draw_welcome_screen(self, context);
+                self.run_state = welcome_screen_input(self, context);
+                return;
+            },
+            RunState::WelcomeSplash => {
+                draw_welcome_splash(context);
+                self.run_state = welcome_splash_input(self, context);
+                return;
+            },
+            _ => {}
+        }
+
         draw_main_screen(self, context, monotime);
 
         match self.run_state {
@@ -146,6 +165,7 @@ impl GameState for State {
             RunState::ResolveStatusEffects => {
                 self.resolve_status_effects();
             }
+            RunState::WelcomeScreen | RunState::WelcomeSplash => unreachable!(),
         }
     }
 }
