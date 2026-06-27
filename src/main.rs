@@ -146,7 +146,7 @@ fn main() -> rltk::BError {
     let (seed, skip_intro) = parse_args();
     println!("RNG seed: {}", seed);
 
-    let mut state = State::new_game_state(25, seed, skip_intro);
+    let mut state = State::new_game_state(25, seed, skip_intro, settings.bindings);
 
     state.log.entries.push("Welcome!".to_string());
 

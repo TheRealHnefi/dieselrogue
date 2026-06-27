@@ -1,4 +1,5 @@
 use rltk::{Rltk, GameState, Point, VirtualKeyCode};
+use crate::Bindings;
 use std::cmp::max;
 use std::time::Instant;
 use crate::Ability;
@@ -34,6 +35,7 @@ pub enum RunState {
 pub struct State {
     pub run_state: RunState,
     pub welcome_selected: usize,
+    pub bindings: Bindings,
     pub cursor_pos: Point,
     pub log: GameLog,
 
@@ -72,10 +74,11 @@ impl State {
     /// Create new game state.
     /// # Arguments
     /// * `size` - Number of blocks that make up one side of the map.
-    pub fn new_game_state(size: usize, seed: u64, skip_intro: bool) -> Self {
+    pub fn new_game_state(size: usize, seed: u64, skip_intro: bool, bindings: Bindings) -> Self {
         Self {
             run_state: if skip_intro { RunState::AwaitingInput } else { RunState::WelcomeScreen },
             welcome_selected: 0,
+            bindings,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(size, seed),
