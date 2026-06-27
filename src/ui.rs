@@ -124,6 +124,21 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
     context.print_color_centered(30, LINE_COLOR, BG_COLOR, "DIESELROGUE");
     context.print_color_centered(31, INACTIVE_COLOR, BG_COLOR, "a diesel-punk roguelike");
 
+    let welcome_image = &state.rex_assets.title_screen.layers[0];
+    for x in 0..SCREEN_WIDTH {
+      for y in 0..SCREEN_HEIGHT {
+        if let Some(cell) = welcome_image.get(x as usize, y as usize) {
+          context.set(
+            x,
+            y,
+            RGB::from_u8(cell.fg.r, cell.fg.g, cell.fg.b),
+            RGB::from_u8(cell.bg.r, cell.bg.g, cell.bg.b),
+            cell.ch as u8,
+        );
+        }
+      }
+    }
+
     let box_w = 18i32;
     let box_x = SCREEN_WIDTH as i32 / 2 - box_w / 2;
     let box_y = 40i32;
