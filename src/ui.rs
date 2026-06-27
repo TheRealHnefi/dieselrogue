@@ -807,7 +807,7 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
                     }
                 };
                 if !debug_mode && !map.visible_tiles[index] {
-                    renderable.color = renderable.color.to_greyscale();
+                    renderable.color = rltk::RGB::from_u8(30, 30, 30);
                 }
                 context.set(x - viewport.x1, y - viewport.y1, renderable.color, renderable.background, renderable.glyph);
             }
