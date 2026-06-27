@@ -16,7 +16,7 @@ pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState 
             RunState::WelcomeScreen
         },
         VirtualKeyCode::Down | VirtualKeyCode::Numpad2 => {
-            if state.welcome_selected < 1 {
+            if state.welcome_selected < 2 {
                 state.welcome_selected += 1;
             }
             RunState::WelcomeScreen
@@ -24,6 +24,12 @@ pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState 
         VirtualKeyCode::Return | VirtualKeyCode::Space => {
             match state.welcome_selected {
                 0 => RunState::WelcomeSplash,
+                1 => {
+                    state.menu_return_state = RunState::WelcomeScreen;
+                    state.menu_stack.clear();
+                    state.menu_stack.push(Box::new(settings_menu(state.pending_font_size, state.pending_fullscreen)));
+                    RunState::AwaitingMenuInput
+                },
                 _ => std::process::exit(0),
             }
         },
@@ -34,7 +40,10 @@ pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState 
 
 pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState {
     match state.last_input.take() {
-        Some(_) => RunState::AwaitingInput,
+        Some(_) => {
+            state.menu_return_state = RunState::AwaitingInput;
+            RunState::AwaitingInput
+        },
         None => RunState::WelcomeSplash,
     }
 }
@@ -151,7 +160,7 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
 
             key if key == b.open_menu => {
                 state.menu_stack.clear();
-                state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
+                state.menu_stack.push(Box::new(main_menu()));
                 return RunState::AwaitingMenuInput;
             },
 
@@ -315,7 +324,7 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
             VirtualKeyCode::Escape => {
                 state.menu_stack.pop();
                 if state.menu_stack.is_empty() {
-                    return RunState::AwaitingInput;
+                    return state.menu_return_state;
                 }
                 else {
                     return RunState::AwaitingMenuInput;

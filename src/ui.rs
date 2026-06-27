@@ -143,9 +143,9 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
     let box_x = SCREEN_WIDTH as i32 / 2 - box_w / 2;
     let box_y = 40i32;
 
-    context.draw_box(box_x, box_y, box_w, 3, LINE_COLOR, BG_COLOR);
+    context.draw_box(box_x, box_y, box_w, 4, LINE_COLOR, BG_COLOR);
 
-    let items = ["New Game", "Quit"];
+    let items = ["New Game", "Settings", "Quit"];
     for (i, &item) in items.iter().enumerate() {
         let row_y = box_y + 1 + i as i32;
         let (fg, bg) = if i == state.welcome_selected {
