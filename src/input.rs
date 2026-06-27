@@ -375,17 +375,21 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
 
 pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
     let target = match state.run_state {
-        RunState::AwaitingRebind(t) => t,
+        RunState::AwaitingRebind(t, _) => t,
         _ => return RunState::AwaitingMenuInput,
     };
 
     let key = match state.last_input.take() {
         Some(k) => k,
-        None => return RunState::AwaitingRebind(target),
+        None => return state.run_state,
     };
 
     if key == VirtualKeyCode::Escape {
         return RunState::AwaitingMenuInput;
+    }
+
+    if let Some(conflict) = find_conflicting_action(&state.bindings, key, target) {
+        return RunState::AwaitingRebind(target, Some(conflict));
     }
 
     match target {
@@ -409,6 +413,27 @@ pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
     state.menu_stack.pop();
     state.menu_stack.push(fresh);
     RunState::AwaitingMenuInput
+}
+
+fn find_conflicting_action(bindings: &Bindings, key: VirtualKeyCode, excluding: RebindTarget) -> Option<&'static str> {
+    let checks: [(RebindTarget, VirtualKeyCode, &'static str); 10] = [
+        (RebindTarget::Wait,      bindings.wait,      "Wait"),
+        (RebindTarget::GetItem,   bindings.get_item,  "Get item"),
+        (RebindTarget::Disembark, bindings.disembark, "Disembark"),
+        (RebindTarget::Inventory, bindings.inventory, "Inventory"),
+        (RebindTarget::Equipment, bindings.equipment, "Equipment"),
+        (RebindTarget::Ability,   bindings.ability,   "Ability"),
+        (RebindTarget::Juke,      bindings.juke,      "Juke"),
+        (RebindTarget::Look,      bindings.look,      "Look"),
+        (RebindTarget::OpenMenu,  bindings.open_menu, "Open menu"),
+        (RebindTarget::Freelook,  bindings.freelook,  "Freelook"),
+    ];
+    for (t, bound_key, name) in &checks {
+        if *t != excluding && *bound_key == key {
+            return Some(name);
+        }
+    }
+    None
 }
 
 /// Resolve a fire action using the player's current `AimingAtGround` status.

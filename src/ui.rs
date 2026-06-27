@@ -167,7 +167,7 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
     );
 }
 
-pub fn draw_rebind_prompt(target: RebindTarget, context: &mut Rltk) {
+pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, context: &mut Rltk) {
     context.set_active_console(UI_CONSOLE_INDEX);
     let name = match target {
         RebindTarget::Wait =>      "Wait",
@@ -181,8 +181,17 @@ pub fn draw_rebind_prompt(target: RebindTarget, context: &mut Rltk) {
         RebindTarget::OpenMenu =>  "Open menu",
         RebindTarget::Freelook =>  "Freelook",
     };
-    let text = format!("Press a key for '{}', or Esc to cancel", name);
-    context.print_color_centered(34, INACTIVE_COLOR, BG_COLOR, &text);
+    let (text, color) = match conflict {
+        Some(other) => (
+            format!("Already bound to '{}'. Press another key or Esc to cancel", other),
+            FIRE_COLOR,
+        ),
+        None => (
+            format!("Press a key for '{}', or Esc to cancel", name),
+            INACTIVE_COLOR,
+        ),
+    };
+    context.print_color_centered(34, color, BG_COLOR, &text);
 }
 
 pub fn draw_welcome_splash(context: &mut Rltk) {

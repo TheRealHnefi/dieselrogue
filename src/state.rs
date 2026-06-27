@@ -23,7 +23,7 @@ pub enum RunState {
     DeclareIntent,
     AwaitingInput,
     AwaitingMenuInput,
-    AwaitingRebind(RebindTarget),
+    AwaitingRebind(RebindTarget, Option<&'static str>),
     AwaitingPositionalTargetingInput,
     AwaitingEntityTargetingInput,
     Looking,
@@ -134,7 +134,7 @@ impl GameState for State {
         }
 
         let in_welcome_context = self.menu_return_state == RunState::WelcomeScreen
-            && matches!(self.run_state, RunState::AwaitingMenuInput | RunState::AwaitingRebind(_));
+            && matches!(self.run_state, RunState::AwaitingMenuInput | RunState::AwaitingRebind(_, _));
         if in_welcome_context {
             draw_welcome_screen(self, context);
         } else {
@@ -153,9 +153,9 @@ impl GameState for State {
                 self.run_state = menu_input(self, context);
                 draw_menu(self, context, monotime);
             },
-            RunState::AwaitingRebind(target) => {
+            RunState::AwaitingRebind(target, conflict) => {
                 draw_menu(self, context, monotime);
-                draw_rebind_prompt(target, context);
+                draw_rebind_prompt(target, conflict, context);
                 self.run_state = rebind_input(self, context);
             },
             RunState::AwaitingPositionalTargetingInput => {
