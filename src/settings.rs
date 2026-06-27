@@ -7,31 +7,48 @@ const SETTINGS_PATH: &str = "settings.json";
 
 #[derive(Clone, Copy)]
 pub struct Bindings {
-    pub wait:      VirtualKeyCode,
-    pub get_item:  VirtualKeyCode,
-    pub disembark: VirtualKeyCode,
-    pub inventory: VirtualKeyCode,
-    pub equipment: VirtualKeyCode,
-    pub ability:   VirtualKeyCode,
-    pub juke:      VirtualKeyCode,
-    pub look:      VirtualKeyCode,
-    pub open_menu: VirtualKeyCode,
-    pub freelook:  VirtualKeyCode,
+    pub wait:         VirtualKeyCode,
+    pub get_item:     VirtualKeyCode,
+    pub disembark:    VirtualKeyCode,
+    pub inventory:    VirtualKeyCode,
+    pub equipment:    VirtualKeyCode,
+    pub ability:      VirtualKeyCode,
+    pub juke:         VirtualKeyCode,
+    pub look:         VirtualKeyCode,
+    pub open_menu:    VirtualKeyCode,
+    pub freelook:     VirtualKeyCode,
+    // Movement (numpad 1–4, 6–9 are always-on fallbacks; these are the rebindable alternates)
+    pub move_left:        VirtualKeyCode,
+    pub move_right:       VirtualKeyCode,
+    pub move_up:          VirtualKeyCode,
+    pub move_down:        VirtualKeyCode,
+    pub move_up_left:     VirtualKeyCode,
+    pub move_up_right:    VirtualKeyCode,
+    pub move_down_right:  VirtualKeyCode,
+    pub move_down_left:   VirtualKeyCode,
 }
 
 impl Default for Bindings {
     fn default() -> Self {
         Bindings {
-            wait:      VirtualKeyCode::Numpad5,
-            get_item:  VirtualKeyCode::G,
-            disembark: VirtualKeyCode::D,
-            inventory: VirtualKeyCode::I,
-            equipment: VirtualKeyCode::E,
-            ability:   VirtualKeyCode::A,
-            juke:      VirtualKeyCode::J,
-            look:      VirtualKeyCode::L,
-            open_menu: VirtualKeyCode::Escape,
-            freelook:  VirtualKeyCode::F,
+            wait:        VirtualKeyCode::Numpad5,
+            get_item:    VirtualKeyCode::G,
+            disembark:   VirtualKeyCode::D,
+            inventory:   VirtualKeyCode::I,
+            equipment:   VirtualKeyCode::E,
+            ability:     VirtualKeyCode::A,
+            juke:        VirtualKeyCode::J,
+            look:        VirtualKeyCode::L,
+            open_menu:   VirtualKeyCode::Escape,
+            freelook:    VirtualKeyCode::F,
+            move_left:       VirtualKeyCode::Left,
+            move_right:      VirtualKeyCode::Right,
+            move_up:         VirtualKeyCode::Up,
+            move_down:       VirtualKeyCode::Down,
+            move_up_left:    VirtualKeyCode::Numpad7,
+            move_up_right:   VirtualKeyCode::Numpad9,
+            move_down_right: VirtualKeyCode::Numpad3,
+            move_down_left:  VirtualKeyCode::Numpad1,
         }
     }
 }
@@ -142,6 +159,8 @@ fn parse_binding<'a>(
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum RebindTarget {
     Wait, GetItem, Disembark, Inventory, Equipment, Ability, Juke, Look, OpenMenu, Freelook,
+    MoveLeft, MoveRight, MoveUp, MoveDown,
+    MoveUpLeft, MoveUpRight, MoveDownRight, MoveDownLeft,
 }
 
 // ── FontSize ─────────────────────────────────────────────────────────────────
@@ -240,6 +259,14 @@ impl Settings {
             look:      parse_binding(b, "look",      VirtualKeyCode::L),
             open_menu: parse_binding(b, "open_menu", VirtualKeyCode::Escape),
             freelook:  parse_binding(b, "freelook",  VirtualKeyCode::F),
+            move_left:       parse_binding(b, "move_left",       VirtualKeyCode::Left),
+            move_right:      parse_binding(b, "move_right",      VirtualKeyCode::Right),
+            move_up:         parse_binding(b, "move_up",         VirtualKeyCode::Up),
+            move_down:       parse_binding(b, "move_down",       VirtualKeyCode::Down),
+            move_up_left:    parse_binding(b, "move_up_left",    VirtualKeyCode::Numpad7),
+            move_up_right:   parse_binding(b, "move_up_right",   VirtualKeyCode::Numpad9),
+            move_down_right: parse_binding(b, "move_down_right", VirtualKeyCode::Numpad3),
+            move_down_left:  parse_binding(b, "move_down_left",  VirtualKeyCode::Numpad1),
         };
         Settings { font_size, fullscreen, bindings }
     }
@@ -259,6 +286,14 @@ impl Settings {
                 "look":      key_to_str(self.bindings.look),
                 "open_menu": key_to_str(self.bindings.open_menu),
                 "freelook":  key_to_str(self.bindings.freelook),
+                "move_left":       key_to_str(self.bindings.move_left),
+                "move_right":      key_to_str(self.bindings.move_right),
+                "move_up":         key_to_str(self.bindings.move_up),
+                "move_down":       key_to_str(self.bindings.move_down),
+                "move_up_left":    key_to_str(self.bindings.move_up_left),
+                "move_up_right":   key_to_str(self.bindings.move_up_right),
+                "move_down_right": key_to_str(self.bindings.move_down_right),
+                "move_down_left":  key_to_str(self.bindings.move_down_left),
             }
         });
         let _ = fs::write(SETTINGS_PATH, serde_json::to_string_pretty(&json).unwrap());

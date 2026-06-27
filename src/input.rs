@@ -48,47 +48,37 @@ pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState 
     }
 }
 
+fn move_in_direction(state: &mut State, dir: Direction) -> RunState {
+    if state.freelook {
+        freelook_move(state, dir)
+    } else {
+        handle_move_input(&mut state.world, dir, &mut state.log)
+    }
+}
+
 #[tracing::instrument(skip_all)]
 pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
     let b = state.bindings;
     match state.last_input.take() {
         Some(key) => match key {
-            VirtualKeyCode::Left |
-            VirtualKeyCode::Numpad4 => {
-                if state.freelook { return freelook_move(state, Direction::Left); }
-                return handle_move_input(&mut state.world, Direction::Left, &mut state.log);
-            },
-            VirtualKeyCode::Right |
-            VirtualKeyCode::Numpad6 => {
-                if state.freelook { return freelook_move(state, Direction::Right); }
-                return handle_move_input(&mut state.world, Direction::Right, &mut state.log);
-            },
-            VirtualKeyCode::Up |
-            VirtualKeyCode::Numpad8 => {
-                if state.freelook { return freelook_move(state, Direction::Up); }
-                return handle_move_input(&mut state.world, Direction::Up, &mut state.log);
-            },
-            VirtualKeyCode::Down |
-            VirtualKeyCode::Numpad2 => {
-                if state.freelook { return freelook_move(state, Direction::Down); }
-                return handle_move_input(&mut state.world, Direction::Down, &mut state.log);
-            },
-            VirtualKeyCode::Numpad7 => {
-                if state.freelook { return freelook_move(state, Direction::UpLeft); }
-                return handle_move_input(&mut state.world, Direction::UpLeft, &mut state.log);
-            },
-            VirtualKeyCode::Numpad9 => {
-                if state.freelook { return freelook_move(state, Direction::UpRight); }
-                return handle_move_input(&mut state.world, Direction::UpRight, &mut state.log);
-            },
-            VirtualKeyCode::Numpad3 => {
-                if state.freelook { return freelook_move(state, Direction::DownRight); }
-                return handle_move_input(&mut state.world, Direction::DownRight, &mut state.log);
-            },
-            VirtualKeyCode::Numpad1 => {
-                if state.freelook { return freelook_move(state, Direction::DownLeft); }
-                return handle_move_input(&mut state.world, Direction::DownLeft, &mut state.log);
-            },
+            // Hardcoded numpad movement — always active regardless of bindings
+            VirtualKeyCode::Numpad4 => return move_in_direction(state, Direction::Left),
+            VirtualKeyCode::Numpad6 => return move_in_direction(state, Direction::Right),
+            VirtualKeyCode::Numpad8 => return move_in_direction(state, Direction::Up),
+            VirtualKeyCode::Numpad2 => return move_in_direction(state, Direction::Down),
+            VirtualKeyCode::Numpad7 => return move_in_direction(state, Direction::UpLeft),
+            VirtualKeyCode::Numpad9 => return move_in_direction(state, Direction::UpRight),
+            VirtualKeyCode::Numpad3 => return move_in_direction(state, Direction::DownRight),
+            VirtualKeyCode::Numpad1 => return move_in_direction(state, Direction::DownLeft),
+            // Rebindable movement keys
+            key if key == b.move_left        => return move_in_direction(state, Direction::Left),
+            key if key == b.move_right       => return move_in_direction(state, Direction::Right),
+            key if key == b.move_up          => return move_in_direction(state, Direction::Up),
+            key if key == b.move_down        => return move_in_direction(state, Direction::Down),
+            key if key == b.move_up_left     => return move_in_direction(state, Direction::UpLeft),
+            key if key == b.move_up_right    => return move_in_direction(state, Direction::UpRight),
+            key if key == b.move_down_right  => return move_in_direction(state, Direction::DownRight),
+            key if key == b.move_down_left   => return move_in_direction(state, Direction::DownLeft),
             key if key == b.wait => {
                 return RunState::Resolve(ExecutionPhase::Instant);
             },
@@ -393,16 +383,24 @@ pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
     }
 
     match target {
-        RebindTarget::Wait =>      state.bindings.wait = key,
-        RebindTarget::GetItem =>   state.bindings.get_item = key,
-        RebindTarget::Disembark => state.bindings.disembark = key,
-        RebindTarget::Inventory => state.bindings.inventory = key,
-        RebindTarget::Equipment => state.bindings.equipment = key,
-        RebindTarget::Ability =>   state.bindings.ability = key,
-        RebindTarget::Juke =>      state.bindings.juke = key,
-        RebindTarget::Look =>      state.bindings.look = key,
-        RebindTarget::OpenMenu =>  state.bindings.open_menu = key,
-        RebindTarget::Freelook =>  state.bindings.freelook = key,
+        RebindTarget::Wait =>            state.bindings.wait = key,
+        RebindTarget::GetItem =>         state.bindings.get_item = key,
+        RebindTarget::Disembark =>       state.bindings.disembark = key,
+        RebindTarget::Inventory =>       state.bindings.inventory = key,
+        RebindTarget::Equipment =>       state.bindings.equipment = key,
+        RebindTarget::Ability =>         state.bindings.ability = key,
+        RebindTarget::Juke =>            state.bindings.juke = key,
+        RebindTarget::Look =>            state.bindings.look = key,
+        RebindTarget::OpenMenu =>        state.bindings.open_menu = key,
+        RebindTarget::Freelook =>        state.bindings.freelook = key,
+        RebindTarget::MoveLeft =>        state.bindings.move_left = key,
+        RebindTarget::MoveRight =>       state.bindings.move_right = key,
+        RebindTarget::MoveUp =>          state.bindings.move_up = key,
+        RebindTarget::MoveDown =>        state.bindings.move_down = key,
+        RebindTarget::MoveUpLeft =>      state.bindings.move_up_left = key,
+        RebindTarget::MoveUpRight =>     state.bindings.move_up_right = key,
+        RebindTarget::MoveDownRight =>   state.bindings.move_down_right = key,
+        RebindTarget::MoveDownLeft =>    state.bindings.move_down_left = key,
     }
 
     let mut settings = Settings::load();
@@ -416,17 +414,25 @@ pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
 }
 
 fn find_conflicting_action(bindings: &Bindings, key: VirtualKeyCode, excluding: RebindTarget) -> Option<&'static str> {
-    let checks: [(RebindTarget, VirtualKeyCode, &'static str); 10] = [
-        (RebindTarget::Wait,      bindings.wait,      "Wait"),
-        (RebindTarget::GetItem,   bindings.get_item,  "Get item"),
-        (RebindTarget::Disembark, bindings.disembark, "Disembark"),
-        (RebindTarget::Inventory, bindings.inventory, "Inventory"),
-        (RebindTarget::Equipment, bindings.equipment, "Equipment"),
-        (RebindTarget::Ability,   bindings.ability,   "Ability"),
-        (RebindTarget::Juke,      bindings.juke,      "Juke"),
-        (RebindTarget::Look,      bindings.look,      "Look"),
-        (RebindTarget::OpenMenu,  bindings.open_menu, "Open menu"),
-        (RebindTarget::Freelook,  bindings.freelook,  "Freelook"),
+    let checks: [(RebindTarget, VirtualKeyCode, &'static str); 18] = [
+        (RebindTarget::Wait,          bindings.wait,           "Wait"),
+        (RebindTarget::GetItem,       bindings.get_item,       "Get item"),
+        (RebindTarget::Disembark,     bindings.disembark,      "Disembark"),
+        (RebindTarget::Inventory,     bindings.inventory,      "Inventory"),
+        (RebindTarget::Equipment,     bindings.equipment,      "Equipment"),
+        (RebindTarget::Ability,       bindings.ability,        "Ability"),
+        (RebindTarget::Juke,          bindings.juke,           "Juke"),
+        (RebindTarget::Look,          bindings.look,           "Look"),
+        (RebindTarget::OpenMenu,      bindings.open_menu,      "Open menu"),
+        (RebindTarget::Freelook,      bindings.freelook,       "Freelook"),
+        (RebindTarget::MoveLeft,      bindings.move_left,      "Move left"),
+        (RebindTarget::MoveRight,     bindings.move_right,     "Move right"),
+        (RebindTarget::MoveUp,        bindings.move_up,        "Move up"),
+        (RebindTarget::MoveDown,      bindings.move_down,      "Move down"),
+        (RebindTarget::MoveUpLeft,    bindings.move_up_left,   "Move up-left"),
+        (RebindTarget::MoveUpRight,   bindings.move_up_right,  "Move up-right"),
+        (RebindTarget::MoveDownRight, bindings.move_down_right,"Move down-right"),
+        (RebindTarget::MoveDownLeft,  bindings.move_down_left, "Move down-left"),
     ];
     for (t, bound_key, name) in &checks {
         if *t != excluding && *bound_key == key {
