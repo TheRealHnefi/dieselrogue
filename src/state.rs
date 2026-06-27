@@ -1,5 +1,6 @@
 use rltk::{Rltk, GameState, Point, VirtualKeyCode};
 use crate::Bindings;
+use crate::RebindTarget;
 use std::cmp::max;
 use std::time::Instant;
 use crate::Ability;
@@ -22,6 +23,7 @@ pub enum RunState {
     DeclareIntent,
     AwaitingInput,
     AwaitingMenuInput,
+    AwaitingRebind(RebindTarget),
     AwaitingPositionalTargetingInput,
     AwaitingEntityTargetingInput,
     Looking,
@@ -132,7 +134,7 @@ impl GameState for State {
         }
 
         let in_welcome_context = self.menu_return_state == RunState::WelcomeScreen
-            && self.run_state == RunState::AwaitingMenuInput;
+            && matches!(self.run_state, RunState::AwaitingMenuInput | RunState::AwaitingRebind(_));
         if in_welcome_context {
             draw_welcome_screen(self, context);
         } else {
@@ -150,6 +152,11 @@ impl GameState for State {
             RunState::AwaitingMenuInput => {
                 self.run_state = menu_input(self, context);
                 draw_menu(self, context, monotime);
+            },
+            RunState::AwaitingRebind(target) => {
+                draw_menu(self, context, monotime);
+                draw_rebind_prompt(target, context);
+                self.run_state = rebind_input(self, context);
             },
             RunState::AwaitingPositionalTargetingInput => {
                 self.run_state = positional_targeting_input(self, context);
