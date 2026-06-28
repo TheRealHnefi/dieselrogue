@@ -21,3 +21,7 @@ The game is implemented in Rust, using RLTK.
 
 ![Level up](doc/screenshot3.png)
 *Choosing an ability on level up, with the ability description panel.*
+
+## Building
+
+DieselRogue is a standard Rust project, so install Rust and execute *cargo run* from the project root.
