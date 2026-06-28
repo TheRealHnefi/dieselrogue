@@ -123,7 +123,7 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
     context.cls();
 
     context.print_color_centered(30, LINE_COLOR, BG_COLOR, "DIESELROGUE");
-    context.print_color_centered(31, INACTIVE_COLOR, BG_COLOR, "a diesel-punk roguelike");
+    context.print_color_centered(31, INACTIVE_COLOR, BG_COLOR, "a dieselpunk roguelike");
 
     let welcome_image = &state.rex_assets.title_screen.layers[0];
     for x in 0..SCREEN_WIDTH {
