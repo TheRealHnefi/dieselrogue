@@ -38,6 +38,21 @@ pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState 
     }
 }
 
+pub fn game_over_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    match state.last_input.take() {
+        None => RunState::GameOver,
+        Some(_) => {
+            let bindings = state.bindings;
+            let seed = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or(1);
+            *state = State::new_game_state(25, seed, false, bindings);
+            RunState::WelcomeScreen
+        }
+    }
+}
+
 pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState {
     match state.last_input.take() {
         Some(_) => {

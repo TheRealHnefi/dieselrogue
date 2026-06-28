@@ -31,7 +31,8 @@ pub enum RunState {
     AwaitingLevelUpInput,
     Resolve(ExecutionPhase),
     RenderAnimations(ExecutionPhase),
-    ResolveStatusEffects
+    ResolveStatusEffects,
+    GameOver,
 }
 
 pub struct State {
@@ -130,6 +131,11 @@ impl GameState for State {
                 self.run_state = welcome_splash_input(self, context);
                 return;
             },
+            RunState::GameOver => {
+                draw_game_over_screen(context);
+                self.run_state = game_over_input(self, context);
+                return;
+            },
             _ => {}
         }
 
@@ -183,7 +189,7 @@ impl GameState for State {
             RunState::ResolveStatusEffects => {
                 self.resolve_status_effects();
             }
-            RunState::WelcomeScreen | RunState::WelcomeSplash => unreachable!(),
+            RunState::WelcomeScreen | RunState::WelcomeSplash | RunState::GameOver => unreachable!(),
         }
     }
 }
@@ -259,6 +265,11 @@ impl State {
     fn resolve_status_effects(&mut self) {
         self.world.sounds_last_turn = std::mem::take(&mut self.world.sounds);
         self.world.resolve_status_effects(&mut self.log);
+
+        if self.world.get_player().is_err() {
+            self.run_state = RunState::GameOver;
+            return;
+        }
 
         if self.world.pending_levelup {
             self.world.pending_levelup = false;
