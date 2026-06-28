@@ -161,7 +161,7 @@ impl World {
             Direction::Up, Direction::UpRight, Direction::Right, Direction::DownRight,
             Direction::Down, Direction::DownLeft, Direction::Left, Direction::UpLeft,
         ];
-        let grid = 30usize;
+        let grid = 10usize;
         let cell_w = world.map.width / grid;
         let cell_h = world.map.height / grid;
         for gy in 0..grid {
