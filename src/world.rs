@@ -95,22 +95,6 @@ impl World {
 
         world.init_static_entities();
 
-        // // Assign a cycling color to every other door; drop one matching key per color used.
-        // let door_ids: Vec<usize> = world.entities.iter()
-        //     .filter(|e| e.kind == EntityKind::Door)
-        //     .map(|e| e.id)
-        //     .collect();
-        // let mut colors_used = std::collections::HashSet::new();
-        // for (i, &door_id) in door_ids.iter().enumerate().step_by(2) {
-        //     let color = i % crate::components::KEY_COLORS.len();
-        //     world.entities[door_id].key_color = Some(color);
-        //     colors_used.insert(color);
-        // }
-        // for color in colors_used {
-        //     let _ = world.add_item(pos, Item::key(color));
-        // }
-
-
         // Two goons patrolling north-south along the road, north of the player.
         let ns_road_x = pos.x - 1;
         let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
@@ -145,6 +129,7 @@ impl World {
         let depths = zone_depths(&zone_map, start_zone);
 
         world.assign_zone_keys(&zone_map, &spawn_map, &depths, &mut rng);
+        world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
 
         let candidates: Vec<Point> = spawn_map.spawn_points
             .iter()
@@ -1137,6 +1122,117 @@ impl World {
         for id in entity_ids {
             self.entities[id].update_view(&mut self.map);
         }
+    }
+
+    fn spawn_loot(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap,
+                  depths: &[usize], rng: &mut RandomNumberGenerator) {
+        type MakeItem = fn() -> Item;
+
+        // All spawnable loot — system items (key, corpse, rubble) excluded.
+        let pool: &[MakeItem] = &[
+            Item::pistol, Item::flare_gun, Item::knife,          // rarity 0
+            Item::revolver, Item::shock_pistol, Item::submachine_gun,
+            Item::grenade, Item::fire_grenade, Item::flashbang,
+            Item::bulletproof_vest,                              // rarity 1
+            Item::bolt_action_rifle, Item::semi_auto_rifle,
+            Item::assault_rifle, Item::machinegun,
+            Item::shock_carbine, Item::flamethrower,
+            Item::shock_grenade,                                 // rarity 2
+            Item::rotary_machinegun, Item::shock_cannon,
+            Item::rocket_launcher, Item::multi_rocket_launcher,  // rarity 3
+        ];
+
+        // Construct each item once to read its rarity, then discard.
+        let item_rarities: Vec<(MakeItem, u8)> =
+            pool.iter().map(|&f| (f, f().rarity)).collect();
+
+        // Target loot count per zone depth (index = depth).
+        const ITEMS_PER_ZONE: &[usize] = &[4, 7, 10, 14];
+        const MIN_ITEM_DIST: i32 = 4;
+
+        let nz = zone_map.zones.len();
+
+        // Single O(spawn_points) pass: bucket each spawn point into its zone.
+        // Four buckets per zone: [floor dead-ends, floor others, fallback dead-ends, fallback others].
+        // Fallback is any passable non-Floor tile, used when a zone has no buildings at all.
+        let mut floor_ends:   Vec<Vec<Point>> = vec![vec![]; nz];
+        let mut floor_others: Vec<Vec<Point>> = vec![vec![]; nz];
+        let mut any_ends:     Vec<Vec<Point>> = vec![vec![]; nz];
+        let mut any_others:   Vec<Vec<Point>> = vec![vec![]; nz];
+
+        for sp in &spawn_map.spawn_points {
+            let Some(zi) = zone_map.tile_zone[sp.idx] else { continue };
+            let is_floor = self.map.tiles[sp.idx] == TileType::Floor;
+            let is_end   = sp.category == SpawnCategory::DeadEnd;
+            match (is_floor, is_end) {
+                (true,  true)  => floor_ends[zi].push(sp.pos),
+                (true,  false) => floor_others[zi].push(sp.pos),
+                (false, true)  => any_ends[zi].push(sp.pos),
+                (false, false) => any_others[zi].push(sp.pos),
+            }
+        }
+
+        let mut all_placed: Vec<Point> = Vec::new();
+
+        for zone_idx in 0..nz {
+            let depth = depths[zone_idx];
+            if depth == usize::MAX { continue; }
+
+            let cap = ITEMS_PER_ZONE.get(depth).copied()
+                .unwrap_or_else(|| *ITEMS_PER_ZONE.last().unwrap());
+
+            // Eligible pool: rarity <= depth, weighted so common items appear more often.
+            // rarity 0 → weight 4, rarity 1 → weight 3, rarity 2 → weight 2, rarity 3 → weight 1.
+            let eligible: Vec<MakeItem> = item_rarities.iter()
+                .filter(|&&(_, r)| r as usize <= depth)
+                .flat_map(|&(f, r)| {
+                    let weight = (4u8.saturating_sub(r)) as usize;
+                    std::iter::repeat(f).take(weight)
+                })
+                .collect();
+            if eligible.is_empty() { continue; }
+
+            // Prefer Floor-tile spots (indoor); fall back to any passable tile so that zones
+            // with no buildings still get loot.
+            let has_floor = !floor_ends[zone_idx].is_empty() || !floor_others[zone_idx].is_empty();
+            let (mut dead_ends, mut others) = if has_floor {
+                (
+                    std::mem::take(&mut floor_ends[zone_idx]),
+                    std::mem::take(&mut floor_others[zone_idx]),
+                )
+            } else {
+                (
+                    std::mem::take(&mut any_ends[zone_idx]),
+                    std::mem::take(&mut any_others[zone_idx]),
+                )
+            };
+
+            for i in (1..dead_ends.len()).rev() {
+                let j = rng.range(0, (i + 1) as i32) as usize;
+                dead_ends.swap(i, j);
+            }
+            for i in (1..others.len()).rev() {
+                let j = rng.range(0, (i + 1) as i32) as usize;
+                others.swap(i, j);
+            }
+            dead_ends.extend(others);
+            let candidates = dead_ends;
+
+            let mut placed_here = 0usize;
+            for &pos in &candidates {
+                if placed_here >= cap { break; }
+                let too_close = all_placed.iter().any(|&p| {
+                    (p.x - pos.x).abs().max((p.y - pos.y).abs()) < MIN_ITEM_DIST
+                });
+                if too_close { continue; }
+                let make = eligible[rng.range(0, eligible.len() as i32) as usize];
+                let _ = self.add_item(pos, make());
+                all_placed.push(pos);
+                placed_here += 1;
+            }
+        }
+
+        println!("Spawned {} loot items.", all_placed.len());
     }
 
     fn assign_zone_keys(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap,
