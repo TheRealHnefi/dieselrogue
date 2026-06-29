@@ -1,4 +1,4 @@
-use rltk::{BaseMap, Algorithm2D, Point};
+use rltk::{BaseMap, Algorithm2D, Point, RandomNumberGenerator};
 use std::cmp::{max, min};
 use crate::entity::Pawn;
 use crate::item::Item;
@@ -169,7 +169,7 @@ impl Map {
         });
     }
 
-    pub fn new_game_map(size_in_blocks: usize, seed: u64) -> Map {
+    pub fn new_game_map(size_in_blocks: usize, rng: &mut RandomNumberGenerator) -> Map {
         println!("Generating map");
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
@@ -185,11 +185,9 @@ impl Map {
           fov_blocked: vec![false; tile_count],
         };
 
-        let mut attempt = 0u64;
-        let mut generated_blocks = generate_block_grid(size_in_blocks, seed);
+        let mut generated_blocks = generate_block_grid(size_in_blocks, rng);
         while generated_blocks.is_none() {
-          attempt += 1;
-          generated_blocks = generate_block_grid(size_in_blocks, seed.wrapping_add(attempt));
+          generated_blocks = generate_block_grid(size_in_blocks, rng);
         }
         let blocks = generated_blocks.unwrap();
         for i in 0..size_in_blocks {
