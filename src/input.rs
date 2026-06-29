@@ -47,7 +47,7 @@ pub fn game_over_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_nanos() as u64)
                 .unwrap_or(1);
-            *state = State::new_game_state(25, seed, false, bindings);
+            *state = State::new_welcome_state(seed, bindings);
             RunState::WelcomeScreen
         }
     }
@@ -56,7 +56,9 @@ pub fn game_over_input(state: &mut State, _context: &mut Rltk) -> RunState {
 pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState {
     match state.last_input.take() {
         Some(_) => {
-            state.menu_return_state = RunState::AwaitingInput;
+            let seed = state.seed;
+            let bindings = state.bindings;
+            *state = State::new_game_state(25, seed, false, bindings);
             RunState::AwaitingInput
         },
         None => RunState::WelcomeSplash,
