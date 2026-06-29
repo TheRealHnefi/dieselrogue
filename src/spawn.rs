@@ -1,4 +1,5 @@
 use rltk::Point;
+use std::collections::HashMap;
 use crate::{Map, TileType};
 
 /// Minimum number of tiles for a connected region to be treated as a room rather
@@ -166,4 +167,101 @@ fn find_regions(map: &Map) -> Vec<Region> {
     }
 
     regions
+}
+
+// ---------------------------------------------------------------------------
+// Zone detection
+// ---------------------------------------------------------------------------
+
+/// A set of doorway tiles that fully separates two structural zones.
+pub struct ZoneBoundary {
+    pub zone_a: usize,
+    pub zone_b: usize,
+    /// Tile indices of every Doorway tile on this boundary.
+    pub door_tiles: Vec<usize>,
+}
+
+/// Output of zone analysis.
+pub struct ZoneMap {
+    /// tile index → zone index.  None for walls, fences, and doorway tiles.
+    pub tile_zone: Vec<Option<usize>>,
+    /// zone index → all tile indices in that zone.
+    pub zones: Vec<Vec<usize>>,
+    /// Every boundary between a pair of zones.
+    pub boundaries: Vec<ZoneBoundary>,
+}
+
+/// Flood-fill the map treating Doorway tiles as walls to find structural zones,
+/// then identify the doorway tiles that separate each pair of adjacent zones.
+pub fn find_zones(map: &Map) -> ZoneMap {
+    let n = map.width * map.height;
+    let mut tile_zone: Vec<Option<usize>> = vec![None; n];
+    let mut zones: Vec<Vec<usize>> = Vec::new();
+
+    for start in 0..n {
+        if tile_zone[start].is_some() || !zone_passable(map.tiles[start]) {
+            continue;
+        }
+        let zone_idx = zones.len();
+        let mut tiles = Vec::new();
+        let mut queue = vec![start];
+        tile_zone[start] = Some(zone_idx);
+        let mut qi = 0;
+        while qi < queue.len() {
+            let current = queue[qi];
+            qi += 1;
+            tiles.push(current);
+            let p = map.idx_pos(current);
+            for (dx, dy) in [(0i32, -1i32), (0, 1), (-1, 0), (1, 0)] {
+                let nx = p.x + dx;
+                let ny = p.y + dy;
+                if nx >= 0 && ny >= 0 && nx < map.width as i32 && ny < map.height as i32 {
+                    let ni = map.xy_idx(nx, ny);
+                    if tile_zone[ni].is_none() && zone_passable(map.tiles[ni]) {
+                        tile_zone[ni] = Some(zone_idx);
+                        queue.push(ni);
+                    }
+                }
+            }
+        }
+        zones.push(tiles);
+    }
+
+    // Every Doorway tile that touches exactly two distinct zones is a boundary tile.
+    let mut boundary_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+    for idx in 0..n {
+        if map.tiles[idx] != TileType::Doorway {
+            continue;
+        }
+        let p = map.idx_pos(idx);
+        let mut adjacent_zones: Vec<usize> = Vec::new();
+        for (dx, dy) in [(0i32, -1i32), (0, 1), (-1, 0), (1, 0)] {
+            let nx = p.x + dx;
+            let ny = p.y + dy;
+            if nx >= 0 && ny >= 0 && nx < map.width as i32 && ny < map.height as i32 {
+                let ni = map.xy_idx(nx, ny);
+                if let Some(z) = tile_zone[ni] {
+                    if !adjacent_zones.contains(&z) {
+                        adjacent_zones.push(z);
+                    }
+                }
+            }
+        }
+        if adjacent_zones.len() == 2 {
+            let key = (adjacent_zones[0].min(adjacent_zones[1]),
+                       adjacent_zones[0].max(adjacent_zones[1]));
+            boundary_map.entry(key).or_default().push(idx);
+        }
+    }
+
+    let boundaries = boundary_map.into_iter()
+        .map(|((a, b), door_tiles)| ZoneBoundary { zone_a: a, zone_b: b, door_tiles })
+        .collect();
+
+    ZoneMap { tile_zone, zones, boundaries }
+}
+
+/// Passable for zone analysis: Doorway counts as a wall so it forms zone boundaries.
+fn zone_passable(tile: TileType) -> bool {
+    matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
 }
