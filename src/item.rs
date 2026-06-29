@@ -16,6 +16,9 @@ pub struct Item {
     pub kind: ItemKind,
     pub proxy: bool,
     pub active: bool,
+    /// Minimum zone depth at which this item may spawn.
+    /// 0 = any zone, 1 = depth ≥ 1, 2 = depth ≥ 2, etc.
+    pub rarity: u8,
 }
 
 // ---- Firearm definition types -----------------------------------------------
@@ -38,60 +41,61 @@ struct FirearmDef {
     ammo: u32,
     damage: Damage,
     range: u32,
+    rarity: u8,
 }
 
 // ---- Firearm roster ---------------------------------------------------------
 
 impl Item {
     pub fn revolver() -> Self {
-        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'p', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   damage: Damage::new(15,  0,  0, 0), range: 5  })
+        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'p', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   damage: Damage::new(15,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'p', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  damage: Damage::new(10,  0,  0, 0), range: 5  })
+        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'p', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 0 })
     }
     pub fn flare_gun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'r', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   damage: Damage::new( 0,  0, 10, 0), range: 5  })
+        Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'r', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   damage: Damage::new( 0,  0, 10, 0), range: 5,  rarity: 0 })
     }
     pub fn shock_pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 's', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   damage: Damage::new( 0,  3,  0, 0), range: 3  })
+        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 's', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   damage: Damage::new( 0,  3,  0, 0), range: 3,  rarity: 1 })
     }
     pub fn submachine_gun() -> Self {
-        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'p', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  damage: Damage::new(10,  0,  0, 0), range: 5  })
+        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'p', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn bolt_action_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'p', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   damage: Damage::new(25,  0,  0, 0), range: 15 })
+        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'p', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   damage: Damage::new(25,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn semi_auto_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'p', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  damage: Damage::new(20,  0,  0, 0), range: 15 })
+        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'p', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  damage: Damage::new(20,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn assault_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'm', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  damage: Damage::new(15,  0,  0, 0), range: 12 })
+        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'm', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  damage: Damage::new(15,  0,  0, 0), range: 12, rarity: 2 })
     }
     pub fn machinegun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'm', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  damage: Damage::new(15,  0,  0, 0), range: 10 })
+        Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'm', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
     }
     pub fn rotary_machinegun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'm', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, damage: Damage::new(12,  0,  0, 0), range: 10 })
+        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'm', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, damage: Damage::new(12,  0,  0, 0), range: 10, rarity: 3 })
     }
     pub fn shock_carbine() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  damage: Damage::new( 0,  3,  0, 0), range: 6  })
+        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  damage: Damage::new( 0,  3,  0, 0), range: 6,  rarity: 2 })
     }
     pub fn shock_cannon() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   damage: Damage::new( 0, 25,  0, 0), range: 8  })
+        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   damage: Damage::new( 0, 25,  0, 0), range: 8,  rarity: 3 })
     }
     pub fn flamethrower() -> Self {
-        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  damage: Damage::new( 0,  0,  3, 0), range: 10 })
+        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  damage: Damage::new( 0,  0,  3, 0), range: 10, rarity: 2 })
     }
     pub fn rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'r', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   damage: Damage::new(500, 0,  0, 0), range: 15 })
+        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'r', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   damage: Damage::new(500, 0,  0, 0), range: 15, rarity: 3 })
     }
     pub fn multi_rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'r', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12 })
+        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'r', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12, rarity: 3 })
     }
 
     pub fn grenade() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 1,
             renderable: Renderable::new_char('g'),
             name: String::from("Grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -105,7 +109,7 @@ impl Item {
 
     pub fn fire_grenade() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 1,
             renderable: Renderable::new_char('g'),
             name: String::from("Fire grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -119,7 +123,7 @@ impl Item {
 
     pub fn shock_grenade() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 2,
             renderable: Renderable::new_char('g'),
             name: String::from("Shock grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -133,7 +137,7 @@ impl Item {
 
     pub fn flashbang() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 1,
             renderable: Renderable::new_char('f'),
             name: String::from("Flashbang"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -147,7 +151,7 @@ impl Item {
 
     pub fn corpse() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 0,
             renderable: Renderable {
                 glyph: 1,
                 color: rltk::RGB::from_f32(0.5, 0.2, 0.0),
@@ -165,7 +169,7 @@ impl Item {
 
     pub fn rubble() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 0,
             renderable: Renderable {
                 glyph: rltk::to_cp437('≈'),
                 color: rltk::RGB::from_f32(0.5, 0.5, 0.5),
@@ -184,7 +188,7 @@ impl Item {
     pub fn key(color: usize) -> Self {
         let (r, g, b) = crate::components::KEY_COLORS[color];
         Item {
-            id: 0,
+            id: 0, rarity: 0,
             renderable: Renderable {
                 glyph: rltk::to_cp437('k'),
                 color: rltk::RGB::from_u8(r, g, b),
@@ -202,7 +206,7 @@ impl Item {
 
     pub fn knife() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 0,
             renderable: Renderable::new_char('/'),
             name: String::from("Knife"),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
@@ -216,7 +220,7 @@ impl Item {
 
     pub fn bulletproof_vest() -> Self {
         Item {
-            id: 0,
+            id: 0, rarity: 1,
             renderable: Renderable::new_char('v'),
             name: String::from("Bulletproof vest"),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
@@ -237,6 +241,7 @@ impl Item {
     pub fn proxy(&self) -> Self {
         Item {
             id: self.id,
+            rarity: self.rarity,
             renderable: self.renderable.clone(),
             name: self.name.clone(),
             inventory_actions: vec!(),
@@ -267,6 +272,7 @@ impl Item {
         };
         Item {
             id: 0,
+            rarity: def.rarity,
             renderable: Renderable::new_char(def.glyph),
             name: def.name.to_string(),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
