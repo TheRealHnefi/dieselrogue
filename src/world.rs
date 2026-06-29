@@ -110,9 +110,6 @@ impl World {
         //     let _ = world.add_item(pos, Item::key(color));
         // }
 
-        let _result = world.create_tank(Point {x: pos.x, y: pos.y - 4},
-            Direction::Up,
-            String::from("Tank"));
 
         // Two goons patrolling north-south along the road, north of the player.
         let ns_road_x = pos.x - 1;
@@ -135,10 +132,19 @@ impl World {
         assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
         assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
 
-        // Topology analysis — run once, shared by key placement and guard spawning.
+        // Topology analysis — run once, shared by all placement passes.
         let spawn_map = analyze(&world.map);
-        let zone_map = find_zones(&world.map);
-        world.assign_zone_keys(&zone_map, &spawn_map, &mut rng);
+        let zone_map  = find_zones(&world.map);
+
+        // Zone depths from the player's starting tile, used for placement weighting.
+        let player_tile = world.get_player()
+            .map(|p| world.map.pos_idx(p.position))
+            .unwrap_or_else(|_| world.map.xy_idx(
+                (world.map.width / 2) as i32, (world.map.height / 2) as i32));
+        let start_zone = zone_map.tile_zone[player_tile].unwrap_or(0);
+        let depths = zone_depths(&zone_map, start_zone);
+
+        world.assign_zone_keys(&zone_map, &spawn_map, &depths, &mut rng);
 
         let candidates: Vec<Point> = spawn_map.spawn_points
             .iter()
@@ -180,6 +186,49 @@ impl World {
         }
 
         println!("Spawned {} guards.", placed.len());
+
+        // Spawn tanks on roads and in hangars, skewing toward outer zones.
+        let tank_spawns = find_tank_spawns(&world.map, &spawn_map.regions);
+
+        // Max tanks to place per zone depth (index = depth, value = cap).
+        // Depth 0 = player's start zone (inner) → no tanks.
+        const MAX_TANKS_BY_DEPTH: &[usize] = &[0, 2, 4, 6];
+        const MIN_TANK_DIST: i32 = 15;
+
+        let tank_dirs = [Direction::Up, Direction::Right, Direction::Down, Direction::Left];
+        let mut tank_placed: Vec<Point> = Vec::new();
+
+        for depth in 1..MAX_TANKS_BY_DEPTH.len() {
+            let cap = MAX_TANKS_BY_DEPTH[depth];
+
+            let mut candidates: Vec<usize> = tank_spawns.road_tiles.iter()
+                .chain(tank_spawns.hangar_tiles.iter())
+                .copied()
+                .filter(|&idx| zone_map.tile_zone[idx].map(|z| depths[z]) == Some(depth))
+                .collect();
+
+            for i in (1..candidates.len()).rev() {
+                let j = rng.range(0, (i + 1) as i32) as usize;
+                candidates.swap(i, j);
+            }
+
+            let mut placed_here = 0usize;
+            for idx in candidates {
+                if placed_here >= cap { break; }
+                let pos = world.map.idx_pos(idx);
+                let too_close = tank_placed.iter().any(|&p| {
+                    (p.x - pos.x).abs().max((p.y - pos.y).abs()) < MIN_TANK_DIST
+                });
+                if too_close { continue; }
+                let facing = tank_dirs[tank_placed.len() % tank_dirs.len()];
+                if world.create_tank(pos, facing, format!("Tank {}", tank_placed.len() + 1)).is_ok() {
+                    tank_placed.push(pos);
+                    placed_here += 1;
+                }
+            }
+        }
+
+        println!("Spawned {} tanks.", tank_placed.len());
 
         return world;
     }
@@ -1090,53 +1139,22 @@ impl World {
         }
     }
 
-    fn assign_zone_keys(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
+    fn assign_zone_keys(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap,
+                        depths: &[usize], rng: &mut RandomNumberGenerator) {
         if zone_map.boundaries.is_empty() {
             return;
         }
 
-        // Find the zone containing the player's spawn tile.
-        let player_idx = self.get_player()
-            .map(|p| self.map.pos_idx(p.position))
-            .unwrap_or_else(|_| self.map.xy_idx(
-                (self.map.width / 2) as i32,
-                (self.map.height / 2) as i32,
-            ));
-        let start_zone = zone_map.tile_zone[player_idx].unwrap_or(0);
-
-        // BFS over zone graph to assign depth (distance in boundaries from player).
         let n_zones = zone_map.zones.len();
-        let mut depth: Vec<Option<usize>> = vec![None; n_zones];
-        depth[start_zone] = Some(0);
-        let mut queue = vec![start_zone];
-        let mut qi = 0;
-
-        let mut adj: Vec<Vec<(usize, usize)>> = vec![vec![]; n_zones]; // zone → [(neighbour, boundary_idx)]
-        for (bi, b) in zone_map.boundaries.iter().enumerate() {
-            adj[b.zone_a].push((b.zone_b, bi));
-            adj[b.zone_b].push((b.zone_a, bi));
-        }
-        while qi < queue.len() {
-            let cur = queue[qi]; qi += 1;
-            let d = depth[cur].unwrap();
-            for &(other, _) in &adj[cur] {
-                if depth[other].is_none() {
-                    depth[other] = Some(d + 1);
-                    queue.push(other);
-                }
-            }
-        }
+        let n_colors = crate::components::KEY_COLORS.len();
 
         // Sort boundaries by the shallower side's depth so colors are assigned
         // in order of encounter (boundary closest to player = color 0).
         let mut order: Vec<usize> = (0..zone_map.boundaries.len()).collect();
         order.sort_by_key(|&bi| {
             let b = &zone_map.boundaries[bi];
-            depth[b.zone_a].unwrap_or(usize::MAX)
-                .min(depth[b.zone_b].unwrap_or(usize::MAX))
+            depths[b.zone_a].min(depths[b.zone_b])
         });
-
-        let n_colors = crate::components::KEY_COLORS.len();
 
         // Build per-zone dead-end spawn point lookup once.
         let zone_dead_ends: Vec<Vec<Point>> = (0..n_zones).map(|zi| {
@@ -1163,9 +1181,7 @@ impl World {
             }
 
             // Place the key in the shallower zone (the one the player reaches first).
-            let shallow = if depth[b.zone_a].unwrap_or(usize::MAX)
-                            <= depth[b.zone_b].unwrap_or(usize::MAX)
-            { b.zone_a } else { b.zone_b };
+            let shallow = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_a } else { b.zone_b };
 
             let key_pos = if !zone_dead_ends[shallow].is_empty() {
                 let picks = &zone_dead_ends[shallow];

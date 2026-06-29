@@ -265,3 +265,113 @@ pub fn find_zones(map: &Map) -> ZoneMap {
 fn zone_passable(tile: TileType) -> bool {
     matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
 }
+
+/// BFS over the zone graph to compute how many boundaries separate each zone from
+/// `start_zone`.  Unreachable zones get `usize::MAX`.
+pub fn zone_depths(zone_map: &ZoneMap, start_zone: usize) -> Vec<usize> {
+    let n = zone_map.zones.len();
+    let mut depth = vec![usize::MAX; n];
+    if start_zone >= n { return depth; }
+
+    let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
+    for b in &zone_map.boundaries {
+        adj[b.zone_a].push(b.zone_b);
+        adj[b.zone_b].push(b.zone_a);
+    }
+
+    depth[start_zone] = 0;
+    let mut queue = vec![start_zone];
+    let mut qi = 0;
+    while qi < queue.len() {
+        let cur = queue[qi]; qi += 1;
+        for &nb in &adj[cur] {
+            if depth[nb] == usize::MAX {
+                depth[nb] = depth[cur] + 1;
+                queue.push(nb);
+            }
+        }
+    }
+    depth
+}
+
+// ---------------------------------------------------------------------------
+// Tank spawn analysis
+// ---------------------------------------------------------------------------
+
+/// A door at least this many tiles wide is considered a hangar entrance.
+const MIN_HANGAR_DOOR_WIDTH: usize = 3;
+
+/// Candidate tile indices for tank placement.
+pub struct TankSpawnMap {
+    /// Open road tiles (not dead-end stubs).
+    pub road_tiles: Vec<usize>,
+    /// Floor tiles inside rooms that have a wide enough entrance door.
+    pub hangar_tiles: Vec<usize>,
+}
+
+/// Find tiles suitable for spawning tanks: open road sections and hangars
+/// (rooms whose widest adjacent doorway meets `MIN_HANGAR_DOOR_WIDTH`).
+pub fn find_tank_spawns(map: &Map, regions: &[Region]) -> TankSpawnMap {
+    let n = map.width * map.height;
+
+    let road_tiles: Vec<usize> = (0..n)
+        .filter(|&idx| {
+            map.tiles[idx] == TileType::Road
+                && cardinal_passable_count(map, idx) >= 2
+        })
+        .collect();
+
+    let mut hangar_tiles = Vec::new();
+    for region in regions.iter().filter(|r| r.is_room) {
+        if region_has_wide_door(map, region) {
+            hangar_tiles.extend(
+                region.tiles.iter().copied().filter(|&i| tile_passable(map.tiles[i]))
+            );
+        }
+    }
+
+    TankSpawnMap { road_tiles, hangar_tiles }
+}
+
+/// Returns true if any tile in the region is adjacent to a doorway run at least
+/// `MIN_HANGAR_DOOR_WIDTH` tiles wide.
+fn region_has_wide_door(map: &Map, region: &Region) -> bool {
+    for &tile_idx in &region.tiles {
+        let p = map.idx_pos(tile_idx);
+        for (dx, dy) in [(0i32, -1i32), (0, 1), (-1, 0), (1, 0)] {
+            let nx = p.x + dx;
+            let ny = p.y + dy;
+            if nx < 0 || ny < 0 || nx >= map.width as i32 || ny >= map.height as i32 {
+                continue;
+            }
+            if map.tiles[map.xy_idx(nx, ny)] != TileType::Doorway {
+                continue;
+            }
+            let h = doorway_run(map, nx, ny, 1, 0);
+            let v = doorway_run(map, nx, ny, 0, 1);
+            if h >= MIN_HANGAR_DOOR_WIDTH || v >= MIN_HANGAR_DOOR_WIDTH {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Count consecutive Doorway tiles through `(sx, sy)` along axis `(dx, dy)`,
+/// scanning in both directions from the starting tile (inclusive).
+fn doorway_run(map: &Map, sx: i32, sy: i32, dx: i32, dy: i32) -> usize {
+    let mut len = 1usize;
+    for sign in [1i32, -1] {
+        let (mut x, mut y) = (sx + dx * sign, sy + dy * sign);
+        while x >= 0 && y >= 0 && x < map.width as i32 && y < map.height as i32 {
+            if map.tiles[map.xy_idx(x, y)] == TileType::Doorway {
+                len += 1;
+                x += dx * sign;
+                y += dy * sign;
+            } else {
+                break;
+            }
+        }
+    }
+    len
+}
