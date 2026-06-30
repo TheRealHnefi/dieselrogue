@@ -69,7 +69,7 @@ World.cleanup(); // Delete dead entries
 */
 
 /// Overall guard density multiplier. Raise or lower to scale all guard counts.
-const GUARD_DENSITY: f32 = 1.0;
+const GUARD_DENSITY: f32 = 0.5;
 
 fn chebyshev(a: Point, b: Point) -> i32 {
     (a.x - b.x).abs().max((a.y - b.y).abs())
@@ -524,7 +524,7 @@ impl World {
         n: &mut usize,
         rng: &mut RandomNumberGenerator,
     ) {
-        const RATE: f32 = 0.15;
+        const RATE: f32 = 0.015;
         const MIN_DIST: i32 = 8;
 
         let room_pts: Vec<usize> = spawn_map.spawn_points.iter()
