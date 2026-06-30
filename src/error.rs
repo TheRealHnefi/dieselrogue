@@ -2,7 +2,8 @@
 pub enum Error {
     Generic,
     BadPrecondition,
-    UnsolvableSituation
+    UnsolvableSituation,
+    MapExit,
 }
 
 #[derive(Debug)]
