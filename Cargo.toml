@@ -5,6 +5,9 @@ authors = ["Johan Larsson <johan.t.larsson@gmail.com>"]
 edition = "2018"
 default-run = "dieselrogue"
 
+[build-dependencies]
+winres = "0.1"
+
 [dependencies]
 strum = { version = "0.26", features = ["derive"] }
 rayon = "1"

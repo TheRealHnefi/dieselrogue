@@ -33,6 +33,7 @@ pub enum RunState {
     RenderAnimations(ExecutionPhase),
     ResolveStatusEffects,
     GameOver,
+    HelpScreen,
 }
 
 pub struct State {
@@ -41,6 +42,7 @@ pub struct State {
     pub seed: u64,
     pub bindings: Bindings,
     pub menu_return_state: RunState,
+    pub help_return_state: RunState,
     pub cursor_pos: Point,
     pub log: GameLog,
 
@@ -88,6 +90,7 @@ impl State {
             seed,
             bindings,
             menu_return_state: RunState::AwaitingInput,
+            help_return_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y: 0},
             log: GameLog {entries: vec![]},
             world: World::new_test(),
@@ -116,6 +119,7 @@ impl State {
             seed,
             bindings,
             menu_return_state: RunState::AwaitingInput,
+            help_return_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(size, seed),
@@ -150,6 +154,24 @@ impl GameState for State {
             self.last_input = context.key;
         }
 
+        // F1 opens help from any awaiting-input gameplay state.
+        if self.last_input == Some(VirtualKeyCode::F1) {
+            let is_input_state = matches!(self.run_state,
+                RunState::AwaitingInput
+                | RunState::AwaitingMenuInput
+                | RunState::Looking
+                | RunState::AwaitingPositionalTargetingInput
+                | RunState::AwaitingEntityTargetingInput
+                | RunState::AwaitingJukeInput
+                | RunState::AwaitingLevelUpInput
+            );
+            if is_input_state {
+                self.last_input = None;
+                self.help_return_state = self.run_state;
+                self.run_state = RunState::HelpScreen;
+            }
+        }
+
         let monotime = self.start_tick.elapsed().as_millis();
 
         match self.run_state {
@@ -166,6 +188,13 @@ impl GameState for State {
             RunState::GameOver => {
                 draw_game_over_screen(context);
                 self.run_state = game_over_input(self, context);
+                return;
+            },
+            RunState::HelpScreen => {
+                draw_help_screen(self, context);
+                if self.last_input.take() == Some(VirtualKeyCode::Escape) {
+                    self.run_state = self.help_return_state;
+                }
                 return;
             },
             _ => {}
@@ -221,7 +250,7 @@ impl GameState for State {
             RunState::ResolveStatusEffects => {
                 self.resolve_status_effects();
             }
-            RunState::WelcomeScreen | RunState::WelcomeSplash | RunState::GameOver => unreachable!(),
+            RunState::WelcomeScreen | RunState::WelcomeSplash | RunState::GameOver | RunState::HelpScreen => unreachable!(),
         }
     }
 }
