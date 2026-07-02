@@ -96,7 +96,7 @@ pub fn analyze(map: &Map) -> SpawnMap {
 
 /// Returns true for tile types that entities can stand on.
 fn tile_passable(tile: TileType) -> bool {
-    matches!(tile, TileType::Floor | TileType::Ground | TileType::Road | TileType::Doorway)
+    matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
 }
 
 /// Count how many of the four cardinal neighbours of `idx` are passable.
