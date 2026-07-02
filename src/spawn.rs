@@ -1,4 +1,4 @@
-use rltk::Point;
+use rltk::{Point, Tile};
 use std::collections::HashMap;
 use crate::{Map, TileType};
 
@@ -39,7 +39,7 @@ pub struct Region {
     pub tiles: Vec<usize>,
     /// Index of the tile closest to the centroid of the region.
     pub center_idx: usize,
-    /// True when the region is large enough to be treated as an open area or room.
+    /// True when the region is large enough to be treated as a room and is indoors.
     pub is_room: bool,
 }
 
@@ -162,7 +162,7 @@ fn find_regions(map: &Map) -> Vec<Region> {
             (p.x - cx).abs() + (p.y - cy).abs()
         }).unwrap();
 
-        let is_room = tiles.len() >= MIN_ROOM_SIZE;
+        let is_room = tiles.len() >= MIN_ROOM_SIZE && map.tiles[tiles[0]] == TileType::Floor;
         regions.push(Region { tiles, center_idx, is_room });
     }
 

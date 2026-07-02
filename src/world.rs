@@ -24,52 +24,8 @@ pub struct World {
     pub parallel_ai: bool,
 }
 
-
-/*
-API scratchpad:
-let player = World.create_player(pos, "Player", inv, body)?;
-World.set_intent(player, Intent {action: fire, target: pos});
-World.set_intent(player, Intent {action: move, target: pos});
-
-let firearm_data = FirearmData {
-    damage_phys: 5,
-    damage_fire: 0,
-    damage_elec: 0,
-    range: 10,
-    damage_falloff: 0,
-    burst: 1,
-    clip_size: 10,
-    sound: 7,
-    hiteffect: {}
-}
-let _gun = World.create_item(pos, "Pistol", firearm(firearm_data), renderable, description)?;
-
-let _tank = World.create_vehicle(pos, "Panzer", tank(tank_data), renderable, description)?;
-
-let _enemy = World.create_actor(pos, "Goon #32", inv, body, renderable, description, ai)?;
-
-World.run_ai(enemy);
-
-pub fn run_ai(&mut self, Entity: enemy) -> Result<(), GameError> {
-    for actor in actors {
-        if self.map[x][y] == player {
-            Intents[actor.index] = Intent {action: melee, target: Pos {x: x, y: y}};
-        }
-    }
-}
-
-World.resolve_melee();
-
-pub fn resolve_melee(&mut self, Entity: entity) -> Result<(), GameError> {
-  for each living and meleeing entity, create damage.
-  for each damage instance, apply damage effect. Set deadflags and such as appropriate.
-}
-
-World.cleanup(); // Delete dead entries
-*/
-
 /// Overall guard density multiplier. Raise or lower to scale all guard counts.
-const GUARD_DENSITY: f32 = 0.0005;
+const GUARD_DENSITY: f32 = 0.05;
 
 fn chebyshev(a: Point, b: Point) -> i32 {
     (a.x - b.x).abs().max((a.y - b.y).abs())
@@ -151,10 +107,10 @@ impl World {
         let mut placed: Vec<Point> = Vec::new();
         let mut guard_n = 0usize;
         println!("Spawning guards:");
-        world.spawn_sentinels(&mut placed, &mut guard_n, &mut rng);
-        world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-        world.spawn_squads(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-        world.spawn_idle_guards(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+        //world.spawn_sentinels(&mut placed, &mut guard_n, &mut rng);
+        // world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+        // world.spawn_squads(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+        // world.spawn_idle_guards(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         println!("Spawned {} guards total.", guard_n);
 
         // Spawn tanks on roads and in hangars, skewing toward outer zones.
