@@ -62,6 +62,39 @@ fn is_spawnable(tile: TileType) -> bool {
     matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
 }
 
+enum BoundaryKind { OuterWall, InnerWall, Regular }
+
+fn classify_boundary(map: &Map, boundary: &ZoneBoundary) -> BoundaryKind {
+    let size = map.width / BLOCK_SIZE;
+    let inner_margin = size / 4;
+    let inner_min = inner_margin;
+    let inner_max = size - 1 - inner_margin;
+    let has_inner_ring = inner_margin > 0 && inner_min < inner_max;
+
+    let mut is_outer = false;
+    let mut is_inner = false;
+
+    for &tile_idx in &boundary.door_tiles {
+        let p = map.idx_pos(tile_idx);
+        let bi = p.x as usize / BLOCK_SIZE;
+        let bj = p.y as usize / BLOCK_SIZE;
+        if bi == 0 || bi == size - 1 || bj == 0 || bj == size - 1 {
+            is_outer = true;
+        }
+        if has_inner_ring
+            && bi >= inner_min && bi <= inner_max
+            && bj >= inner_min && bj <= inner_max
+            && (bi == inner_min || bi == inner_max || bj == inner_min || bj == inner_max)
+        {
+            is_inner = true;
+        }
+    }
+
+    if is_outer { BoundaryKind::OuterWall }
+    else if is_inner { BoundaryKind::InnerWall }
+    else { BoundaryKind::Regular }
+}
+
 impl World {
     /// Create new world.
     /// # Arguments
@@ -101,7 +134,8 @@ impl World {
         let start_zone = zone_map.tile_zone[player_tile].unwrap_or(0);
         let depths = zone_depths(&zone_map, start_zone);
 
-        world.assign_zone_keys(&zone_map, &spawn_map, &depths, &mut rng);
+        let interesting = mark_interesting_zones(&zone_map, &spawn_map, &mut rng);
+        world.assign_zone_keys(&zone_map, &spawn_map, &depths, &interesting, &mut rng);
         world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
 
         let mut placed: Vec<Point> = Vec::new();
@@ -1408,16 +1442,24 @@ impl World {
     }
 
     fn assign_zone_keys(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap,
-                        depths: &[usize], rng: &mut RandomNumberGenerator) {
+                        depths: &[usize], interesting: &[bool],
+                        rng: &mut RandomNumberGenerator) {
         if zone_map.boundaries.is_empty() {
             return;
         }
 
+        const OUTER_WALL_COLOR: usize = 15; // Gold
+        const INNER_WALL_COLOR: usize = 13; // Silver
+
         let n_zones = zone_map.zones.len();
-        let n_colors = crate::components::KEY_COLORS.len();
+
+        // Colors available for regular (non-fort-wall) interesting doors.
+        let regular_colors: Vec<usize> = (0..crate::components::KEY_COLORS.len())
+            .filter(|&c| c != OUTER_WALL_COLOR && c != INNER_WALL_COLOR)
+            .collect();
 
         // Sort boundaries by the shallower side's depth so colors are assigned
-        // in order of encounter (boundary closest to player = color 0).
+        // in order of encounter.
         let mut order: Vec<usize> = (0..zone_map.boundaries.len()).collect();
         order.sort_by_key(|&bi| {
             let b = &zone_map.boundaries[bi];
@@ -1434,9 +1476,33 @@ impl World {
                 .collect()
         }).collect();
 
-        for (color_idx, &bi) in order.iter().enumerate() {
-            let color = color_idx % n_colors;
+        let mut regular_color_idx = 0usize;
+        let mut locked_count = 0usize;
+
+        for &bi in &order {
             let b = &zone_map.boundaries[bi];
+            let kind = classify_boundary(&self.map, b);
+
+            let shallow = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_a } else { b.zone_b };
+            let deep    = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_b } else { b.zone_a };
+
+            // Determine the lock color, or None if this door stays unlocked.
+            let color_opt: Option<usize> = match kind {
+                BoundaryKind::OuterWall => Some(OUTER_WALL_COLOR),
+                BoundaryKind::InnerWall => Some(INNER_WALL_COLOR),
+                BoundaryKind::Regular => {
+                    if interesting.get(deep).copied().unwrap_or(false) {
+                        let c = regular_colors[regular_color_idx % regular_colors.len()];
+                        regular_color_idx += 1;
+                        Some(c)
+                    } else {
+                        None
+                    }
+                }
+            };
+
+            let Some(color) = color_opt else { continue; };
+            locked_count += 1;
 
             // Color every door entity whose pawn sits on a boundary doorway tile.
             for &tile_idx in &b.door_tiles {
@@ -1449,8 +1515,6 @@ impl World {
             }
 
             // Place the key in the shallower zone (the one the player reaches first).
-            let shallow = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_a } else { b.zone_b };
-
             let key_pos = if !zone_dead_ends[shallow].is_empty() {
                 let picks = &zone_dead_ends[shallow];
                 picks[rng.range(0, picks.len() as i32) as usize]
@@ -1462,7 +1526,7 @@ impl World {
             let _ = self.add_item(key_pos, Item::key(color));
         }
 
-        println!("Assigned {} zone boundary color(s).", order.len());
+        println!("Locked {} of {} zone boundaries.", locked_count, order.len());
     }
 
     fn init_static_entities(&mut self) {
