@@ -62,6 +62,34 @@ fn is_spawnable(tile: TileType) -> bool {
     matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
 }
 
+const KEY_COPIES_PER_COLOR: usize = 3;
+
+/// BFS over the zone graph treating locked doors (whose color is not in `unlocked`) as
+/// impassable walls.  Returns a bitmask of which zones the player can reach.
+fn reachable_zones(
+    adj: &[Vec<(usize, Option<usize>)>],
+    start_zone: usize,
+    n_zones: usize,
+    unlocked: &std::collections::HashSet<usize>,
+) -> Vec<bool> {
+    let mut reachable = vec![false; n_zones];
+    if start_zone >= n_zones { return reachable; }
+    reachable[start_zone] = true;
+    let mut queue = vec![start_zone];
+    let mut qi = 0;
+    while qi < queue.len() {
+        let cur = queue[qi]; qi += 1;
+        for &(nb, color_opt) in &adj[cur] {
+            if reachable[nb] { continue; }
+            if color_opt.map_or(true, |c| unlocked.contains(&c)) {
+                reachable[nb] = true;
+                queue.push(nb);
+            }
+        }
+    }
+    reachable
+}
+
 enum BoundaryKind { OuterWall, InnerWall, Regular }
 
 fn classify_boundary(map: &Map, boundary: &ZoneBoundary) -> BoundaryKind {
@@ -135,7 +163,8 @@ impl World {
         let depths = zone_depths(&zone_map, start_zone);
 
         let interesting = mark_interesting_zones(&zone_map, &spawn_map, &mut rng);
-        world.assign_zone_keys(&zone_map, &spawn_map, &depths, &interesting, &mut rng);
+        let boundary_colors = world.assign_door_colors(&zone_map, &depths, &interesting);
+        world.place_zone_keys(&zone_map, &spawn_map, &depths, &boundary_colors, start_zone, &mut rng);
         //world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
 
         let mut placed: Vec<Point> = Vec::new();
@@ -1441,40 +1470,29 @@ impl World {
         println!("Spawned {} loot items.", all_placed.len());
     }
 
-    fn assign_zone_keys(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap,
-                        depths: &[usize], interesting: &[bool],
-                        rng: &mut RandomNumberGenerator) {
-        if zone_map.boundaries.is_empty() {
-            return;
-        }
-
+    /// First pass: assign lock colors to door entities.
+    /// Returns `boundary_colors[bi]` = the color assigned to boundary `bi`,
+    /// or `None` if that boundary stays unlocked.
+    fn assign_door_colors(
+        &mut self,
+        zone_map: &ZoneMap,
+        depths: &[usize],
+        interesting: &[bool],
+    ) -> Vec<Option<usize>> {
         const OUTER_WALL_COLOR: usize = 15; // Gold
         const INNER_WALL_COLOR: usize = 13; // Silver
 
-        let n_zones = zone_map.zones.len();
+        let mut boundary_colors = vec![None; zone_map.boundaries.len()];
 
-        // Colors available for regular (non-fort-wall) interesting doors.
         let regular_colors: Vec<usize> = (0..crate::components::KEY_COLORS.len())
             .filter(|&c| c != OUTER_WALL_COLOR && c != INNER_WALL_COLOR)
             .collect();
 
-        // Sort boundaries by the shallower side's depth so colors are assigned
-        // in order of encounter.
         let mut order: Vec<usize> = (0..zone_map.boundaries.len()).collect();
         order.sort_by_key(|&bi| {
             let b = &zone_map.boundaries[bi];
             depths[b.zone_a].min(depths[b.zone_b])
         });
-
-        // Build per-zone dead-end spawn point lookup once.
-        let zone_dead_ends: Vec<Vec<Point>> = (0..n_zones).map(|zi| {
-            let zone_set: std::collections::HashSet<usize> =
-                zone_map.zones[zi].iter().copied().collect();
-            spawn_map.spawn_points.iter()
-                .filter(|sp| sp.category == SpawnCategory::DeadEnd && zone_set.contains(&sp.idx))
-                .map(|sp| sp.pos)
-                .collect()
-        }).collect();
 
         let mut regular_color_idx = 0usize;
         let mut locked_count = 0usize;
@@ -1482,11 +1500,8 @@ impl World {
         for &bi in &order {
             let b = &zone_map.boundaries[bi];
             let kind = classify_boundary(&self.map, b);
+            let deep = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_b } else { b.zone_a };
 
-            let shallow = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_a } else { b.zone_b };
-            let deep    = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_b } else { b.zone_a };
-
-            // Determine the lock color, or None if this door stays unlocked.
             let color_opt: Option<usize> = match kind {
                 BoundaryKind::OuterWall => Some(OUTER_WALL_COLOR),
                 BoundaryKind::InnerWall => Some(INNER_WALL_COLOR),
@@ -1501,32 +1516,107 @@ impl World {
                 }
             };
 
-            let Some(color) = color_opt else { continue; };
-            locked_count += 1;
+            boundary_colors[bi] = color_opt;
 
-            // Color every door entity whose pawn sits on a boundary doorway tile.
-            for &tile_idx in &b.door_tiles {
-                if let Some(pawn) = &self.map.pawns[tile_idx] {
-                    let eid = pawn.entity_id;
-                    if self.entities[eid].kind == EntityKind::Door {
-                        self.entities[eid].key_color = Some(color);
+            if let Some(color) = color_opt {
+                locked_count += 1;
+                for &tile_idx in &b.door_tiles {
+                    if let Some(pawn) = &self.map.pawns[tile_idx] {
+                        let eid = pawn.entity_id;
+                        if self.entities[eid].kind == EntityKind::Door {
+                            self.entities[eid].key_color = Some(color);
+                        }
                     }
                 }
             }
-
-            // Place the key in the shallower zone (the one the player reaches first).
-            let key_pos = if !zone_dead_ends[shallow].is_empty() {
-                let picks = &zone_dead_ends[shallow];
-                picks[rng.range(0, picks.len() as i32) as usize]
-            } else {
-                let tiles = &zone_map.zones[shallow];
-                self.map.idx_pos(tiles[rng.range(0, tiles.len() as i32) as usize])
-            };
-
-            let _ = self.add_item(key_pos, Item::key(color));
         }
 
         println!("Locked {} of {} zone boundaries.", locked_count, order.len());
+        boundary_colors
+    }
+
+    /// Second pass: scatter keys.  For each locked color, places up to
+    /// `KEY_COPIES_PER_COLOR` keys across zones the player can reach *before*
+    /// needing that color, guaranteeing solvability.  At most one key per zone.
+    fn place_zone_keys(
+        &mut self,
+        zone_map: &ZoneMap,
+        spawn_map: &SpawnMap,
+        depths: &[usize],
+        boundary_colors: &[Option<usize>],
+        start_zone: usize,
+        rng: &mut RandomNumberGenerator,
+    ) {
+        let n_zones = zone_map.zones.len();
+
+        // Zone adjacency carrying lock color (None = free passage).
+        let mut adj: Vec<Vec<(usize, Option<usize>)>> = vec![vec![]; n_zones];
+        for (bi, b) in zone_map.boundaries.iter().enumerate() {
+            let color = boundary_colors[bi];
+            adj[b.zone_a].push((b.zone_b, color));
+            adj[b.zone_b].push((b.zone_a, color));
+        }
+
+        // Dead-end spawn points per zone for preferred key placement.
+        let zone_dead_ends: Vec<Vec<Point>> = (0..n_zones).map(|zi| {
+            let zone_set: std::collections::HashSet<usize> =
+                zone_map.zones[zi].iter().copied().collect();
+            spawn_map.spawn_points.iter()
+                .filter(|sp| sp.category == SpawnCategory::DeadEnd && zone_set.contains(&sp.idx))
+                .map(|sp| sp.pos)
+                .collect()
+        }).collect();
+
+        // Unique colors sorted by the depth of their shallowest locked boundary.
+        let mut color_first_depth: std::collections::HashMap<usize, usize> =
+            std::collections::HashMap::new();
+        for (bi, b) in zone_map.boundaries.iter().enumerate() {
+            if let Some(color) = boundary_colors[bi] {
+                let d = depths[b.zone_a].min(depths[b.zone_b]);
+                color_first_depth.entry(color)
+                    .and_modify(|e| *e = (*e).min(d))
+                    .or_insert(d);
+            }
+        }
+        let mut color_order: Vec<usize> = color_first_depth.keys().copied().collect();
+        color_order.sort_by_key(|&c| color_first_depth[&c]);
+
+        let mut zone_has_key = vec![false; n_zones];
+        let mut unlocked: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        let mut total_placed = 0usize;
+
+        for color in color_order {
+            // Zones the player can reach before collecting this color's key.
+            let reachable = reachable_zones(&adj, start_zone, n_zones, &unlocked);
+
+            let mut candidates: Vec<usize> = (0..n_zones)
+                .filter(|&zi| reachable[zi] && !zone_has_key[zi])
+                .collect();
+
+            // Shuffle and keep up to KEY_COPIES_PER_COLOR.
+            for i in (1..candidates.len()).rev() {
+                let j = rng.range(0, (i + 1) as i32) as usize;
+                candidates.swap(i, j);
+            }
+            candidates.truncate(KEY_COPIES_PER_COLOR);
+
+            for zi in candidates {
+                let key_pos = if !zone_dead_ends[zi].is_empty() {
+                    let picks = &zone_dead_ends[zi];
+                    picks[rng.range(0, picks.len() as i32) as usize]
+                } else {
+                    let tiles = &zone_map.zones[zi];
+                    self.map.idx_pos(tiles[rng.range(0, tiles.len() as i32) as usize])
+                };
+                let _ = self.add_item(key_pos, Item::key(color));
+                zone_has_key[zi] = true;
+                total_placed += 1;
+            }
+
+            unlocked.insert(color);
+        }
+
+        println!("Placed {} keys across {} color(s).", total_placed, color_first_depth.len());
     }
 
     fn init_static_entities(&mut self) {
