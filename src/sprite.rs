@@ -79,7 +79,7 @@ impl Sprite {
                     rltk::to_cp437('█'),
                     rltk::to_cp437('─'),
                     rltk::to_cp437('╙'),
-                    rltk::to_cp437('╘'),
+                    rltk::to_cp437('╨'),
                     rltk::to_cp437('╜'),
                 ]
             },
@@ -131,7 +131,7 @@ impl Sprite {
                     rltk::to_cp437('█'),
                     rltk::to_cp437('║'),
                     rltk::to_cp437('╙'),
-                    rltk::to_cp437('╘'),
+                    rltk::to_cp437('╨'),
                     rltk::to_cp437('╜'),
                 ]
             },
