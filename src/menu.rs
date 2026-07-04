@@ -416,6 +416,7 @@ fn rebind_move_up_left(_: &mut State)     -> RunState { RunState::AwaitingRebind
 fn rebind_move_up_right(_: &mut State)    -> RunState { RunState::AwaitingRebind(RebindTarget::MoveUpRight,   None) }
 fn rebind_move_down_right(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::MoveDownRight, None) }
 fn rebind_move_down_left(_: &mut State)   -> RunState { RunState::AwaitingRebind(RebindTarget::MoveDownLeft,  None) }
+fn rebind_strafe(_: &mut State)           -> RunState { RunState::AwaitingRebind(RebindTarget::Strafe,        None) }
 
 pub fn keybind_menu(bindings: &Bindings) -> MenuPanel<SystemRow> {
     let row = |name: &str, key, action: fn(&mut State) -> RunState| SystemRow {
@@ -444,6 +445,7 @@ pub fn keybind_menu(bindings: &Bindings) -> MenuPanel<SystemRow> {
             row("Move up-right",  bindings.move_up_right,  rebind_move_up_right),
             row("Move down-right",bindings.move_down_right,rebind_move_down_right),
             row("Move down-left", bindings.move_down_left, rebind_move_down_left),
+            row("Strafe",         bindings.strafe,         rebind_strafe),
         ],
         selected_row: 0,
         no_selectable_rows: false,

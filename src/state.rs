@@ -75,6 +75,9 @@ pub struct State {
     /// Persists across non-input states so a press during AI/resolve is not dropped.
     pub last_input: Option<VirtualKeyCode>,
 
+    /// True when the strafe modifier key is currently held.
+    pub strafe_held: bool,
+
     start_tick: Instant
 }
 
@@ -109,6 +112,7 @@ impl State {
             pending_font_size: None,
             pending_fullscreen: None,
             last_input: None,
+            strafe_held: false,
             start_tick: Instant::now(),
         }
     }
@@ -138,6 +142,7 @@ impl State {
             pending_font_size: None,
             pending_fullscreen: None,
             last_input: None,
+            strafe_held: false,
             start_tick: Instant::now()
         }
     }
@@ -154,6 +159,13 @@ impl GameState for State {
         if context.key.is_some() {
             self.last_input = context.key;
         }
+
+        self.strafe_held = match self.bindings.strafe {
+            VirtualKeyCode::LShift | VirtualKeyCode::RShift => context.shift,
+            VirtualKeyCode::LControl | VirtualKeyCode::RControl => context.control,
+            VirtualKeyCode::LAlt | VirtualKeyCode::RAlt => context.alt,
+            _ => false,
+        };
 
         // F1 opens help from any awaiting-input gameplay state.
         if self.last_input == Some(VirtualKeyCode::F1) {

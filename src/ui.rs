@@ -188,6 +188,7 @@ pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, 
         RebindTarget::MoveUpRight =>     "Move up-right",
         RebindTarget::MoveDownRight =>   "Move down-right",
         RebindTarget::MoveDownLeft =>    "Move down-left",
+        RebindTarget::Strafe =>          "Strafe",
     };
     let (text, color) = match conflict {
         Some(other) => (
@@ -199,8 +200,8 @@ pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, 
             INACTIVE_COLOR,
         ),
     };
-    // Menu is at y=7 with 18 rows → bottom border at y=26; prompt sits two lines below
-    context.print_color_centered(28, color, BG_COLOR, &text);
+    // Menu is at y=7 with 19 rows → bottom border at y=27; prompt sits two lines below
+    context.print_color_centered(29, color, BG_COLOR, &text);
 }
 
 pub fn draw_game_over_screen(context: &mut Rltk) {

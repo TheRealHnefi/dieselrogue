@@ -26,6 +26,7 @@ pub struct Bindings {
     pub move_up_right:    VirtualKeyCode,
     pub move_down_right:  VirtualKeyCode,
     pub move_down_left:   VirtualKeyCode,
+    pub strafe:           VirtualKeyCode,
 }
 
 impl Default for Bindings {
@@ -49,6 +50,7 @@ impl Default for Bindings {
             move_up_right:   VirtualKeyCode::Numpad9,
             move_down_right: VirtualKeyCode::Numpad3,
             move_down_left:  VirtualKeyCode::Numpad1,
+            strafe:          VirtualKeyCode::LShift,
         }
     }
 }
@@ -94,6 +96,9 @@ pub fn key_to_str(key: VirtualKeyCode) -> &'static str {
         VirtualKeyCode::Grave       => "Grave",      VirtualKeyCode::LBracket   => "LBracket",
         VirtualKeyCode::RBracket    => "RBracket",   VirtualKeyCode::Minus      => "Minus",
         VirtualKeyCode::Equals      => "Equals",
+        VirtualKeyCode::LShift   => "LShift",   VirtualKeyCode::RShift   => "RShift",
+        VirtualKeyCode::LControl => "LControl", VirtualKeyCode::RControl => "RControl",
+        VirtualKeyCode::LAlt     => "LAlt",     VirtualKeyCode::RAlt     => "AltGr",
         _ => "Unknown",
     }
 }
@@ -139,6 +144,10 @@ pub fn key_from_str(s: &str) -> Option<VirtualKeyCode> {
         "Grave"      => Some(VirtualKeyCode::Grave),      "LBracket"  => Some(VirtualKeyCode::LBracket),
         "RBracket"   => Some(VirtualKeyCode::RBracket),   "Minus"     => Some(VirtualKeyCode::Minus),
         "Equals"     => Some(VirtualKeyCode::Equals),
+        "LShift"     => Some(VirtualKeyCode::LShift),   "RShift"   => Some(VirtualKeyCode::RShift),
+        "LControl"   => Some(VirtualKeyCode::LControl), "RControl" => Some(VirtualKeyCode::RControl),
+        "LAlt"       => Some(VirtualKeyCode::LAlt),
+        "AltGr" | "RAlt" => Some(VirtualKeyCode::RAlt),
         _ => None,
     }
 }
@@ -161,6 +170,7 @@ pub enum RebindTarget {
     Wait, GetItem, Disembark, Inventory, Equipment, Ability, Juke, Look, OpenMenu, Freelook,
     MoveLeft, MoveRight, MoveUp, MoveDown,
     MoveUpLeft, MoveUpRight, MoveDownRight, MoveDownLeft,
+    Strafe,
 }
 
 // ── FontSize ─────────────────────────────────────────────────────────────────
@@ -267,6 +277,7 @@ impl Settings {
             move_up_right:   parse_binding(b, "move_up_right",   VirtualKeyCode::Numpad9),
             move_down_right: parse_binding(b, "move_down_right", VirtualKeyCode::Numpad3),
             move_down_left:  parse_binding(b, "move_down_left",  VirtualKeyCode::Numpad1),
+            strafe:          parse_binding(b, "strafe",          VirtualKeyCode::LShift),
         };
         Settings { font_size, fullscreen, bindings }
     }
@@ -294,6 +305,7 @@ impl Settings {
                 "move_up_right":   key_to_str(self.bindings.move_up_right),
                 "move_down_right": key_to_str(self.bindings.move_down_right),
                 "move_down_left":  key_to_str(self.bindings.move_down_left),
+                "strafe":          key_to_str(self.bindings.strafe),
             }
         });
         let _ = fs::write(SETTINGS_PATH, serde_json::to_string_pretty(&json).unwrap());
