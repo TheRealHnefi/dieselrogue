@@ -141,6 +141,28 @@ pub fn navigate_cached(
     navigate(start, end, map, out)
 }
 
+/// Returns the adjacent walkable tile that minimizes distance to `end`, or
+/// `None` if no walkable neighbour is strictly closer than `start` itself.
+///
+/// O(8) — use this when the destination is visible so that line-of-sight
+/// guarantees a straight approach won't get trapped behind an opaque wall.
+/// The caller should fall back to [`navigate_cached`] on `None`.
+pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
+    let current_h = map.get_pathing_distance(start, end);
+    let mut best_h   = current_h;
+    let mut best_idx = None;
+
+    for (idx, _) in map.get_available_exits(start) {
+        let h = map.get_pathing_distance(idx, end);
+        if h < best_h {
+            best_h   = h;
+            best_idx = Some(idx);
+        }
+    }
+
+    best_idx
+}
+
 /// Find a path from `start` to `end` on `map`, writing steps into `out`.
 ///
 /// Steps are written in **reversed order**: `out[0]` is the step closest to
