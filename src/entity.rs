@@ -47,7 +47,7 @@ pub struct Entity {
     pub body: Body,
     pub viewshed: Viewshed,
     pub ai: AI,
-    pub key_color: Option<usize>,
+    pub color: Option<usize>,
     pub paper_doll: Option<PaperDoll>,
 }
 
@@ -66,7 +66,7 @@ impl Entity {
             body: Body::human_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::None,
-            key_color: None,
+            color: None,
             paper_doll: None,
         }
     }
@@ -89,7 +89,7 @@ impl Entity {
                 waypoint_index: 0,
                 combat_tactic: CombatTactic::Pursue,
             })),
-            key_color: None,
+            color: None,
             paper_doll: None,
         }
     }
@@ -108,7 +108,7 @@ impl Entity {
             body: Body::tank_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov90),
             ai: AI::Rotator,
-            key_color: None,
+            color: None,
             paper_doll: None,
         }
     }
@@ -140,7 +140,7 @@ impl Entity {
             body: Body::door_body(direction),
             viewshed: Viewshed::new(0, FieldOfView::Fov360),
             ai: AI::None,
-            key_color: None,
+            color: None,
             paper_doll: None,
         }
     }

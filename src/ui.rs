@@ -852,7 +852,7 @@ fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bo
         Some(pawn) => {
             let entity = &entities[pawn.entity_id];
             let burning = entity.body.get_status_effect(&StatusEffect::Burning(0)).is_some();
-            let color = if let Some(c) = entity.key_color {
+            let color = if let Some(c) = entity.color {
                 let (r, g, b) = crate::components::KEY_COLORS[c];
                 rltk::RGB::from_u8(r, g, b)
             } else {
