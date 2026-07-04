@@ -172,7 +172,7 @@ impl MenuRow for ItemSlotRow {
 
     fn selectable(&self) -> bool {
         match &self.item {
-            Some(item) => !item.proxy,
+            Some(item) => !item.proxy && !item.locked,
             None => false
         }
     }

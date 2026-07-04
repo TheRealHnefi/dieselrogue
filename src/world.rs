@@ -954,7 +954,7 @@ impl World {
             let mut drops: Vec<Item> = entity.body.inventory.clone();
             for slot in &entity.body.item_slots {
                 if let Some(item) = &slot.item {
-                    if !item.proxy {
+                    if !item.proxy && !item.locked {
                         drops.push(item.clone());
                     }
                 }
