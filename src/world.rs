@@ -25,7 +25,7 @@ pub struct World {
 }
 
 /// Overall guard density multiplier. Raise or lower to scale all guard counts.
-const GUARD_DENSITY: f32 = 0.05;
+const GUARD_DENSITY: f32 = 0.5;
 
 fn chebyshev(a: Point, b: Point) -> i32 {
     (a.x - b.x).abs().max((a.y - b.y).abs())
@@ -170,7 +170,7 @@ impl World {
         let mut placed: Vec<Point> = Vec::new();
         let mut guard_n = 0usize;
         println!("Spawning guards:");
-        //world.spawn_sentinels(&mut placed, &mut guard_n, &mut rng);
+        world.spawn_sentinels(&mut placed, &mut guard_n, &mut rng);
         // world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         // world.spawn_squads(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         // world.spawn_idle_guards(&spawn_map, &mut placed, &mut guard_n, &mut rng);
@@ -341,7 +341,8 @@ impl World {
         for idx in 0..self.map.width * self.map.height {
             if self.map.tiles[idx] != TileType::Doorway { continue; }
             let door_pos = self.map.idx_pos(idx);
-            for &(dx, dy) in &[(0i32, -1i32), (1, 0), (0, 1), (-1, 0)] {
+            // Place guard 3 tiles away from door
+            for &(dx, dy) in &[(0i32, -3i32), (3, 0), (0, 3), (-3, 0)] {
                 let nx = door_pos.x + dx;
                 let ny = door_pos.y + dy;
                 if nx < 0 || ny < 0 || nx >= self.map.width as i32 || ny >= self.map.height as i32 {
@@ -361,7 +362,8 @@ impl World {
         for (guard_pos, door_pos) in candidates {
             if count >= target { break; }
             if guard_too_close(guard_pos, placed, MIN_DIST) { continue; }
-            let facing = dir_toward(guard_pos, door_pos);
+            // Face away from the door
+            let facing = dir_toward(door_pos, guard_pos);
             *n += 1;
             if self.create_guard_actor(guard_pos, facing, format!("Sentinel {}", n), CombatTactic::Hold).is_ok() {
                 placed.push(guard_pos);
