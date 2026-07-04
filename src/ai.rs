@@ -12,7 +12,7 @@ use crate::Ability;
 
 const SUSPICIOUS_TURNS: u32 = 15;
 const ALERT_TURNS:      u32 = 30;
-const SHOUT_VOLUME:     u32 = 20;
+const SHOUT_VOLUME:     u32 = 15;
 
 // ---------------------------------------------------------------------------
 // AlertLevel
