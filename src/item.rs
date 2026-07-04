@@ -1,5 +1,3 @@
-use rltk::GRAY;
-use rltk::PURPLE;
 use rltk::Point;
 use crate::components::*;
 use crate::entity::Entity;

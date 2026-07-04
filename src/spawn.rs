@@ -1,4 +1,4 @@
-use rltk::{Point, RandomNumberGenerator, Tile};
+use rltk::{Point, RandomNumberGenerator};
 use std::collections::HashMap;
 use crate::{Map, TileType};
 
