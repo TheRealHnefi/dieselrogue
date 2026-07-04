@@ -5,6 +5,7 @@ use crate::entity::*;
 use crate::ability::*;
 use crate::intent::*;
 use crate::actions;
+use crate::Map;
 use crate::World;
 
 pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
@@ -170,6 +171,23 @@ pub fn iron_body_player_intent(world: &mut World) -> Result<(), GameError> {
         action: actions::iron_body_action,
     };
     Ok(())
+}
+
+/// Returns all equipped-item actions whose preconditions pass for `entity`.
+/// This is the authoritative source for what an entity can currently do with
+/// its equipped items — used by both the player menu and the AI.
+pub fn get_entity_equipped_actions<'a>(entity: &'a Entity, map: &Map) -> Vec<(&'a ItemAction, SlotType)> {
+    let mut result = Vec::new();
+    for slot in &entity.body.item_slots {
+        let Some(item) = &slot.item else { continue };
+        if item.proxy { continue; }
+        for action in &item.equip_actions {
+            if (action.precondition)(entity, map, Some(item)) {
+                result.push((action, slot.slot_type));
+            }
+        }
+    }
+    result
 }
 
 pub fn get_item_actions(world: &World) -> Vec<ItemAction>{

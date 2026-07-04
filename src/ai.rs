@@ -7,6 +7,7 @@ use crate::util::adjacent;
 use crate::components::*;
 use crate::intent::*;
 use crate::actions;
+use crate::player;
 
 const SUSPICIOUS_TURNS: u32 = 15;
 const ALERT_TURNS:      u32 = 30;
@@ -357,14 +358,32 @@ impl ActorAI {
             }
 
             // Try ranged attack if weapon equipped and target in range.
+            // Uses the same precondition system as the player menu: fire actions
+            // require an active aim status, so the AI must spend a turn aiming first.
             if let Some((slot, range)) = find_weapon(entity) {
                 let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
                 if dist <= range as f32 {
-                    return Some(Intent {
-                        phase:  ExecutionPhase::Attack,
-                        data:   IntentData::TargetWithEquipment { slot, target: tc },
-                        action: actions::single_fire_action,
-                    });
+                    let available = player::get_entity_equipped_actions(entity, map);
+
+                    // If a fire action is available (precondition_is_aiming passed), fire.
+                    if let Some((fire_action, _)) = available.iter()
+                        .find(|(a, s)| *s == slot && matches!(a.targeting, Targeting::UseExistingAim { .. }))
+                    {
+                        return Some(Intent {
+                            phase:  ExecutionPhase::Attack,
+                            data:   IntentData::TargetWithEquipment { slot, target: tc },
+                            action: fire_action.action,
+                        });
+                    }
+
+                    // Not yet aiming: spend this turn acquiring aim on the target.
+                    if available.iter().any(|(a, s)| *s == slot && matches!(a.targeting, Targeting::EntityAim { .. })) {
+                        return Some(Intent {
+                            phase:  ExecutionPhase::Attack,
+                            data:   IntentData::TargetWithEquipment { slot, target: tc },
+                            action: actions::aim_action,
+                        });
+                    }
                 }
             }
         }
