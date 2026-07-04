@@ -1,4 +1,5 @@
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::BinaryHeap;
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use rltk::BaseMap;
 use crate::Map;
@@ -39,6 +40,80 @@ impl PartialOrd for Node {
     }
 }
 
+/// Per-thread reusable scratch space for A*.
+///
+/// `visited` is a flat array indexed by tile index storing
+/// `(generation, came_from, g)`. An entry is valid when its generation
+/// matches `self.generation`, so "clearing" between calls is a single
+/// counter increment rather than iterating over the array.
+struct AStarScratch {
+    visited:    Vec<(u32, usize, f32)>,
+    generation: u32,
+    open:       BinaryHeap<Node>,
+}
+
+impl AStarScratch {
+    fn new() -> Self {
+        AStarScratch {
+            visited:    Vec::new(),
+            generation: 1,
+            open:       BinaryHeap::with_capacity(512),
+        }
+    }
+
+    fn reset(&mut self, map_size: usize) {
+        if self.visited.len() < map_size {
+            self.visited.resize(map_size, (0, 0, 0.0));
+        }
+        self.generation = self.generation.wrapping_add(1);
+        if self.generation == 0 {
+            // generation 0 is reserved as "unvisited"; skip it
+            self.generation = 1;
+            self.visited.iter_mut().for_each(|e| e.0 = 0);
+        }
+        self.open.clear();
+    }
+
+    #[inline]
+    fn get(&self, idx: usize) -> Option<(usize, f32)> {
+        let e = self.visited[idx];
+        if e.0 == self.generation { Some((e.1, e.2)) } else { None }
+    }
+
+    #[inline]
+    fn insert(&mut self, idx: usize, came_from: usize, g: f32) {
+        self.visited[idx] = (self.generation, came_from, g);
+    }
+
+    fn build_path(&self, start: usize, target: usize, success: bool) -> NavPath {
+        let mut steps = Vec::new();
+        let mut current = target;
+
+        loop {
+            let parent = match self.get(current) {
+                Some((p, _)) => p,
+                None => break,
+            };
+            if parent == start {
+                steps.push(current);
+                break;
+            }
+            steps.push(current);
+            if parent == current {
+                break; // safety: non-negative edge costs prevent this
+            }
+            current = parent;
+        }
+
+        steps.reverse();
+        NavPath { steps, success }
+    }
+}
+
+thread_local! {
+    static SCRATCH: RefCell<AStarScratch> = RefCell::new(AStarScratch::new());
+}
+
 /// Find a path from `start` to `end` on `map`.
 ///
 /// Uses A* with lazy deletion so each tile is effectively expanded at most once.
@@ -53,88 +128,62 @@ pub fn navigate(start: usize, end: usize, map: &Map) -> NavPath {
         return NavPath { steps: vec![], success: true };
     }
 
-    // visited[tile] = (came_from, cheapest g seen)
-    let mut visited: HashMap<usize, (usize, f32)> = HashMap::new();
-    let mut open: BinaryHeap<Node> = BinaryHeap::new();
+    SCRATCH.with(|cell| {
+        let mut scratch = cell.borrow_mut();
+        scratch.reset(map.width * map.height);
 
-    let h0 = map.get_pathing_distance(start, end);
-    visited.insert(start, (start, 0.0));
-    open.push(Node { idx: start, f: h0, g: 0.0 });
+        let h0 = map.get_pathing_distance(start, end);
+        scratch.insert(start, start, 0.0);
+        scratch.open.push(Node { idx: start, f: h0, g: 0.0 });
 
-    let mut best_h   = h0;
-    let mut best_idx = start;
-    let mut expansions = 0;
+        let mut best_h   = h0;
+        let mut best_idx = start;
+        let mut expansions = 0;
+        let mut found = false;
 
-    while let Some(current) = open.pop() {
-        // Lazy deletion: a cheaper route to this tile was already recorded.
-        if let Some(&(_, recorded_g)) = visited.get(&current.idx) {
-            if current.g > recorded_g + f32::EPSILON {
-                continue;
-            }
-        }
-
-        if current.idx == end {
-            return build_path(&visited, start, end, true);
-        }
-
-        if expansions >= MAX_EXPANSIONS {
-            break;
-        }
-        expansions += 1;
-
-        for (neighbour, edge_cost) in map.get_available_exits(current.idx) {
-            let new_g = current.g + edge_cost;
-
-            if let Some(&(_, existing_g)) = visited.get(&neighbour) {
-                if new_g >= existing_g {
+        while let Some(current) = scratch.open.pop() {
+            if let Some((_, recorded_g)) = scratch.get(current.idx) {
+                if current.g > recorded_g + f32::EPSILON {
                     continue;
                 }
             }
 
-            let h = map.get_pathing_distance(neighbour, end);
-            if h < best_h {
-                best_h   = h;
-                best_idx = neighbour;
+            if current.idx == end {
+                found = true;
+                break;
             }
 
-            visited.insert(neighbour, (current.idx, new_g));
-            open.push(Node { idx: neighbour, f: new_g + h, g: new_g });
+            if expansions >= MAX_EXPANSIONS {
+                break;
+            }
+            expansions += 1;
+
+            for (neighbour, edge_cost) in map.get_available_exits(current.idx) {
+                let new_g = current.g + edge_cost;
+
+                if let Some((_, existing_g)) = scratch.get(neighbour) {
+                    if new_g >= existing_g {
+                        continue;
+                    }
+                }
+
+                let h = map.get_pathing_distance(neighbour, end);
+                if h < best_h {
+                    best_h   = h;
+                    best_idx = neighbour;
+                }
+
+                scratch.insert(neighbour, current.idx, new_g);
+                scratch.open.push(Node { idx: neighbour, f: new_g + h, g: new_g });
+            }
         }
-    }
 
-    // Destination not reached within budget: return path to closest node seen.
-    if best_idx != start {
-        build_path(&visited, start, best_idx, false)
-    } else {
-        NavPath { steps: vec![], success: false }
-    }
-}
-
-fn build_path(
-    visited: &HashMap<usize, (usize, f32)>,
-    start: usize,
-    target: usize,
-    success: bool,
-) -> NavPath {
-    let mut steps = Vec::new();
-    let mut current = target;
-
-    loop {
-        let parent = match visited.get(&current) {
-            Some(&(p, _)) => p,
-            None => break,
-        };
-        if parent == start {
-            steps.push(current);
-            break;
+        if found {
+            scratch.build_path(start, end, true)
+        } else if best_idx != start {
+            scratch.build_path(start, best_idx, false)
+        } else {
+            NavPath { steps: vec![], success: false }
         }
-        steps.push(current);
-        if parent == current {
-            break; // safety: should never happen with non-negative edge costs
-        }
-        current = parent;
-    }
-
-    steps.reverse();
-    NavPath { steps, success }
+    })
 }
