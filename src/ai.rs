@@ -8,6 +8,7 @@ use crate::components::*;
 use crate::intent::*;
 use crate::actions;
 use crate::player;
+use crate::Ability;
 
 const SUSPICIOUS_TURNS: u32 = 15;
 const ALERT_TURNS:      u32 = 30;
@@ -363,11 +364,11 @@ impl ActorAI {
             if let Some((slot, range)) = find_weapon(entity) {
                 let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
                 if dist <= range as f32 {
-                    let available = player::get_entity_equipped_actions(entity, map);
+                    let available = player::get_entity_available_actions(entity, map);
 
                     // If a fire action is available (precondition_is_aiming passed), fire.
                     if let Some((fire_action, _)) = available.iter()
-                        .find(|(a, s)| *s == slot && matches!(a.targeting, Targeting::UseExistingAim { .. }))
+                        .find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::UseExistingAim { .. }))
                     {
                         return Some(Intent {
                             phase:  ExecutionPhase::Attack,
@@ -377,7 +378,7 @@ impl ActorAI {
                     }
 
                     // Not yet aiming: spend this turn acquiring aim on the target.
-                    if available.iter().any(|(a, s)| *s == slot && matches!(a.targeting, Targeting::EntityAim { .. })) {
+                    if available.iter().any(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::EntityAim { .. })) {
                         return Some(Intent {
                             phase:  ExecutionPhase::Attack,
                             data:   IntentData::TargetWithEquipment { slot, target: tc },
@@ -422,6 +423,9 @@ impl ActorAI {
 
     fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map) -> Option<Intent> {
         if entity.position == destination {
+            return None;
+        }
+        if !entity.has_ability(Ability::HumanMove) {
             return None;
         }
 

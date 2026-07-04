@@ -260,7 +260,7 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                 // Phase 2 of targeting: cursor position confirmed.
                 match state.pending_action.take() {
                     Some(pending) => {
-                        if matches!(pending.item_action.targeting, Targeting::Positional { .. }) {
+                        if matches!(pending.entity_action.targeting, Targeting::Positional { .. }) {
                             // Reject if cursor is on a non-visible tile.
                             let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
                             if !state.world.map.visible_tiles[cursor_idx] {
@@ -268,7 +268,7 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                                 return RunState::AwaitingPositionalTargetingInput;
                             }
                             // Reject if cursor is beyond the action's max range.
-                            if let Targeting::Positional { max_range: Some(range) } = pending.item_action.targeting {
+                            if let Targeting::Positional { max_range: Some(range) } = pending.entity_action.targeting {
                                 if let Ok(player) = state.world.get_player() {
                                     let dx = state.cursor_pos.x - player.position.x;
                                     let dy = state.cursor_pos.y - player.position.y;
@@ -288,9 +288,9 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                                     IntentData::Target(state.cursor_pos),
                             };
                             state.world.get_player_mut().unwrap().intent = Intent {
-                                phase: pending.item_action.phase,
+                                phase: pending.entity_action.phase,
                                 data,
-                                action: pending.item_action.action,
+                                action: pending.entity_action.action,
                             };
                             return RunState::Resolve(ExecutionPhase::Instant);
                         } else {
@@ -352,11 +352,11 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 match menu.get_action() {
                     MenuAction::Simple(action) => return action(state),
                     MenuAction::WithPendingAction(pending) => {
-                        if let Targeting::UseExistingAim { ask_bodypart } = pending.item_action.targeting {
+                        if let Targeting::UseExistingAim { ask_bodypart } = pending.entity_action.targeting {
                             // Fire using the current aim status — no cursor step needed.
                             return fire_from_aim(pending, ask_bodypart, state);
                         }
-                        if let Targeting::EntityAim { max_range } = pending.item_action.targeting {
+                        if let Targeting::EntityAim { max_range } = pending.entity_action.targeting {
                             return start_entity_targeting(pending, max_range, state);
                         }
                         // Phase 1 of positional/detailed targeting: enter cursor mode.
@@ -492,9 +492,9 @@ fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) 
     };
     match state.world.get_player_mut() {
         Ok(player) => player.intent = Intent {
-            phase: pending.item_action.phase,
+            phase: pending.entity_action.phase,
             data: IntentData::TargetWithEquipment { slot, target: aim_pos },
-            action: pending.item_action.action,
+            action: pending.entity_action.action,
         },
         Err(_) => return RunState::AwaitingInput,
     }
@@ -752,9 +752,9 @@ fn confirm_entity_target(state: &mut State) -> RunState {
     match state.world.get_player_mut() {
         Ok(player) => {
             player.intent = Intent {
-                phase: pending.item_action.phase,
+                phase: pending.entity_action.phase,
                 data: intent_data,
-                action: pending.item_action.action,
+                action: pending.entity_action.action,
             };
         },
         Err(_) => return RunState::AwaitingInput,

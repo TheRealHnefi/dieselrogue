@@ -9,6 +9,7 @@ use crate::Map;
 use crate::tile::TileType;
 use crate::Item;
 use crate::Body;
+use crate::actions;
 
 #[derive(PartialEq, Clone)]
 pub enum DrivingState {
@@ -49,6 +50,50 @@ pub struct Entity {
     pub ai: AI,
     pub color: Option<usize>,
     pub paper_doll: Option<PaperDoll>,
+    /// Actions the entity can perform independent of items — choosable by both
+    /// the player menu and the AI. Filtered by each action's precondition at
+    /// query time via `get_entity_available_actions`.
+    pub innate_actions: Vec<EntityAction>,
+}
+
+fn human_innate_actions() -> Vec<EntityAction> {
+    vec![
+        EntityAction {
+            name: "Shout".to_string(),
+            targeting: Targeting::None,
+            phase: ExecutionPhase::Inventory,
+            precondition: |e, _, _| e.has_ability(Ability::Shout),
+            action: actions::shout_action,
+        },
+        EntityAction {
+            name: "Iron Body".to_string(),
+            targeting: Targeting::None,
+            phase: ExecutionPhase::Inventory,
+            precondition: |e, _, _| e.has_ability(Ability::IronBody),
+            action: actions::iron_body_action,
+        },
+        EntityAction {
+            name: "Rush".to_string(),
+            targeting: Targeting::EntityAim { max_range: Some(3) },
+            phase: ExecutionPhase::Inventory,
+            precondition: |e, _, _| e.has_ability(Ability::Rush),
+            action: actions::rush_action,
+        },
+        EntityAction {
+            name: "Twist".to_string(),
+            targeting: Targeting::EntityAim { max_range: Some(1) },
+            phase: ExecutionPhase::Inventory,
+            precondition: |e, _, _| e.has_ability(Ability::Twist),
+            action: actions::twist_action,
+        },
+        EntityAction {
+            name: "Distract".to_string(),
+            targeting: Targeting::EntityAim { max_range: Some(10) },
+            phase: ExecutionPhase::Inventory,
+            precondition: |e, _, _| e.has_ability(Ability::Distract),
+            action: actions::distract_action,
+        },
+    ]
 }
 
 impl Entity {
@@ -68,6 +113,7 @@ impl Entity {
             ai: AI::None,
             color: None,
             paper_doll: None,
+            innate_actions: human_innate_actions(),
         }
     }
 
@@ -91,6 +137,7 @@ impl Entity {
             })),
             color: None,
             paper_doll: None,
+            innate_actions: human_innate_actions(),
         }
     }
 
@@ -110,6 +157,7 @@ impl Entity {
             ai: AI::Rotator,
             color: None,
             paper_doll: None,
+            innate_actions: vec![],
         }
     }
 
@@ -142,6 +190,7 @@ impl Entity {
             ai: AI::None,
             color: None,
             paper_doll: None,
+            innate_actions: vec![],
         }
     }
 

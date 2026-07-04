@@ -27,7 +27,7 @@ pub enum Targeting {
 }
 
 #[derive(Clone)]
-pub struct ItemAction {
+pub struct EntityAction {
     pub name: String,
     pub targeting: Targeting,
     pub phase: ExecutionPhase,

@@ -272,7 +272,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
         || state.run_state == RunState::Looking;
     if in_cursor_mode && blink {
         let invalid_target = state.pending_action.as_ref().map(|pa| {
-            if let crate::Targeting::Positional { max_range } = pa.item_action.targeting {
+            if let crate::Targeting::Positional { max_range } = pa.entity_action.targeting {
                 let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
                 let not_visible = !state.world.map.visible_tiles[cursor_idx];
                 let out_of_range = if let Some(range) = max_range {
