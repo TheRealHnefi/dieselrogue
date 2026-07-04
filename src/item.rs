@@ -1,3 +1,5 @@
+use rltk::GRAY;
+use rltk::PURPLE;
 use rltk::Point;
 use crate::components::*;
 use crate::entity::Entity;
@@ -48,55 +50,55 @@ struct FirearmDef {
 
 impl Item {
     pub fn revolver() -> Self {
-        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'p', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   damage: Damage::new(15,  0,  0, 0), range: 5,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   damage: Damage::new(15,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'p', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 0 })
+        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 0 })
     }
     pub fn flare_gun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'r', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   damage: Damage::new( 0,  0, 10, 0), range: 5,  rarity: 0 })
+        Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'F', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   damage: Damage::new( 0,  0, 10, 0), range: 5,  rarity: 0 })
     }
     pub fn shock_pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 's', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   damage: Damage::new( 0,  3,  0, 0), range: 3,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'S', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   damage: Damage::new( 0,  3,  0, 0), range: 3,  rarity: 1 })
     }
     pub fn submachine_gun() -> Self {
-        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'p', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn bolt_action_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'p', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   damage: Damage::new(25,  0,  0, 0), range: 15, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'B', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   damage: Damage::new(25,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn semi_auto_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'p', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  damage: Damage::new(20,  0,  0, 0), range: 15, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'R', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  damage: Damage::new(20,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn assault_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'm', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  damage: Damage::new(15,  0,  0, 0), range: 12, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  damage: Damage::new(15,  0,  0, 0), range: 12, rarity: 2 })
     }
     pub fn machinegun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'm', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
     }
     pub fn rotary_machinegun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'm', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, damage: Damage::new(12,  0,  0, 0), range: 10, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, damage: Damage::new(12,  0,  0, 0), range: 10, rarity: 3 })
     }
     pub fn shock_carbine() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  damage: Damage::new( 0,  3,  0, 0), range: 6,  rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  damage: Damage::new( 0,  3,  0, 0), range: 6,  rarity: 2 })
     }
     pub fn shock_cannon() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   damage: Damage::new( 0, 25,  0, 0), range: 8,  rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   damage: Damage::new( 0, 25,  0, 0), range: 8,  rarity: 3 })
     }
     pub fn flamethrower() -> Self {
         Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  damage: Damage::new( 0,  0,  3, 0), range: 10, rarity: 2 })
     }
     pub fn rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'r', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   damage: Damage::new(500, 0,  0, 0), range: 15, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'R', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   damage: Damage::new(500, 0,  0, 0), range: 15, rarity: 3 })
     }
     pub fn multi_rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'r', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'M', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12, rarity: 3 })
     }
 
     pub fn grenade() -> Self {
         Item {
             id: 0, rarity: 1,
-            renderable: Renderable::new_char('g'),
+            renderable: Renderable::new_colored_char('g', Item::rarity_to_color(rarity)),
             name: String::from("Grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
@@ -109,8 +111,8 @@ impl Item {
 
     pub fn fire_grenade() -> Self {
         Item {
-            id: 0, rarity: 1,
-            renderable: Renderable::new_char('g'),
+            id: 0, rarity: 2,
+            renderable: Renderable::new_colored_char('f', Item::rarity_to_color(rarity)),
             name: String::from("Fire grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
@@ -124,7 +126,7 @@ impl Item {
     pub fn shock_grenade() -> Self {
         Item {
             id: 0, rarity: 2,
-            renderable: Renderable::new_char('g'),
+            renderable: Renderable::new_colored_char('g', Item::rarity_to_color(rarity)),
             name: String::from("Shock grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
@@ -207,7 +209,7 @@ impl Item {
     pub fn knife() -> Self {
         Item {
             id: 0, rarity: 0,
-            renderable: Renderable::new_char('/'),
+            renderable: Renderable::new_colored_char('/', Item::rarity_to_color(rarity)),
             name: String::from("Knife"),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions: vec![],
@@ -221,7 +223,7 @@ impl Item {
     pub fn bulletproof_vest() -> Self {
         Item {
             id: 0, rarity: 1,
-            renderable: Renderable::new_char('v'),
+            renderable: Renderable::new_colored_char('V', Item::rarity_to_color(rarity)),
             name: String::from("Bulletproof vest"),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions: vec!(),
@@ -270,10 +272,11 @@ impl Item {
         } else {
             vec![SlotType::PrimaryHand]
         };
+        
         Item {
             id: 0,
             rarity: def.rarity,
-            renderable: Renderable::new_char(def.glyph),
+            renderable: Renderable::new_colored_char(def.glyph, Item::rarity_to_color(def.rarity)),
             name: def.name.to_string(),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions,
@@ -313,6 +316,16 @@ impl Item {
     }
     fn throw_action() -> ItemAction {
         ItemAction { name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
+    }
+
+    fn rarity_to_color(rarity: u8) -> rltk::RGB {
+        match(rarity) {
+            0 => rltk::RGB::named(rltk::GRAY),
+            1 => rltk::RGB::named(rltk::GREEN),
+            2 => rltk::RGB::named(rltk::BLUE),
+            3 => rltk::RGB::named(rltk::PURPLE),
+            _ => rltk::RGB::named(rltk::WHITE)
+        }
     }
 }
 

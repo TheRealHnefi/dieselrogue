@@ -126,6 +126,14 @@ impl Renderable {
             background: rltk::RGB::named(rltk::BLACK)
         }
     }
+
+    pub fn new_colored_char(character: char, color: rltk::RGB) -> Self {
+        Self {
+            glyph: rltk::to_cp437(character),
+            color: color,
+            background: rltk::RGB::named(rltk::BLACK)
+        }
+    }
 }
 
 #[derive(Clone)]
