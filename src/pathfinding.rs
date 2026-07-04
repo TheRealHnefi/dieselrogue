@@ -9,15 +9,6 @@ use crate::Map;
 /// in the common case.
 const MAX_EXPANSIONS: usize = 2048;
 
-pub struct NavPath {
-    /// Tile indices in forward order: steps[0] is the first tile to enter,
-    /// steps[last] is the destination (or the closest reachable tile when
-    /// success is false).  The start tile is not included.
-    pub steps: Vec<usize>,
-    /// True if the exact destination was reached within the expansion budget.
-    pub success: bool,
-}
-
 #[derive(PartialEq)]
 struct Node {
     idx: usize,
@@ -85,28 +76,28 @@ impl AStarScratch {
         self.visited[idx] = (self.generation, came_from, g);
     }
 
-    fn build_path(&self, start: usize, target: usize, success: bool) -> NavPath {
-        let mut steps = Vec::new();
+    /// Trace from `target` back to `start` and write steps into `out` in
+    /// **reversed order**: `out[0]` is the step closest to `target`,
+    /// `out.last()` is the first step after `start`.  The parent-trace loop
+    /// naturally produces this order, so no final reverse is needed.
+    fn fill_reversed(&self, start: usize, target: usize, out: &mut Vec<usize>) {
+        out.clear();
         let mut current = target;
-
         loop {
             let parent = match self.get(current) {
                 Some((p, _)) => p,
                 None => break,
             };
             if parent == start {
-                steps.push(current);
+                out.push(current);
                 break;
             }
-            steps.push(current);
+            out.push(current);
             if parent == current {
                 break; // safety: non-negative edge costs prevent this
             }
             current = parent;
         }
-
-        steps.reverse();
-        NavPath { steps, success }
     }
 }
 
@@ -114,20 +105,25 @@ thread_local! {
     static SCRATCH: RefCell<AStarScratch> = RefCell::new(AStarScratch::new());
 }
 
-/// Find a path from `start` to `end` on `map`.
+/// Find a path from `start` to `end` on `map`, writing steps into `out`.
 ///
-/// Uses A* with lazy deletion so each tile is effectively expanded at most once.
-/// If the expansion budget is exhausted before the destination is reached, returns
-/// the path to the visited tile with the smallest heuristic distance to the goal,
-/// giving the caller a best-effort route that always makes forward progress.
+/// Steps are written in **reversed order**: `out[0]` is the step closest to
+/// `end`, `out.last()` is the first step to take from `start`.  This layout
+/// lets callers maintain the path as a stack (pop from back = advance).
 ///
-/// Returns an empty `steps` vec only when no visited neighbour of `start` exists
-/// (completely walled in) or when `start == end`.
-pub fn navigate(start: usize, end: usize, map: &Map) -> NavPath {
+/// Returns `true` if the exact destination was reached within the expansion
+/// budget.  On a partial path `out` holds a best-effort route toward the goal
+/// (always making forward progress); `out` is empty only when start is
+/// completely walled in.
+///
+/// `out` is always cleared before writing.
+pub fn navigate(start: usize, end: usize, map: &Map, out: &mut Vec<usize>) -> bool {
     #[cfg(debug_assertions)]
     puffin::profile_function!();
+
     if start == end {
-        return NavPath { steps: vec![], success: true };
+        out.clear();
+        return true;
     }
 
     SCRATCH.with(|cell| {
@@ -144,6 +140,7 @@ pub fn navigate(start: usize, end: usize, map: &Map) -> NavPath {
         let mut found = false;
 
         while let Some(current) = scratch.open.pop() {
+            // Lazy deletion: a cheaper route to this tile was already recorded.
             if let Some((_, recorded_g)) = scratch.get(current.idx) {
                 if current.g > recorded_g + f32::EPSILON {
                     continue;
@@ -181,11 +178,14 @@ pub fn navigate(start: usize, end: usize, map: &Map) -> NavPath {
         }
 
         if found {
-            scratch.build_path(start, end, true)
+            scratch.fill_reversed(start, end, out);
+            true
         } else if best_idx != start {
-            scratch.build_path(start, best_idx, false)
+            scratch.fill_reversed(start, best_idx, out);
+            false
         } else {
-            NavPath { steps: vec![], success: false }
+            out.clear();
+            false
         }
     })
 }
