@@ -96,8 +96,9 @@ impl Item {
     }
 
     pub fn grenade() -> Self {
+        let rarity = 1;
         Item {
-            id: 0, rarity: 1,
+            id: 0, rarity: rarity,
             renderable: Renderable::new_colored_char('g', Item::rarity_to_color(rarity)),
             name: String::from("Grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -110,8 +111,9 @@ impl Item {
     }
 
     pub fn fire_grenade() -> Self {
+        let rarity = 2;
         Item {
-            id: 0, rarity: 2,
+            id: 0, rarity: rarity,
             renderable: Renderable::new_colored_char('f', Item::rarity_to_color(rarity)),
             name: String::from("Fire grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -124,8 +126,9 @@ impl Item {
     }
 
     pub fn shock_grenade() -> Self {
+        let rarity = 2;
         Item {
-            id: 0, rarity: 2,
+            id: 0, rarity: rarity,
             renderable: Renderable::new_colored_char('g', Item::rarity_to_color(rarity)),
             name: String::from("Shock grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -138,8 +141,9 @@ impl Item {
     }
 
     pub fn flashbang() -> Self {
+        let rarity = 1;
         Item {
-            id: 0, rarity: 1,
+            id: 0, rarity: rarity,
             renderable: Renderable::new_char('f'),
             name: String::from("Flashbang"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
@@ -191,11 +195,7 @@ impl Item {
         let (r, g, b) = crate::components::KEY_COLORS[color];
         Item {
             id: 0, rarity: 0,
-            renderable: Renderable {
-                glyph: rltk::to_cp437('k'),
-                color: rltk::RGB::from_u8(r, g, b),
-                background: rltk::RGB::named(rltk::BLACK),
-            },
+            renderable: Renderable::new_colored_char('k', rltk::RGB::from_u8(r, g, b)),
             name: format!("{} key", crate::components::KEY_COLOR_NAMES[color]),
             inventory_actions: vec![Item::drop_action()],
             equip_actions: vec![],
@@ -207,8 +207,9 @@ impl Item {
     }
 
     pub fn knife() -> Self {
+        let rarity = 0;
         Item {
-            id: 0, rarity: 0,
+            id: 0, rarity: rarity,
             renderable: Renderable::new_colored_char('/', Item::rarity_to_color(rarity)),
             name: String::from("Knife"),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
@@ -221,8 +222,9 @@ impl Item {
     }
 
     pub fn bulletproof_vest() -> Self {
+        let rarity = 1;
         Item {
-            id: 0, rarity: 1,
+            id: 0, rarity: rarity,
             renderable: Renderable::new_colored_char('V', Item::rarity_to_color(rarity)),
             name: String::from("Bulletproof vest"),
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
@@ -319,7 +321,7 @@ impl Item {
     }
 
     fn rarity_to_color(rarity: u8) -> rltk::RGB {
-        match(rarity) {
+        match rarity {
             0 => rltk::RGB::named(rltk::GRAY),
             1 => rltk::RGB::named(rltk::GREEN),
             2 => rltk::RGB::named(rltk::BLUE),
