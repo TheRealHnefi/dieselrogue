@@ -134,6 +134,9 @@ impl ActorAI {
         entities: &[Entity],
         sounds:   &[SoundEvent],
     ) -> (Option<Intent>, Vec<SoundEvent>) {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
+
         let prev_priority = self.alert.priority();
 
         self.process_sounds(entity, sounds);
