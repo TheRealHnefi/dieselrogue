@@ -120,6 +120,8 @@ fn parse_args() -> (u64, bool) {
 
 fn main() -> rltk::BError {
     #[cfg(debug_assertions)]
+    println!("Debugging enabled");
+    #[cfg(debug_assertions)]
     let _puffin_server = puffin_http::Server::new("0.0.0.0:8585").expect("puffin_http server");
     #[cfg(debug_assertions)]
     puffin::set_scopes_on(true);
