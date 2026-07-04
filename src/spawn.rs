@@ -650,7 +650,7 @@ impl World {
         rng: &mut RandomNumberGenerator,
     ) {
         const FOLLOWER_RADIUS: i32 = 4;
-        const BAND_PROBS: [i32; 4] = [0, 10, 25, 50];
+        const BAND_PROBS: [i32; 4] = [0, 5, 10, 20];
 
         let cx = self.map.width as f32 / 2.0;
         let cy = self.map.height as f32 / 2.0;
