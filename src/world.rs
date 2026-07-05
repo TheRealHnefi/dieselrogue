@@ -190,7 +190,8 @@ impl World {
 
     pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Result<(), GameError> {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
-        let mut entity = Entity::new_patrolling_goon(self.entities.len(), actual_pos, facing, name, waypoints);
+        let route_id = self.map.register_patrol_route(waypoints);
+        let mut entity = Entity::new_patrolling_goon(self.entities.len(), actual_pos, facing, name, route_id);
         self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
@@ -209,10 +210,10 @@ impl World {
         Ok(())
     }
 
-    pub fn create_patrol_actor(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>, tactic: CombatTactic) -> Result<(), GameError> {
+    pub fn create_patrol_actor(&mut self, pos: Point, facing: Direction, name: String, route_id: usize, waypoint_index: usize, tactic: CombatTactic) -> Result<(), GameError> {
         self.create_actor(pos, facing, name, Profile::Patrol {
-            waypoints,
-            waypoint_index: 0,
+            route_id,
+            waypoint_index,
             combat_tactic: tactic,
         })
     }
@@ -308,6 +309,40 @@ impl World {
 
     #[tracing::instrument(skip_all)]
     pub fn resolve_intent_declaration(&mut self) {
+        // Step 0: Build resident flow fields only for static goals SHARED by
+        // enough unaware actors to amortize the cost. A field floods the whole
+        // map once, so it only beats per-agent A* when many agents descend the
+        // same field; a goal wanted by one agent is far cheaper via A* (which is
+        // bounded to MAX_EXPANSIONS). We therefore count demand per exact goal
+        // cell and build only the popular ones (capped per turn to bound the
+        // one-time spike). Agents whose goal has no field fall back to A* in
+        // navigate_to, so this is a safe no-op when goals are all distinct.
+        //
+        // Built serially under &mut map before the read-only intent loop so that
+        // loop can read the fields under a shared borrow.
+        const FIELD_DEMAND_THRESHOLD: usize = 16; // min agents sharing a goal
+        const MAX_FIELD_BUILDS_PER_TURN: usize = 4; // backstop against spikes
+
+        let mut demand: HashMap<usize, usize> = HashMap::new();
+        {
+            let map = &self.map;
+            for e in &self.entities {
+                if let AI::Actor(actor) = &e.ai {
+                    if let Some(p) = actor.static_nav_goal(map) {
+                        *demand.entry(map.pos_idx(p)).or_insert(0) += 1;
+                    }
+                }
+            }
+        }
+        // Most-demanded first; skip goals under threshold or already built.
+        let mut popular: Vec<(usize, usize)> = demand.into_iter()
+            .filter(|&(goal, n)| n >= FIELD_DEMAND_THRESHOLD && self.map.field_for(goal).is_none())
+            .collect();
+        popular.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+        for (goal, _) in popular.into_iter().take(MAX_FIELD_BUILDS_PER_TURN) {
+            self.map.ensure_field(goal);
+        }
+
         // Step 1: Extract all AI states so we can hold &self.entities (immutable)
         // while mutating AI state (path cache etc.) during computation.
         let mut ai_states: Vec<AI> = self.entities.iter_mut()

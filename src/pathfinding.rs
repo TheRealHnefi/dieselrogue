@@ -163,6 +163,87 @@ pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
     best_idx
 }
 
+/// A precomputed Dijkstra distance field over **static terrain** toward a single
+/// goal cell.  `dist[i]` is the integer cost of the cheapest terrain path from
+/// tile `i` to the goal (orthogonal step = 10, diagonal = 14); [`u16::MAX`] marks
+/// tiles from which the goal is unreachable.
+///
+/// Pawn occupancy is deliberately **not** baked in, so the field stays valid as
+/// entities move and can be built once and shared across turns and agents.
+/// Transient blocking is handled at read time by [`DistField::step`], which only
+/// descends into tiles that are currently walkable.
+pub struct DistField {
+    dist: Vec<u16>,
+}
+
+impl DistField {
+    /// Orthogonal / diagonal step costs, scaled to integers so the flood fill
+    /// can use a cheap integer queue.  Mirror the 1.0 / 1.45 costs in
+    /// `Map::get_available_exits`.
+    const ORTHO: u32 = 10;
+    const DIAG:  u32 = 14;
+
+    /// Next step for an agent at `from`: the *currently walkable* neighbour with
+    /// the lowest field value strictly below `from`'s own.  Returns `None` when
+    /// the goal is unreachable from `from` over static terrain, or when every
+    /// descending neighbour is transiently blocked (caller should wait or fall
+    /// back to A*).
+    ///
+    /// `map.get_available_exits` already excludes pawn-occupied tiles, so reading
+    /// the static field through it yields dynamic obstacle avoidance for free.
+    pub fn step(&self, from: usize, map: &Map) -> Option<usize> {
+        let cur = self.dist[from];
+        if cur == u16::MAX {
+            return None;
+        }
+        let mut best_idx = None;
+        let mut best_val = cur;
+        for (nb, _) in map.get_available_exits(from) {
+            if self.dist[nb] < best_val {
+                best_val = self.dist[nb];
+                best_idx = Some(nb);
+            }
+        }
+        best_idx
+    }
+}
+
+/// Build a [`DistField`] toward `goal` by flooding outward over static terrain
+/// (walls block; pawns are ignored — see [`DistField`]).  Cost is O(reachable
+/// tiles); intended to be built once and cached, not called per agent per turn.
+pub fn build_field(goal: usize, map: &Map) -> DistField {
+    println!("Building field");
+    let size = map.width * map.height;
+    let mut dist = vec![u16::MAX; size];
+    if goal >= size {
+        return DistField { dist };
+    }
+
+    // Reuse `Node`'s min-heap-on-`f` ordering as an integer priority queue:
+    // `f` carries the accumulated cost, `g`/`h` are unused here.
+    let mut open: BinaryHeap<Node> = BinaryHeap::new();
+    dist[goal] = 0;
+    open.push(Node { idx: goal, f: 0.0, g: 0.0 });
+
+    while let Some(current) = open.pop() {
+        let d = current.f as u32;
+        if d > dist[current.idx] as u32 {
+            continue; // stale heap entry — a cheaper cost was already recorded
+        }
+        for (nb, cost) in map.terrain_exits(current.idx) {
+            let step = if cost > 1.0 { DistField::DIAG } else { DistField::ORTHO };
+            let nd = d + step;
+            if nd < dist[nb] as u32 {
+                // Reserve u16::MAX for "unreachable"; clamp so it never collides.
+                dist[nb] = nd.min(u16::MAX as u32 - 1) as u16;
+                open.push(Node { idx: nb, f: nd as f32, g: 0.0 });
+            }
+        }
+    }
+
+    DistField { dist }
+}
+
 /// Find a path from `start` to `end` on `map`, writing steps into `out`.
 ///
 /// Steps are written in **reversed order**: `out[0]` is the step closest to
@@ -246,4 +327,59 @@ pub fn navigate(start: usize, end: usize, map: &Map, out: &mut Vec<usize>) -> bo
             false
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Map;
+    use crate::tile::TileType;
+
+    /// Follow the field one `step` at a time from `start`; return the number of
+    /// steps to reach `goal`, or `None` if the field reports being stuck.
+    fn walk(field: &DistField, map: &Map, start: usize, goal: usize) -> Option<usize> {
+        let mut at = start;
+        for steps in 0..1000 {
+            if at == goal { return Some(steps); }
+            at = field.step(at, map)?;
+        }
+        None
+    }
+
+    #[test]
+    fn field_descends_to_goal_on_open_terrain() {
+        let map = Map::new_empty_map(12, 12);
+        let goal = map.xy_idx(6, 6);
+        let field = build_field(goal, &map);
+        assert_eq!(walk(&field, &map, map.xy_idx(2, 2), goal), Some(4)); // Chebyshev distance (diagonals allowed)
+    }
+
+    #[test]
+    fn field_routes_around_wall() {
+        let mut map = Map::new_empty_map(12, 12);
+        // Vertical wall at x=6 spanning y=1..=9, leaving a detour open at the
+        // bottom (y=10, y=11) between the start (left) and goal (right).
+        for y in 1..10 {
+            let idx = map.xy_idx(6, y);
+            map.tiles[idx] = TileType::Wall;
+        }
+        let goal = map.xy_idx(10, 6);
+        let field = build_field(goal, &map);
+        // Reachable only by detouring around the wall's bottom end.
+        assert!(walk(&field, &map, map.xy_idx(2, 6), goal).is_some());
+    }
+
+    #[test]
+    fn field_reports_unreachable_goal() {
+        let mut map = Map::new_empty_map(12, 12);
+        // Full vertical wall at x=6 splits the interior in two (no detour).
+        for y in 1..12 {
+            let idx = map.xy_idx(6, y);
+            map.tiles[idx] = TileType::Wall;
+        }
+        let goal = map.xy_idx(10, 6);
+        let field = build_field(goal, &map);
+        let start = map.xy_idx(2, 6);
+        assert_eq!(field.step(start, &map), None); // walled off from the goal
+    }
 }

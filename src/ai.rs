@@ -81,7 +81,10 @@ pub enum CombatTactic {
 
 pub enum Profile {
     Patrol {
-        waypoints: Vec<Point>,
+        /// Index into [`Map::patrol_routes`] — the shared, read-only route this
+        /// actor follows. Many patrollers share a route so their navigation can
+        /// amortize onto the route's shared flow fields.
+        route_id: usize,
         waypoint_index: usize,
         combat_tactic: CombatTactic,
     },
@@ -125,6 +128,22 @@ pub struct ActorAI {
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
         ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None }
+    }
+
+    /// The static navigation goal this actor will steer toward while Unaware
+    /// (patrol waypoint / guard anchor), if any. Used by the field pre-pass to
+    /// build resident flow fields before the read-only intent loop runs.
+    /// Returns `None` once alerted — those goals are dynamic (Stage 2).
+    pub fn static_nav_goal(&self, map: &Map) -> Option<Point> {
+        if self.alert.priority() != 0 {
+            return None;
+        }
+        match &self.profile {
+            Profile::Patrol { route_id, waypoint_index, .. } =>
+                map.patrol_routes.get(*route_id).and_then(|r| r.get(*waypoint_index).copied()),
+            Profile::Guard { anchor, .. } => Some(*anchor),
+            _ => None,
+        }
     }
 
     pub fn compute_intent(
@@ -283,13 +302,17 @@ impl ActorAI {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
         match &mut self.profile {
-            Profile::Patrol { waypoints, waypoint_index, .. } => {
+            Profile::Patrol { route_id, waypoint_index, .. } => {
+                let route = &map.patrol_routes[*route_id];
+                if route.is_empty() {
+                    return None;
+                }
                 // Advance waypoint if arrived.
-                if waypoints[*waypoint_index] == entity.position {
-                    *waypoint_index = (*waypoint_index + 1) % waypoints.len();
+                if route[*waypoint_index] == entity.position {
+                    *waypoint_index = (*waypoint_index + 1) % route.len();
                     self.path_target = None;
                 }
-                let dest = waypoints[*waypoint_index];
+                let dest = route[*waypoint_index];
                 self.navigate_to(entity, dest, map, 0)
             },
             Profile::Guard { anchor, .. } => {
@@ -442,6 +465,13 @@ impl ActorAI {
 
     // --- Navigation ---
 
+    /// A* fallback shared by every branch of `navigate_to`: repath (respecting
+    /// the cache/tolerance) and return the next tile to step onto, if any.
+    fn astar_step(&mut self, from_idx: usize, dest_idx: usize, map: &Map, tolerance: u32) -> Option<Point> {
+        navigate_cached(from_idx, dest_idx, map, &mut self.current_path, &mut self.path_target, tolerance);
+        self.current_path.last().map(|&i| map.idx_pos(i))
+    }
+
     fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map, tolerance: u32) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
@@ -476,12 +506,17 @@ impl ActorAI {
                 Some(map.idx_pos(idx))
             } else {
                 // Stuck on a corner with a visible target — fall through to A*.
-                navigate_cached(from_idx, dest_idx, map, &mut self.current_path, &mut self.path_target, tolerance);
-                self.current_path.last().map(|&i| map.idx_pos(i))
+                self.astar_step(from_idx, dest_idx, map, tolerance)
             }
+        } else if let Some(idx) = map.field_for(dest_idx).and_then(|f| f.step(from_idx, map)) {
+            // A resident static-terrain flow field covers this goal (e.g. a
+            // patrol waypoint or guard anchor): obstacle-aware O(8) descent,
+            // shared across every agent heading here, with no per-agent A*.
+            // Falls through to A* below only if the field can't produce a step.
+            self.path_target = None;
+            Some(map.idx_pos(idx))
         } else {
-            navigate_cached(from_idx, dest_idx, map, &mut self.current_path, &mut self.path_target, tolerance);
-            self.current_path.last().map(|&i| map.idx_pos(i))
+            self.astar_step(from_idx, dest_idx, map, tolerance)
         }?;
 
         match direction_to(entity.position, next_pos) {

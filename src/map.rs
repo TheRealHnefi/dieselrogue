@@ -1,9 +1,11 @@
 use rltk::{BaseMap, Algorithm2D, Point, RandomNumberGenerator};
 use std::cmp::{max, min};
+use std::collections::HashMap;
 use crate::entity::Pawn;
 use crate::item::Item;
 use crate::tile::TileType;
 use crate::block::*;
+use crate::DistField;
 use super::{GameError, Error};
 
 pub struct Map {
@@ -21,6 +23,17 @@ pub struct Map {
     /// a Doorway tile, cleared when the door is removed. Used by `is_opaque` without needing
     /// entity access.
     pub fov_blocked: Vec<bool>,
+    /// Resident cache of static-terrain flow fields, keyed by goal tile index.
+    /// Built lazily via [`Map::ensure_field`] and shared across all agents
+    /// navigating to that goal. Terrain-only (see [`DistField`]), so entries stay
+    /// valid as pawns move and never need rebuilding for a static map.
+    nav_fields: HashMap<usize, DistField>,
+    /// Shared, read-only patrol routes as ordered loops of waypoints. Built once
+    /// at map generation (concentric rings) and referenced by `Profile::Patrol`
+    /// via index, so many patrollers share the same waypoint cells — which lets
+    /// their navigation amortize onto shared flow fields. Append ad-hoc routes
+    /// via [`Map::register_patrol_route`].
+    pub patrol_routes: Vec<Vec<Point>>,
 }
 
 impl Map {
@@ -183,6 +196,8 @@ impl Map {
           pawns: vec![None; tile_count],
           items: vec![None; tile_count],
           fov_blocked: vec![false; tile_count],
+          nav_fields: HashMap::new(),
+          patrol_routes: Vec::new(),
         };
 
         let mut generated_blocks = generate_block_grid(size_in_blocks, rng);
@@ -203,6 +218,7 @@ impl Map {
           }
         }
 
+        map.build_patrol_rings();
         return map;
     }
 
@@ -217,7 +233,149 @@ impl Map {
             pawns: vec![None; tile_count],
             items: vec![None; tile_count],
             fov_blocked: vec![false; tile_count],
+            nav_fields: HashMap::new(),
+            patrol_routes: Vec::new(),
         }
+    }
+
+    /// Append a patrol route and return its id. Used for ad-hoc / test routes;
+    /// the standard concentric rings are built at map generation.
+    pub fn register_patrol_route(&mut self, route: Vec<Point>) -> usize {
+        self.patrol_routes.push(route);
+        self.patrol_routes.len() - 1
+    }
+
+    /// Build the default shared patrol routes: concentric rectangular rings
+    /// centred on the map, from a ~100-tile-wide innermost ring out toward the
+    /// edges. Each route is the four ring corners (a closed loop); corners are
+    /// snapped to the nearest walkable tile so patrollers can actually reach them.
+    fn build_patrol_rings(&mut self) {
+        const NUM_RINGS:   usize = 4;
+        const INNER_WIDTH: i32   = 100; // narrowest ring spans ~100 tiles
+        const EDGE_MARGIN: i32   = 16;  // keep the outermost ring off the border
+
+        let (w, h)   = (self.width as i32, self.height as i32);
+        let (cx, cy) = (w / 2, h / 2);
+        let inner_half   = (INNER_WIDTH / 2).min(cx.min(cy) - 1).max(1);
+        let outer_half_x = (cx - EDGE_MARGIN).max(inner_half);
+        let outer_half_y = (cy - EDGE_MARGIN).max(inner_half);
+
+        for ring in 0..NUM_RINGS {
+            let t = if NUM_RINGS > 1 { ring as f32 / (NUM_RINGS - 1) as f32 } else { 0.0 };
+            let half_x = inner_half + ((outer_half_x - inner_half) as f32 * t) as i32;
+            let half_y = inner_half + ((outer_half_y - inner_half) as f32 * t) as i32;
+            let corners = [
+                Point::new(cx - half_x, cy - half_y),
+                Point::new(cx + half_x, cy - half_y),
+                Point::new(cx + half_x, cy + half_y),
+                Point::new(cx - half_x, cy + half_y),
+            ];
+            let route: Vec<Point> = corners.iter().map(|&c| self.snap_to_walkable(c)).collect();
+            self.patrol_routes.push(route);
+        }
+    }
+
+    /// Nearest walkable-terrain tile to `p` via an expanding ring search. Falls
+    /// back to the clamped point if none is found (not expected on a real map).
+    fn snap_to_walkable(&self, p: Point) -> Point {
+        let px = p.x.clamp(1, self.width as i32 - 1);
+        let py = p.y.clamp(1, self.height as i32 - 1);
+        if self.terrain_passable(px, py) {
+            return Point::new(px, py);
+        }
+        let max_r = self.width.max(self.height) as i32;
+        for r in 1..max_r {
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    if dx.abs() != r && dy.abs() != r { continue; } // perimeter only
+                    let (x, y) = (px + dx, py + dy);
+                    if self.terrain_passable(x, y) {
+                        return Point::new(x, y);
+                    }
+                }
+            }
+        }
+        Point::new(px, py)
+    }
+
+    /// Index of the patrol route whose extent best matches `pos`'s distance from
+    /// the map centre — distributes patrollers across the concentric rings.
+    pub fn nearest_patrol_route(&self, pos: Point) -> usize {
+        let (cx, cy) = (self.width as i32 / 2, self.height as i32 / 2);
+        let d = (pos.x - cx).abs().max((pos.y - cy).abs());
+        self.patrol_routes.iter().enumerate()
+            .min_by_key(|(_, route)| {
+                let rh = route.iter()
+                    .map(|p| (p.x - cx).abs().max((p.y - cy).abs()))
+                    .max()
+                    .unwrap_or(0);
+                (rh - d).abs()
+            })
+            .map(|(i, _)| i)
+            .unwrap_or(0)
+    }
+
+    /// Index of the waypoint on `route_id` nearest to `pos`.
+    pub fn nearest_waypoint_index(&self, route_id: usize, pos: Point) -> usize {
+        self.patrol_routes.get(route_id).map_or(0, |route| {
+            route.iter().enumerate()
+                .min_by_key(|(_, p)| {
+                    let (dx, dy) = (p.x - pos.x, p.y - pos.y);
+                    dx * dx + dy * dy
+                })
+                .map(|(i, _)| i)
+                .unwrap_or(0)
+        })
+    }
+
+    /// Ensure a resident flow field toward `goal` exists, building it once over
+    /// static terrain if absent. Idempotent and cheap once warm — the caller may
+    /// invoke it every turn for the goals it needs.
+    pub fn ensure_field(&mut self, goal: usize) {
+        if !self.nav_fields.contains_key(&goal) {
+            let field = crate::build_field(goal, self);
+            self.nav_fields.insert(goal, field);
+        }
+    }
+
+    /// The resident flow field toward `goal`, if one has been built.
+    pub fn field_for(&self, goal: usize) -> Option<&DistField> {
+        self.nav_fields.get(&goal)
+    }
+
+    /// Neighbours passable over **static terrain**, ignoring transient pawn
+    /// occupancy. Used to build resident [`DistField`]s that stay valid as
+    /// entities move. Costs mirror [`Map::get_available_exits`] (1.0 / 1.45).
+    pub fn terrain_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
+        let mut exits = rltk::SmallVec::new();
+        let x = idx as i32 % self.width as i32;
+        let y = idx as i32 / self.width as i32;
+        let w = self.width as usize;
+
+        if self.terrain_passable(x-1, y) { exits.push((idx-1, 1.0)) };
+        if self.terrain_passable(x+1, y) { exits.push((idx+1, 1.0)) };
+        if self.terrain_passable(x, y-1) { exits.push((idx-w, 1.0)) };
+        if self.terrain_passable(x, y+1) { exits.push((idx+w, 1.0)) };
+
+        if self.terrain_passable(x-1, y-1) { exits.push(((idx-w)-1, 1.45)); }
+        if self.terrain_passable(x+1, y-1) { exits.push(((idx-w)+1, 1.45)); }
+        if self.terrain_passable(x-1, y+1) { exits.push(((idx+w)-1, 1.45)); }
+        if self.terrain_passable(x+1, y+1) { exits.push(((idx+w)+1, 1.45)); }
+
+        exits
+    }
+
+    /// Whether `(x, y)` is walkable terrain, disregarding pawns. Mirrors the
+    /// border-exclusion bounds of [`Map::is_exit_valid`]; doorways count as
+    /// passable (they only block movement when a pawn occupies them).
+    fn terrain_passable(&self, x: i32, y: i32) -> bool {
+        if x < 1 || x > self.width as i32 - 1 || y < 1 || y > self.height as i32 - 1 {
+            return false;
+        }
+        matches!(
+            self.tiles[self.xy_idx(x, y)],
+            TileType::Floor | TileType::Ground | TileType::Road | TileType::Doorway
+        )
     }
 
     fn is_exit_valid(&self, x: i32, y: i32) -> bool {

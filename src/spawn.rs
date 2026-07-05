@@ -1,6 +1,6 @@
 use rltk::{Point, RandomNumberGenerator};
 use std::collections::HashMap;
-use crate::{Map, TileType, World, Direction, CombatTactic, Profile, AI, Item, EntityKind, navigate, BLOCK_SIZE};
+use crate::{Map, TileType, World, Direction, CombatTactic, Profile, AI, Item, EntityKind, BLOCK_SIZE};
 
 /// Minimum number of tiles for a connected region to be treated as a room rather
 /// than a corridor or stub.
@@ -580,7 +580,6 @@ impl World {
         const MIN_DIST: i32 = 15;
         const MIN_PATROL_DIST: i32 = 20;
         const MAX_PATROL_DIST: i32 = 80;
-        const WAYPOINT_STEP: usize = 8;
 
         let junctions: Vec<usize> = spawn_map.spawn_points.iter()
             .enumerate()
@@ -602,12 +601,14 @@ impl World {
             if count >= target { break; }
             let ai = junctions[oi];
             if used.contains(&ai) { continue; }
-            let (a_pos, a_idx) = {
+            let a_pos = {
                 let sp = &spawn_map.spawn_points[ai];
                 if guard_too_close(sp.pos, placed, MIN_DIST) { continue; }
-                (sp.pos, sp.idx)
+                sp.pos
             };
 
+            // Keep the existing junction-pair gate for placement/spacing parity:
+            // only spawn where a suitably distant second junction exists.
             let bi = order.iter()
                 .map(|&oi2| junctions[oi2])
                 .find(|&bi| {
@@ -617,23 +618,16 @@ impl World {
                 });
             let bi = match bi { Some(b) => b, None => continue };
             let b_pos = spawn_map.spawn_points[bi].pos;
-            let b_idx = spawn_map.spawn_points[bi].idx;
 
-            let mut steps = Vec::new();
-            let success = navigate(a_idx, b_idx, &self.map, &mut steps);
-            if !success || steps.is_empty() { continue; }
-
-            // steps is in reversed order; index from the back to sample forward.
-            let nsteps = steps.len();
-            let mut waypoints = vec![a_pos];
-            for step_i in (WAYPOINT_STEP..nsteps).step_by(WAYPOINT_STEP) {
-                waypoints.push(self.map.idx_pos(steps[nsteps - 1 - step_i]));
-            }
-            waypoints.push(b_pos);
+            // Assign to the shared concentric ring nearest this spawn, starting at
+            // the closest waypoint on it. Patrollers thus share a handful of routes
+            // (and their flow fields) rather than each carrying a bespoke path.
+            let route_id = self.map.nearest_patrol_route(a_pos);
+            let waypoint_index = self.map.nearest_waypoint_index(route_id, a_pos);
 
             let facing = dir_toward(a_pos, b_pos);
             *n += 1;
-            if self.create_patrol_actor(a_pos, facing, format!("Patroller {}", n), waypoints, CombatTactic::Pursue).is_ok() {
+            if self.create_patrol_actor(a_pos, facing, format!("Patroller {}", n), route_id, waypoint_index, CombatTactic::Pursue).is_ok() {
                 placed.push(a_pos);
                 used.push(ai);
                 used.push(bi);

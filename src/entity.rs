@@ -117,7 +117,7 @@ impl Entity {
         }
     }
 
-    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Self {
+    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, route_id: usize) -> Self {
         Self {
             id: id,
             kind: EntityKind::Actor,
@@ -131,7 +131,7 @@ impl Entity {
             body: Body::human_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::Actor(ActorAI::new(Profile::Patrol {
-                waypoints,
+                route_id,
                 waypoint_index: 0,
                 combat_tactic: CombatTactic::Pursue,
             })),
