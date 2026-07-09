@@ -830,6 +830,10 @@ impl World {
         let index = self.map.pos_idx(pos);
         if self.map.tiles[index] == TileType::Wall {
             self.map.tiles[index] = TileType::Floor;
+            // Terrain changed: resident flow fields are baked over static terrain
+            // and are now stale (they'd miss the opening). Drop them; Step 0
+            // rebuilds the still-demanded ones next turn within its build budget.
+            self.map.invalidate_fields();
             self.update_views_near_event(pos, 10);
         }
     }
