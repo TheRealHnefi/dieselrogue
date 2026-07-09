@@ -130,19 +130,34 @@ impl ActorAI {
         ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None }
     }
 
-    /// The static navigation goal this actor will steer toward while Unaware
-    /// (patrol waypoint / guard anchor), if any. Used by the field pre-pass to
-    /// build resident flow fields before the read-only intent loop runs.
-    /// Returns `None` once alerted — those goals are dynamic (Stage 2).
-    pub fn static_nav_goal(&self, map: &Map) -> Option<Point> {
-        if self.alert.priority() != 0 {
-            return None;
-        }
-        match &self.profile {
-            Profile::Patrol { route_id, waypoint_index, .. } =>
-                map.patrol_routes.get(*route_id).and_then(|r| r.get(*waypoint_index).copied()),
-            Profile::Guard { anchor, .. } => Some(*anchor),
-            _ => None,
+    /// The goal this actor wants a shared flow field for, if any, and whether a
+    /// radius-bounded field suffices (`true` for dynamic goals whose interested
+    /// agents cluster nearby; `false` for static patrol/guard goals wanting
+    /// full-map coverage). Read by the field pre-pass *before* this turn's
+    /// stimulus is processed, so it reflects last turn's belief — a just-changed
+    /// belief simply misses its field for one turn and falls back to A*.
+    ///
+    /// Combat is intentionally excluded: a combat target is currently visible
+    /// (else the actor would have decayed to Alert), so `navigate_to` reaches it
+    /// via the greedy line-of-sight step, not a field.
+    pub fn nav_field_goal(&self, map: &Map) -> Option<(Point, bool)> {
+        match &self.alert {
+            AlertLevel::Unaware => match &self.profile {
+                Profile::Patrol { route_id, waypoint_index, .. } =>
+                    map.patrol_routes.get(*route_id)
+                        .and_then(|r| r.get(*waypoint_index).copied())
+                        .map(|p| (p, false)),
+                Profile::Guard { anchor, .. } => Some((*anchor, false)),
+                _ => None,
+            },
+            AlertLevel::Suspicious { origin, .. } => Some((*origin, true)),
+            AlertLevel::Alert { last_known, search, .. } => match search {
+                // Flank targets a per-agent offset (not shared); HoldAndWatch
+                // doesn't move — neither benefits from a shared field.
+                SearchBehavior::MoveToLastKnown => Some((*last_known, true)),
+                _ => None,
+            },
+            AlertLevel::Combat { .. } => None,
         }
     }
 
