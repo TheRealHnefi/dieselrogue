@@ -14,12 +14,16 @@ use super::{GameError, Error};
 struct NavFieldCache {
     fields: HashMap<usize, DistField>,
     /// Turns since each field's goal was last demanded (0 = wanted this turn).
+    /// Only *evictable* fields appear here; pinned fields are never aged.
     idle: HashMap<usize, u32>,
+    /// Goals whose fields are permanent (pre-built static routes). Never aged or
+    /// evicted, so they cause no steady-state rebuild spikes.
+    pinned: HashSet<usize>,
 }
 
 impl NavFieldCache {
     fn new() -> Self {
-        NavFieldCache { fields: HashMap::new(), idle: HashMap::new() }
+        NavFieldCache { fields: HashMap::new(), idle: HashMap::new(), pinned: HashSet::new() }
     }
 
     fn get(&self, goal: usize) -> Option<&DistField> {
@@ -35,9 +39,16 @@ impl NavFieldCache {
         self.idle.insert(goal, 0);
     }
 
+    /// Insert a permanent field that eviction never touches.
+    fn insert_pinned(&mut self, goal: usize, field: DistField) {
+        self.fields.insert(goal, field);
+        self.pinned.insert(goal);
+    }
+
     fn clear(&mut self) {
         self.fields.clear();
         self.idle.clear();
+        self.pinned.clear();
     }
 
     /// Age fields against this turn's `demanded` goal set: reset demanded ones to
@@ -51,14 +62,15 @@ impl NavFieldCache {
             .filter(|(_, &age)| age > ttl)
             .map(|(&g, _)| g)
             .collect();
-        if self.fields.len().saturating_sub(drop.len()) > cap {
+        // Cap applies to evictable fields only (pinned aren't tracked in `idle`).
+        if self.idle.len().saturating_sub(drop.len()) > cap {
             // Still over cap after TTL eviction: drop the oldest survivors too.
             let mut survivors: Vec<(usize, u32)> = self.idle.iter()
                 .filter(|(g, _)| !drop.contains(g))
                 .map(|(&g, &a)| (g, a))
                 .collect();
             survivors.sort_unstable_by(|a, b| b.1.cmp(&a.1)); // oldest first
-            let over = self.fields.len() - drop.len() - cap;
+            let over = self.idle.len() - drop.len() - cap;
             drop.extend(survivors.into_iter().take(over).map(|(g, _)| g));
         }
         for g in drop {
@@ -286,6 +298,7 @@ impl Map {
         }
 
         map.build_patrol_rings();
+        map.prebuild_patrol_fields();
         return map;
     }
 
@@ -311,6 +324,26 @@ impl Map {
     pub fn register_patrol_route(&mut self, route: Vec<Point>) -> usize {
         self.patrol_routes.push(route);
         self.patrol_routes.len() - 1
+    }
+
+    /// Pre-build a permanent (pinned) full-map flow field for every distinct
+    /// patrol-route waypoint. These static goals are known at map generation, so
+    /// building them once up front — rather than lazily when patrol demand first
+    /// crosses the threshold mid-game — avoids ~full-map-flood spikes during play.
+    /// One-time cost at level load (≤ one field per distinct ring corner).
+    fn prebuild_patrol_fields(&mut self) {
+        let mut goals: Vec<usize> = self.patrol_routes.iter()
+            .flatten()
+            .map(|&p| self.pos_idx(p))
+            .collect();
+        goals.sort_unstable();
+        goals.dedup();
+        for goal in goals {
+            if !self.nav_fields.contains(goal) {
+                let field = crate::build_field(goal, self);
+                self.nav_fields.insert_pinned(goal, field);
+            }
+        }
     }
 
     /// Build the default shared patrol routes: concentric rectangular rings
