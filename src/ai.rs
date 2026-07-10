@@ -194,7 +194,9 @@ impl ActorAI {
         puffin::profile_function!();
         for s in sounds {
             let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
-            if dist > s.volume as f32 { continue; }
+            if dist > s.volume as f32 || entity.center() == s.pos {
+                continue;
+            }
 
             let candidate = match s.kind {
                 SoundKind::Shout =>
