@@ -52,6 +52,8 @@ pub enum ActionId {
     Throw,
     GetItem,
     Unequip,
+    Juke,
+    Disembark,
 }
 
 #[derive(Clone)]
@@ -251,4 +253,14 @@ pub fn get_item_action_def() -> EntityAction {
 /// Descriptor for unequipping an item back to inventory.
 pub fn unequip_action_def() -> EntityAction {
     EntityAction { id: ActionId::Unequip, name: "Unequip".to_string(), targeting: Targeting::None, phase: ExecutionPhase::Inventory, precondition: precondition_ok, action: actions::unequip_item_action }
+}
+
+/// Juke: a directional dodge step.
+pub fn juke_action_def() -> EntityAction {
+    EntityAction { id: ActionId::Juke, name: "Juke".to_string(), targeting: Targeting::Direction, phase: ExecutionPhase::Instant, precondition: |e, _, _| e.has_ability(Ability::Juke), action: actions::juke_action }
+}
+
+/// Disembark: leave the vehicle currently being driven.
+pub fn disembark_action_def() -> EntityAction {
+    EntityAction { id: ActionId::Disembark, name: "Disembark".to_string(), targeting: Targeting::None, phase: ExecutionPhase::Movement, precondition: |e, _, _| e.has_ability(Ability::Disembark) && matches!(e.driving, DrivingState::DrivenBy(_)), action: actions::disembark_action }
 }

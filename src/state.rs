@@ -27,7 +27,7 @@ pub enum RunState {
     AwaitingPositionalTargetingInput,
     AwaitingEntityTargetingInput,
     Looking,
-    AwaitingJukeInput,
+    AwaitingDirectionalTargetingInput,
     AwaitingLevelUpInput,
     Resolve(ExecutionPhase),
     RenderAnimations(ExecutionPhase),
@@ -175,7 +175,7 @@ impl GameState for State {
                 | RunState::Looking
                 | RunState::AwaitingPositionalTargetingInput
                 | RunState::AwaitingEntityTargetingInput
-                | RunState::AwaitingJukeInput
+                | RunState::AwaitingDirectionalTargetingInput
                 | RunState::AwaitingLevelUpInput
             );
             if is_input_state {
@@ -254,8 +254,8 @@ impl GameState for State {
             RunState::Looking => {
                 self.run_state = looking_input(self, context);
             },
-            RunState::AwaitingJukeInput => {
-                self.run_state = juke_direction_input(self, context);
+            RunState::AwaitingDirectionalTargetingInput => {
+                self.run_state = directional_targeting_input(self, context);
             },
             RunState::AwaitingLevelUpInput => {
                 draw_level_up_screen(self, context);

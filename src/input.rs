@@ -154,8 +154,7 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                     .map(|p| p.has_ability(Ability::Juke))
                     .unwrap_or(false);
                 if can_juke {
-                    state.log("Juke: choose direction.".to_string());
-                    return RunState::AwaitingJukeInput;
+                    return start_directional_action(state, juke_action_def(), None);
                 }
                 return RunState::AwaitingInput;
             },
@@ -352,6 +351,9 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
                         if let Targeting::EntityAim { max_range } = pending.entity_action.targeting {
                             return start_entity_targeting(pending, max_range, state);
                         }
+                        if let Targeting::Direction = pending.entity_action.targeting {
+                            return start_directional_action(state, pending.entity_action, pending.source);
+                        }
                         // Phase 1 of positional/detailed targeting: enter cursor mode.
                         // The flow continues in positional_targeting_input.
                         if let Ok(player) = state.world.get_player() {
@@ -541,49 +543,51 @@ pub fn looking_input(state: &mut State, _context: &mut Rltk) -> RunState {
     RunState::Looking
 }
 
-pub fn juke_direction_input(state: &mut State, _context: &mut Rltk) -> RunState {
+/// Stash a Direction-targeted action and prompt the player for a direction.
+fn start_directional_action(state: &mut State, action: EntityAction, source: Option<ActionSource>) -> RunState {
+    state.log(format!("{}: choose direction.", action.name));
+    state.pending_action = Some(PendingAction { entity_action: action, source });
+    RunState::AwaitingDirectionalTargetingInput
+}
+
+pub fn directional_targeting_input(state: &mut State, _context: &mut Rltk) -> RunState {
     let key = match state.last_input.take() {
         Some(k) => k,
-        None => return RunState::AwaitingJukeInput,
+        None => return RunState::AwaitingDirectionalTargetingInput,
     };
 
     let dir = match key {
-        VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 => Some(Direction::Left),
-        VirtualKeyCode::Right | VirtualKeyCode::Numpad6 => Some(Direction::Right),
-        VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 => Some(Direction::Up),
-        VirtualKeyCode::Down  | VirtualKeyCode::Numpad2 => Some(Direction::Down),
-        VirtualKeyCode::Numpad7 => Some(Direction::UpLeft),
-        VirtualKeyCode::Numpad9 => Some(Direction::UpRight),
-        VirtualKeyCode::Numpad3 => Some(Direction::DownRight),
-        VirtualKeyCode::Numpad1 => Some(Direction::DownLeft),
-        VirtualKeyCode::Escape  => return RunState::AwaitingInput,
-        _ => return RunState::AwaitingJukeInput,
+        VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 => Direction::Left,
+        VirtualKeyCode::Right | VirtualKeyCode::Numpad6 => Direction::Right,
+        VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 => Direction::Up,
+        VirtualKeyCode::Down  | VirtualKeyCode::Numpad2 => Direction::Down,
+        VirtualKeyCode::Numpad7 => Direction::UpLeft,
+        VirtualKeyCode::Numpad9 => Direction::UpRight,
+        VirtualKeyCode::Numpad3 => Direction::DownRight,
+        VirtualKeyCode::Numpad1 => Direction::DownLeft,
+        VirtualKeyCode::Escape  => { state.pending_action = None; return RunState::AwaitingInput; },
+        _ => return RunState::AwaitingDirectionalTargetingInput,
     };
 
-    if let Some(dir) = dir {
-        let (dx, dy) = match dir {
-            Direction::Up        => ( 0, -1),
-            Direction::UpRight   => ( 1, -1),
-            Direction::Right     => ( 1,  0),
-            Direction::DownRight => ( 1,  1),
-            Direction::Down      => ( 0,  1),
-            Direction::DownLeft  => (-1,  1),
-            Direction::Left      => (-1,  0),
-            Direction::UpLeft    => (-1, -1),
-        };
-        if let Ok(player) = state.world.get_player_mut() {
-            let target = Point { x: player.position.x + dx, y: player.position.y + dy };
-            player.intent = Intent {
-                phase: ExecutionPhase::Instant,
-                data: IntentData::Target(target),
-                action: actions::juke_action,
-            };
-        }
-        // Start the round from Idle so the Instant phase runs before Inventory/Attack/Movement.
-        return RunState::Resolve(ExecutionPhase::Idle);
-    }
+    let pending = match state.pending_action.take() {
+        Some(p) => p,
+        None => return RunState::AwaitingInput,
+    };
 
-    RunState::AwaitingJukeInput
+    let (dx, dy) = dir.delta_pos();
+    let player_pos = match state.world.get_player() {
+        Ok(p) => p.position,
+        Err(_) => return RunState::AwaitingInput,
+    };
+    let target = Point { x: player_pos.x + dx, y: player_pos.y + dy };
+
+    let PendingAction { entity_action, source } = pending;
+    let intent = build_intent(&entity_action, source, Resolution::Position(target));
+    if let Ok(player) = state.world.get_player_mut() {
+        player.intent = intent;
+    }
+    // Start from Idle so an Instant-phase action (juke) resolves before later phases.
+    RunState::Resolve(ExecutionPhase::Idle)
 }
 
 pub fn level_up_input(state: &mut State, _context: &mut Rltk) -> RunState {

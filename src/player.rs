@@ -4,7 +4,6 @@ use crate::error::{Error, GameError};
 use crate::entity::*;
 use crate::ability::*;
 use crate::intent::*;
-use crate::actions;
 use crate::Map;
 use crate::World;
 
@@ -68,11 +67,7 @@ pub fn disembark_player_intent(world: &mut World) -> Result<(), GameError> {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player is not driving a vehicle")});
     }
 
-    player.intent = Intent {
-        phase: ExecutionPhase::Movement,
-        data: IntentData::Void,
-        action: actions::disembark_action
-    };
+    player.intent = build_intent(&disembark_action_def(), None, Resolution::None);
 
     Ok(())
 }

@@ -1,9 +1,7 @@
 use rltk::{Rltk, RGB, Point};
-use crate::ability::Ability;
 use crate::entity::Entity;
 use crate::item::*;
 use crate::intent::*;
-use crate::player::disembark_player_intent;
 use crate::state::*;
 use crate::World;
 use crate::SlotType;
@@ -95,11 +93,6 @@ pub struct ItemSlotRow {
     pub item: Option<Item>
 }
 
-pub struct AbilityRow {
-    pub text: String,
-    pub activation: fn(&mut State) -> RunState,
-}
-
 /// A row for an action from `entity.innate_actions` — no equipment slot needed.
 pub struct InnateActionRow {
     pub text: String,
@@ -167,20 +160,6 @@ impl MenuRow for ItemSlotRow {
             Some(item) => !item.proxy && !item.locked,
             None => false
         }
-    }
-}
-
-impl MenuRow for AbilityRow {
-    fn get_action(&self) -> MenuAction {
-        MenuAction::Simple(self.activation)
-    }
-
-    fn get_text(&self) -> String {
-        self.text.clone()
-    }
-
-    fn selectable(&self) -> bool {
-        true
     }
 }
 
@@ -521,21 +500,6 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
     }
 }
 
-fn action_use_juke(state: &mut State) -> RunState {
-    state.log("Juke: choose direction.".to_string());
-    RunState::AwaitingJukeInput
-}
-
-fn action_use_disembark(state: &mut State) -> RunState {
-    match disembark_player_intent(&mut state.world) {
-        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
-        Err(e) => {
-            state.log(e.message);
-            RunState::AwaitingInput
-        }
-    }
-}
-
 pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
     let mut rows: Vec<Box<dyn MenuRow>> = vec![];
     let mut no_selectable_rows = true;
@@ -571,24 +535,6 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
             }
         }
 
-        // Abilities that need special menu handling not expressible as EntityAction.
-        for ability in &player.body.abilities {
-            let maybe_row: Option<Box<dyn MenuRow>> = match ability {
-                Ability::Juke => Some(Box::new(AbilityRow {
-                    text: ability.to_string(),
-                    activation: action_use_juke,
-                })),
-                Ability::Disembark => Some(Box::new(AbilityRow {
-                    text: ability.to_string(),
-                    activation: action_use_disembark,
-                })),
-                _ => None,
-            };
-            if let Some(row) = maybe_row {
-                rows.push(row);
-                no_selectable_rows = false;
-            }
-        }
     }
 
     MenuPanel {

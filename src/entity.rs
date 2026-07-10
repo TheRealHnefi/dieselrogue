@@ -98,6 +98,8 @@ fn human_innate_actions() -> Vec<EntityAction> {
             precondition: |e, _, _| e.has_ability(Ability::Distract),
             action: actions::distract_action,
         },
+        juke_action_def(),
+        disembark_action_def(),
     ]
 }
 
