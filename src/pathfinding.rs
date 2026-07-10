@@ -1,7 +1,6 @@
 use std::collections::BinaryHeap;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use rltk::BaseMap;
 use crate::Map;
 
 /// Maximum tile expansions before returning a best-effort partial path.

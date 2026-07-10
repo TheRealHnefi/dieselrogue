@@ -34,7 +34,7 @@ $env:BENCH_PARALLEL = $Parallel
 
 Write-Host "Running AI benchmark: size=$Size actors=$Actors ticks=$Ticks warmup=$Warmup parallel=$Parallel" -ForegroundColor Cyan
 
-$output = cargo test --release -- --ignored --nocapture ai_benchmark 2>&1
+$output = cargo test --release -- --ignored --nocapture ai_benchmark
 
 if ($ShowAll) {
     $output
