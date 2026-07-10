@@ -143,7 +143,7 @@ pub fn navigate_cached(
 /// Returns the adjacent walkable tile that minimizes distance to `end`, or
 /// `None` if no walkable neighbour is strictly closer than `start` itself.
 ///
-/// O(8) — use this when the destination is visible so that line-of-sight
+/// Useful when the destination is visible so that line-of-sight
 /// guarantees a straight approach won't get trapped behind an opaque wall.
 /// The caller should fall back to [`navigate_cached`] on `None`.
 pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
@@ -167,9 +167,7 @@ pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
 /// tile `i` to the goal (orthogonal step = 10, diagonal = 14); [`u16::MAX`] marks
 /// tiles from which the goal is unreachable.
 ///
-/// Pawn occupancy is deliberately **not** baked in, so the field stays valid as
-/// entities move and can be built once and shared across turns and agents.
-/// Transient blocking is handled at read time by [`DistField::step`], which only
+/// Transient pawn blocking is handled at read time by [`DistField::step`], which only
 /// descends into tiles that are currently walkable.
 pub struct DistField {
     dist: Vec<u16>,
@@ -179,16 +177,17 @@ impl DistField {
     /// Orthogonal / diagonal step costs, scaled to integers so the flood fill
     /// can use a cheap integer queue.  Mirror the 1.0 / 1.45 costs in
     /// `Map::get_available_exits`.
+    /// TODO: Move these to global constants and use in [`Map::get_available_exits`].
     const ORTHO: u32 = 10;
     const DIAG:  u32 = 14;
 
-    /// Next step for an agent at `from`: the *currently walkable* neighbour with
-    /// the lowest field value strictly below `from`'s own.  Returns `None` when
+    /// Next step for an agent at `from`: the currently walkable neighbour with
+    /// the lowest field value strictly below `from`.  Returns `None` when
     /// the goal is unreachable from `from` over static terrain, or when every
     /// descending neighbour is transiently blocked (caller should wait or fall
     /// back to A*).
     ///
-    /// `map.get_available_exits` already excludes pawn-occupied tiles, so reading
+    /// [`Map::get_available_exits`] already excludes pawn-occupied tiles, so reading
     /// the static field through it yields dynamic obstacle avoidance for free.
     pub fn step(&self, from: usize, map: &Map) -> Option<usize> {
         let cur = self.dist[from];
@@ -212,12 +211,9 @@ pub fn build_field(goal: usize, map: &Map) -> DistField {
     build_field_bounded(goal, map, u32::MAX)
 }
 
-/// Build a [`DistField`] toward `goal` by flooding outward over static terrain
-/// (walls block; pawns are ignored — see [`DistField`]), stopping once the cost
-/// exceeds `max_cost`. Tiles past that horizon stay [`u16::MAX`] (unreachable),
-/// so agents there fall back to A*. Pass `u32::MAX` for a full-map field (static
-/// goals); a bound keeps dynamic-goal fields (investigation / last-known) cheap,
-/// since interested agents cluster near the goal. Cost is O(tiles within bound).
+/// Build a [`DistField`] toward `goal` by flooding outward over static terrain.
+/// Tiles past that horizon stay [`u16::MAX`] (unreachable), making agents
+///  fall back to A*. Pass `u32::MAX` for a full-map field.
 pub fn build_field_bounded(goal: usize, map: &Map, max_cost: u32) -> DistField {
     println!("Building field");
     let size = map.width * map.height;
@@ -226,7 +222,7 @@ pub fn build_field_bounded(goal: usize, map: &Map, max_cost: u32) -> DistField {
         return DistField { dist };
     }
 
-    // Reuse `Node`'s min-heap-on-`f` ordering as an integer priority queue:
+    // Reuse min-heap-on-`f` ordering as an integer priority queue:
     // `f` carries the accumulated cost, `g`/`h` are unused here.
     let mut open: BinaryHeap<Node> = BinaryHeap::new();
     dist[goal] = 0;
@@ -253,14 +249,13 @@ pub fn build_field_bounded(goal: usize, map: &Map, max_cost: u32) -> DistField {
 
 /// Find a path from `start` to `end` on `map`, writing steps into `out`.
 ///
-/// Steps are written in **reversed order**: `out[0]` is the step closest to
+/// Steps are written in reversed order: `out[0]` is the step closest to
 /// `end`, `out.last()` is the first step to take from `start`.  This layout
 /// lets callers maintain the path as a stack (pop from back = advance).
 ///
 /// Returns `true` if the exact destination was reached within the expansion
-/// budget.  On a partial path `out` holds a best-effort route toward the goal
-/// (always making forward progress); `out` is empty only when start is
-/// completely walled in.
+/// budget.  On a partial path `out` holds a best-effort route toward the goal.
+/// `out` is empty only when start is completely walled in.
 ///
 /// `out` is always cleared before writing.
 pub fn navigate(start: usize, end: usize, map: &Map, out: &mut Vec<usize>) -> bool {
