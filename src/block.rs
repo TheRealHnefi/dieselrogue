@@ -54,7 +54,7 @@ fn mirror_both(block: &Block) -> Block {
   Block { tiles }
 }
 
-fn generate_blocks(filter: &str) -> Vec<Block> {
+pub fn generate_blocks(filter: &str) -> Vec<Block> {
   let mut blocks = vec!();
 
   let paths = fs::read_dir("resources/blocks").unwrap();

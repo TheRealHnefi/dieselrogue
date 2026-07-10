@@ -140,6 +140,75 @@ impl World {
         }
     }
 
+    /// Small visual testbed for tuning AI behaviour: a 3×3-block map of randomly
+    /// assembled centre ("middle") blocks with two circular patrol routes, each
+    /// walked by one patrolling actor. Block edge/boundary conditions are
+    /// intentionally ignored — we only need obstacles for the AI to act on.
+    /// (The `ai_benchmark` test is the separate performance testbed.)
+    pub fn new_ai_testbed() -> Self {
+        const GRID: usize = 3;
+        let dim = GRID * BLOCK_SIZE;
+        let mut rng = RandomNumberGenerator::new();
+
+        let mut map = Map::new_empty_map(dim, dim);
+        let middle = generate_blocks("middleblock");
+        if !middle.is_empty() {
+            for bx in 0..GRID {
+                for by in 0..GRID {
+                    let block = &middle[rng.range(0, middle.len() as i32) as usize];
+                    for x in 0..BLOCK_SIZE {
+                        for y in 0..BLOCK_SIZE {
+                            let idx = map.xy_idx((bx * BLOCK_SIZE + x) as i32, (by * BLOCK_SIZE + y) as i32);
+                            map.tiles[idx] = block.tiles[block_xy_idx(x, y)];
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut world = World {
+            player_id: Option::None,
+            entities: vec![],
+            next_item_id: 0,
+            pending_levelup: false,
+            sounds: vec![],
+            sounds_last_turn: vec![],
+            active_items: vec![],
+            active_items_ticked: false,
+            map,
+            debug_mode: false,
+            parallel_ai: false,
+        };
+
+        let center = Point { x: (dim / 2) as i32, y: (dim / 2) as i32 };
+        let _ = world.create_player(center, Direction::Up, String::from("Player"));
+
+        // Two concentric circular patrol routes, one patroller each.
+        world.spawn_test_patroller(center, 18, 12, "Patroller A");
+        world.spawn_test_patroller(center, 32, 16, "Patroller B");
+
+        world
+    }
+
+    /// Register a circular patrol route of `waypoints` points at `radius` around
+    /// `center` (each snapped to a walkable tile) and spawn one patrolling actor
+    /// on it. Helper for [`World::new_ai_testbed`].
+    fn spawn_test_patroller(&mut self, center: Point, radius: i32, waypoints: usize, name: &str) {
+        use std::f32::consts::TAU;
+        let route: Vec<Point> = (0..waypoints).map(|i| {
+            let theta = TAU * (i as f32) / (waypoints as f32);
+            let raw = Point {
+                x: center.x + (radius as f32 * theta.cos()).round() as i32,
+                y: center.y + (radius as f32 * theta.sin()).round() as i32,
+            };
+            self.map.snap_to_walkable(raw)
+        }).collect();
+
+        let start = route[0];
+        let route_id = self.map.register_patrol_route(route);
+        let _ = self.create_patrol_actor(start, Direction::Up, name.to_string(), route_id, 0, CombatTactic::Pursue);
+    }
+
     pub fn create_player(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         if self.entities.len() > 0 {
             return Err(GameError {
