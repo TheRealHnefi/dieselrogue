@@ -58,14 +58,7 @@ pub struct Entity {
 
 fn human_innate_actions() -> Vec<EntityAction> {
     vec![
-        EntityAction {
-            id: ActionId::Shout,
-            name: "Shout".to_string(),
-            targeting: Targeting::None,
-            phase: ExecutionPhase::Inventory,
-            precondition: |e, _, _| e.has_ability(Ability::Shout),
-            action: actions::shout_action,
-        },
+        shout_action_def(),
         EntityAction {
             id: ActionId::IronBody,
             name: "Iron Body".to_string(),

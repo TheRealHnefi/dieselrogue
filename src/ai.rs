@@ -6,7 +6,6 @@ use crate::EntityKind;
 use crate::util::adjacent;
 use crate::components::*;
 use crate::intent::*;
-use crate::actions;
 use crate::player;
 use crate::Ability;
 
@@ -179,11 +178,7 @@ impl ActorAI {
 
         let intent;
         if self.alert.priority() >= 2 && prev_priority < 2 {
-            intent = Some(Intent {
-                phase: ExecutionPhase::Inventory,
-                data: IntentData::Void,
-                action: actions::shout_action,
-            });
+            intent = Some(build_intent(&shout_action_def(), None, Resolution::None));
         }
         else {
             intent = self.dispatch_intent(entity, map, entities);
@@ -412,11 +407,7 @@ impl ActorAI {
         if let Some(target) = entities.iter().find(|e| e.id == target_id) {
             let tc = target.center();
             if adjacent(entity.position, tc) {
-                return Some(Intent {
-                    phase:  ExecutionPhase::Attack,
-                    data:   IntentData::Target(tc),
-                    action: actions::melee_action,
-                });
+                return Some(melee_intent(tc));
             }
 
             // Try ranged attack if weapon equipped and target in range.
@@ -426,25 +417,11 @@ impl ActorAI {
                 let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
                 if dist <= range as f32 {
                     let available = player::get_entity_available_actions(entity, map);
-
-                    // If a fire action is available (precondition_is_aiming passed), fire.
-                    if let Some((fire_action, _)) = available.iter()
-                        .find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::UseExistingAim { .. }))
-                    {
-                        return Some(Intent {
-                            phase:  ExecutionPhase::Attack,
-                            data:   IntentData::TargetWithEquipment { slot, target: tc },
-                            action: fire_action.action,
-                        });
-                    }
-
-                    // Not yet aiming: spend this turn acquiring aim on the target.
-                    if available.iter().any(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::EntityAim { .. })) {
-                        return Some(Intent {
-                            phase:  ExecutionPhase::Attack,
-                            data:   IntentData::TargetWithEquipment { slot, target: tc },
-                            action: actions::aim_action,
-                        });
+                    // Prefer a ready fire action; otherwise spend the turn acquiring aim.
+                    let fire = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::UseExistingAim { .. }));
+                    let aim  = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::EntityAim { .. }));
+                    if let Some(&(action, _)) = fire.or(aim) {
+                        return Some(build_intent(action, Some(ActionSource::EquippedSlot(slot)), Resolution::Position(tc)));
                     }
                 }
             }
@@ -540,16 +517,8 @@ impl ActorAI {
         }?;
 
         match direction_to(entity.position, next_pos) {
-            Some(dir) if dir != entity.body.facing => Some(Intent {
-                phase:  ExecutionPhase::Movement,
-                data:   IntentData::Direction(dir),
-                action: actions::turn_action,
-            }),
-            Some(_) => Some(Intent {
-                phase:  ExecutionPhase::Movement,
-                data:   IntentData::Target(next_pos),
-                action: actions::move_action,
-            }),
+            Some(dir) if dir != entity.body.facing => Some(turn_intent(dir)),
+            Some(_) => Some(move_intent(next_pos)),
             None => None,
         }
     }
@@ -598,11 +567,7 @@ fn find_weapon(entity: &Entity) -> Option<(SlotType, u32)> {
 
 fn forward_intent(pos: Point, facing: Direction) -> Intent {
     let (dx, dy) = facing.delta_pos();
-    Intent {
-        phase:  ExecutionPhase::Movement,
-        data:   IntentData::Target(Point { x: pos.x + dx, y: pos.y + dy }),
-        action: actions::move_action,
-    }
+    move_intent(Point { x: pos.x + dx, y: pos.y + dy })
 }
 
 // ---------------------------------------------------------------------------
@@ -626,11 +591,7 @@ impl AI {
     ) -> Option<Intent> {
         match self {
             AI::None => None,
-            AI::Rotator => Some(Intent {
-                phase:  ExecutionPhase::Movement,
-                data:   IntentData::Direction(entity.body.facing.clockwise()),
-                action: actions::turn_action,
-            }),
+            AI::Rotator => Some(turn_intent(entity.body.facing.clockwise())),
             AI::Forward => Some(forward_intent(entity.position, entity.body.facing)),
             AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds),
         }

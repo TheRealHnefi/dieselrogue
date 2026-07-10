@@ -657,11 +657,7 @@ impl World {
                 Effect::Sound(sound) =>
                     self.sounds.push(sound.clone()),
                 Effect::Twist{entity_id, direction} => {
-                    self.entities[*entity_id].intent = Intent {
-                        phase: ExecutionPhase::Movement,
-                        data: IntentData::Direction(*direction),
-                        action: actions::turn_action,
-                    };
+                    self.entities[*entity_id].intent = turn_intent(*direction);
                 },
                 Effect::Distract{entity_id} => {
                     let entity = &mut self.entities[*entity_id];
