@@ -2,7 +2,10 @@ use rltk::Point;
 use crate::Item;
 use crate::Entity;
 use crate::Map;
+use crate::{EntityKind, DrivingState, Ability};
+use crate::error::{Error, GameError};
 use crate::components::*;
+use crate::actions;
 use crate::actions::Action;
 
 #[derive (Clone)]
@@ -47,6 +50,8 @@ pub enum ActionId {
     FanFire,
     Prime,
     Throw,
+    GetItem,
+    Unequip,
 }
 
 #[derive(Clone)]
@@ -175,4 +180,75 @@ pub fn build_intent(action: &EntityAction, source: Option<ActionSource>, resolut
         },
     };
     Intent { phase: action.phase, data, action: action.action }
+}
+
+/// A plain move onto `target`.
+pub fn move_intent(target: Point) -> Intent {
+    Intent { phase: ExecutionPhase::Movement, data: IntentData::Target(target), action: actions::move_action }
+}
+
+/// Resolve a directional step for `entity` into a concrete intent: turn, move,
+/// melee, open-door or embark depending on facing and the target tile. Shared by
+/// the player hotkey and the AI. `Ok(None)` means no intent change (e.g. a vehicle
+/// blocked by terrain).
+pub fn resolve_step(entity: &Entity, direction: Direction, map: &Map, entities: &[Entity]) -> Result<Option<Intent>, GameError> {
+    let driving = matches!(entity.driving, DrivingState::DrivenBy(_));
+    let can_move = entity.has_ability(Ability::HumanMove) || entity.has_ability(Ability::VehicleMove);
+    if !can_move {
+        return Err(GameError { error: Error::BadPrecondition, message: "Player can not move".to_string() });
+    }
+
+    if entity.body.facing != direction {
+        return Ok(Some(Intent {
+            phase: ExecutionPhase::Movement,
+            data: IntentData::Direction(direction),
+            action: actions::turn_action,
+        }));
+    }
+
+    let (dx, dy) = direction.delta_pos();
+    let target = Point { x: entity.position.x + dx, y: entity.position.y + dy };
+
+    if !driving {
+        if target.x < 0 || target.y < 0 || target.x >= map.width as i32 || target.y >= map.height as i32 {
+            return Err(GameError { error: Error::MapExit, message: String::new() });
+        }
+        let index = map.xy_idx(target.x, target.y);
+        let pawn_entity_id = map.pawns[index].as_ref().map(|p| p.entity_id);
+        match pawn_entity_id {
+            Some(pid) => {
+                let pawn = &entities[pid];
+                if pawn.kind == EntityKind::Door {
+                    Ok(Some(Intent { phase: ExecutionPhase::Movement, data: IntentData::Target(target), action: actions::open_door_action }))
+                } else if pawn.driving == DrivingState::Drivable {
+                    if !entity.has_ability(Ability::Embark) {
+                        return Err(GameError { error: Error::BadPrecondition, message: "You don't know how to operate that vehicle.".to_string() });
+                    }
+                    Ok(Some(Intent { phase: ExecutionPhase::Movement, data: IntentData::Target(target), action: actions::embark_action }))
+                } else {
+                    Ok(Some(Intent { phase: ExecutionPhase::Attack, data: IntentData::Target(target), action: actions::melee_action }))
+                }
+            },
+            None => {
+                if !entity.check_fit(target, map) {
+                    return Err(GameError { error: Error::BadPrecondition, message: "Bump!".to_string() });
+                }
+                Ok(Some(move_intent(target)))
+            }
+        }
+    } else if entity.check_fit(target, map) {
+        Ok(Some(move_intent(target)))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Hotkey-only catalog descriptor for picking up the item underfoot.
+pub fn get_item_action_def() -> EntityAction {
+    EntityAction { id: ActionId::GetItem, name: "Pick up".to_string(), targeting: Targeting::None, phase: ExecutionPhase::Inventory, precondition: precondition_ok, action: actions::get_item_action }
+}
+
+/// Descriptor for unequipping an item back to inventory.
+pub fn unequip_action_def() -> EntityAction {
+    EntityAction { id: ActionId::Unequip, name: "Unequip".to_string(), targeting: Targeting::None, phase: ExecutionPhase::Inventory, precondition: precondition_ok, action: actions::unequip_item_action }
 }
