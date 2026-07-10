@@ -281,19 +281,10 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                                 }
                             }
                             // Phase 2a: assemble the intent directly from cursor position.
-                            let data = match pending.source {
-                                Some(ActionSource::InventoryItem(item)) =>
-                                    IntentData::TargetWithInventory { item, target: state.cursor_pos },
-                                Some(ActionSource::EquippedSlot(slot)) =>
-                                    IntentData::TargetWithEquipment { slot, target: state.cursor_pos },
-                                None =>
-                                    IntentData::Target(state.cursor_pos),
-                            };
-                            state.world.get_player_mut().unwrap().intent = Intent {
-                                phase: pending.entity_action.phase,
-                                data,
-                                action: pending.entity_action.action,
-                            };
+                            let cursor = state.cursor_pos;
+                            let PendingAction { entity_action, source } = pending;
+                            state.world.get_player_mut().unwrap().intent =
+                                build_intent(&entity_action, source, Resolution::Position(cursor));
                             return RunState::Resolve(ExecutionPhase::Instant);
                         } else {
                             // Phase 2b: Detailed targeting — open the bodypart menu.
@@ -490,16 +481,9 @@ fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) 
     }
 
     // No bodypart menu needed (area weapon or empty tile): fire directly at aim position.
-    let slot = match pending.source {
-        Some(ActionSource::EquippedSlot(s)) => s,
-        _ => unreachable!("fire_from_aim requires an equipped slot source"),
-    };
+    let PendingAction { entity_action, source } = pending;
     match state.world.get_player_mut() {
-        Ok(player) => player.intent = Intent {
-            phase: pending.entity_action.phase,
-            data: IntentData::TargetWithEquipment { slot, target: aim_pos },
-            action: pending.entity_action.action,
-        },
+        Ok(player) => player.intent = build_intent(&entity_action, source, Resolution::Position(aim_pos)),
         Err(_) => return RunState::AwaitingInput,
     }
     RunState::Resolve(ExecutionPhase::Instant)
@@ -748,19 +732,10 @@ fn confirm_entity_target(state: &mut State) -> RunState {
         }
     };
 
-    let intent_data = match pending.source {
-        Some(ActionSource::EquippedSlot(slot)) => IntentData::TargetWithEquipment { slot, target: entity_center },
-        _ => IntentData::Target(entity_center),
-    };
-
+    let PendingAction { entity_action, source } = pending;
+    let intent = build_intent(&entity_action, source, Resolution::Position(entity_center));
     match state.world.get_player_mut() {
-        Ok(player) => {
-            player.intent = Intent {
-                phase: pending.entity_action.phase,
-                data: intent_data,
-                action: pending.entity_action.action,
-            };
-        },
+        Ok(player) => player.intent = intent,
         Err(_) => return RunState::AwaitingInput,
     }
 

@@ -37,13 +37,6 @@ pub trait MenuRow {
     fn selectable(&self) -> bool;
 }
 
-/// The source context attached to a pending player action.
-/// Determines which IntentData variant is built when the target is confirmed.
-pub enum ActionSource {
-    InventoryItem(Item),
-    EquippedSlot(SlotType),
-}
-
 /// An action selected from a menu that still needs a map target before it can execute.
 /// Stored in State while the player moves the targeting cursor.
 ///
@@ -196,15 +189,11 @@ impl MenuRow for InnateActionRow {
     fn get_action(&self) -> MenuAction {
         match self.action.targeting {
             Targeting::None => MenuAction::WithIntent(
-                Intent {
-                    phase: self.action.phase,
-                    data:  IntentData::Void,
-                    action: self.action.action,
-                },
+                build_intent(&self.action, None, Resolution::None),
                 action_apply_intent_to_player,
             ),
             Targeting::Positional { .. } | Targeting::Detailed
-            | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } => {
+            | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
                 MenuAction::WithPendingAction(PendingAction {
                     entity_action: self.action.clone(),
                     source: None,
@@ -226,13 +215,12 @@ impl MenuRow for EquippedActionRow {
     fn get_action(&self) -> MenuAction {
         match self.action.targeting {
             Targeting::None => {
-                MenuAction::WithIntent(Intent {
-                    phase: self.action.phase,
-                    data: IntentData::EquippedItem(self.slot),
-                    action: self.action.action,
-                }, action_apply_intent_to_player)
+                MenuAction::WithIntent(
+                    build_intent(&self.action, Some(ActionSource::EquippedSlot(self.slot)), Resolution::None),
+                    action_apply_intent_to_player,
+                )
             },
-            Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } => {
+            Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
                 MenuAction::WithPendingAction(PendingAction {
                     entity_action: self.action.clone(),
                     source: Some(ActionSource::EquippedSlot(self.slot)),
@@ -266,13 +254,12 @@ impl MenuRow for ItemActionRow {
     fn get_action(&self) -> MenuAction {
         match self.action.targeting {
             Targeting::None => {
-                MenuAction::WithIntent(Intent {
-                    phase: self.action.phase,
-                    data: IntentData::InventoryItem(self.item.clone()),
-                    action: self.action.action
-                }, action_apply_intent_to_player)
+                MenuAction::WithIntent(
+                    build_intent(&self.action, Some(ActionSource::InventoryItem(self.item.clone())), Resolution::None),
+                    action_apply_intent_to_player,
+                )
             },
-            Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } => {
+            Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
                 MenuAction::WithPendingAction(PendingAction {
                     entity_action: self.action.clone(),
                     source: Some(ActionSource::InventoryItem(self.item.clone())),
@@ -814,21 +801,12 @@ fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut Sta
     let pending = state.pending_action.take()
         .expect("bodypart targeting reached without a pending action");
 
-    let data = match pending.source {
-        Some(ActionSource::InventoryItem(item)) => IntentData::TargetBodypartWithInventory {
-            item, target: state.cursor_pos, bodypart_index
-        },
-        Some(ActionSource::EquippedSlot(slot)) => IntentData::TargetBodypartWithEquipment {
-            slot, target: state.cursor_pos, bodypart_index
-        },
-        None => unreachable!("detailed targeting requires an item or slot source"),
-    };
-
-    state.world.get_player_mut().unwrap().intent = Intent {
-        phase: pending.entity_action.phase,
-        data,
-        action: pending.entity_action.action,
-    };
+    let intent = build_intent(
+        &pending.entity_action,
+        pending.source,
+        Resolution::Bodypart { target: state.cursor_pos, bodypart_index },
+    );
+    state.world.get_player_mut().unwrap().intent = intent;
 
     RunState::Resolve(ExecutionPhase::Instant)
 }

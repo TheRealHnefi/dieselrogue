@@ -24,10 +24,36 @@ pub enum Targeting {
     UseExistingAim { ask_bodypart: bool },
     /// Cycle the cursor among visible entities within range; confirms as AimingAtEntity.
     EntityAim { max_range: Option<u32> },
+    /// Resolve against an adjacent direction chosen by keypress.
+    Direction,
+}
+
+/// Stable identity for a catalog action. Lets keybindings and the AI reference
+/// an action without a fn-pointer.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum ActionId {
+    Shout,
+    IronBody,
+    Rush,
+    Twist,
+    Distract,
+    Equip,
+    Drop,
+    AimAtPosition,
+    AimAtEntity,
+    FireShot,
+    FireBurst,
+    FireRocket,
+    FanFire,
+    Prime,
+    Throw,
 }
 
 #[derive(Clone)]
 pub struct EntityAction {
+    // Read by keybindings/AI from stage 5 onward.
+    #[allow(dead_code)]
+    pub id: ActionId,
     pub name: String,
     pub targeting: Targeting,
     pub phase: ExecutionPhase,
@@ -110,4 +136,43 @@ pub enum IntentData {
     TargetWithInventory{item: Item, target: Point},
     TargetBodypartWithEquipment{slot: SlotType, target: Point, bodypart_index: usize},
     TargetBodypartWithInventory{item: Item, target: Point, bodypart_index: usize}
+}
+
+/// The item/slot context an action operates through, if any.
+#[derive(Clone)]
+pub enum ActionSource {
+    InventoryItem(Item),
+    EquippedSlot(SlotType),
+}
+
+/// A resolved target for an action, chosen by the picker (menu/hotkey/AI).
+pub enum Resolution {
+    None,
+    Direction(Direction),
+    Position(Point),
+    Bodypart { target: Point, bodypart_index: usize },
+}
+
+/// The single constructor for a concrete `Intent` from a catalog action plus a
+/// resolved source and target.
+pub fn build_intent(action: &EntityAction, source: Option<ActionSource>, resolution: Resolution) -> Intent {
+    let data = match resolution {
+        Resolution::None => match source {
+            None                                     => IntentData::Void,
+            Some(ActionSource::EquippedSlot(slot))   => IntentData::EquippedItem(slot),
+            Some(ActionSource::InventoryItem(item))  => IntentData::InventoryItem(item),
+        },
+        Resolution::Direction(dir) => IntentData::Direction(dir),
+        Resolution::Position(target) => match source {
+            None                                     => IntentData::Target(target),
+            Some(ActionSource::EquippedSlot(slot))   => IntentData::TargetWithEquipment { slot, target },
+            Some(ActionSource::InventoryItem(item))  => IntentData::TargetWithInventory { item, target },
+        },
+        Resolution::Bodypart { target, bodypart_index } => match source {
+            Some(ActionSource::EquippedSlot(slot))   => IntentData::TargetBodypartWithEquipment { slot, target, bodypart_index },
+            Some(ActionSource::InventoryItem(item))  => IntentData::TargetBodypartWithInventory { item, target, bodypart_index },
+            None => unreachable!("bodypart targeting requires an item or slot source"),
+        },
+    };
+    Intent { phase: action.phase, data, action: action.action }
 }

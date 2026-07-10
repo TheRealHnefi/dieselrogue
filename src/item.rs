@@ -327,34 +327,34 @@ impl Item {
     }
 
     fn equip_action() -> EntityAction {
-        EntityAction { name: "Equip".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::equip_item_action    }
+        EntityAction { id: ActionId::Equip,         name: "Equip".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::equip_item_action    }
     }
     fn drop_action() -> EntityAction {
-        EntityAction { name: "Drop".to_string(),             targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::drop_item_action     }
+        EntityAction { id: ActionId::Drop,          name: "Drop".to_string(),             targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::drop_item_action     }
     }
     fn aim_action(range: u32) -> EntityAction {
-        EntityAction { name: "Aim at position".to_string(),  targeting: Targeting::Positional { max_range: Some(range) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::aim_action           }
+        EntityAction { id: ActionId::AimAtPosition, name: "Aim at position".to_string(),  targeting: Targeting::Positional { max_range: Some(range) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::aim_action           }
     }
     fn fire_action() -> EntityAction {
-        EntityAction { name: "Fire shot".to_string(),        targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::single_fire_action   }
+        EntityAction { id: ActionId::FireShot,      name: "Fire shot".to_string(),        targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::single_fire_action   }
     }
     fn fire_burst_action() -> EntityAction {
-        EntityAction { name: "Fire burst".to_string(),       targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::burst_fire_action    }
+        EntityAction { id: ActionId::FireBurst,     name: "Fire burst".to_string(),       targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::burst_fire_action    }
     }
     fn fire_rocket_action() -> EntityAction {
-        EntityAction { name: "Fire rocket".to_string(),      targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::rocket_fire_action   }
+        EntityAction { id: ActionId::FireRocket,    name: "Fire rocket".to_string(),      targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::rocket_fire_action   }
     }
     fn fan_fire_action() -> EntityAction {
-        EntityAction { name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::fan_fire_action      }
+        EntityAction { id: ActionId::FanFire,       name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::fan_fire_action      }
     }
     fn aim_at_entity_action(range: u32) -> EntityAction {
-        EntityAction { name: "Aim at entity".to_string(),    targeting: Targeting::EntityAim { max_range: Some(range) },   phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::aim_action           }
+        EntityAction { id: ActionId::AimAtEntity,   name: "Aim at entity".to_string(),    targeting: Targeting::EntityAim { max_range: Some(range) },   phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::aim_action           }
     }
     fn prime_action() -> EntityAction {
-        EntityAction { name: "Prime".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::prime_grenade_action }
+        EntityAction { id: ActionId::Prime,         name: "Prime".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::prime_grenade_action }
     }
     fn throw_action() -> EntityAction {
-        EntityAction { name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
+        EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
     }
 
     fn rarity_to_color(rarity: u8) -> rltk::RGB {
