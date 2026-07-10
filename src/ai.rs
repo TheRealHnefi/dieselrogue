@@ -302,9 +302,9 @@ impl ActorAI {
             AlertSnapshot::Unaware =>
                 self.unaware_intent(entity, map, entities),
             AlertSnapshot::Suspicious { origin } =>
-                self.navigate_to(entity, origin, map, 0),
+                self.navigate_to(entity, origin, map, entities, 0),
             AlertSnapshot::Alert { last_known, search } =>
-                self.search_intent(entity, map, last_known, search),
+                self.search_intent(entity, map, entities, last_known, search),
             AlertSnapshot::Combat { target_id, last_seen } =>
                 self.combat_intent(entity, map, entities, target_id, last_seen),
         }
@@ -327,14 +327,14 @@ impl ActorAI {
                     self.path_target = None;
                 }
                 let dest = route[*waypoint_index];
-                self.navigate_to(entity, dest, map, 0)
+                self.navigate_to(entity, dest, map, entities, 0)
             },
             Profile::Guard { anchor, .. } => {
                 let anchor = *anchor;
                 if entity.position == anchor {
                     None // already at post
                 } else {
-                    self.navigate_to(entity, anchor, map, 0)
+                    self.navigate_to(entity, anchor, map, entities, 0)
                 }
             },
             Profile::Follow { target_id, last_known_pos, .. } => {
@@ -345,7 +345,7 @@ impl ActorAI {
                 if adjacent(entity.position, dest) {
                     None
                 } else {
-                    self.navigate_to(entity, dest, map, 2)
+                    self.navigate_to(entity, dest, map, entities, 2)
                 }
             },
             Profile::Stationary { .. } => None,
@@ -354,15 +354,15 @@ impl ActorAI {
 
     // --- Behaviour: Alert (lost target / investigating) ---
 
-    fn search_intent(&mut self, entity: &Entity, map: &Map, last_known: Point, search: SearchBehavior) -> Option<Intent> {
+    fn search_intent(&mut self, entity: &Entity, map: &Map, entities: &[Entity], last_known: Point, search: SearchBehavior) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
         match search {
             SearchBehavior::HoldAndWatch => None, // stand still, weapon ready
-            SearchBehavior::MoveToLastKnown => self.navigate_to(entity, last_known, map, 0),
+            SearchBehavior::MoveToLastKnown => self.navigate_to(entity, last_known, map, entities, 0),
             SearchBehavior::Flank => {
                 let flank_dest = self.flank_destination(entity.position, last_known, map);
-                self.navigate_to(entity, flank_dest, map, 0)
+                self.navigate_to(entity, flank_dest, map, entities, 0)
             },
         }
     }
@@ -400,14 +400,18 @@ impl ActorAI {
 
         if let CombatTactic::Flee = tactic {
             let flee_pos = self.flee_pos(entity, last_seen, map);
-            return self.navigate_to(entity, flee_pos, map, 0);
+            return self.navigate_to(entity, flee_pos, map, entities, 0);
         }
 
-        // Try melee if adjacent to target.
+        // Try melee if adjacent to target — via resolve_step, so the AI turns to
+        // face first, exactly like the player.
         if let Some(target) = entities.iter().find(|e| e.id == target_id) {
             let tc = target.center();
             if adjacent(entity.position, tc) {
-                return Some(melee_intent(tc));
+                return match direction_to(entity.position, tc) {
+                    Some(dir) => resolve_step(entity, dir, map, entities).ok().flatten(),
+                    None      => Some(melee_intent(tc)),
+                };
             }
 
             // Try ranged attack if weapon equipped and target in range.
@@ -433,7 +437,7 @@ impl ActorAI {
                 let dest = entities.iter().find(|e| e.id == target_id)
                     .map(|t| t.center())
                     .unwrap_or(last_seen);
-                self.navigate_to(entity, dest, map, 1)
+                self.navigate_to(entity, dest, map, entities, 1)
             },
             CombatTactic::Hold => None,
             CombatTactic::Flee => unreachable!(),
@@ -468,7 +472,7 @@ impl ActorAI {
         self.current_path.last().map(|&i| map.idx_pos(i))
     }
 
-    fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map, tolerance: u32) -> Option<Intent> {
+    fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map, entities: &[Entity], tolerance: u32) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
         if entity.position == destination {
@@ -517,8 +521,7 @@ impl ActorAI {
         }?;
 
         match direction_to(entity.position, next_pos) {
-            Some(dir) if dir != entity.body.facing => Some(turn_intent(dir)),
-            Some(_) => Some(move_intent(next_pos)),
+            Some(dir) => resolve_step(entity, dir, map, entities).ok().flatten(),
             None => None,
         }
     }
