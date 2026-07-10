@@ -1,7 +1,6 @@
 use std::collections::BinaryHeap;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use rltk::BaseMap;
 use crate::Map;
 
 /// Maximum tile expansions before returning a best-effort partial path.
@@ -109,10 +108,6 @@ thread_local! {
 /// more than `tolerance` tiles from the last computed target and the existing
 /// path is not stale (empty or next step blocked).
 ///
-/// Pass `tolerance = 0` for fixed destinations (waypoints, anchors, last-known
-/// positions) where exact precision is required.  Use a higher value for
-/// moving targets to avoid repathing every turn.
-///
 /// `cached_target` should be stored alongside the path buffer and passed back
 /// unchanged on every call.
 pub fn navigate_cached(
@@ -144,7 +139,7 @@ pub fn navigate_cached(
 /// Returns the adjacent walkable tile that minimizes distance to `end`, or
 /// `None` if no walkable neighbour is strictly closer than `start` itself.
 ///
-/// O(8) — use this when the destination is visible so that line-of-sight
+/// Useful when the destination is visible so that line-of-sight
 /// guarantees a straight approach won't get trapped behind an opaque wall.
 /// The caller should fall back to [`navigate_cached`] on `None`.
 pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
@@ -163,14 +158,12 @@ pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
     best_idx
 }
 
-/// A precomputed Dijkstra distance field over **static terrain** toward a single
+/// A precomputed Dijkstra distance field over static terrain toward a single
 /// goal cell.  `dist[i]` is the integer cost of the cheapest terrain path from
 /// tile `i` to the goal (orthogonal step = 10, diagonal = 14); [`u16::MAX`] marks
 /// tiles from which the goal is unreachable.
 ///
-/// Pawn occupancy is deliberately **not** baked in, so the field stays valid as
-/// entities move and can be built once and shared across turns and agents.
-/// Transient blocking is handled at read time by [`DistField::step`], which only
+/// Transient pawn blocking is handled at read time by [`DistField::step`], which only
 /// descends into tiles that are currently walkable.
 pub struct DistField {
     dist: Vec<u16>,
@@ -178,8 +171,7 @@ pub struct DistField {
 
 impl DistField {
     /// Orthogonal / diagonal step costs, scaled to integers so the flood fill
-    /// can use a cheap integer queue.  Mirror the 1.0 / 1.45 costs in
-    /// `Map::get_available_exits`.
+    /// can use a cheap integer queue. Mirror the 1.0 / 1.45 costs in `Map::get_available_exits`.
     const ORTHO: u32 = 10;
     const DIAG:  u32 = 14;
 
@@ -220,7 +212,6 @@ pub fn build_field(goal: usize, map: &Map) -> DistField {
 /// goals); a bound keeps dynamic-goal fields (investigation / last-known) cheap,
 /// since interested agents cluster near the goal. Cost is O(tiles within bound).
 pub fn build_field_bounded(goal: usize, map: &Map, max_cost: u32) -> DistField {
-    println!("Building field");
     let size = map.width * map.height;
     let mut dist = vec![u16::MAX; size];
     if goal >= size {

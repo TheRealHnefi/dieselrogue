@@ -1,4 +1,4 @@
-use rltk::{BaseMap, Algorithm2D, Point, RandomNumberGenerator};
+use rltk::{Point, RandomNumberGenerator};
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 use crate::entity::Pawn;
@@ -519,16 +519,12 @@ impl Map {
         }
         !self.blocked(x, y)
     }
-}
 
-impl Algorithm2D for Map {
-    fn dimensions(&self) -> Point {
+    pub fn dimensions(&self) -> Point {
         Point::new(self.width, self.height)
     }
-}
 
-impl BaseMap for Map {
-    fn is_opaque(&self, index: usize) -> bool {
+    pub fn is_opaque(&self, index: usize) -> bool {
         match self.tiles[index] {
             TileType::Wall => true,
             TileType::Floor => false,
@@ -540,26 +536,27 @@ impl BaseMap for Map {
         }
     }
 
-    fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
-        let mut exits = rltk::SmallVec::new();
+    pub fn get_available_exits(&self, idx: usize) -> [(usize, f32); 8] {
+        puffin::profile_function!();
+        let mut exits: [(usize, f32); 8] = [(0, 100000.0); 8];
         let x = idx as i32 % self.width as i32;
         let y = idx as i32 / self.width as i32;
         let w = self.width as usize;
 
-        if self.is_exit_valid(x-1, y) { exits.push((idx-1, 1.0)) };
-        if self.is_exit_valid(x+1, y) { exits.push((idx+1, 1.0)) };
-        if self.is_exit_valid(x, y-1) { exits.push((idx-w, 1.0)) };
-        if self.is_exit_valid(x, y+1) { exits.push((idx+w, 1.0)) };
-    
-        if self.is_exit_valid(x-1, y-1) { exits.push(((idx-w)-1, 1.45)); }
-        if self.is_exit_valid(x+1, y-1) { exits.push(((idx-w)+1, 1.45)); }
-        if self.is_exit_valid(x-1, y+1) { exits.push(((idx+w)-1, 1.45)); }
-        if self.is_exit_valid(x+1, y+1) { exits.push(((idx+w)+1, 1.45)); }
+        if self.is_exit_valid(x-1, y) { exits[0] = (idx-1, 1.0) };
+        if self.is_exit_valid(x+1, y) { exits[1] = (idx+1, 1.0) };
+        if self.is_exit_valid(x, y-1) { exits[2] = (idx-w, 1.0) };
+        if self.is_exit_valid(x, y+1) { exits[3] = (idx+w, 1.0) };
+
+        if self.is_exit_valid(x-1, y-1) { exits[4] = ((idx-w)-1, 1.45); }
+        if self.is_exit_valid(x+1, y-1) { exits[5] = ((idx-w)+1, 1.45); }
+        if self.is_exit_valid(x-1, y+1) { exits[6] = ((idx+w)-1, 1.45); }
+        if self.is_exit_valid(x+1, y+1) { exits[7] = ((idx+w)+1, 1.45); }
 
         exits
     }
     
-    fn get_pathing_distance(&self, idx1: usize, idx2: usize) -> f32 {
+    pub fn get_pathing_distance(&self, idx1: usize, idx2: usize) -> f32 {
         let w = self.width as usize;
         let p1 = Point::new(idx1 % w, idx1 / w);
         let p2 = Point::new(idx2 % w, idx2 / w);

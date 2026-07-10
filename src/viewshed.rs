@@ -1,4 +1,4 @@
-use rltk::{Point, BaseMap};
+use rltk::Point;
 use crate::components::*;
 use crate::Map;
 
