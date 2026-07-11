@@ -9,17 +9,20 @@ use crate::intent::*;
 use crate::player;
 use crate::Ability;
 
-const SUSPICIOUS_TURNS: u32 = 15;
-const ALERT_TURNS:      u32 = 30;
+const SUSPICIOUS_TURNS: u32 = 30;
 
 // ---------------------------------------------------------------------------
 // AlertLevel
 // ---------------------------------------------------------------------------
 
 pub enum AlertLevel {
+    /// Not acting on any threats
     Unaware,
+    /// Has detected something potentially dangerous, but unconfirmed. Decays to Unaware.
     Suspicious { origin: Point, turns_remaining: u32 },
-    Alert      { last_known: Point, turns_remaining: u32, search: SearchBehavior },
+    /// Has detected something confirmed dangerous, but does not see it. Does not decay.
+    Alert      { last_known: Point, search: SearchBehavior },
+    /// Has detected something confirmed dangerous and has recently seen it or is seeing it now.
     Combat     { target_id: usize, last_seen: Point },
 }
 
@@ -204,7 +207,6 @@ impl ActorAI {
                 SoundKind::Gunshot | SoundKind::Burst | SoundKind::Explosion =>
                     AlertLevel::Alert {
                         last_known: s.pos,
-                        turns_remaining: ALERT_TURNS,
                         search: SearchBehavior::for_entity(entity.id),
                     },
                 SoundKind::Footstep | SoundKind::Engine =>
@@ -235,7 +237,6 @@ impl ActorAI {
                     let lkp = *last_known_pos;
                     self.alert.try_escalate(AlertLevel::Alert {
                         last_known: lkp,
-                        turns_remaining: ALERT_TURNS,
                         search: SearchBehavior::MoveToLastKnown,
                     });
                 }
@@ -255,7 +256,6 @@ impl ActorAI {
             if !still_visible {
                 self.alert = AlertLevel::Alert {
                     last_known: ls,
-                    turns_remaining: ALERT_TURNS,
                     search: SearchBehavior::for_entity(entity.id),
                 };
             }
@@ -266,8 +266,6 @@ impl ActorAI {
         let transition: Option<AlertLevel> = match &self.alert {
             AlertLevel::Suspicious { turns_remaining, origin } if *turns_remaining == 0 =>
                 Some(AlertLevel::Unaware),
-            AlertLevel::Alert { turns_remaining, last_known, .. } if *turns_remaining == 0 =>
-                Some(AlertLevel::Suspicious { origin: *last_known, turns_remaining: SUSPICIOUS_TURNS }),
             _ => None,
         };
 
@@ -276,7 +274,6 @@ impl ActorAI {
         } else {
             match &mut self.alert {
                 AlertLevel::Suspicious { turns_remaining, .. } => *turns_remaining -= 1,
-                AlertLevel::Alert      { turns_remaining, .. } => *turns_remaining -= 1,
                 _ => {}
             }
         }
