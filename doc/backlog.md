@@ -19,6 +19,7 @@
    * Alerted friends
  * Implement followers, guards, pilots as the three main archetypes
  * Implement
+* Fix unstable entity ID's
 * Savegames
 * Character progression (leveling)
  * XP from kills
