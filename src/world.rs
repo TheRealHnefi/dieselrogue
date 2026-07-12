@@ -74,7 +74,6 @@ impl World {
         println!("Spawning guards:");
         world.spawn_sentinels(&zone_map, &interesting, &mut placed, &mut guard_n, &mut rng);
         world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-        world.assign_followers(&mut placed, &mut guard_n, &mut rng);
         println!("Spawned {} guards total.", guard_n);
 
         // Spawn tanks on roads and in hangars, skewing toward outer zones.
@@ -290,10 +289,6 @@ impl World {
     pub fn create_guard_actor(&mut self, pos: Point, facing: Direction, name: String, tactic: CombatTactic) -> Result<(), GameError> {
         let anchor = self.map.nearest_free_pawn_position(pos)?;
         self.create_actor(pos, facing, name, Profile::Guard { anchor, combat_tactic: tactic })
-    }
-
-    pub fn create_stationary_actor(&mut self, pos: Point, facing: Direction, name: String, tactic: CombatTactic) -> Result<(), GameError> {
-        self.create_actor(pos, facing, name, Profile::Stationary { combat_tactic: tactic })
     }
 
 

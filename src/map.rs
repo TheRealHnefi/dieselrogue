@@ -137,6 +137,21 @@ impl Map {
         return self.tiles[index];
     }
 
+    pub fn get_item_ref(&self, x: i32, y: i32) -> &Option<Item> {
+        let index = self.xy_idx(x, y);
+        return &self.items[index];
+    }
+
+    pub fn get_entity_id(&self, x: i32, y: i32) -> Option<usize> {
+        let index = self.xy_idx(x, y);
+        if let Some(pawn) = &self.pawns[index] {
+            return Some(pawn.entity_id);
+        }
+        else {
+            return None
+        }
+    }
+
     pub fn blocked_idx(&self, index: usize) -> bool {
         match self.tiles[index] {
             TileType::Floor => self.pawns[index].is_some(),

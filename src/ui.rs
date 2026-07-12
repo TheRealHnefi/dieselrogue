@@ -620,6 +620,9 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
             let key_color = rltk::RGB::from_u8(r, g, b);
             context.print_color(x, offset_y, key_color, BG_COLOR, crate::components::KEY_COLOR_NAMES[*color]);
         },
+        ItemKind::Corpse => {
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("?"));
+        },
         ItemKind::Misc => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("?"));
         }
