@@ -357,12 +357,12 @@ impl ActorAI {
             // TODO: This is probably more efficient to do the other way around - iterate over viewshed to check for existence of target id
             // TODO: Do we even need this considering we do the same thing in the perception step?
             let still_visible = entities.iter()
-                .find(|e| e.id == tid)
+                .find(|e| e.index == tid)
                 .map_or(false, |t| entity.viewshed.visible_tiles.contains(&t.center()));
             if !still_visible {
                 self.alert = AlertLevel::Alert {
                     last_known: ls,
-                    search: SearchBehavior::for_entity(entity.id),
+                    search: SearchBehavior::for_entity(entity.index),
                 };
             }
             return;
@@ -472,7 +472,7 @@ impl ActorAI {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
 
-        if let Some(target) = entities.iter().find(|e| e.id == target_id) {
+        if let Some(target) = entities.iter().find(|e| e.index == target_id) {
             let tc = target.center();
 
             // Melee if adjacent — via resolve_step so the AI turns to face first.
@@ -501,7 +501,7 @@ impl ActorAI {
         // No attack available — pursue or hold.
         match self.profile.combat_tactic() {
             CombatTactic::Pursue => {
-                let dest = entities.iter().find(|e| e.id == target_id)
+                let dest = entities.iter().find(|e| e.index == target_id)
                     .map(|t| t.center()).unwrap_or(last_seen);
                 self.navigate_to(entity, dest, map, entities, 1)
             },

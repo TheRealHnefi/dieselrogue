@@ -62,7 +62,7 @@ pub fn move_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
     if !entity.check_fit(pos, map) {
         return vec![];
     }
-    let mut effects = vec![Effect::Move { entity_id: entity.id, pos }];
+    let mut effects = vec![Effect::Move { entity_id: entity.index, pos }];
     if entity.has_ability(Ability::VehicleMove) {
         effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos, volume: 15 }));
     } else if !entity.has_ability(Ability::Stealth) {
@@ -76,14 +76,14 @@ pub fn turn_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Eff
         unreachable!("turn_action called with non-direction intent")
     };
     if entity.has_ability(Ability::HumanMove) {
-        return vec![Effect::SetFacing { entity_id: entity.id, direction }];
+        return vec![Effect::SetFacing { entity_id: entity.index, direction }];
     }
     if entity.has_ability(Ability::VehicleMove) {
         let ok = entity.body.facing.clockwise() == direction
                || entity.body.facing.counter_clockwise() == direction;
         if ok {
             return vec![
-                Effect::SetFacing { entity_id: entity.id, direction },
+                Effect::SetFacing { entity_id: entity.index, direction },
                 Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: entity.position, volume: 15 }),
             ];
         } else {
@@ -101,8 +101,8 @@ pub fn juke_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
     let IntentData::Target(pos) = entity.intent.data else { return vec![]; };
     if !entity.check_fit(pos, map) { return vec![]; }
     let mut effects = vec![
-        Effect::SpendEnergy { entity_id: entity.id, amount: ENERGY_COST },
-        Effect::Move { entity_id: entity.id, pos },
+        Effect::SpendEnergy { entity_id: entity.index, amount: ENERGY_COST },
+        Effect::Move { entity_id: entity.index, pos },
     ];
     if !entity.has_ability(Ability::Stealth) {
         effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos, volume: 5 }));
@@ -114,20 +114,20 @@ pub fn open_door_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Ve
     let IntentData::Target(pos) = entity.intent.data else {
         unreachable!("open_door_action called with non-target intent")
     };
-    vec![Effect::OpenDoor { pos, actor_id: entity.id }]
+    vec![Effect::OpenDoor { pos, actor_id: entity.index }]
 }
 
 pub fn embark_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     let IntentData::Target(pos) = entity.intent.data else { return vec![]; };
     match &map.pawns[map.pos_idx(pos)] {
-        Some(pawn) => vec![Effect::Embark { pilot_id: entity.id, vehicle_id: pawn.entity_id }],
+        Some(pawn) => vec![Effect::Embark { pilot_id: entity.index, vehicle_id: pawn.entity_id }],
         None       => vec![],
     }
 }
 
 pub fn disembark_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     match entity.driving {
-        DrivingState::DrivenBy(pilot) => vec![Effect::Disembark { pilot_id: pilot, vehicle_id: entity.id }],
+        DrivingState::DrivenBy(pilot) => vec![Effect::Disembark { pilot_id: pilot, vehicle_id: entity.index }],
         _ => unreachable!("disembark_action called on entity that is not being driven"),
     }
 }
@@ -164,7 +164,7 @@ pub fn single_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Ve
         None => return vec![Effect::Log(format!("{} pulled the trigger. 'Click'.", entity.name))],
     };
     let mut effects = vec![
-        Effect::ConsumeAmmo { entity_id: entity.id, slot, shots: fired },
+        Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
         Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 20 }),
         Effect::Animation(shot_animation(entity.position, target_pos, 1)),
     ];
@@ -185,7 +185,7 @@ pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec
         None => return vec![Effect::Log(format!("{} pulled the trigger. 'Clickclickclickclickclick'.", entity.name))],
     };
     let mut effects = vec![
-        Effect::ConsumeAmmo { entity_id: entity.id, slot, shots },
+        Effect::ConsumeAmmo { entity_id: entity.index, slot, shots },
         Effect::Sound(SoundEvent { kind: SoundKind::Burst, pos: entity.position, volume: 25 }),
         Effect::Animation(shot_animation(entity.position, target_pos, shots as i32)),
     ];
@@ -208,7 +208,7 @@ pub fn rocket_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Ve
         None => return vec![Effect::Log(format!("{} pulled the trigger. 'Click'.", entity.name))],
     };
     let mut effects = vec![
-        Effect::ConsumeAmmo { entity_id: entity.id, slot, shots: fired },
+        Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
         Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: entity.position, volume: 30 }),
         Effect::DestroyWall(target_pos),
         Effect::Animation(explosion_animation(target_pos, 1)),
@@ -240,7 +240,7 @@ pub fn fan_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
     const HALF_ARC_COS: f32 = 0.9239;
 
     let mut effects = vec![
-        Effect::ConsumeAmmo { entity_id: entity.id, slot, shots: fired },
+        Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
         Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: src, volume: 15 }),
     ];
     let range_i = range as i32;
@@ -285,7 +285,7 @@ pub fn aim_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effec
         Some(pawn) => StatusEffect::AimingAtEntity(pawn.entity_id, item),
         None       => StatusEffect::AimingAtGround(target, item),
     };
-    vec![Effect::ApplyStatus { target_id: entity.id, status }]
+    vec![Effect::ApplyStatus { target_id: entity.index, status }]
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +298,7 @@ pub fn get_item_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<
     if entity.body.inventory.len() >= crate::components::INVENTORY_MAX {
         return vec![Effect::Log(format!("{} can't carry any more items.", entity.name))];
     }
-    vec![Effect::PickUpItem { entity_id: entity.id }]
+    vec![Effect::PickUpItem { entity_id: entity.index }]
 }
 
 pub fn drop_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
@@ -307,7 +307,7 @@ pub fn drop_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Ve
     };
     vec![
         Effect::Log(format!("{} dropped {}", entity.name, item.name)),
-        Effect::DropItem { entity_id: entity.id, item_id: item.id },
+        Effect::DropItem { entity_id: entity.index, item_id: item.id },
     ]
 }
 
@@ -315,7 +315,7 @@ pub fn equip_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> V
     let IntentData::InventoryItem(ref item) = entity.intent.data else {
         unreachable!("equip_item_action called with non-inventory intent")
     };
-    vec![Effect::EquipItem { entity_id: entity.id, item_id: item.id }]
+    vec![Effect::EquipItem { entity_id: entity.index, item_id: item.id }]
 }
 
 pub fn unequip_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
@@ -323,7 +323,7 @@ pub fn unequip_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]) ->
         unreachable!("unequip_item_action called with non-equipped-item intent")
     };
     if let Some(item) = entity.get_equipped_item_ref(slot) {
-        vec![Effect::UnequipItem { entity_id: entity.id, item_id: item.id }]
+        vec![Effect::UnequipItem { entity_id: entity.index, item_id: item.id }]
     } else {
         vec![]
     }
@@ -335,7 +335,7 @@ pub fn prime_grenade_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -
     };
     vec![
         Effect::Log(format!("{} primed the {}", entity.name, item.name)),
-        Effect::PrimeItem { entity_id: entity.id, item_id: item.id },
+        Effect::PrimeItem { entity_id: entity.index, item_id: item.id },
     ]
 }
 
@@ -345,7 +345,7 @@ pub fn throw_grenade_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -
     };
     vec![
         Effect::Log(format!("{} threw a {}", entity.name, item.name)),
-        Effect::ThrowItem { entity_id: entity.id, item_id: item.id, target_pos: target },
+        Effect::ThrowItem { entity_id: entity.index, item_id: item.id, target_pos: target },
     ]
 }
 
@@ -363,8 +363,8 @@ pub fn iron_body_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Ve
         return vec![Effect::Log(format!("{} is too exhausted to use Iron Body", entity.name))];
     }
     vec![
-        Effect::SpendEnergy { entity_id: entity.id, amount: ENERGY_COST },
-        Effect::ApplyStatus { target_id: entity.id, status: StatusEffect::IronBody(3) },
+        Effect::SpendEnergy { entity_id: entity.index, amount: ENERGY_COST },
+        Effect::ApplyStatus { target_id: entity.index, status: StatusEffect::IronBody(3) },
     ]
 }
 
@@ -382,7 +382,7 @@ pub fn distract_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
         return vec![Effect::Log(format!("{} cannot be distracted — they can't see you", entities[target_id].name))];
     }
     vec![
-        Effect::SpendEnergy { entity_id: entity.id, amount: ENERGY_COST },
+        Effect::SpendEnergy { entity_id: entity.index, amount: ENERGY_COST },
         Effect::Distract { entity_id: target_id },
     ]
 }
@@ -399,7 +399,7 @@ pub fn twist_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Eff
     };
     let direction = away_direction(target_pos, entity.position);
     vec![
-        Effect::SpendEnergy { entity_id: entity.id, amount: ENERGY_COST },
+        Effect::SpendEnergy { entity_id: entity.index, amount: ENERGY_COST },
         Effect::Twist { entity_id: target_id, direction },
     ]
 }
@@ -421,9 +421,9 @@ pub fn rush_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effec
         .filter(|&p| entity.check_fit(p, map))
         .min_by_key(|p| { let dx = p.x - current_pos.x; let dy = p.y - current_pos.y; dx*dx + dy*dy });
     let (bodypart_index, raw_damage) = entity.melee_strike(&entities[target_id]);
-    let mut effects = vec![Effect::SpendEnergy { entity_id: entity.id, amount: ENERGY_COST }];
+    let mut effects = vec![Effect::SpendEnergy { entity_id: entity.index, amount: ENERGY_COST }];
     if let Some(pos) = best_pos {
-        effects.push(Effect::Move { entity_id: entity.id, pos });
+        effects.push(Effect::Move { entity_id: entity.index, pos });
     }
     effects.push(Effect::Damage { entity_id: target_id, bodypart_index, raw_damage });
     effects
