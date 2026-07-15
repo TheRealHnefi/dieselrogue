@@ -541,7 +541,7 @@ pub fn looking_input(state: &mut State, _context: &mut Rltk) -> RunState {
 fn trigger_action_by_id(state: &mut State, id: ActionId) -> RunState {
     let found = {
         let Ok(player) = state.world.get_player() else { return RunState::AwaitingInput };
-        get_entity_available_actions(player, &state.world.map).into_iter()
+        player.get_available_actions(&state.world.map).into_iter()
             .find(|(a, _)| a.id == id)
             .map(|(a, slot)| (a.clone(), slot))
     };

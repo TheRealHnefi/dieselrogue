@@ -4,7 +4,6 @@ use crate::error::{Error, GameError};
 use crate::entity::*;
 use crate::ability::*;
 use crate::intent::*;
-use crate::Map;
 use crate::World;
 
 pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
@@ -17,6 +16,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     Ok(())
 }
 
+// TODO: Strafe doesn't work with numpad keys. Why?
 pub fn strafe_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
@@ -89,29 +89,6 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     }
 
     Err(GameError{error: Error::BadPrecondition, message: String::from("There is no item here")})
-}
-
-/// Returns all actions currently available to `entity`: equipped-item actions
-/// whose preconditions pass, followed by innate actions whose preconditions pass.
-/// `Option<SlotType>` is `Some(slot)` for equipped actions, `None` for innate ones.
-/// This is the authoritative source used by both the player menu and the AI.
-pub fn get_entity_available_actions<'a>(entity: &'a Entity, map: &Map) -> Vec<(&'a EntityAction, Option<SlotType>)> {
-    let mut result = Vec::new();
-    for slot in &entity.body.item_slots {
-        let Some(item) = &slot.item else { continue };
-        if item.proxy { continue; }
-        for action in &item.equip_actions {
-            if (action.precondition)(entity, map, Some(item)) {
-                result.push((action, Some(slot.slot_type)));
-            }
-        }
-    }
-    for action in &entity.innate_actions {
-        if (action.precondition)(entity, map, None) {
-            result.push((action, None));
-        }
-    }
-    result
 }
 
 pub fn get_item_actions(world: &World) -> Vec<EntityAction>{
