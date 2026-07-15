@@ -412,7 +412,7 @@ impl World {
                 let map = &self.map;
                 for e in &self.entities {
                     if let AI::Actor(actor) = &e.ai {
-                        if let Some((p, bounded)) = actor.nav_field_goal(map) {
+                        if let Some((p, bounded)) = actor.nav_field_goal() {
                             let entry = demand.entry(map.pos_idx(p)).or_insert((0, bounded));
                             entry.0 += 1;
                             entry.1 &= bounded; // any full-map (static) requester wins
