@@ -30,39 +30,21 @@ struct Perception {
     target_id: Option<usize>
 }
 
-/// Compare two perceptions and replace the most important one, with bias
-/// towards left.
-// TODO: Clean this up - use PartialOrd?
+impl Perception {
+    /// Urgency key, compared lexicographically (higher wins): confirmed-hostile
+    /// outranks unconfirmed, then seen outranks heard, then known-origin outranks
+    /// unknown.
+    fn urgency(&self) -> (bool, bool, bool) {
+        (self.confirmed_hostile, self.confirmed_visually, self.confirmed_origin)
+    }
+}
+
+/// The more urgent of two perceptions, biased toward `left` on a tie.
 fn most_urgent(left: Option<Perception>, right: Option<Perception>) -> Option<Perception> {
-    if right.is_none() {
-        return left;
+    match (left, right) {
+        (Some(l), Some(r)) => Some(if r.urgency() > l.urgency() { r } else { l }),
+        (l, r) => l.or(r),
     }
-    else if left.is_none() {
-        return right;
-    }
-
-    let lhs = left.unwrap();
-    let rhs = right.unwrap();
-
-    if lhs.confirmed_hostile && !rhs.confirmed_hostile {
-        return Some(lhs);
-    } else if !lhs.confirmed_hostile && rhs.confirmed_hostile {
-        return Some(rhs);
-    }
-
-    else if lhs.confirmed_visually && !rhs.confirmed_visually {
-        return Some(lhs);
-    } else if !lhs.confirmed_visually && rhs.confirmed_visually {
-        return Some(rhs);
-    }
-
-    else if lhs.confirmed_origin && !rhs.confirmed_origin {
-        return Some(lhs);
-    } else if !lhs.confirmed_origin && rhs.confirmed_origin {
-        return Some(rhs);
-    }
-
-    return Some(lhs);
 }
 
 // ---------------------------------------------------------------------------
