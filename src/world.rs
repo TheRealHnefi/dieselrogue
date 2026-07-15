@@ -12,6 +12,8 @@ pub struct ActiveItem {
 /// The contents of the game world itself.
 pub struct World {
     pub player_id: Option<usize>,
+    pub player_xp: usize,
+    pub player_level: usize,
     pub entities: Vec<Entity>,
     pub map: Map,
     pub pending_levelup: bool,
@@ -33,6 +35,8 @@ impl World {
         let mut rng = RandomNumberGenerator::seeded(seed);
         let mut world = World {
             player_id: Option::None,
+            player_xp: 0,
+            player_level: 0,
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
@@ -42,7 +46,7 @@ impl World {
             active_items_ticked: false,
             map: Map::new_game_map(size, &mut rng),
             debug_mode: false,
-            parallel_ai: false,
+            parallel_ai: true,
         };
 
         let pos = Point {x: (world.map.width / 2) as i32, y: (world.map.height / 2) as i32};
@@ -126,6 +130,8 @@ impl World {
     pub fn new_test() -> Self {
         Self {
             player_id: Option::None,
+            player_xp: 0,
+            player_level: 0,
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,
@@ -167,6 +173,8 @@ impl World {
 
         let mut world = World {
             player_id: Option::None,
+            player_xp: 0,
+            player_level: 0,
             entities: vec![],
             next_item_id: 0,
             pending_levelup: false,

@@ -56,6 +56,8 @@ pub struct Entity {
     /// the player menu and the AI. Filtered by each action's precondition at
     /// query time via `get_available_actions`.
     pub innate_actions: Vec<EntityAction>,
+    // XP granted for killing actor
+    pub xp_value: usize
 }
 
 fn human_innate_actions() -> Vec<EntityAction> {
@@ -116,6 +118,7 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: human_innate_actions(),
+            xp_value: 0
         }
     }
 
@@ -140,6 +143,7 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: human_innate_actions(),
+            xp_value: 1000
         }
     }
 
@@ -160,6 +164,7 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: vec![],
+            xp_value: 1000
         }
     }
 
@@ -193,6 +198,7 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: vec![],
+            xp_value: 0
         }
     }
 
