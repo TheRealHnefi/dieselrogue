@@ -423,7 +423,7 @@ impl Entity {
         let actual_damage = effective_armor.modify_damage(raw_damage);
         bodypart.damage += actual_damage;
 
-        if bodypart.damage >= bodypart.max_damage {
+        if bodypart.damage > bodypart.max_damage {
             self.update_abilities();
         }
 
@@ -436,7 +436,7 @@ impl Entity {
 
     pub fn mortally_wounded(&self) -> bool {
         for bodypart in &self.body.parts {
-            if bodypart.damage > bodypart.max_damage && bodypart.vital {
+            if bodypart.damage >= bodypart.max_damage && bodypart.vital {
                 return true;
             }
         }
