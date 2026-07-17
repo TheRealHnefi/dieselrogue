@@ -25,6 +25,8 @@ pub enum RunState {
     AwaitingMenuInput,
     /// Navigating the side-panel inventory list directly (no floating item menu).
     BrowsingInventory,
+    /// Navigating the side-panel equipment list directly (no floating equipment menu).
+    BrowsingEquipment,
     AwaitingRebind(RebindTarget, Option<&'static str>),
     AwaitingPositionalTargetingInput,
     AwaitingEntityTargetingInput,
@@ -57,6 +59,8 @@ pub struct State {
 
     /// Highlighted row while in `BrowsingInventory` (index into the player's inventory).
     pub inventory_selected: usize,
+    /// Highlighted row while in `BrowsingEquipment` (index into the player's item slots).
+    pub equipment_selected: usize,
 
     pub level_up_options: Vec<Ability>,
     pub level_up_selected: usize,
@@ -107,6 +111,7 @@ impl State {
             menu_stack: vec![],
             pending_action: None,
             inventory_selected: 0,
+            equipment_selected: 0,
             level_up_options: vec![],
             level_up_selected: 0,
             entity_targets: vec![],
@@ -138,6 +143,7 @@ impl State {
             menu_stack: vec![],
             pending_action: None,
             inventory_selected: 0,
+            equipment_selected: 0,
             level_up_options: vec![],
             level_up_selected: 0,
             entity_targets: vec![],
@@ -171,6 +177,7 @@ impl State {
             menu_stack: vec![],
             pending_action: None,
             inventory_selected: 0,
+            equipment_selected: 0,
             level_up_options: vec![],
             level_up_selected: 0,
             entity_targets: vec![],
@@ -296,6 +303,9 @@ impl GameState for State {
             },
             RunState::BrowsingInventory => {
                 self.run_state = browse_inventory_input(self, context);
+            },
+            RunState::BrowsingEquipment => {
+                self.run_state = browse_equipment_input(self, context);
             },
             RunState::AwaitingDirectionalTargetingInput => {
                 self.run_state = directional_targeting_input(self, context);

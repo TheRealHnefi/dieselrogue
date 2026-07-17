@@ -84,11 +84,6 @@ pub struct ItemActionRow {
     pub action: EntityAction
 }
 
-pub struct ItemSlotRow {
-    pub text: String,
-    pub item: Option<Item>
-}
-
 /// A row for an action from `entity.innate_actions` — no equipment slot needed.
 pub struct InnateActionRow {
     pub text: String,
@@ -122,26 +117,6 @@ impl MenuRow for SystemRow {
 
     fn selectable(&self) -> bool {
         true
-    }
-}
-
-impl MenuRow for ItemSlotRow {
-    fn get_action(&self) -> MenuAction {
-        match &self.item {
-            Some(item) => return MenuAction::WithItem(item.clone(), action_apply_unequip_intent_to_player),
-            None => return MenuAction::Simple(action_noop)
-        }
-    }
-
-    fn get_text(&self) -> String {
-        return self.text.clone();
-    }
-
-    fn selectable(&self) -> bool {
-        match &self.item {
-            Some(item) => !item.proxy && !item.locked,
-            None => false
-        }
     }
 }
 
@@ -452,6 +427,28 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
     }
 }
 
+pub fn equipment_action_menu(slot: SlotType, state: &State) -> MenuPanel<EquippedActionRow> {
+    // Unequip is the only equipment action today; kept in a menu (rather than acting
+    // immediately) to mirror the inventory flow and stay extensible.
+    let action_rows = vec![EquippedActionRow {
+        text: unequip_action_def().name.clone(),
+        slot,
+        action: unequip_action_def(),
+    }];
+
+    // Anchor just left of the side-panel equipment list, aligned with the highlighted row.
+    let (row_x, row_y) = crate::equipment_row_pos(state.equipment_selected);
+    let box_w = action_rows.iter().map(|r| r.text.len()).max().unwrap_or(0) as i32 + 3;
+    MenuPanel {
+        x: (row_x - 3 - box_w).max(0),
+        y: row_y - 1,
+        rows: action_rows,
+        selected_row: 0,
+        no_selectable_rows: false,
+        paper_doll: None,
+    }
+}
+
 pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
     let mut rows: Vec<Box<dyn MenuRow>> = vec![];
     let mut no_selectable_rows = true;
@@ -496,43 +493,6 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
         selected_row: 0,
         no_selectable_rows,
         paper_doll: None,
-    }
-}
-
-pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
-    let mut slot_rows = vec!();
-    let mut first_selectable_row = -1;
-    let player = world.get_player().unwrap();
-    let doll = player.paper_doll;
-    for bodypart in &player.body.parts {
-        slot_rows.push(ItemSlotRow {
-            item: None,
-            text: format!("{}:", bodypart.name)
-        });
-        for slot_index in &bodypart.slot_index {
-            let item_name = match &player.body.item_slots[*slot_index].item {
-                Some(item) => {
-                    if first_selectable_row == -1 && !item.proxy {
-                        first_selectable_row = slot_rows.len() as i32;
-                    }
-                    item.name.clone()
-                },
-                None => "---".to_string()
-            };
-            slot_rows.push(ItemSlotRow {
-                item: player.body.item_slots[*slot_index].item.clone(),
-                text: format!("    {}", item_name)
-            })
-        }
-    }
-
-    MenuPanel {
-        x: 35,
-        y: 20,
-        rows: slot_rows,
-        selected_row: first_selectable_row as usize,
-        no_selectable_rows: first_selectable_row == -1,
-        paper_doll: doll,
     }
 }
 
@@ -664,23 +624,6 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
             } else {
                 context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(rltk::BLACK), row.get_text());
             }
-        }
-    }
-}
-
-fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunState {
-    match state.world.get_player_mut() {
-        Ok(player) => {
-            player.intent = build_intent(
-                &unequip_action_def(),
-                Some(ActionSource::EquippedSlot(item.equip_slots[0])),
-                Resolution::None,
-            );
-            return RunState::Resolve(ExecutionPhase::Instant);
-        },
-        Err(_) => {
-            state.log.entries.push("Can not unequip item".to_string());
-            return RunState::AwaitingMenuInput
         }
     }
 }
