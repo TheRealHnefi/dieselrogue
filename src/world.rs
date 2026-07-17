@@ -1092,8 +1092,8 @@ impl World {
             }
         }).collect();
 
-        for id in &deathlist {
-            self.entities[*id].kill(&mut self.map);
+        for index in &deathlist {
+            self.kill_entity(*index);
         }
 
         for info in death_infos {
@@ -1158,6 +1158,14 @@ impl World {
                 }
             }
         }
+    }
+
+    /// Apply death effects
+    fn kill_entity(&mut self, index: usize) {
+        let entity = &mut self.entities[index];
+        entity.clear_pawns(&mut self.map);
+        self.player_xp += entity.xp_value;
+        println!("Player got {} xp", entity.xp_value);
     }
 
     fn update_views_near_event(&mut self, position: Point, radius: i32) {
