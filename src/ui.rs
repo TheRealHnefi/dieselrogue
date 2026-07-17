@@ -917,10 +917,6 @@ fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
     if state.run_state != RunState::Looking {
         return;
     }
-    let Ok(player) = state.world.get_player() else { return };
-    if !player.has_ability(Ability::Precognition) {
-        return;
-    }
 
     let map = &state.world.map;
     let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
@@ -960,15 +956,7 @@ fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
 }
 
 fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
-    let pending = matches!(
-        state.run_state,
-        RunState::AwaitingInput
-        | RunState::Looking
-        | RunState::AwaitingPositionalTargetingInput
-        | RunState::AwaitingEntityTargetingInput
-        | RunState::AwaitingDirectionalTargetingInput
-    );
-    if !pending {
+    if state.run_state != RunState::Looking {
         return;
     }
     let Ok(player) = state.world.get_player() else { return };
