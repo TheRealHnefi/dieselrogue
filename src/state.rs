@@ -384,6 +384,8 @@ impl State {
             return;
         }
 
+        self.world.check_levelup();
+
         if self.world.pending_levelup {
             self.world.pending_levelup = false;
             let options = self.world.compute_levelup_options();
