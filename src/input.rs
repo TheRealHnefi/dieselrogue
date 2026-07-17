@@ -343,31 +343,37 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
             },
             VirtualKeyCode::Space |
             VirtualKeyCode::Return => {
-                match menu.get_action() {
-                    MenuAction::Simple(action) => return action(state),
+                let result = match menu.get_action() {
+                    MenuAction::Simple(action) => action(state),
                     MenuAction::WithPendingAction(pending) => {
                         if let Targeting::UseExistingAim { ask_bodypart } = pending.entity_action.targeting {
                             // Fire using the current aim status — no cursor step needed.
-                            return fire_from_aim(pending, ask_bodypart, state);
+                            fire_from_aim(pending, ask_bodypart, state)
+                        } else if let Targeting::EntityAim { max_range } = pending.entity_action.targeting {
+                            start_entity_targeting(pending, max_range, state)
+                        } else if let Targeting::Direction = pending.entity_action.targeting {
+                            start_directional_action(state, pending.entity_action, pending.source)
+                        } else {
+                            // Phase 1 of positional/detailed targeting: enter cursor mode.
+                            // The flow continues in positional_targeting_input.
+                            if let Ok(player) = state.world.get_player() {
+                                state.cursor_pos = player.position;
+                            }
+                            state.pending_action = Some(pending);
+                            RunState::AwaitingPositionalTargetingInput
                         }
-                        if let Targeting::EntityAim { max_range } = pending.entity_action.targeting {
-                            return start_entity_targeting(pending, max_range, state);
-                        }
-                        if let Targeting::Direction = pending.entity_action.targeting {
-                            return start_directional_action(state, pending.entity_action, pending.source);
-                        }
-                        // Phase 1 of positional/detailed targeting: enter cursor mode.
-                        // The flow continues in positional_targeting_input.
-                        if let Ok(player) = state.world.get_player() {
-                            state.cursor_pos = player.position;
-                        }
-                        state.pending_action = Some(pending);
-                        return RunState::AwaitingPositionalTargetingInput;
                     },
-                    MenuAction::WithIntent(intent, action) => return action(intent, state),
-                    MenuAction::WithItem(item, action) => return action(item, state),
-                    MenuAction::WithTargetedBodypartIndex(index, action) => return action(index, state)
+                    MenuAction::WithIntent(intent, action) => action(intent, state),
+                    MenuAction::WithItem(item, action) => action(item, state),
+                    MenuAction::WithTargetedBodypartIndex(index, action) => action(index, state),
+                };
+                // A selected action leaves the menu system unless it opened another menu
+                // (AwaitingMenuInput) or a keybind rebind. Otherwise drop the now-defunct
+                // menu stack so it can't resurface later (e.g. when Look opens a menu).
+                if !matches!(result, RunState::AwaitingMenuInput | RunState::AwaitingRebind(_, _)) {
+                    state.menu_stack.clear();
                 }
+                return result;
             },
             _ => return RunState::AwaitingMenuInput
         }
