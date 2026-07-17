@@ -12,7 +12,8 @@ use crate::PaperDoll;
  * Menu overview:
  * Main menu - system commands (save, quit, load)
  * Action menu - in-world commands (use item, use ability, inspect, shoot)
- *   - Item menu - pick an inventory item to use
+ *   - "Use item" enters BrowsingInventory: the player picks an item directly in the
+ *     side-panel inventory list, which then opens that item's action menu.
  *     - Item action menu - pick an action for that item
  *   - Ability menu - pick an ability to use
  */
@@ -77,11 +78,6 @@ pub struct SystemRow {
     pub action: fn (state: &mut State) -> RunState
 }
 
-pub struct ItemRow {
-    pub text: String,
-    pub item: Item
-}
-
 pub struct ItemActionRow {
     pub text: String,
     pub item: Item,
@@ -118,20 +114,6 @@ pub struct EntityViewRow {
 impl MenuRow for SystemRow {
     fn get_action(&self) -> MenuAction {
         return MenuAction::Simple(self.action);
-    }
-
-    fn get_text(&self) -> String {
-        return self.text.clone();
-    }
-
-    fn selectable(&self) -> bool {
-        true
-    }
-}
-
-impl MenuRow for ItemRow {
-    fn get_action(&self) -> MenuAction {
-        return MenuAction::WithItem(self.item.clone(), action_show_inventory_item_menu);
     }
 
     fn get_text(&self) -> String {
@@ -323,23 +305,17 @@ fn action_quit(_state: &mut State) -> RunState {
 }
 
 fn action_open_item_menu(state: &mut State) -> RunState {
-    let maybe_menu = item_menu(&state.world);
-    match maybe_menu {
-        Some(menu) => {
-            state.menu_stack.push(Box::new(menu));
-            return RunState::AwaitingMenuInput;
-        },
-        None => {
-            state.log.entries.push("No usable items".to_string());
-            return RunState::AwaitingInput;
-        }
+    let has_items = state.world.get_player()
+        .map(|p| !p.body.inventory.is_empty())
+        .unwrap_or(false);
+    if has_items {
+        state.menu_stack.clear();
+        state.inventory_selected = 0;
+        RunState::BrowsingInventory
+    } else {
+        state.log.entries.push("No usable items".to_string());
+        RunState::AwaitingInput
     }
-}
-
-fn action_show_inventory_item_menu(item: Item, state: &mut State) -> RunState {
-    let menu = inventory_action_menu(item, state);
-    state.menu_stack.push(Box::new(menu));
-    return RunState::AwaitingMenuInput;
 }
 
 pub fn main_menu() -> MenuPanel<SystemRow> {
@@ -449,34 +425,6 @@ pub fn settings_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Op
     }
 }
 
-pub fn item_menu(world: &World) -> Option<MenuPanel<ItemRow>> {
-    let mut item_rows = vec!();
-    match world.get_player() {
-        Ok(player) => {
-            for item in &player.body.inventory {
-                item_rows.push(ItemRow {
-                    text: item.name.clone(),
-                    item: item.clone()
-                });
-            }
-        }
-        Err(_) => ()
-    }
-
-    if item_rows.len() == 0 {
-        return None
-    }
-
-    Some(MenuPanel {
-        x: 35,
-        y: 20,
-        rows: item_rows,
-        selected_row: 0,
-        no_selectable_rows: false,
-        paper_doll: None,
-    })
-}
-
 pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionRow> {
     let mut action_rows = vec!();
     let player = state.world.get_player().unwrap();
@@ -490,9 +438,13 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
         }
     }
 
+    // Anchor the box just left of the side-panel inventory, first row aligned with the
+    // highlighted item (box width = longest action + border/padding, per MenuPanel::draw).
+    let (row_x, row_y) = crate::inventory_row_pos(state.inventory_selected);
+    let box_w = action_rows.iter().map(|r| r.text.len()).max().unwrap_or(0) as i32 + 3;
     MenuPanel {
-        x: 35,
-        y: 20,
+        x: (row_x - 3 - box_w).max(0),
+        y: row_y - 1,
         rows: action_rows,
         selected_row: 0,
         no_selectable_rows: false,

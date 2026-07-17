@@ -78,6 +78,9 @@ fn move_in_direction(state: &mut State, dir: Direction) -> RunState {
 #[tracing::instrument(skip_all)]
 pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
     let b = state.bindings;
+    // Clear any lingering menu-return target (e.g. from inventory browsing) so a
+    // later menu's Esc returns here rather than to a stale state.
+    state.menu_return_state = RunState::AwaitingInput;
     match state.last_input.take() {
         Some(key) => match key {
             // Hardcoded numpad movement — always active regardless of bindings
@@ -124,16 +127,15 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
 
             key if key == b.inventory => {
                 state.menu_stack.clear();
-                let maybe_menu = item_menu(&state.world);
-                match maybe_menu {
-                    Some(menu) => {
-                        state.menu_stack.push(Box::new(menu));
-                        return RunState::AwaitingMenuInput;
-                    }
-                    None => {
-                        state.log("No usable items".to_string());
-                        return RunState::AwaitingInput;
-                    }
+                let has_items = state.world.get_player()
+                    .map(|p| !p.body.inventory.is_empty())
+                    .unwrap_or(false);
+                if has_items {
+                    state.inventory_selected = 0;
+                    return RunState::BrowsingInventory;
+                } else {
+                    state.log("No usable items".to_string());
+                    return RunState::AwaitingInput;
                 }
             },
 
@@ -481,6 +483,54 @@ fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) 
         Err(_) => return RunState::AwaitingInput,
     }
     RunState::Resolve(ExecutionPhase::Instant)
+}
+
+/// Navigate the side-panel inventory list directly: up/down move the highlight,
+/// Enter opens the item's action menu (returning here on cancel), Esc exits.
+pub fn browse_inventory_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let inventory_len = state.world.get_player()
+        .map(|p| p.body.inventory.len())
+        .unwrap_or(0);
+    if inventory_len == 0 {
+        return RunState::AwaitingInput;
+    }
+    // Clamp defensively in case the inventory shrank since selection.
+    if state.inventory_selected >= inventory_len {
+        state.inventory_selected = inventory_len - 1;
+    }
+
+    let Some(key) = state.last_input.take() else {
+        return RunState::BrowsingInventory;
+    };
+
+    match key {
+        VirtualKeyCode::Up | VirtualKeyCode::Numpad8 => {
+            if state.inventory_selected > 0 {
+                state.inventory_selected -= 1;
+            }
+            RunState::BrowsingInventory
+        }
+        VirtualKeyCode::Down | VirtualKeyCode::Numpad2 => {
+            if state.inventory_selected + 1 < inventory_len {
+                state.inventory_selected += 1;
+            }
+            RunState::BrowsingInventory
+        }
+        VirtualKeyCode::Escape => RunState::AwaitingInput,
+        VirtualKeyCode::Return | VirtualKeyCode::Space => {
+            let item = state.world.get_player().unwrap()
+                .body.inventory[state.inventory_selected].clone();
+            let menu = inventory_action_menu(item, state);
+            if menu.rows.is_empty() {
+                state.log("No actions for that item".to_string());
+                return RunState::BrowsingInventory;
+            }
+            state.menu_return_state = RunState::BrowsingInventory;
+            state.menu_stack.push(Box::new(menu));
+            RunState::AwaitingMenuInput
+        }
+        _ => RunState::BrowsingInventory,
+    }
 }
 
 pub fn looking_input(state: &mut State, _context: &mut Rltk) -> RunState {
