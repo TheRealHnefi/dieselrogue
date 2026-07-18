@@ -244,6 +244,35 @@ impl Item {
         }
     }
 
+    // Armor::new(phys_abs, phys_res, elec_abs, elec_res, fire_abs, fire_res)
+
+    pub fn helmet() -> Self {
+        Item::make_wearable("Helmet", '^', vec![SlotType::Headwear],
+            Armor::new(2, 0.15, 0, 0.0, 0, 0.0), 1)
+    }
+    pub fn heavy_helmet() -> Self {
+        Item::make_wearable("Heavy helmet", '^', vec![SlotType::Headwear],
+            Armor::new(4, 0.25, 1, 0.10, 1, 0.10), 2)
+    }
+    pub fn riot_armor() -> Self {
+        Item::make_wearable("Riot armor", ']',
+            vec![SlotType::Bodywear, SlotType::LeftArmwear, SlotType::RightArmwear],
+            Armor::new(3, 0.25, 1, 0.10, 0, 0.05), 2)
+    }
+    pub fn riot_pants() -> Self {
+        Item::make_wearable("Riot pants", ']', vec![SlotType::Legwear],
+            Armor::new(2, 0.20, 1, 0.10, 0, 0.05), 1)
+    }
+    pub fn heavy_combat_suit() -> Self {
+        Item::make_wearable("Heavy combat suit", ']',
+            vec![SlotType::Bodywear, SlotType::LeftArmwear, SlotType::RightArmwear, SlotType::Legwear, SlotType::Footwear],
+            Armor::new(5, 0.35, 2, 0.20, 2, 0.20), 3)
+    }
+    pub fn light_kevlar_pants() -> Self {
+        Item::make_wearable("Light kevlar pants", ']', vec![SlotType::Legwear],
+            Armor::new(1, 0.15, 0, 0.0, 0, 0.0), 0)
+    }
+
 // ---- System items ---------------------------------------------------------
 
     pub fn mounted_cannon() -> Self {
@@ -386,6 +415,25 @@ impl Item {
             equip_actions: vec![],
             equip_slots: vec![],
             kind: ItemKind::Ammo { kind, charges },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
+    /// Build a wearable armor piece covering one or more slots. Multi-slot pieces
+    /// (e.g. riot armor) are placed via the proxy mechanism at equip time; `update_armor`
+    /// resolves those proxies so every covered part is protected.
+    fn make_wearable(name: &str, glyph: char, slots: Vec<SlotType>, armor: Armor, rarity: u8) -> Item {
+        Item {
+            id: 0,
+            rarity,
+            renderable: Renderable::new_colored_char(glyph, Item::rarity_to_color(rarity)),
+            name: name.to_string(),
+            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: slots,
+            kind: ItemKind::Wearable { armor },
             proxy: false,
             locked: false,
             active: false,

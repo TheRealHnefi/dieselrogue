@@ -312,16 +312,17 @@ impl Body {
         for part in &mut self.parts {
             part.armor = part.innate_armor.clone();
             for slot_index in &part.slot_index {
-                match &self.item_slots[*slot_index].item {
-                    Some(item) => {
-                        match &item.kind {
-                            ItemKind::Wearable{armor} => {
-                                part.armor = part.armor.add(&armor);
-                            },
-                            _ => ()
-                        }
-                    },
-                    None => ()
+                let Some(item) = &self.item_slots[*slot_index].item else { continue };
+                // Multi-slot wearables place proxies (kind Misc) in their extra slots; resolve
+                // the proxy back to the real Wearable (shared id) so every covered part is armored.
+                let source = if item.proxy {
+                    self.item_slots.iter()
+                        .find_map(|s| s.item.as_ref().filter(|it| it.id == item.id && !it.proxy))
+                } else {
+                    Some(item)
+                };
+                if let Some(ItemKind::Wearable { armor }) = source.map(|s| &s.kind) {
+                    part.armor = part.armor.add(armor);
                 }
             }
         }
