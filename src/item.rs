@@ -273,6 +273,23 @@ impl Item {
             Armor::new(1, 0.15, 0, 0.0, 0, 0.0), 0)
     }
 
+    /// Active footwear: grants the Rocket Rush action (a loud 8-tile teleport).
+    pub fn rocket_boots() -> Self {
+        let rarity = 2;
+        Item {
+            id: 0, rarity,
+            renderable: Renderable::new_colored_char('b', Item::rarity_to_color(rarity)),
+            name: String::from("Rocket boots"),
+            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            equip_actions: vec![Item::rocket_rush_action()],
+            equip_slots: vec![SlotType::Footwear],
+            kind: ItemKind::Wearable { armor: Armor::new(1, 0.05, 0, 0.0, 0, 0.0) },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
 // ---- System items ---------------------------------------------------------
 
     pub fn mounted_cannon() -> Self {
@@ -505,6 +522,10 @@ impl Item {
     /// Use a stimpack to restore energy.
     fn stim_action() -> EntityAction {
         EntityAction { id: ActionId::Stim,          name: "Use".to_string(),              targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_can_stim, action: actions::use_stimpack_action }
+    }
+    /// Rocket boots: a loud instant teleport onto a visible tile up to 8 away.
+    fn rocket_rush_action() -> EntityAction {
+        EntityAction { id: ActionId::RocketRush,    name: "Rocket Rush".to_string(),      targeting: Targeting::Positional { max_range: Some(8) }, phase: ExecutionPhase::Instant, precondition: precondition_ok, action: actions::rocket_boots_action }
     }
     fn throw_action() -> EntityAction {
         EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }

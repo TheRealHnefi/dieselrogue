@@ -1770,6 +1770,33 @@ mod tests {
     }
 
     #[test]
+    fn rocket_boots_teleport_moves_player_and_makes_noise() {
+        let mut world = World::new_test();
+        let start = Point { x: 50, y: 50 };
+        let _ = world.create_player(start, Direction::Up, String::from("Player"));
+        let id = world.player_id.unwrap();
+        let target = Point { x: 55, y: 52 }; // within range 8, empty tile on the open test map
+
+        // Drive the equipped-boots action directly through the intent path.
+        world.entities[id].intent = Intent {
+            phase: ExecutionPhase::Instant,
+            data: IntentData::TargetWithEquipment { slot: SlotType::Footwear, target },
+            action: crate::actions::rocket_boots_action,
+        };
+        let effects = (world.entities[id].intent.action)(&world.entities[id], &world.map, &world.entities);
+
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(&effects, &mut log);
+
+        assert_eq!(world.entities[id].position, target, "player should teleport to the target");
+        assert!(world.map.pawns[world.map.pos_idx(target)].is_some(), "pawn should occupy the new tile");
+        assert!(world.map.pawns[world.map.pos_idx(start)].is_none(), "old tile should be vacated");
+        // A loud sound was emitted for the AI to hear.
+        assert!(effects.iter().any(|e| matches!(e, Effect::Sound(s) if s.volume >= 20)),
+            "rocket boots should make a lot of noise");
+    }
+
+    #[test]
     fn forward_goons_blocked_by_contested_center_tile() {
         let mut world = World::new_test();
 

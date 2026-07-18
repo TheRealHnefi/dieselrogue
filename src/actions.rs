@@ -110,6 +110,19 @@ pub fn juke_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
     effects
 }
 
+/// Rocket boots: instantly teleport onto the chosen tile (targeting already guarantees it
+/// is visible and within range), landing with a loud engine roar. Stealth does not muffle it.
+pub fn rocket_boots_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let IntentData::TargetWithEquipment { target, .. } = entity.intent.data else { return vec![]; };
+    if !entity.check_fit(target, map) {
+        return vec![Effect::Log(format!("{} can't land there.", entity.name))];
+    }
+    vec![
+        Effect::Move { entity_id: entity.index, pos: target },
+        Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: target, volume: 30 }),
+    ]
+}
+
 pub fn open_door_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     let IntentData::Target(pos) = entity.intent.data else {
         unreachable!("open_door_action called with non-target intent")
