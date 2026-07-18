@@ -207,6 +207,8 @@ pub enum Effect {
     RegenTick { entity_id: usize, bodypart_index: usize },
     /// Remove and discard the inventory item with the given id (consumables).
     ConsumeItem { entity_id: usize, item_id: usize },
+    /// Spend one charge from the powered item with the given id (equipped or carried).
+    ConsumeCharge { entity_id: usize, item_id: usize },
     /// Subtract energy from entity (ability cost).
     SpendEnergy { entity_id: usize, amount: u32 },
     /// Restore energy to entity, clamped to its maximum (stimpack).
@@ -414,8 +416,40 @@ pub enum ItemKind {
     Healing {turns: u32},
     /// A consumable that instantly restores `energy` points (clamped to the max).
     Stimpack {energy: u32},
+    /// Active gear (jetpack, rocket boots) powered by rechargeable charges,
+    /// reloaded from ammo boxes of `ammo_kind`.
+    Powered {charges: u32, max_charges: u32, ammo_kind: AmmoKind},
     Corpse,
     Misc
+}
+
+impl ItemKind {
+    /// For kinds that hold a rechargeable count, returns `(current, max, ammo_kind)`.
+    /// Shared by the reload system so firearms and powered gear reload the same way.
+    pub fn reloadable(&self) -> Option<(u32, u32, AmmoKind)> {
+        match self {
+            ItemKind::Firearm { ammo, max_ammo, ammo_kind, .. } => Some((*ammo, *max_ammo, *ammo_kind)),
+            ItemKind::Powered { charges, max_charges, ammo_kind } => Some((*charges, *max_charges, *ammo_kind)),
+            _ => None,
+        }
+    }
+
+    /// Adds `amount` to the current count, clamped to the maximum. No-op for other kinds.
+    pub fn add_charges(&mut self, amount: u32) {
+        match self {
+            ItemKind::Firearm { ammo, max_ammo, .. } => *ammo = (*ammo + amount).min(*max_ammo),
+            ItemKind::Powered { charges, max_charges, .. } => *charges = (*charges + amount).min(*max_charges),
+            _ => {},
+        }
+    }
+
+    /// Spends one charge from powered gear if available; returns whether one was spent.
+    pub fn spend_charge(&mut self) -> bool {
+        match self {
+            ItemKind::Powered { charges, .. } if *charges > 0 => { *charges -= 1; true },
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]

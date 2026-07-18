@@ -765,16 +765,13 @@ impl World {
                 },
                 Effect::ReloadWeapon { entity_id, weapon_id } => {
                     let ent = &mut self.entities[*entity_id];
-                    // Read the weapon's ammo kind and how many rounds it is missing.
-                    let spec = ent.find_item_by_id(*weapon_id).and_then(|i| match &i.kind {
-                        ItemKind::Firearm { ammo, max_ammo, ammo_kind, .. } =>
-                            Some((*ammo_kind, max_ammo.saturating_sub(*ammo))),
-                        _ => None,
-                    });
+                    // Read the reloadable's ammo kind and how much it is missing (firearm or powered gear).
+                    let spec = ent.find_item_by_id(*weapon_id)
+                        .and_then(|i| i.kind.reloadable())
+                        .map(|(cur, max, kind)| (kind, max.saturating_sub(cur)));
                     if let Some((kind, need)) = spec {
                         if need > 0 {
-                            // Drain matching ammo boxes in the inventory until the gun is full
-                            // or the boxes run dry.
+                            // Drain matching ammo boxes in the inventory until full or the boxes run dry.
                             let mut loaded = 0u32;
                             for item in ent.body.inventory.iter_mut() {
                                 if loaded >= need { break; }
@@ -788,9 +785,7 @@ impl World {
                             }
                             if loaded > 0 {
                                 if let Some(w) = ent.find_item_by_id_mut(*weapon_id) {
-                                    if let ItemKind::Firearm { ammo, .. } = &mut w.kind {
-                                        *ammo += loaded;
-                                    }
+                                    w.kind.add_charges(loaded);
                                 }
                                 ent.body.inventory.retain(|i| !matches!(&i.kind, ItemKind::Ammo { charges: 0, .. }));
                                 let wname = ent.find_item_by_id(*weapon_id).map(|i| i.name.clone()).unwrap_or_default();
@@ -819,6 +814,11 @@ impl World {
                 },
                 Effect::ConsumeItem { entity_id, item_id } => {
                     self.entities[*entity_id].take_item_by_id(*item_id);
+                },
+                Effect::ConsumeCharge { entity_id, item_id } => {
+                    if let Some(item) = self.entities[*entity_id].find_item_by_id_mut(*item_id) {
+                        item.kind.spend_charge();
+                    }
                 },
                 Effect::ApplyScan { entity_id, target } => {
                     // Replace any prior scan so re-aiming updates the cone direction.
@@ -1789,6 +1789,9 @@ mod tests {
         let id = world.player_id.unwrap();
         let target = Point { x: 55, y: 52 }; // within range 8, empty tile on the open test map
 
+        // Boots must be equipped so the action can read them (to spend a charge).
+        let _ = world.entities[id].body.equip(Item::rocket_boots());
+
         // Drive the equipped-boots action directly through the intent path.
         world.entities[id].intent = Intent {
             phase: ExecutionPhase::Instant,
@@ -1806,6 +1809,12 @@ mod tests {
         // A loud sound was emitted for the AI to hear.
         assert!(effects.iter().any(|e| matches!(e, Effect::Sound(s) if s.volume >= 20)),
             "rocket boots should make a lot of noise");
+        // One charge was spent (3 -> 2).
+        let charges = match world.entities[id].get_equipped_item_ref(SlotType::Footwear).map(|i| &i.kind) {
+            Some(ItemKind::Powered { charges, .. }) => *charges,
+            _ => panic!("boots should still be equipped"),
+        };
+        assert_eq!(charges, 2, "rocket rush should consume one charge");
     }
 
     #[test]

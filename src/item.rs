@@ -291,17 +291,36 @@ impl Item {
         }
     }
 
-    /// Active footwear: grants the Rocket Rush action (a loud 8-tile teleport).
+    /// Active footwear: grants the Rocket Rush action (a loud 8-tile teleport),
+    /// powered by 3 fuel charges.
     pub fn rocket_boots() -> Self {
         let rarity = 2;
         Item {
             id: 0, rarity,
             renderable: Renderable::new_colored_char('b', Item::rarity_to_color(rarity)),
             name: String::from("Rocket boots"),
-            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
-            equip_actions: vec![Item::rocket_rush_action()],
+            inventory_actions: vec![Item::equip_action(), Item::reload_action(), Item::drop_action()],
+            equip_actions: vec![Item::rocket_rush_action(), Item::reload_action()],
             equip_slots: vec![SlotType::Footwear],
-            kind: ItemKind::Wearable { armor: Armor::new(1, 0.05, 0, 0.0, 0, 0.0) },
+            kind: ItemKind::Powered { charges: 3, max_charges: 3, ammo_kind: AmmoKind::Fuel },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
+    /// Active torso gear (worn instead of body armor, no protection): grants the
+    /// Rocket Jump action (teleport to any revealed Ground/Road tile), 3 fuel charges.
+    pub fn jetpack() -> Self {
+        let rarity = 3;
+        Item {
+            id: 0, rarity,
+            renderable: Renderable::new_colored_char('J', Item::rarity_to_color(rarity)),
+            name: String::from("Jetpack"),
+            inventory_actions: vec![Item::equip_action(), Item::reload_action(), Item::drop_action()],
+            equip_actions: vec![Item::rocket_jump_action(), Item::reload_action()],
+            equip_slots: vec![SlotType::Bodywear],
+            kind: ItemKind::Powered { charges: 3, max_charges: 3, ammo_kind: AmmoKind::Fuel },
             proxy: false,
             locked: false,
             active: false,
@@ -543,7 +562,11 @@ impl Item {
     }
     /// Rocket boots: a loud instant teleport onto a visible tile up to 8 away.
     fn rocket_rush_action() -> EntityAction {
-        EntityAction { id: ActionId::RocketRush,    name: "Rocket Rush".to_string(),      targeting: Targeting::Positional { max_range: Some(8) }, phase: ExecutionPhase::Instant, precondition: precondition_ok, action: actions::rocket_boots_action }
+        EntityAction { id: ActionId::RocketRush,    name: "Rocket Rush".to_string(),      targeting: Targeting::Positional { max_range: Some(8) }, phase: ExecutionPhase::Instant, precondition: precondition_has_charge, action: actions::rocket_boots_action }
+    }
+    /// Jetpack: a loud instant jump to any revealed Ground/Road tile.
+    fn rocket_jump_action() -> EntityAction {
+        EntityAction { id: ActionId::RocketJump,    name: "Rocket Jump".to_string(),      targeting: Targeting::JumpTile, phase: ExecutionPhase::Instant, precondition: precondition_can_rocket_jump, action: actions::rocket_jump_action }
     }
     /// Tactical helmet: aim a long-range recon vision cone at a visible tile.
     fn recon_action() -> EntityAction {
@@ -570,14 +593,10 @@ impl PartialEq for Item {
     }
 }
 
-/// True if `item` is a firearm below capacity.
-fn firearm_needs_ammo(item: &Item) -> bool {
-    matches!(&item.kind, ItemKind::Firearm { ammo, max_ammo, .. } if ammo < max_ammo)
-}
-
-/// True if `item` is a firearm of `kind` below capacity (a valid reload target).
-fn is_reloadable_firearm(item: &Item, kind: AmmoKind) -> bool {
-    matches!(&item.kind, ItemKind::Firearm { ammo, max_ammo, ammo_kind, .. } if *ammo_kind == kind && ammo < max_ammo)
+/// True if `item` reloads from `kind` and is below capacity (a valid reload target).
+/// Covers both firearms and powered gear.
+fn is_reloadable(item: &Item, kind: AmmoKind) -> bool {
+    matches!(item.kind.reloadable(), Some((cur, max, k)) if k == kind && cur < max)
 }
 
 /// True if the entity carries at least one ammo box of `kind` with charges left.
@@ -585,19 +604,16 @@ fn has_ammo_of_kind(entity: &Entity, kind: AmmoKind) -> bool {
     entity.body.inventory.iter().any(|i| matches!(&i.kind, ItemKind::Ammo { kind: k, charges } if *k == kind && *charges > 0))
 }
 
-/// Reload precondition for a firearm: it must be below capacity and the entity must
-/// carry matching ammo. `item` is the firearm the action belongs to.
+/// Reload precondition for a reloadable item (firearm or powered gear): it must be below
+/// capacity and the entity must carry matching ammo. `item` is the item the action belongs to.
 pub fn precondition_can_reload(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
-    match item {
-        Some(i) => match &i.kind {
-            ItemKind::Firearm { ammo_kind, .. } => firearm_needs_ammo(i) && has_ammo_of_kind(self_ref, *ammo_kind),
-            _ => false,
-        },
+    match item.and_then(|i| i.kind.reloadable()) {
+        Some((cur, max, kind)) => cur < max && has_ammo_of_kind(self_ref, kind),
         None => false,
     }
 }
 
-/// Reload precondition for an ammo box: some carried or equipped firearm of the box's
+/// Reload precondition for an ammo box: some carried or equipped item of the box's
 /// kind must be below capacity. `item` is the ammo box the action belongs to.
 pub fn precondition_ammo_has_target(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
     let kind = match item {
@@ -610,14 +626,30 @@ pub fn precondition_ammo_has_target(self_ref: &Entity, _map: &Map, item: Option<
     find_reloadable_weapon_id(self_ref, kind).is_some()
 }
 
-/// Pick a firearm for an ammo box of `kind` to reload: prefer an equipped weapon,
-/// then fall back to one in the inventory. Returns its item id.
+/// Pick a reloadable item for an ammo box of `kind`: prefer equipped, then inventory.
+/// Returns its item id.
 pub fn find_reloadable_weapon_id(entity: &Entity, kind: AmmoKind) -> Option<usize> {
     entity.body.item_slots.iter()
         .filter_map(|s| s.item.as_ref())
-        .find(|i| is_reloadable_firearm(i, kind))
-        .or_else(|| entity.body.inventory.iter().find(|i| is_reloadable_firearm(i, kind)))
+        .find(|i| is_reloadable(i, kind))
+        .or_else(|| entity.body.inventory.iter().find(|i| is_reloadable(i, kind)))
         .map(|i| i.id)
+}
+
+/// True if `item` is powered gear with at least one charge left.
+fn has_charge(item: &Item) -> bool {
+    matches!(&item.kind, ItemKind::Powered { charges, .. } if *charges > 0)
+}
+
+/// Precondition for a powered-gear action: the item must have a charge to spend.
+pub fn precondition_has_charge(_self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
+    item.map_or(false, has_charge)
+}
+
+/// Rocket Jump precondition: a charge is available AND the wearer stands on Ground/Road.
+pub fn precondition_can_rocket_jump(self_ref: &Entity, map: &Map, item: Option<&Item>) -> bool {
+    if !item.map_or(false, has_charge) { return false; }
+    matches!(map.tiles[map.pos_idx(self_ref.position)], crate::TileType::Ground | crate::TileType::Road)
 }
 
 /// Healing items are usable only when at least one body part is damaged.

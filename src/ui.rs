@@ -665,6 +665,9 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
         ItemKind::Stimpack { energy } => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("Energy: +{}", energy));
         },
+        ItemKind::Powered { charges, max_charges, .. } => {
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("Chg:{}\\{}", charges, max_charges));
+        },
         ItemKind::Corpse => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("?"));
         },
