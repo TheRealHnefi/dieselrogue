@@ -50,6 +50,7 @@ pub enum ActionId {
     FanFire,
     Prime,
     Throw,
+    Reload,
     GetItem,
     Unequip,
     Juke,

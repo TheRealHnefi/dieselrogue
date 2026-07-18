@@ -173,6 +173,9 @@ pub enum Effect {
     SetFacing   { entity_id: usize, direction: Direction },
     /// Decrement ammo in the weapon held in `slot` by `shots`.
     ConsumeAmmo { entity_id: usize, slot: SlotType, shots: u32 },
+    /// Refill the firearm with the given id (equipped or in inventory) up to capacity,
+    /// draining matching ammo boxes from the entity's inventory.
+    ReloadWeapon { entity_id: usize, weapon_id: usize },
     /// Subtract energy from entity (ability cost).
     SpendEnergy { entity_id: usize, amount: u32 },
     /// Pick up the item at entity's current map tile.
@@ -324,13 +327,36 @@ impl SlotType {
     }
 }
 
+/// Category of ammunition. A firearm consumes exactly one kind; an ammo box
+/// supplies exactly one kind.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum AmmoKind {
+    Bullets,
+    Rockets,
+    Batteries,
+    Fuel,
+}
+
+impl AmmoKind {
+    pub fn name(&self) -> &'static str {
+        match self {
+            AmmoKind::Bullets   => "bullets",
+            AmmoKind::Rockets   => "rockets",
+            AmmoKind::Batteries => "batteries",
+            AmmoKind::Fuel      => "fuel",
+        }
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub enum ItemKind {
-    Firearm {ammo: u32, max_ammo: u32, damage: Damage, range: u32},
+    Firearm {ammo: u32, max_ammo: u32, ammo_kind: AmmoKind, damage: Damage, range: u32},
     MeleeWeapon {damage: Damage},
     Wearable {armor: Armor},
     FusedExplosive {damage: Damage, timeout: u32, radius: u32, flash: bool},
     Key {color: usize},
+    /// A box of ammunition holding `charges` rounds of `kind`, used to reload firearms.
+    Ammo {kind: AmmoKind, charges: u32},
     Corpse,
     Misc
 }

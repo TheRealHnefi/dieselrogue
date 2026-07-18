@@ -759,6 +759,42 @@ impl World {
                         }
                     }
                 },
+                Effect::ReloadWeapon { entity_id, weapon_id } => {
+                    let ent = &mut self.entities[*entity_id];
+                    // Read the weapon's ammo kind and how many rounds it is missing.
+                    let spec = ent.find_item_by_id(*weapon_id).and_then(|i| match &i.kind {
+                        ItemKind::Firearm { ammo, max_ammo, ammo_kind, .. } =>
+                            Some((*ammo_kind, max_ammo.saturating_sub(*ammo))),
+                        _ => None,
+                    });
+                    if let Some((kind, need)) = spec {
+                        if need > 0 {
+                            // Drain matching ammo boxes in the inventory until the gun is full
+                            // or the boxes run dry.
+                            let mut loaded = 0u32;
+                            for item in ent.body.inventory.iter_mut() {
+                                if loaded >= need { break; }
+                                if let ItemKind::Ammo { kind: k, charges } = &mut item.kind {
+                                    if *k == kind && *charges > 0 {
+                                        let take = (*charges).min(need - loaded);
+                                        *charges -= take;
+                                        loaded += take;
+                                    }
+                                }
+                            }
+                            if loaded > 0 {
+                                if let Some(w) = ent.find_item_by_id_mut(*weapon_id) {
+                                    if let ItemKind::Firearm { ammo, .. } = &mut w.kind {
+                                        *ammo += loaded;
+                                    }
+                                }
+                                ent.body.inventory.retain(|i| !matches!(&i.kind, ItemKind::Ammo { charges: 0, .. }));
+                                let wname = ent.find_item_by_id(*weapon_id).map(|i| i.name.clone()).unwrap_or_default();
+                                log.log(format!("{} reloaded {} (+{} {})", ent.name, wname, loaded, kind.name()));
+                            }
+                        }
+                    }
+                },
                 Effect::SpendEnergy { entity_id, amount } => {
                     self.entities[*entity_id].body.energy =
                         self.entities[*entity_id].body.energy.saturating_sub(*amount);
@@ -1384,6 +1420,67 @@ mod tests {
                 assert!(world.map.tiles[index] == TileType::Ground);
             }
         }
+    }
+
+    /// Create a test world with a player holding a pistol whose ammo is set to
+    /// `start_ammo`, plus `ammo_box` in the inventory. Returns (world, player_id, weapon_id).
+    fn world_with_armed_player(start_ammo: u32, ammo_box: Item) -> (World, usize, usize) {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let player_id = world.player_id.unwrap();
+        let weapon_id = 1;
+
+        let player = world.get_player_mut().unwrap();
+        let mut pistol = Item::pistol();
+        pistol.id = weapon_id;
+        if let ItemKind::Firearm { ammo, .. } = &mut pistol.kind { *ammo = start_ammo; }
+        let _ = player.body.equip(pistol);
+        player.body.inventory.push(ammo_box);
+
+        (world, player_id, weapon_id)
+    }
+
+    #[test]
+    fn reload_fills_weapon_and_drains_ammo_box() {
+        // Pistol at 3/12, one 30-round box of bullets.
+        let (mut world, player_id, weapon_id) = world_with_armed_player(3, Item::ammo_bullets());
+
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(&vec![Effect::ReloadWeapon { entity_id: player_id, weapon_id }], &mut log);
+
+        let player = world.get_player().unwrap();
+        let ammo = match &player.find_item_by_id(weapon_id).unwrap().kind {
+            ItemKind::Firearm { ammo, .. } => *ammo,
+            _ => panic!("weapon is not a firearm"),
+        };
+        assert_eq!(ammo, 12, "pistol should be topped up to capacity");
+
+        // 9 rounds consumed from the 30-round box → 21 remain, box kept.
+        let box_charges = player.body.inventory.iter().find_map(|i| match &i.kind {
+            ItemKind::Ammo { charges, .. } => Some(*charges),
+            _ => None,
+        });
+        assert_eq!(box_charges, Some(21), "box should retain leftover charges");
+    }
+
+    #[test]
+    fn reload_removes_emptied_ammo_boxes() {
+        // A box with fewer rounds (5) than the empty pistol needs (12).
+        let mut small_box = Item::ammo_bullets();
+        if let ItemKind::Ammo { charges, .. } = &mut small_box.kind { *charges = 5; }
+        let (mut world, player_id, weapon_id) = world_with_armed_player(0, small_box);
+
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(&vec![Effect::ReloadWeapon { entity_id: player_id, weapon_id }], &mut log);
+
+        let player = world.get_player().unwrap();
+        let ammo = match &player.find_item_by_id(weapon_id).unwrap().kind {
+            ItemKind::Firearm { ammo, .. } => *ammo,
+            _ => panic!("weapon is not a firearm"),
+        };
+        assert_eq!(ammo, 5, "gun receives only what the box held");
+        assert!(!player.body.inventory.iter().any(|i| matches!(i.kind, ItemKind::Ammo { .. })),
+            "emptied ammo box should be discarded");
     }
 
     #[test]

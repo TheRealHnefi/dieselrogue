@@ -658,6 +658,8 @@ impl World {
             Item::shock_grenade,
             Item::rotary_machinegun, Item::shock_cannon,
             Item::rocket_launcher, Item::multi_rocket_launcher,
+            Item::ammo_bullets, Item::ammo_rockets,
+            Item::ammo_batteries, Item::ammo_fuel,
         ];
 
         let item_meta: Vec<(MakeItem, u8)> =

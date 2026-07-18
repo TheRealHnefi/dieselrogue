@@ -588,9 +588,9 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
     context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("{}", &item.name));
     x += INVENTORY_NAME_COLUMN_WIDTH;
     match &item.kind {
-        ItemKind::Firearm{ammo, max_ammo, damage, range} => {
-            
-            let ammo_label = format!("Ammo: {}\\{}", ammo, max_ammo);
+        ItemKind::Firearm{ammo, max_ammo, ammo_kind, damage, range} => {
+
+            let ammo_label = format!("Ammo: {}\\{} ({})", ammo, max_ammo, ammo_kind.name());
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &ammo_label);
             x += ammo_label.len() + 1;
 
@@ -671,6 +671,9 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
             let (r, g, b) = crate::components::KEY_COLORS[*color];
             let key_color = rltk::RGB::from_u8(r, g, b);
             context.print_color(x, offset_y, key_color, BG_COLOR, crate::components::KEY_COLOR_NAMES[*color]);
+        },
+        ItemKind::Ammo { kind, charges } => {
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("{} {}", charges, kind.name()));
         },
         ItemKind::Corpse => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("?"));
