@@ -665,7 +665,7 @@ impl World {
             Item::helmet, Item::heavy_helmet,
             Item::riot_armor, Item::riot_pants,
             Item::heavy_combat_suit, Item::light_kevlar_pants,
-            Item::rocket_boots,
+            Item::rocket_boots, Item::tactical_helmet,
         ];
 
         let item_meta: Vec<(MakeItem, u8)> =

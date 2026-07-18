@@ -123,6 +123,16 @@ pub fn rocket_boots_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> 
     ]
 }
 
+/// Tactical helmet: open a long-range recon vision cone aimed at the chosen tile.
+/// The cone persists (via the Scanning status) until the player moves or turns.
+pub fn recon_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let IntentData::TargetWithEquipment { target, .. } = entity.intent.data else { return vec![]; };
+    vec![
+        Effect::Log(format!("{} scans the area.", entity.name)),
+        Effect::ApplyScan { entity_id: entity.index, target },
+    ]
+}
+
 pub fn open_door_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     let IntentData::Target(pos) = entity.intent.data else {
         unreachable!("open_door_action called with non-target intent")

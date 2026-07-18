@@ -354,7 +354,8 @@ impl Entity {
         }
         let fov = self.effective_fov();
         let range = self.effective_range();
-        self.viewshed.update(self.center(), self.body.facing, range, &fov, map);
+        let facing = self.effective_facing();
+        self.viewshed.update(self.center(), facing, range, &fov, map);
         if self.kind == EntityKind::Player {
             self.set_visible_tiles(map, true);
         }
@@ -366,11 +367,33 @@ impl Entity {
     pub fn update_viewshed_only(&mut self, map: &Map) {
         let fov = self.effective_fov();
         let range = self.effective_range();
-        self.viewshed.update(self.center(), self.body.facing, range, &fov, map);
+        let facing = self.effective_facing();
+        self.viewshed.update(self.center(), facing, range, &fov, map);
+    }
+
+    /// The tile a recon Scanning status is aimed at, if any.
+    fn scan_target(&self) -> Option<Point> {
+        match self.body.get_status_effect(&StatusEffect::Scanning(Point { x: 0, y: 0 })) {
+            Some(StatusEffect::Scanning(target)) => Some(*target),
+            _ => None,
+        }
+    }
+
+    /// Facing used for vision: while scanning, the heading toward the scan target;
+    /// otherwise the body's facing.
+    fn effective_facing(&self) -> Direction {
+        if let Some(target) = self.scan_target() {
+            if let Some(dir) = Direction::nearest(target.x - self.center().x, target.y - self.center().y) {
+                return dir;
+            }
+        }
+        self.body.facing
     }
 
     fn effective_fov(&self) -> FieldOfView {
-        if self.body.has_ability(Ability::WideVision) {
+        if self.scan_target().is_some() {
+            FieldOfView::Fov90 // recon replaces normal (and wide) vision with a narrow cone
+        } else if self.body.has_ability(Ability::WideVision) {
             FieldOfView::Fov270
         } else {
             self.viewshed.fov.clone()
@@ -380,6 +403,9 @@ impl Entity {
     fn effective_range(&self) -> i32 {
         if self.body.get_status_effect(&StatusEffect::Blind(0)).is_some() {
             return 1;
+        }
+        if self.scan_target().is_some() {
+            return 40; // recon reaches much farther than normal sight
         }
         let base = self.viewshed.range;
         if self.body.has_ability(Ability::EagleEyes) {
@@ -480,6 +506,11 @@ impl Entity {
 
     pub fn clear_aiming(&mut self) {
         self.body.status_effects.retain(|s| !matches!(s, StatusEffect::AimingAtGround(..) | StatusEffect::AimingAtEntity(..)));
+    }
+
+    /// Ends recon vision (called when the wearer moves, turns, or removes the helmet).
+    pub fn clear_scanning(&mut self) {
+        self.body.status_effects.retain(|s| !matches!(s, StatusEffect::Scanning(..)));
     }
 
     pub fn resolve_status_effects(&mut self) -> Vec<Effect> {
