@@ -375,6 +375,26 @@ pub fn reload_from_ammo_action(entity: &Entity, _map: &Map, _entities: &[Entity]
     }
 }
 
+/// Use a healing consumable. A per-part item (SelfBodypart targeting) arrives as a
+/// bodypart intent; a whole-body item (elixir) arrives as a plain inventory intent.
+pub fn use_healing_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let (item, bodypart_index) = match &entity.intent.data {
+        IntentData::TargetBodypartWithInventory { item, bodypart_index, .. } => (item, Some(*bodypart_index)),
+        IntentData::InventoryItem(item) => (item, None),
+        _ => unreachable!("use_healing_item_action called with non-healing intent"),
+    };
+    let ItemKind::Healing { turns } = item.kind else { return vec![] };
+    let scope = match bodypart_index {
+        Some(i) => entity.body.parts.get(i).map(|p| p.name.clone()).unwrap_or_default(),
+        None => "whole body".to_string(),
+    };
+    vec![
+        Effect::Log(format!("{} used {} ({})", entity.name, item.name, scope)),
+        Effect::ApplyRegeneration { entity_id: entity.index, bodypart_index, turns },
+        Effect::ConsumeItem { entity_id: entity.index, item_id: item.id },
+    ]
+}
+
 // ---------------------------------------------------------------------------
 // Abilities
 // ---------------------------------------------------------------------------

@@ -176,6 +176,13 @@ pub enum Effect {
     /// Refill the firearm with the given id (equipped or in inventory) up to capacity,
     /// draining matching ammo boxes from the entity's inventory.
     ReloadWeapon { entity_id: usize, weapon_id: usize },
+    /// Apply Regenerating for `turns` turns. `bodypart_index` = `Some(i)` targets one
+    /// part; `None` targets every part. Merges with any existing regeneration.
+    ApplyRegeneration { entity_id: usize, bodypart_index: Option<usize>, turns: u32 },
+    /// Heal one HP on the given body part (drives the Regenerating tick).
+    RegenTick { entity_id: usize, bodypart_index: usize },
+    /// Remove and discard the inventory item with the given id (consumables).
+    ConsumeItem { entity_id: usize, item_id: usize },
     /// Subtract energy from entity (ability cost).
     SpendEnergy { entity_id: usize, amount: u32 },
     /// Pick up the item at entity's current map tile.
@@ -225,6 +232,9 @@ pub enum StatusEffect {
     Shocked(u32),
     Deaf(u32),
     IronBody(u32),
+    /// Heals one HP per turn on each body part with turns remaining.
+    /// Indexed by bodypart index; each entry is that part's remaining regen turns.
+    Regenerating(Vec<u32>),
 }
 
 impl StatusEffect {
@@ -237,6 +247,7 @@ impl StatusEffect {
             StatusEffect::Shocked(_) => 3,
             StatusEffect::Deaf(_)    => 4,
             StatusEffect::IronBody(_) => 5,
+            StatusEffect::Regenerating(_) => 6,
         }
     }
 
@@ -249,6 +260,7 @@ impl StatusEffect {
             StatusEffect::Shocked(_) => "Shocked",
             StatusEffect::Deaf(_)    => "Deaf",
             StatusEffect::IronBody(_) => "Iron Body",
+            StatusEffect::Regenerating(_) => "Regenerating",
         }.to_string()
     }
 }
@@ -277,6 +289,8 @@ impl StatusEffect {
             StatusEffect::Shocked(n) => Some(*n),
             StatusEffect::Deaf(n)     => Some(*n),
             StatusEffect::IronBody(n) => Some(*n),
+            // Show the longest-running part's countdown.
+            StatusEffect::Regenerating(v) => Some(v.iter().copied().max().unwrap_or(0)),
         }
     }
 
@@ -290,6 +304,10 @@ impl StatusEffect {
             StatusEffect::Shocked(n)  => if *n > 1 { Some(StatusEffect::Shocked(*n - 1))  } else { None },
             StatusEffect::Deaf(n)     => if *n > 1 { Some(StatusEffect::Deaf(*n - 1))     } else { None },
             StatusEffect::IronBody(n) => if *n > 1 { Some(StatusEffect::IronBody(*n - 1)) } else { None },
+            StatusEffect::Regenerating(v) => {
+                let next: Vec<u32> = v.iter().map(|n| n.saturating_sub(1)).collect();
+                if next.iter().any(|&n| n > 0) { Some(StatusEffect::Regenerating(next)) } else { None }
+            },
         }
     }
 }
@@ -357,6 +375,9 @@ pub enum ItemKind {
     Key {color: usize},
     /// A box of ammunition holding `charges` rounds of `kind`, used to reload firearms.
     Ammo {kind: AmmoKind, charges: u32},
+    /// A consumable that applies Regenerating for `turns` turns (to one body part
+    /// or all, depending on the item's targeting).
+    Healing {turns: u32},
     Corpse,
     Misc
 }

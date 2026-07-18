@@ -110,6 +110,21 @@ impl Item {
         Item::make_ammo(AmmoKind::Fuel,      "Fuel",      rltk::RGB::from_f32(0.90, 0.50, 0.10), 20)
     }
 
+    // ---- Healing ----------------------------------------------------------
+
+    /// Regenerates one chosen body part for 10 turns.
+    pub fn medkit() -> Self {
+        Item::make_healing("Medkit", '+', rltk::RGB::from_f32(0.9, 0.2, 0.2), 10, false, 0)
+    }
+    /// Regenerates one chosen body part for 20 turns (double a Medkit).
+    pub fn large_medkit() -> Self {
+        Item::make_healing("Large medkit", '+', rltk::RGB::from_f32(1.0, 0.3, 0.3), 20, false, 1)
+    }
+    /// Regenerates every body part for 10 turns.
+    pub fn elixir() -> Self {
+        Item::make_healing("Elixir", '!', rltk::RGB::from_f32(0.8, 0.2, 0.9), 10, true, 2)
+    }
+
     // ---- Grenades ---------------------------------------------------------
 
     pub fn grenade() -> Self {
@@ -360,6 +375,25 @@ impl Item {
         }
     }
 
+    /// Build a healing consumable. `all_parts` picks the targeting: `false` prompts for
+    /// one body part (medkits), `true` regenerates the whole body at once (elixir).
+    fn make_healing(name: &str, glyph: char, color: rltk::RGB, turns: u32, all_parts: bool, rarity: u8) -> Item {
+        let use_action = if all_parts { Item::heal_all_action() } else { Item::heal_part_action() };
+        Item {
+            id: 0,
+            rarity,
+            renderable: Renderable::new_colored_char(glyph, color),
+            name: name.to_string(),
+            inventory_actions: vec![use_action, Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::Healing { turns },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
     fn equip_action() -> EntityAction {
         EntityAction { id: ActionId::Equip,         name: "Equip".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::equip_item_action    }
     }
@@ -394,6 +428,14 @@ impl Item {
     /// Reload initiated from an ammo box, targeting a matching firearm.
     fn reload_from_ammo_action() -> EntityAction {
         EntityAction { id: ActionId::Reload,        name: "Reload weapon".to_string(),    targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ammo_has_target, action: actions::reload_from_ammo_action }
+    }
+    /// Use a healing item on a single chosen body part.
+    fn heal_part_action() -> EntityAction {
+        EntityAction { id: ActionId::Heal,          name: "Use".to_string(),              targeting: Targeting::SelfBodypart, phase: ExecutionPhase::Inventory, precondition: precondition_can_heal, action: actions::use_healing_item_action }
+    }
+    /// Use a healing item on the whole body at once.
+    fn heal_all_action() -> EntityAction {
+        EntityAction { id: ActionId::Heal,          name: "Use".to_string(),              targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_can_heal, action: actions::use_healing_item_action }
     }
     fn throw_action() -> EntityAction {
         EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
@@ -464,6 +506,11 @@ pub fn find_reloadable_weapon_id(entity: &Entity, kind: AmmoKind) -> Option<usiz
         .find(|i| is_reloadable_firearm(i, kind))
         .or_else(|| entity.body.inventory.iter().find(|i| is_reloadable_firearm(i, kind)))
         .map(|i| i.id)
+}
+
+/// Healing items are usable only when at least one body part is damaged.
+pub fn precondition_can_heal(self_ref: &Entity, _map: &Map, _item: Option<&Item>) -> bool {
+    self_ref.body.parts.iter().any(|p| p.damage > 0)
 }
 
 pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {

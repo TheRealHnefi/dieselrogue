@@ -660,6 +660,7 @@ impl World {
             Item::rocket_launcher, Item::multi_rocket_launcher,
             Item::ammo_bullets, Item::ammo_rockets,
             Item::ammo_batteries, Item::ammo_fuel,
+            Item::medkit, Item::large_medkit, Item::elixir,
         ];
 
         let item_meta: Vec<(MakeItem, u8)> =

@@ -29,6 +29,9 @@ pub enum Targeting {
     EntityAim { max_range: Option<u32> },
     /// Resolve against an adjacent direction chosen by keypress.
     Direction,
+    /// Pick one of the acting entity's own body parts (no map cursor). Used by items
+    /// applied to the self, such as medkits.
+    SelfBodypart,
 }
 
 /// Stable identity for a catalog action. Lets keybindings and the AI reference
@@ -51,6 +54,7 @@ pub enum ActionId {
     Prime,
     Throw,
     Reload,
+    Heal,
     GetItem,
     Unequip,
     Juke,

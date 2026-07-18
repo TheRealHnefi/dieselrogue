@@ -675,6 +675,9 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
         ItemKind::Ammo { kind, charges } => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("{} {}", charges, kind.name()));
         },
+        ItemKind::Healing { turns } => {
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("Regen: {} turns", turns));
+        },
         ItemKind::Corpse => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("?"));
         },
