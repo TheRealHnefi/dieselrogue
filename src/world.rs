@@ -822,6 +822,10 @@ impl World {
                     self.entities[*entity_id].body.energy =
                         self.entities[*entity_id].body.energy.saturating_sub(*amount);
                 },
+                Effect::RestoreEnergy { entity_id, amount } => {
+                    let body = &mut self.entities[*entity_id].body;
+                    body.energy = body.energy.saturating_add(*amount).min(body.max_energy);
+                },
                 Effect::PickUpItem { entity_id } => {
                     let pos = self.entities[*entity_id].position;
                     let idx = self.map.xy_idx(pos.x, pos.y);
@@ -1557,6 +1561,24 @@ mod tests {
         for i in 0..nparts {
             assert_eq!(world.entities[player_id].body.parts[i].damage, 0, "part {} not healed", i);
         }
+    }
+
+    #[test]
+    fn stimpack_restores_energy_clamped_to_max() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let player_id = world.player_id.unwrap();
+
+        let max = world.entities[player_id].body.max_energy;
+        world.entities[player_id].body.energy = max.saturating_sub(20);
+
+        let mut log = GameLog { entries: vec![] };
+        // Restore 50 into a 20-point deficit → clamps at max, no overflow.
+        world.resolve_effects(
+            &vec![Effect::RestoreEnergy { entity_id: player_id, amount: 50 }],
+            &mut log);
+
+        assert_eq!(world.entities[player_id].body.energy, max);
     }
 
     #[test]

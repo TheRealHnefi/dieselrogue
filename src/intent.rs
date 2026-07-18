@@ -55,6 +55,7 @@ pub enum ActionId {
     Throw,
     Reload,
     Heal,
+    Stim,
     GetItem,
     Unequip,
     Juke,

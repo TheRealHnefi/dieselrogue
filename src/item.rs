@@ -125,6 +125,23 @@ impl Item {
         Item::make_healing("Elixir", '!', rltk::RGB::from_f32(0.8, 0.2, 0.9), 10, true, 2)
     }
 
+    /// Instantly restores 50 energy.
+    pub fn stimpack() -> Self {
+        let rarity = 1;
+        Item {
+            id: 0, rarity,
+            renderable: Renderable::new_colored_char('!', rltk::RGB::from_f32(0.9, 0.85, 0.2)),
+            name: String::from("Stimpack"),
+            inventory_actions: vec![Item::stim_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::Stimpack { energy: 50 },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
     // ---- Grenades ---------------------------------------------------------
 
     pub fn grenade() -> Self {
@@ -437,6 +454,10 @@ impl Item {
     fn heal_all_action() -> EntityAction {
         EntityAction { id: ActionId::Heal,          name: "Use".to_string(),              targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_can_heal, action: actions::use_healing_item_action }
     }
+    /// Use a stimpack to restore energy.
+    fn stim_action() -> EntityAction {
+        EntityAction { id: ActionId::Stim,          name: "Use".to_string(),              targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_can_stim, action: actions::use_stimpack_action }
+    }
     fn throw_action() -> EntityAction {
         EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
     }
@@ -511,6 +532,11 @@ pub fn find_reloadable_weapon_id(entity: &Entity, kind: AmmoKind) -> Option<usiz
 /// Healing items are usable only when at least one body part is damaged.
 pub fn precondition_can_heal(self_ref: &Entity, _map: &Map, _item: Option<&Item>) -> bool {
     self_ref.body.parts.iter().any(|p| p.damage > 0)
+}
+
+/// Stimpacks are usable only when energy is below the maximum.
+pub fn precondition_can_stim(self_ref: &Entity, _map: &Map, _item: Option<&Item>) -> bool {
+    self_ref.body.energy < self_ref.body.max_energy
 }
 
 pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
