@@ -806,11 +806,15 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
         return;
     }
 
+    let idx = state.world.map.pos_idx(pos);
+    if !state.world.map.visible_tiles[idx] {
+        return;
+    }
+
     let precognition = state.world.get_player()
         .map(|p| p.has_ability(Ability::Precognition))
         .unwrap_or(false);
 
-    let idx = state.world.map.pos_idx(pos);
     let (name, status_line, intent_desc) = if let Some(pawn) = &state.world.map.pawns[idx] {
         let entity = &state.world.entities[pawn.entity_id];
         let intent = if precognition { Some(entity.intent.description()) } else { None };
