@@ -36,10 +36,24 @@ pub struct Region {
     pub is_room: bool,
 }
 
+/// A set of doorway tiles that fully separates two structural regions.
+pub struct RegionBoundary {
+    pub region_a: usize,
+    pub region_b: usize,
+    /// Tile indices of every Doorway tile on this boundary.
+    pub door_tiles: Vec<usize>,
+}
+
 /// Output of the spawn analysis pass.
 pub struct SpawnMap {
+    /// tile index to region index. None for walls, fences and doors.
+    pub tile_region: Vec<Option<usize>>,
+    /// Admissible spawn points
     pub spawn_points: Vec<SpawnPoint>,
+    /// Discrete regions for spawn logic
     pub regions: Vec<Region>,
+    /// Boundaries between regions
+    pub boundaries: Vec<RegionBoundary>
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +64,7 @@ pub struct SpawnMap {
 pub fn analyze(map: &Map) -> SpawnMap {
     let regions = find_regions(map);
 
-    // Tile → region index lookup, built once and shared by classification.
+    // Tile to region index lookup, built once and shared by classification.
     let mut tile_region: Vec<Option<usize>> = vec![None; map.width * map.height];
     for (ri, region) in regions.iter().enumerate() {
         for &idx in &region.tiles {
@@ -80,6 +94,37 @@ pub fn analyze(map: &Map) -> SpawnMap {
         }
     }
 
+    // Every Doorway tile that touches exactly two distinct zones is a boundary tile.
+    let mut boundary_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+    for idx in 0..map.width * map.height {
+        if map.tiles[idx] != TileType::Doorway {
+            continue;
+        }
+        let p = map.idx_pos(idx);
+        let mut adjacent_regions: Vec<usize> = Vec::new();
+        for (dx, dy) in [(0i32, -1i32), (0, 1), (-1, 0), (1, 0)] {
+            let nx = p.x + dx;
+            let ny = p.y + dy;
+            if nx >= 0 && ny >= 0 && nx < map.width as i32 && ny < map.height as i32 {
+                let ni = map.xy_idx(nx, ny);
+                if let Some(z) = tile_region[ni] {
+                    if !adjacent_regions.contains(&z) {
+                        adjacent_regions.push(z);
+                    }
+                }
+            }
+        }
+        if adjacent_regions.len() == 2 {
+            let key = (adjacent_regions[0].min(adjacent_regions[1]),
+                       adjacent_regions[0].max(adjacent_regions[1]));
+            boundary_map.entry(key).or_default().push(idx);
+        }
+    }
+
+    let boundaries = boundary_map.into_iter()
+        .map(|((a, b), door_tiles)| RegionBoundary { region_a: a, region_b: b, door_tiles })
+        .collect();
+
     #[cfg(debug_assertions)]
     {
         let mut junctions = 0;
@@ -101,7 +146,7 @@ pub fn analyze(map: &Map) -> SpawnMap {
         println!("== End spawn analysis ==");
     }
 
-    SpawnMap { spawn_points, regions }
+    SpawnMap { tile_region, spawn_points, regions, boundaries }
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +212,7 @@ fn find_regions(map: &Map) -> Vec<Region> {
         // The final queue is exactly the tiles of this region.
         let tiles = queue;
 
+        // Calculate center
         let cx: i32 = tiles.iter().map(|&i| map.idx_pos(i).x).sum::<i32>()
             / tiles.len() as i32;
         let cy: i32 = tiles.iter().map(|&i| map.idx_pos(i).y).sum::<i32>()
@@ -522,8 +568,8 @@ impl World {
         interesting: &[bool]
     ) {
         println!("== Debugging spawns ==");
-        println!("   Zone map size: {}", zone_map.zones.len());
-        println!("   Spawn map size: regions: {}, spawn points: {}", spawn_map.regions.len(), spawn_map.spawn_points.len());
+        println!("   Zone map size: {}, boundaries: {}", zone_map.zones.len(), zone_map.boundaries.len());
+        println!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
         println!("   Depths size: {}", depths.len());
         println!("   Interesting size: {}", interesting.len());
     }
