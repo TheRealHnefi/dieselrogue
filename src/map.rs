@@ -310,7 +310,9 @@ impl Map {
         }
 
         map.build_patrol_rings();
-        map.prebuild_patrol_fields();
+        if map.use_flow_fields {
+            map.prebuild_patrol_fields();
+        }
         return map;
     }
 
