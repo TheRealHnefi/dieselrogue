@@ -70,61 +70,65 @@ impl World {
                 (world.map.width / 2) as i32, (world.map.height / 2) as i32));
         let start_zone = zone_map.tile_zone[player_tile].unwrap_or(0);
         let depths = zone_depths(&zone_map, start_zone);
-
         let interesting = mark_interesting_zones(&zone_map, &spawn_map, &mut rng);
-        let boundary_colors = world.assign_door_colors(&zone_map, &depths, &interesting);
-        world.place_zone_keys(&zone_map, &spawn_map, &depths, &boundary_colors, start_zone, &mut rng);
-        world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
 
-        let mut placed: Vec<Point> = Vec::new();
-        let mut guard_n = 0usize;
-        println!("Spawning guards:");
-        world.spawn_sentinels(&zone_map, &interesting, &mut placed, &mut guard_n, &mut rng);
-        world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-        println!("Spawned {} guards total.", guard_n);
+        if false {
+            let boundary_colors = world.assign_door_colors(&zone_map, &depths, &interesting);
+            world.place_zone_keys(&zone_map, &spawn_map, &depths, &boundary_colors, start_zone, &mut rng);
+            world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
 
-        // Spawn tanks on roads and in hangars, skewing toward outer zones.
-        let tank_spawns = find_tank_spawns(&world.map, &spawn_map.regions);
+            let mut placed: Vec<Point> = Vec::new();
+            let mut guard_n = 0usize;
+            println!("Spawning guards:");
+            world.spawn_sentinels(&zone_map, &interesting, &mut placed, &mut guard_n, &mut rng);
+            world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+            println!("Spawned {} guards total.", guard_n);
 
-        // Max tanks to place per zone depth (index = depth, value = cap).
-        // Depth 0 = player's start zone (inner) → no tanks.
-        const MAX_TANKS_BY_DEPTH: &[usize] = &[0, 2, 4, 6];
-        const MIN_TANK_DIST: i32 = 15;
+            // Spawn tanks on roads and in hangars, skewing toward outer zones.
+            let tank_spawns = find_tank_spawns(&world.map, &spawn_map.regions);
 
-        let tank_dirs = [Direction::Up, Direction::Right, Direction::Down, Direction::Left];
-        let mut tank_placed: Vec<Point> = Vec::new();
+            // Max tanks to place per zone depth (index = depth, value = cap).
+            // Depth 0 = player's start zone (inner) → no tanks.
+            const MAX_TANKS_BY_DEPTH: &[usize] = &[0, 2, 4, 6];
+            const MIN_TANK_DIST: i32 = 15;
 
-        for depth in 1..MAX_TANKS_BY_DEPTH.len() {
-            let cap = MAX_TANKS_BY_DEPTH[depth];
+            let tank_dirs = [Direction::Up, Direction::Right, Direction::Down, Direction::Left];
+            let mut tank_placed: Vec<Point> = Vec::new();
 
-            let mut candidates: Vec<usize> = tank_spawns.road_tiles.iter()
-                .chain(tank_spawns.hangar_tiles.iter())
-                .copied()
-                .filter(|&idx| zone_map.tile_zone[idx].map(|z| depths[z]) == Some(depth))
-                .collect();
+            for depth in 1..MAX_TANKS_BY_DEPTH.len() {
+                let cap = MAX_TANKS_BY_DEPTH[depth];
 
-            for i in (1..candidates.len()).rev() {
-                let j = rng.range(0, (i + 1) as i32) as usize;
-                candidates.swap(i, j);
-            }
+                let mut candidates: Vec<usize> = tank_spawns.road_tiles.iter()
+                    .chain(tank_spawns.hangar_tiles.iter())
+                    .copied()
+                    .filter(|&idx| zone_map.tile_zone[idx].map(|z| depths[z]) == Some(depth))
+                    .collect();
 
-            let mut placed_here = 0usize;
-            for idx in candidates {
-                if placed_here >= cap { break; }
-                let pos = world.map.idx_pos(idx);
-                let too_close = tank_placed.iter().any(|&p| {
-                    (p.x - pos.x).abs().max((p.y - pos.y).abs()) < MIN_TANK_DIST
-                });
-                if too_close { continue; }
-                let facing = tank_dirs[tank_placed.len() % tank_dirs.len()];
-                if world.create_tank(pos, facing, format!("Tank {}", tank_placed.len() + 1)).is_ok() {
-                    tank_placed.push(pos);
-                    placed_here += 1;
+                for i in (1..candidates.len()).rev() {
+                    let j = rng.range(0, (i + 1) as i32) as usize;
+                    candidates.swap(i, j);
+                }
+
+                let mut placed_here = 0usize;
+                for idx in candidates {
+                    if placed_here >= cap { break; }
+                    let pos = world.map.idx_pos(idx);
+                    let too_close = tank_placed.iter().any(|&p| {
+                        (p.x - pos.x).abs().max((p.y - pos.y).abs()) < MIN_TANK_DIST
+                    });
+                    if too_close { continue; }
+                    let facing = tank_dirs[tank_placed.len() % tank_dirs.len()];
+                    if world.create_tank(pos, facing, format!("Tank {}", tank_placed.len() + 1)).is_ok() {
+                        tank_placed.push(pos);
+                        placed_here += 1;
+                    }
                 }
             }
+            
+            println!("Spawned {} tanks.", tank_placed.len());
+        } else {
+            world.spawn_debug(&zone_map, &spawn_map, &depths, &interesting);
         }
-
-        println!("Spawned {} tanks.", tank_placed.len());
 
         return world;
     }

@@ -288,7 +288,7 @@ impl Map {
           fov_blocked: vec![false; tile_count],
           nav_fields: NavFieldCache::new(),
           patrol_routes: Vec::new(),
-          use_flow_fields: true,
+          use_flow_fields: false,
         };
 
         let mut generated_blocks = generate_block_grid(size_in_blocks, rng);
