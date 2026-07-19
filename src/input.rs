@@ -102,12 +102,12 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
             key if key == b.move_down_right  => return move_in_direction(state, Direction::DownRight),
             key if key == b.move_down_left   => return move_in_direction(state, Direction::DownLeft),
             key if key == b.wait => {
-                return RunState::Resolve(ExecutionPhase::Instant);
+                return RunState::Resolve(ExecutionPhase::Idle);
             },
 
             key if key == b.get_item => {
                 match getitem_player_intent(&mut state.world) {
-                    Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
+                    Ok(_) => return RunState::Resolve(ExecutionPhase::Idle),
                     Err(error) => {
                         state.log(error.message);
                         return RunState::AwaitingInput;
@@ -117,7 +117,7 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
 
             key if key == b.disembark => {
                 match disembark_player_intent(&mut state.world) {
-                    Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
+                    Ok(_) => return RunState::Resolve(ExecutionPhase::Idle),
                     Err(error) => {
                         state.log(error.message);
                         return RunState::AwaitingInput;
@@ -281,7 +281,7 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                                 let PendingAction { entity_action, source } = pending;
                                 state.world.get_player_mut().unwrap().intent =
                                     build_intent(&entity_action, source, Resolution::Position(cursor));
-                                return RunState::Resolve(ExecutionPhase::Instant);
+                                return RunState::Resolve(ExecutionPhase::Idle);
                             },
                             Targeting::JumpTile => {
                                 // Accept any previously-revealed Ground/Road tile (need not be visible).
@@ -296,7 +296,7 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                                 let PendingAction { entity_action, source } = pending;
                                 state.world.get_player_mut().unwrap().intent =
                                     build_intent(&entity_action, source, Resolution::Position(cursor));
-                                return RunState::Resolve(ExecutionPhase::Instant);
+                                return RunState::Resolve(ExecutionPhase::Idle);
                             },
                             _ => {
                                 // Detailed targeting — open the bodypart menu.
@@ -510,7 +510,7 @@ fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) 
         Ok(player) => player.intent = build_intent(&entity_action, source, Resolution::Position(aim_pos)),
         Err(_) => return RunState::AwaitingInput,
     }
-    RunState::Resolve(ExecutionPhase::Instant)
+    RunState::Resolve(ExecutionPhase::Idle)
 }
 
 /// Open the bodypart menu on the acting entity's own body (SelfBodypart targeting,
@@ -720,7 +720,7 @@ fn trigger_action_by_id(state: &mut State, id: ActionId) -> RunState {
         Targeting::None => {
             let intent = build_intent(&action, source, Resolution::None);
             if let Ok(player) = state.world.get_player_mut() { player.intent = intent; }
-            RunState::Resolve(ExecutionPhase::Instant)
+            RunState::Resolve(ExecutionPhase::Idle)
         },
         Targeting::Direction => start_directional_action(state, action, source),
         Targeting::UseExistingAim { ask_bodypart } =>
@@ -939,7 +939,7 @@ fn confirm_entity_target(state: &mut State) -> RunState {
         Err(_) => return RunState::AwaitingInput,
     }
 
-    RunState::Resolve(ExecutionPhase::Instant)
+    RunState::Resolve(ExecutionPhase::Idle)
 }
 
 fn add_levelup_ability(world: &mut World, ability: Ability) {
@@ -952,7 +952,7 @@ fn add_levelup_ability(world: &mut World, ability: Ability) {
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {
     match move_player_intent(direction, world) {
-        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
+        Ok(_) => RunState::Resolve(ExecutionPhase::Idle),
         Err(error) if matches!(error.error, Error::MapExit) => RunState::Victory,
         Err(error) => {
             log.log(error.message);
@@ -963,7 +963,7 @@ fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog)
 
 fn handle_strafe_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {
     match strafe_player_intent(direction, world) {
-        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
+        Ok(_) => RunState::Resolve(ExecutionPhase::Idle),
         Err(error) if matches!(error.error, Error::MapExit) => RunState::Victory,
         Err(error) => {
             log.log(error.message);

@@ -650,7 +650,7 @@ fn action_apply_intent_to_player(intent: Intent, state: &mut State) -> RunState 
         Ok(player) => player.intent = intent,
         Err(_) => ()
     }
-    RunState::Resolve(ExecutionPhase::Instant)
+    RunState::Resolve(ExecutionPhase::Idle)
 }
 
 fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut State) -> RunState {
@@ -665,5 +665,5 @@ fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut Sta
     );
     state.world.get_player_mut().unwrap().intent = intent;
 
-    RunState::Resolve(ExecutionPhase::Instant)
+    RunState::Resolve(ExecutionPhase::Idle)
 }
