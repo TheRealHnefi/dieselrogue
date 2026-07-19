@@ -242,7 +242,6 @@ fn find_regions(map: &Map) -> Vec<Region> {
 
 fn set_region_depth(regions: &mut Vec<Region>, start_region_idx: usize, region_boundaries: &Vec<RegionBoundary>)
 {
-    println!("JTLDEBUG: Start region index: {}", start_region_idx);
     let n = regions.len();
     if start_region_idx >= n { return; } // TODO: Error - handle explicitly
 
@@ -459,13 +458,13 @@ impl World {
     ) {
         println!("== Debugging spawns ==");
         println!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
+        println!("== Done debugging spawns ==");
     }
 
     /// Stationary guards adjacent to doorways.
     pub(crate) fn spawn_sentinels(
         &mut self,
         spawn_map: &SpawnMap,
-        interesting: &[bool],
         placed: &mut Vec<Point>,
         n: &mut usize,
         rng: &mut RandomNumberGenerator,
@@ -489,7 +488,12 @@ impl World {
                     return false;
                 }
                 let ni = self.map.xy_idx(nx, ny);
-                spawn_map.tile_region[ni].map_or(false, |zi| interesting.get(zi).copied().unwrap_or(false))
+                let region_index = spawn_map.tile_region[ni];
+                match region_index {
+                    Some(idx) => spawn_map.regions[idx].interesting,
+                    None => false
+                }
+                
             });
 
             // Place guard 3 tiles away from door.
@@ -784,17 +788,6 @@ impl World {
             adjacent[b.region_b].push((b.region_a, color));
         }
 
-        // TODO: Revisit this logic after the refactor
-        // let region_dead_ends: Vec<Vec<Point>> = (0..total_regions).map(|region_idx| {
-        //     let region_set: std::collections::HashSet<usize> =
-        //         spawn_map.regions[region_idx].iter().copied().collect();
-        //     spawn_map.spawn_points.iter()
-        //         .filter(|sp| sp.category == SpawnCategory::DeadEnd && region_set.contains(&sp.idx))
-        //         .map(|sp| sp.pos)
-        //         .collect()
-        // }).collect();
-        let region_dead_ends: Vec<Vec<Point>> = vec!();
-
         let mut color_first_depth: HashMap<usize, usize> = HashMap::new();
         for (b_idx, b) in spawn_map.boundaries.iter().enumerate() {
             if let Some(color) = boundary_colors[b_idx] {
@@ -825,10 +818,7 @@ impl World {
             candidates.truncate(KEY_COPIES_PER_COLOR);
 
             for ri in candidates {
-                let key_pos = if !region_dead_ends[ri].is_empty() {
-                    let picks = &region_dead_ends[ri];
-                    picks[rng.range(0, picks.len() as i32) as usize]
-                } else {
+                let key_pos = {
                     let tiles = &spawn_map.regions[ri].tiles;
                     self.map.idx_pos(tiles[rng.range(0, tiles.len() as i32) as usize])
                 };
