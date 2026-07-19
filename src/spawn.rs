@@ -34,6 +34,10 @@ pub struct Region {
     pub center_idx: usize,
     /// True when the region is large enough to be treated as a room and is indoors.
     pub is_room: bool,
+    /// True if the region is likely to contain interesting things
+    pub interesting: bool,
+    /// Degrees of separation from player start position
+    pub depth: usize
 }
 
 /// A set of doorway tiles that fully separates two structural regions.
@@ -61,8 +65,8 @@ pub struct SpawnMap {
 // ---------------------------------------------------------------------------
 
 /// Analyse `map` and return classified spawn candidates and connected regions.
-pub fn analyze(map: &Map) -> SpawnMap {
-    let regions = find_regions(map);
+pub fn analyze(map: &Map, start_pos: usize) -> SpawnMap {
+    let mut regions = find_regions(map);
 
     // Tile to region index lookup, built once and shared by classification.
     let mut tile_region: Vec<Option<usize>> = vec![None; map.width * map.height];
@@ -125,6 +129,8 @@ pub fn analyze(map: &Map) -> SpawnMap {
         .map(|((a, b), door_tiles)| RegionBoundary { region_a: a, region_b: b, door_tiles })
         .collect();
 
+    set_region_depth(&mut regions, start_pos, &boundaries);
+
     #[cfg(debug_assertions)]
     {
         let mut junctions = 0;
@@ -177,6 +183,7 @@ fn cardinal_passable_count(map: &Map, idx: usize) -> u8 {
 }
 
 /// Flood-fill all passable tiles into 4-connected regions.
+/// Set interesting to false and depth to usize::MAX for later update.
 fn find_regions(map: &Map) -> Vec<Region> {
     let n = map.width * map.height;
     let mut visited = vec![false; n];
@@ -222,11 +229,40 @@ fn find_regions(map: &Map) -> Vec<Region> {
             (p.x - cx).abs() + (p.y - cy).abs()
         }).unwrap();
 
+        // Determine whether this is a room
         let is_room = map.tiles[tiles[0]] == TileType::Floor;
-        regions.push(Region { tiles, center_idx, is_room });
+
+        regions.push(Region { tiles, center_idx, is_room, interesting: false, depth: usize::MAX });
     }
 
     regions
+}
+
+fn set_region_depth(regions: &mut Vec<Region>, start_region_idx: usize, region_boundaries: &Vec<RegionBoundary>)
+{
+    println!("JTLDEBUG: Start region index: {}", start_region_idx);
+    let n = regions.len();
+    if start_region_idx >= n { return; } // TODO: Error - handle explicitly
+
+    let mut adjacent: Vec<Vec<usize>> = vec![vec![]; n];
+    for b in region_boundaries {
+        adjacent[b.region_a].push(b.region_b);
+        adjacent[b.region_b].push(b.region_a);
+    }
+
+    regions[start_region_idx].depth = 0;
+    let mut queue = vec![start_region_idx];
+    let mut queue_idx = 0;
+    while queue_idx < queue.len() {
+        let current = queue[queue_idx];
+        queue_idx += 1;
+        for &neighbour in &adjacent[current] {
+            if regions[neighbour].depth == usize::MAX {
+                regions[neighbour].depth = regions[current].depth + 1;
+                queue.push(neighbour);
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +365,7 @@ fn zone_passable(tile: TileType) -> bool {
 /// BFS over the zone graph to compute how many boundaries separate each zone from
 /// `start_zone`.  Unreachable zones get `usize::MAX`.
 pub fn zone_depths(zone_map: &ZoneMap, start_zone: usize) -> Vec<usize> {
+    println!("JTLDEBUG: start zone index: {}", start_zone);
     let n = zone_map.zones.len();
     let mut depth = vec![usize::MAX; n];
     if start_zone >= n { return depth; }
@@ -572,6 +609,18 @@ impl World {
         println!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
         println!("   Depths size: {}", depths.len());
         println!("   Interesting size: {}", interesting.len());
+
+        let mut matches = 0;
+        let mut mismatches = 0;
+        for i in 0..depths.len() {
+            if spawn_map.regions[i].depth != depths[i] {
+                mismatches += 1;
+            }
+            else {
+                matches += 1;
+            }
+        }
+        println!(   "Depth matches: {}, mismatches: {}", matches, mismatches);
     }
 
     /// Stationary guards adjacent to doorways.
