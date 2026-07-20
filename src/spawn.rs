@@ -35,7 +35,6 @@ pub struct Region {
     /// True when the region is large enough to be treated as a room and is indoors.
     pub is_room: bool,
     /// True if the region is likely to contain interesting things
-    /// TODO: Currently always false. Fix!
     pub interesting: bool,
     /// Degrees of separation from player start position
     pub depth: usize
@@ -152,10 +151,65 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
             regions.len(),
             regions.iter().min_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len(),
             regions.iter().max_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len());
+        println!("   Found {} rooms, of which {} are interesting",
+            regions.iter().filter(|r| r.is_room).count(),
+            regions.iter().filter(|r| r.interesting).count());
         println!("== End spawn analysis ==");
     }
 
     SpawnMap { tile_region, spawn_points, regions, boundaries }
+}
+
+pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator,) {
+    type MakeItem = fn() -> Item;
+    let starting_pool: &[MakeItem] = &[Item::pistol, Item::flare_gun, Item::knife, Item::grenade];
+    let weapons_pool: &[MakeItem] = &[
+        Item::pistol, Item::flare_gun, Item::knife,
+        Item::revolver, Item::shock_pistol, Item::submachine_gun,
+        Item::grenade, Item::fire_grenade, Item::flashbang,
+        Item::bolt_action_rifle, Item::semi_auto_rifle,
+        Item::assault_rifle, Item::machinegun,
+        Item::shock_carbine, Item::flamethrower,
+        Item::shock_grenade,
+        Item::rotary_machinegun,
+        Item::rocket_launcher,
+    ];
+    let armor_pool:  &[MakeItem] = &[
+        Item::bulletproof_vest, Item::light_kevlar_pants,
+        Item::riot_armor, Item::riot_pants,
+        Item::heavy_combat_suit,
+        Item::helmet, Item::heavy_helmet,
+    ];
+    let consumables_pool: &[MakeItem] = &[
+        Item::ammo_bullets, Item::ammo_rockets,
+        Item::ammo_batteries, Item::ammo_fuel,
+        Item::medkit, Item::large_medkit, Item::elixir,
+        Item::stimpack,
+    ];
+    let exceptional_pool: &[MakeItem] = &[
+        Item::multi_rocket_launcher,
+        Item::shock_cannon,
+        Item::rocket_boots,
+        Item::tactical_helmet,
+        Item::jetpack,
+    ];
+
+    let boring_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_room).collect();
+    let interesting_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.interesting).collect();
+    
+    // Place starting loot
+    {
+        let starting_room = spawn_map.regions.iter().find(|r| r.depth == 0).unwrap_or(&spawn_map.regions[0]);
+        let amount = rng.range(1, starting_pool.len());
+        for _ in 0 .. amount {
+            let target_tile_idx = rng.range(0, starting_room.tiles.len());
+            let target_tile = starting_room.tiles[target_tile_idx];
+            let target_item_idx = rng.range(1, starting_pool.len());
+
+            let _ = world.add_item(world.map.idx_pos(target_tile), starting_pool[target_item_idx]());
+        }
+    }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -241,8 +295,7 @@ fn find_regions(map: &Map) -> Vec<Region> {
     regions
 }
 
-fn set_region_depth(regions: &mut Vec<Region>, start_region_idx: usize, region_boundaries: &Vec<RegionBoundary>)
-{
+fn set_region_depth(regions: &mut Vec<Region>, start_region_idx: usize, region_boundaries: &Vec<RegionBoundary>) {
     let n = regions.len();
     if start_region_idx >= n { return; } // TODO: Error - handle explicitly
 

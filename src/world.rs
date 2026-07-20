@@ -69,10 +69,11 @@ impl World {
         let spawn_map = create_spawn_map(&world.map, player_tile);
         let start_region = spawn_map.tile_region[player_tile].unwrap_or(0);
 
-        if false {
+        if true {
             let boundary_colors = world.assign_door_colors(&spawn_map);
             world.place_zone_keys(&spawn_map, &boundary_colors, start_region, &mut rng);
-            world.spawn_loot(&spawn_map, &mut rng);
+            //world.spawn_loot(&spawn_map, &mut rng);
+            spawn_loot(&mut world, &spawn_map, &mut rng);
 
             let mut placed: Vec<Point> = Vec::new();
             let mut guard_n = 0usize;
