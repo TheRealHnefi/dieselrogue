@@ -66,7 +66,7 @@ pub struct SpawnMap {
 // ---------------------------------------------------------------------------
 
 /// Analyse `map` and return classified spawn candidates and connected regions.
-pub fn analyze(map: &Map, start_pos: usize) -> SpawnMap {
+pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
     let mut regions = find_regions(map);
 
     // Tile to region index lookup, built once and shared by classification.
@@ -132,6 +132,7 @@ pub fn analyze(map: &Map, start_pos: usize) -> SpawnMap {
 
     let start_region = tile_region[start_pos].unwrap_or(0);
     set_region_depth(&mut regions, start_region, &boundaries);
+    set_interesting_regions(&mut regions, &boundaries);
 
     #[cfg(debug_assertions)]
     {
@@ -263,6 +264,33 @@ fn set_region_depth(regions: &mut Vec<Region>, start_region_idx: usize, region_b
                 queue.push(neighbour);
             }
         }
+    }
+}
+
+// Note: each door is one boundary. There are no mirrored duplicates in the boundary set.
+fn set_interesting_regions(regions: &mut Vec<Region>, region_boundaries: &Vec<RegionBoundary>) {
+    const MIN_INTERESTING_DEPTH: usize = 3;
+
+    let mut interesting_indices = vec!();
+    for (i, region) in regions.iter().enumerate() {
+        if !region.is_room || region.depth < MIN_INTERESTING_DEPTH { continue; }
+
+        let boundaries: Vec<&RegionBoundary> = region_boundaries.iter().filter(|&b| b.region_a == i || b.region_b == i).collect();
+        if boundaries.len() == 1 {
+            // Only mark rooms in rooms as interesting
+            for b in boundaries {
+                if regions[b.region_a].is_room && regions[b.region_b].is_room {
+                    interesting_indices.push(i);
+                }
+            }
+        }
+    }
+    
+    #[cfg(debug_assertions)]
+    println!("Interesting regions found: {}", interesting_indices.len());
+
+    for idx in interesting_indices {
+        regions[idx].interesting = true;
     }
 }
 
@@ -460,11 +488,13 @@ impl World {
         println!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
         println!("== Done debugging spawns ==");
 
-        self.spawn_depthmarkers(spawn_map);
+        //self.spawn_depthmarkers(spawn_map);
+        self.spawn_interesting_markers(spawn_map);
     }
 
     /// Used for debugging spawn functionality
     #[cfg(debug_assertions)]
+    #[allow(unused)]
     fn spawn_depthmarkers(
         &mut self,
         spawn_map: &SpawnMap
@@ -490,6 +520,23 @@ impl World {
                 }
                 let pos = self.map.idx_pos(*tile);
                 let _ = self.add_item(pos, maker());
+            }
+        }
+    }
+
+    /// Debug assignment of interesting status
+    #[cfg(debug_assertions)]
+    #[allow(unused)]
+    fn spawn_interesting_markers(
+        &mut self,
+        spawn_map: &SpawnMap
+    ) {
+        for region in &spawn_map.regions {
+            if !region.interesting { continue; }
+
+            for tile in &region.tiles {
+                let pos = self.map.idx_pos(*tile);
+                let _ = self.add_item(pos, Item::knife());
             }
         }
     }
