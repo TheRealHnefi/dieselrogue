@@ -71,7 +71,7 @@ impl World {
 
         if true {
             let boundary_colors = world.assign_door_colors(&spawn_map);
-            world.place_zone_keys(&spawn_map, &boundary_colors, start_region, &mut rng);
+            //world.place_zone_keys(&spawn_map, &boundary_colors, start_region, &mut rng);
             //world.spawn_loot(&spawn_map, &mut rng);
             spawn_loot(&mut world, &spawn_map, &mut rng);
 

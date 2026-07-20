@@ -1,5 +1,5 @@
 use rltk::{Point, RandomNumberGenerator};
-use std::collections::HashMap;
+use std::{cmp::max, collections::HashMap};
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE};
 
 // ---------------------------------------------------------------------------
@@ -36,7 +36,8 @@ pub struct Region {
     pub is_room: bool,
     /// True if the region is likely to contain interesting things
     pub interesting: bool,
-    /// Degrees of separation from player start position
+    /// Degrees of separation from player start position.
+    /// Unreachable if equal to usize::MAX
     pub depth: usize
 }
 
@@ -196,9 +197,15 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
 
     let boring_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_room).collect();
     let interesting_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.interesting).collect();
+
+    let max_depth = spawn_map.regions.iter().filter(|r| r.depth != usize::MAX).max_by_key(|r| r.depth).unwrap().depth;
+    println!("Max depth: {}", max_depth);
+
+    let mut total_items_placed: usize = 0;
     
     // Place starting loot
     {
+        let mut items_placed = 0;
         let starting_room = spawn_map.regions.iter().find(|r| r.depth == 0).unwrap_or(&spawn_map.regions[0]);
         let amount = rng.range(1, starting_pool.len());
         for _ in 0 .. amount {
@@ -206,10 +213,56 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
             let target_tile = starting_room.tiles[target_tile_idx];
             let target_item_idx = rng.range(1, starting_pool.len());
 
-            let _ = world.add_item(world.map.idx_pos(target_tile), starting_pool[target_item_idx]());
+            if world.add_item(world.map.idx_pos(target_tile), starting_pool[target_item_idx]()).is_ok() {
+                items_placed += 1;
+            };
         }
+
+        total_items_placed += items_placed;
+        println!("Placed {} starting items", items_placed);
     }
 
+    // Place exceptional items
+    {
+        let mut items_placed = 0;
+        let item_rarity: Vec<(MakeItem, u8)> =
+            exceptional_pool.iter().map(|&f| (f, f().rarity)).collect();
+        let weighted_pool: Vec<(MakeItem, u8)> = item_rarity.iter()
+            .flat_map(|&(f, r)| {
+                std::iter::repeat((f, r)).take(4usize.saturating_sub(r as usize))
+            })
+            .collect();
+
+        let mut empty_rooms = interesting_rooms.clone();
+        for room in interesting_rooms {
+            // If room is not empty, idx will be referincing outside the array
+            let mut empty_room_idx = empty_rooms.len();
+            for i in 0 .. empty_rooms.len() {
+                if empty_rooms[i].center_idx == room.center_idx {
+                    empty_room_idx = i;
+                    break;
+                }
+            }
+            // Skip already used rooms.
+            if empty_room_idx == empty_rooms.len() { continue; }
+
+            let depth_factor = rng.range(1, max_depth + 1) <= room.depth;
+            let arbitrary_factor = rng.range(0, 4) == 0;
+            if !depth_factor || !arbitrary_factor { continue; }
+
+            let item_idx = rng.range(0, weighted_pool.len());
+            let (item_to_place, rarity) = weighted_pool[item_idx];
+            
+            if world.add_item(world.map.idx_pos(room.center_idx), item_to_place()).is_ok() {
+                items_placed += 1;
+                empty_rooms.swap_remove(empty_room_idx);
+            }
+        }
+        total_items_placed += items_placed;
+        println!("Placed {} exceptional items", items_placed);
+    }
+
+    println!("Placed {} items", total_items_placed);
 }
 
 // ---------------------------------------------------------------------------
@@ -318,6 +371,8 @@ fn set_region_depth(regions: &mut Vec<Region>, start_region_idx: usize, region_b
             }
         }
     }
+
+    // TODO: Filter out unreachable regions (depth = usize::MAX). But doing so breaks the region boundaries. Fix later.
 }
 
 // Note: each door is one boundary. There are no mirrored duplicates in the boundary set.
