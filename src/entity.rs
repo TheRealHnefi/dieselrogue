@@ -101,7 +101,7 @@ fn human_innate_actions() -> Vec<EntityAction> {
 }
 
 impl Entity {
-    pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
+    pub fn human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             index: id,
             kind: EntityKind::Actor,
@@ -122,32 +122,7 @@ impl Entity {
         }
     }
 
-    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, route_id: usize) -> Self {
-        Self {
-            index: id,
-            kind: EntityKind::Actor,
-            driving: DrivingState::None,
-            sprite: Sprite::Human,
-            size_x: 1,
-            size_y: 1,
-            position: pos,
-            name: name,
-            intent: idle_intent(),
-            body: Body::human_body(facing),
-            viewshed: Viewshed::new(20, FieldOfView::Fov180),
-            ai: AI::Actor(ActorAI::new(Profile::Patrol {
-                route_id,
-                waypoint_index: 0,
-                combat_tactic: CombatTactic::Pursue,
-            })),
-            color: None,
-            paper_doll: None,
-            innate_actions: human_innate_actions(),
-            xp_value: 1000
-        }
-    }
-
-    pub fn new_tank(id: usize, pos: Point, facing: Direction, name: String) -> Self {
+    pub fn tank(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             index: id,
             kind: EntityKind::Actor,
@@ -160,7 +135,7 @@ impl Entity {
             intent: idle_intent(),
             body: Body::tank_body(facing),
             viewshed: Viewshed::new(20, FieldOfView::Fov90),
-            ai: AI::Rotator,
+            ai: AI::None,
             color: None,
             paper_doll: None,
             innate_actions: vec![],
@@ -168,7 +143,7 @@ impl Entity {
         }
     }
 
-    pub fn new_door(id: usize, pos: Point, direction: Direction, length: u32) -> Self {
+    pub fn door(id: usize, pos: Point, direction: Direction, length: u32) -> Self {
         let mut size_x = 1;
         let mut size_y = 1;
 

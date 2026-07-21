@@ -1,6 +1,7 @@
 use rltk::{Point, RandomNumberGenerator};
 use std::collections::HashMap;
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE};
+use crate::item::MakeItem;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -35,10 +36,22 @@ pub struct Region {
     /// True when the region is large enough to be treated as a room and is indoors.
     pub is_room: bool,
     /// True if the region is likely to contain interesting things
-    pub interesting: bool,
+    pub is_interesting: bool,
     /// Degrees of separation from player start position.
     /// Unreachable if equal to usize::MAX
     pub depth: usize
+}
+
+impl Region {
+    pub fn has_item(&self, map: &Map) -> bool {
+        for tile in &self.tiles {
+            let pos = map.idx_pos(*tile);
+            if map.get_item_ref(pos.x, pos.y).is_some() {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 /// A set of doorway tiles that fully separates two structural regions.
@@ -60,8 +73,6 @@ pub struct SpawnMap {
     /// Boundaries between regions
     pub boundaries: Vec<RegionBoundary>
 }
-
-type MakeItem = fn() -> Item;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -156,7 +167,7 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
             regions.iter().max_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len());
         println!("   Found {} rooms, of which {} are interesting",
             regions.iter().filter(|r| r.is_room).count(),
-            regions.iter().filter(|r| r.interesting).count());
+            regions.iter().filter(|r| r.is_interesting).count());
         println!("== End spawn analysis ==");
     }
 
@@ -199,8 +210,8 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
     const EQUIPMENT_ITEM_SPARSITY: usize = 4;
     const CONSUMABLE_ITEM_SPARSITY: usize = 4;
 
-    let boring_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_room && !r.interesting).collect();
-    let interesting_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.interesting).collect();
+    let boring_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_room && !r.is_interesting).collect();
+    let interesting_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_interesting).collect();
 
     let mut total_items_placed: usize = 0;
     
@@ -369,7 +380,7 @@ fn find_regions(map: &Map) -> Vec<Region> {
         // Determine whether this is a room
         let is_room = map.tiles[tiles[0]] == TileType::Floor;
 
-        regions.push(Region { tiles, center_idx, is_room, interesting: false, depth: usize::MAX });
+        regions.push(Region { tiles, center_idx, is_room, is_interesting: false, depth: usize::MAX });
     }
 
     regions
@@ -425,7 +436,7 @@ fn set_interesting_regions(regions: &mut Vec<Region>, region_boundaries: &Vec<Re
     println!("Interesting regions found: {}", interesting_indices.len());
 
     for idx in interesting_indices {
-        regions[idx].interesting = true;
+        regions[idx].is_interesting = true;
     }
 }
 
@@ -635,7 +646,6 @@ impl World {
         spawn_map: &SpawnMap
     ) {
         for region in &spawn_map.regions {
-            type MakeItem = fn() -> Item;
             let maker: MakeItem = match region.depth {
                 0 => Item::knife,
                 1 => Item::pistol,
@@ -667,7 +677,7 @@ impl World {
         spawn_map: &SpawnMap
     ) {
         for region in &spawn_map.regions {
-            if !region.interesting { continue; }
+            if !region.is_interesting { continue; }
 
             for tile in &region.tiles {
                 let pos = self.map.idx_pos(*tile);
@@ -705,7 +715,7 @@ impl World {
                 let ni = self.map.xy_idx(nx, ny);
                 let region_index = spawn_map.tile_region[ni];
                 match region_index {
-                    Some(idx) => spawn_map.regions[idx].interesting,
+                    Some(idx) => spawn_map.regions[idx].is_interesting,
                     None => false
                 }
                 
@@ -853,7 +863,7 @@ impl World {
                 BoundaryKind::OuterWall => Some(OUTER_WALL_COLOR),
                 BoundaryKind::InnerWall => Some(INNER_WALL_COLOR),
                 BoundaryKind::Regular => {
-                    if spawn_map.regions[deep].interesting {
+                    if spawn_map.regions[deep].is_interesting {
                         let c = regular_colors[regular_color_idx % regular_colors.len()];
                         regular_color_idx += 1;
                         Some(c)
