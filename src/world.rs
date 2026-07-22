@@ -196,7 +196,7 @@ impl World {
         player.kind = EntityKind::Player;
         player.paper_doll = Some(PaperDoll::Player);
         player.body.update_abilities();
-        player.color = Some(5);
+        player.color = Some(15); // Gold
 
         player.create_pawns(&mut self.map);
         self.entities.push(player);
@@ -243,7 +243,8 @@ impl World {
 
     // Enemy creation --------------------------
     pub fn create_light_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Guard".to_string())?;
+        let color = 14; // Gray
+        let idx = self.create_enemy_base(pos, facing, "Guard".to_string(), color)?;
         self.carry_item(idx, Item::pistol)?;
         self.carry_item(idx, Item::knife)?;
         self.carry_item(idx, Item::flashbang)?;
@@ -253,7 +254,8 @@ impl World {
     }
 
     pub fn create_medium_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Sentinel".to_string())?;
+        let color = 4; // Green
+        let idx = self.create_enemy_base(pos, facing, "Sentinel".to_string(), color)?;
         self.carry_item(idx, Item::assault_rifle)?;
         self.carry_item(idx, Item::ammo_bullets)?;
         self.carry_item(idx, Item::grenade)?;
@@ -264,7 +266,8 @@ impl World {
     }
 
     pub fn create_heavy_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Paladin".to_string())?;
+        let color = 7; // Blue
+        let idx = self.create_enemy_base(pos, facing, "Paladin".to_string(), color)?;
         self.carry_item(idx, Item::machinegun)?;
         self.carry_item(idx, Item::ammo_bullets)?;
         self.carry_item(idx, Item::grenade)?;
@@ -274,7 +277,8 @@ impl World {
     }
 
     pub fn create_flamer_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Purifier".to_string())?;
+        let color = 0; // Red
+        let idx = self.create_enemy_base(pos, facing, "Purifier".to_string(), color)?;
         self.carry_item(idx, Item::flamethrower)?;
         self.carry_item(idx, Item::ammo_fuel)?;
         self.carry_item(idx, Item::fire_grenade)?;
@@ -284,7 +288,8 @@ impl World {
     }
 
     pub fn create_rocket_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Tankbuster".to_string())?;
+        let color = 1; // Orange
+        let idx = self.create_enemy_base(pos, facing, "Tankbuster".to_string(), color)?;
         self.carry_item(idx, Item::rocket_launcher)?;
         self.carry_item(idx, Item::ammo_rockets)?;
         self.carry_item(idx, Item::grenade)?;
@@ -296,7 +301,8 @@ impl World {
     }
 
     pub fn create_riot_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Peacekeeper".to_string())?;
+        let color = 9; // Magenta
+        let idx = self.create_enemy_base(pos, facing, "Peacekeeper".to_string(), color)?;
         self.carry_item(idx, Item::shock_carbine)?;
         self.carry_item(idx, Item::ammo_batteries)?;
         self.carry_item(idx, Item::shock_grenade)?;
@@ -308,22 +314,25 @@ impl World {
     }
 
     pub fn create_civilian(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Civilian".to_string())?;
+        let color = 12; // White
+        let idx = self.create_enemy_base(pos, facing, "Civilian".to_string(), color)?;
         self.carry_item(idx, Item::knife)?;
         Ok(idx)
     }
 
     pub fn create_pilot(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
-        let idx = self.create_enemy_base(pos, facing, "Pilot".to_string())?;
+        let color = 6; // Sky
+        let idx = self.create_enemy_base(pos, facing, "Pilot".to_string(), color)?;
         self.carry_item(idx, Item::knife)?;
         self.carry_item(idx, Item::shock_pistol)?;
         Ok(idx)
     }
 
-    fn create_enemy_base(&mut self, pos: Point, facing: Direction, name: String) -> Result<usize, GameError> {
+    fn create_enemy_base(&mut self, pos: Point, facing: Direction, name: String, color: usize) -> Result<usize, GameError> {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
         let idx = self.entities.len();
         let mut entity = Entity::human(idx, actual_pos, facing, name);
+        entity.color = Some(color);
         entity.paper_doll = Some(PaperDoll::MaleSilhouette);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
