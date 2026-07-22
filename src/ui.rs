@@ -652,9 +652,9 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, label);
         },
         ItemKind::Key { color } => {
-            let (r, g, b) = crate::components::KEY_COLORS[*color];
+            let (r, g, b) = crate::components::COLORS[*color];
             let key_color = rltk::RGB::from_u8(r, g, b);
-            context.print_color(x, offset_y, key_color, BG_COLOR, crate::components::KEY_COLOR_NAMES[*color]);
+            context.print_color(x, offset_y, key_color, BG_COLOR, crate::components::COLOR_NAMES[*color]);
         },
         ItemKind::Ammo { kind, charges } => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("{} {}", charges, kind.name()));
@@ -925,7 +925,7 @@ fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, contex
 
             let color = match entity.color {
                 Some(c) => {
-                    let (r, g, b) = crate::components::KEY_COLORS[c];
+                    let (r, g, b) = crate::components::COLORS[c];
                     rltk::RGBA::from_u8(r, g, b, (ARROW_ALPHA * 255.0) as u8)
                 }
                 None => rltk::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, ARROW_ALPHA),
@@ -1017,7 +1017,7 @@ fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
 
         let color = match entity.color {
             Some(c) => {
-                let (r, g, b) = crate::components::KEY_COLORS[c];
+                let (r, g, b) = crate::components::COLORS[c];
                 rltk::RGBA::from_u8(r, g, b, (GHOST_ALPHA * 255.0) as u8)
             }
             None => rltk::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, GHOST_ALPHA),
@@ -1061,7 +1061,7 @@ fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, monotime:
             let entity = &entities[pawn.entity_id];
             let burning = entity.body.get_status_effect(&StatusEffect::Burning(0)).is_some();
             let color = if let Some(c) = entity.color {
-                let (r, g, b) = crate::components::KEY_COLORS[c];
+                let (r, g, b) = crate::components::COLORS[c];
                 rltk::RGB::from_u8(r, g, b)
             } else {
                 WALL_COLOR
