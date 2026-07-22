@@ -344,7 +344,7 @@ impl World {
     fn equip_item(&mut self, entity_idx: usize, item_maker: MakeItem) -> Result<(), GameError> {
         let mut item = item_maker();
         item.id = self.next_item_id;
-        self.entities[entity_idx].body.inventory.push(item);
+        self.entities[entity_idx].body.equip(item)?;
         self.next_item_id += 1;
         self.entities[entity_idx].body.update_armor();
         Ok(())

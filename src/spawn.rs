@@ -1,7 +1,6 @@
 use rltk::{Point, RandomNumberGenerator};
-use serde_json::map;
 use std::collections::HashMap;
-use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE};
+use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE, AI, ActorAI, Profile};
 use crate::item::MakeItem;
 
 // ---------------------------------------------------------------------------
@@ -256,13 +255,13 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     let map_radius = world.map.width / 2;
     assert!(map_radius > 15);
 
-    /// Radius of circle with no random enemy spawns
+    // Radius of circle with no random enemy spawns
     let center_zone_radius: i32 = 15;
-    /// Radius of inner zone - easy guards
+    // Radius of inner zone - easy guards
     let inner_zone_radius: i32 = map_radius as i32 / 3 + 5;
-    /// Radius of middle zone - varied guards
+    // Radius of middle zone - varied guards
     let middle_zone_radius: i32 = 2 * map_radius as i32 / 3 + 10;
-    /// Radius of outer zone - difficult guards
+    // Radius of outer zone - difficult guards
     let outer_zone_radius: i32 = map_radius as i32;
 
     let center = Point { x: (world.map.width / 2) as i32, y: (world.map.height / 2) as i32 };
@@ -311,12 +310,53 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
         }
     }
 
+    // Place guards near interesting doors
     {
         let placement = find_interesting_guard_positions(world, spawn_map, rng);
         for (pos, facing) in placement {
-            let result = world.create_light_guard(pos, facing);
+            let distance_to_center = chebyshev(pos, center);
+            if distance_to_center < center_zone_radius {
+                continue;
+            }
+            let result = if distance_to_center < inner_zone_radius {
+                let random = rng.range(0, 10);
+                if random < 5 {
+                    world.create_light_guard(pos, facing)
+                } else if random < 7 {
+                    world.create_riot_guard(pos, facing)
+                } else if random < 9 {
+                    world.create_medium_guard(pos, facing)
+                } else {
+                    world.create_flamer_guard(pos, facing)
+                }
+            }
+            else if distance_to_center < middle_zone_radius {
+                let random = rng.range(0, 10);
+                if random < 5 {
+                    world.create_medium_guard(pos, facing)
+                } else if random < 7 {
+                    world.create_riot_guard(pos, facing)
+                } else if random < 9 {
+                    world.create_heavy_guard(pos, facing)
+                } else {
+                    world.create_flamer_guard(pos, facing)
+                }
+            }
+            else {
+                let random = rng.range(0, 10);
+                if random < 8 {
+                    world.create_heavy_guard(pos, facing)
+                } else {
+                    world.create_rocket_guard(pos, facing)
+                }
+            };
+            
             match result {
-                Ok(_) => enemy_count += 1,
+                Ok(_) => {
+                    let profile = Profile::Guard { anchor: pos, combat_tactic: CombatTactic::Hold };
+                    let ai = AI::Actor(ActorAI::new(profile));
+                    enemy_count += 1;
+                },
                 Err(e) => print!("{}", e.message)
             }
         }
