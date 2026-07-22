@@ -1,4 +1,5 @@
 use rltk::{Point, RandomNumberGenerator};
+use serde_json::map;
 use std::collections::HashMap;
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE};
 use crate::item::MakeItem;
@@ -248,9 +249,84 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
     println!("Placed {} total items", total_items_placed);
 }
 
+pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
+    assert!(world.map.width == world.map.height);
+    const ENEMY_SPARSITY: i32 = 200;
+    
+    let map_radius = world.map.width / 2;
+    assert!(map_radius > 15);
+
+    /// Radius of circle with no random enemy spawns
+    let center_zone_radius: i32 = 15;
+    /// Radius of inner zone - easy guards
+    let inner_zone_radius: i32 = map_radius as i32 / 3 + 5;
+    /// Radius of middle zone - varied guards
+    let middle_zone_radius: i32 = 2 * map_radius as i32 / 3 + 10;
+    /// Radius of outer zone - difficult guards
+    let outer_zone_radius: i32 = map_radius as i32;
+
+    let center = Point { x: (world.map.width / 2) as i32, y: (world.map.height / 2) as i32 };
+
+    let inner_area = inner_zone_radius * inner_zone_radius - center_zone_radius * center_zone_radius;
+    let middle_area = middle_zone_radius * middle_zone_radius - inner_zone_radius * inner_zone_radius;
+    let outer_area = outer_zone_radius * outer_zone_radius - middle_zone_radius * middle_zone_radius;
+
+    println!("Map radii: center: {} inner: {} middle: {} outer: {}",
+        center_zone_radius,
+        inner_zone_radius,
+        middle_zone_radius,
+        outer_zone_radius);
+    println!("Map areas: center: {} inner: {} middle: {} outer: {}",
+        center_zone_radius*center_zone_radius,
+        inner_area,
+        middle_area,
+        outer_area);
+
+    {
+        for _ in 0..(inner_area / ENEMY_SPARSITY) {
+            let pos = find_enemy_placement(world, spawn_map, center_zone_radius, inner_zone_radius, rng);
+            let result = world.create_light_guard(center + pos, Direction::Up);
+            if result.is_err() {
+                println!("Error placing guard");
+            }
+        }
+        for _ in 0..(middle_area / ENEMY_SPARSITY) {
+            let pos = find_enemy_placement(world, spawn_map, inner_zone_radius, middle_zone_radius, rng);
+            let result = world.create_medium_guard(center + pos, Direction::Up);
+            if result.is_err() {
+                println!("Error placing guard");
+            }
+        }
+        for _ in 0..(outer_area / ENEMY_SPARSITY) {
+            let pos = find_enemy_placement(world, spawn_map, middle_zone_radius, outer_zone_radius, rng);
+            let result = world.create_heavy_guard(center + pos, Direction::Up);
+            if result.is_err() {
+                println!("Error placing guard");
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+fn find_enemy_placement(
+    world: &mut World,
+    spawn_map: &SpawnMap,
+    inner_radius: i32,
+    outer_radius: i32,
+    rng: &mut RandomNumberGenerator
+) -> Point {
+    let mut x: i32 = 0;
+    let mut y: i32 = 0;
+    assert!(inner_radius < outer_radius);
+    while x.abs() < inner_radius && y.abs() < inner_radius {
+        x = rng.range(-outer_radius, outer_radius);
+        y = rng.range(-outer_radius, outer_radius);
+    }
+    Point {x, y}
+}
 
 /// Returns number of placed items
 fn place_items_in_rooms(

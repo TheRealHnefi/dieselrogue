@@ -316,12 +316,12 @@ impl Map {
         return map;
     }
 
-    pub fn new_empty_map(map_width: usize, map_height: usize) -> Map {
-        let tile_count = map_width * map_height;
+    pub fn new_empty_map(map_size: usize) -> Map {
+        let tile_count = map_size * map_size;
         Map {
             tiles: vec![TileType::Ground; tile_count],
-            width: map_width,
-            height: map_height,
+            width: map_size,
+            height: map_size,
             revealed_tiles: vec![false; tile_count],
             visible_tiles: vec![false; tile_count],
             pawns: vec![None; tile_count],
@@ -523,10 +523,6 @@ impl Map {
         !self.blocked(x, y)
     }
 
-    pub fn dimensions(&self) -> Point {
-        Point::new(self.width, self.height)
-    }
-
     pub fn is_opaque(&self, index: usize) -> bool {
         match self.tiles[index] {
             TileType::Wall => true,
@@ -574,7 +570,7 @@ mod tests {
 
     #[test]
     fn undemanded_fields_are_evicted_past_ttl() {
-        let mut map = Map::new_empty_map(30, 30);
+        let mut map = Map::new_empty_map(30);
         let goal = map.xy_idx(10, 10);
         map.ensure_field(goal);
         assert!(map.field_for(goal).is_some());
@@ -588,7 +584,7 @@ mod tests {
 
     #[test]
     fn demanded_fields_survive_eviction() {
-        let mut map = Map::new_empty_map(30, 30);
+        let mut map = Map::new_empty_map(30);
         let goal = map.xy_idx(10, 10);
         map.ensure_field(goal);
         let demanded: HashSet<usize> = std::iter::once(goal).collect();
@@ -598,7 +594,7 @@ mod tests {
 
     #[test]
     fn invalidate_clears_all_fields() {
-        let mut map = Map::new_empty_map(30, 30);
+        let mut map = Map::new_empty_map(30);
         let a = map.xy_idx(10, 10);
         let b = map.xy_idx(20, 20);
         map.ensure_field(a);
@@ -610,7 +606,7 @@ mod tests {
 
     #[test]
     fn bounded_field_limits_reach() {
-        let mut map = Map::new_empty_map(80, 80);
+        let mut map = Map::new_empty_map(80);
         let goal = map.xy_idx(40, 40);
         map.ensure_field_bounded(goal, 100); // ~10 orthogonal steps
         let near = map.xy_idx(43, 40); // cost 30 <= 100: inside the horizon
