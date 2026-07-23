@@ -7,25 +7,6 @@ use crate::item::MakeItem;
 // Public types
 // ---------------------------------------------------------------------------
 
-/// Semantic classification of a spawn candidate.
-#[derive(Clone, Copy, PartialEq)]
-pub enum SpawnCategory {
-    /// Exactly one passable cardinal neighbour — the end of a passage.
-    DeadEnd,
-    /// Three or more passable cardinal neighbours.
-    Junction,
-    /// All four cardinal neighbours are passable and the tile is inside a large region.
-    RoomInterior,
-}
-
-/// A single candidate position for placing an entity or item.
-#[derive(Clone)]
-pub struct SpawnPoint {
-    pub idx: usize,
-    pub pos: Point,
-    pub category: SpawnCategory,
-}
-
 /// A contiguous group of passable tiles (4-connected).
 #[derive(Clone)]
 pub struct Region {
@@ -66,8 +47,6 @@ pub struct RegionBoundary {
 pub struct SpawnMap {
     /// tile index to region index. None for walls, fences and doors.
     pub tile_region: Vec<Option<usize>>,
-    /// Admissible spawn points
-    pub spawn_points: Vec<SpawnPoint>,
     /// Discrete regions for spawn logic
     pub regions: Vec<Region>,
     /// Boundaries between regions
@@ -87,28 +66,6 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
     for (ri, region) in regions.iter().enumerate() {
         for &idx in &region.tiles {
             tile_region[idx] = Some(ri);
-        }
-    }
-
-    let mut spawn_points = Vec::new();
-    for idx in 0..map.width * map.height {
-        if !tile_passable(map.tiles[idx]) {
-            continue;
-        }
-        let degree = cardinal_passable_count(map, idx);
-        let in_room = tile_region[idx]
-            .map(|ri| regions[ri].is_room)
-            .unwrap_or(false);
-
-        let category = match degree {
-            1 => Some(SpawnCategory::DeadEnd),
-            4 if in_room => Some(SpawnCategory::RoomInterior),
-            3..=4 => Some(SpawnCategory::Junction),
-            _ => None,
-        };
-
-        if let Some(category) = category {
-            spawn_points.push(SpawnPoint { idx, pos: map.idx_pos(idx), category });
         }
     }
 
@@ -149,18 +106,7 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
 
     #[cfg(debug_assertions)]
     {
-        let mut junctions = 0;
-        let mut deadends = 0;
-        let mut interiors = 0;
-        for p in &spawn_points {
-            match p.category {
-                SpawnCategory::DeadEnd => deadends += 1,
-                SpawnCategory::Junction => junctions += 1,
-                SpawnCategory::RoomInterior => interiors += 1
-            }
-        }
         println!("== Spawn analysis ==");
-        println!("   Found {} dead ends, {} junctions, {} room interiors, {} total", deadends, junctions, interiors, spawn_points.len());
         println!("   Found {} regions, smallest is {} tiles, biggest is {} tiles",
             regions.len(),
             regions.iter().min_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len(),
@@ -171,7 +117,7 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
         println!("== End spawn analysis ==");
     }
 
-    SpawnMap { tile_region, spawn_points, regions, boundaries }
+    SpawnMap { tile_region, regions, boundaries }
 }
 
 pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
@@ -291,7 +237,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     // Naive guard placement for testing
     if false {
         for _ in 0..(inner_area / ENEMY_SPARSITY) {
-            let pos = naive_enemy_placement(world, spawn_map, center_zone_radius, inner_zone_radius, rng);
+            let pos = naive_enemy_placement(center_zone_radius, inner_zone_radius, rng);
             let result = world.create_light_guard(center + pos, Direction::Up);
             match result {
                 Ok(_) => enemy_count += 1,
@@ -299,7 +245,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
             }
         }
         for _ in 0..(middle_area / ENEMY_SPARSITY) {
-            let pos = naive_enemy_placement(world, spawn_map, inner_zone_radius, middle_zone_radius, rng);
+            let pos = naive_enemy_placement(inner_zone_radius, middle_zone_radius, rng);
             let result = world.create_medium_guard(center + pos, Direction::Up);
             match result {
                 Ok(_) => enemy_count += 1,
@@ -307,7 +253,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
             }
         }
         for _ in 0..(outer_area / ENEMY_SPARSITY) {
-            let pos = naive_enemy_placement(world, spawn_map, middle_zone_radius, outer_zone_radius, rng);
+            let pos = naive_enemy_placement(middle_zone_radius, outer_zone_radius, rng);
             let result = world.create_heavy_guard(center + pos, Direction::Up);
             match result {
                 Ok(_) => enemy_count += 1,
@@ -471,8 +417,6 @@ fn find_interesting_guard_positions(
 }
 
 fn naive_enemy_placement(
-    world: &mut World,
-    spawn_map: &SpawnMap,
     inner_radius: i32,
     outer_radius: i32,
     rng: &mut RandomNumberGenerator
@@ -761,42 +705,10 @@ fn doorway_run(map: &Map, sx: i32, sy: i32, dx: i32, dy: i32) -> usize {
 // World population passes
 // ---------------------------------------------------------------------------
 
-const GUARD_DENSITY: f32 = 0.5;
 const KEY_COPIES_PER_COLOR: usize = 3;
 
 fn chebyshev(a: Point, b: Point) -> i32 {
     (a.x - b.x).abs().max((a.y - b.y).abs())
-}
-
-fn guard_too_close(pos: Point, placed: &[Point], min_dist: i32) -> bool {
-    placed.iter().any(|&p| chebyshev(pos, p) < min_dist)
-}
-
-fn dir_toward(from: Point, to: Point) -> Direction {
-    let dx = (to.x - from.x).signum();
-    let dy = (to.y - from.y).signum();
-    match (dx, dy) {
-        ( 0, -1) => Direction::Up,
-        ( 1, -1) => Direction::UpRight,
-        ( 1,  0) => Direction::Right,
-        ( 1,  1) => Direction::DownRight,
-        ( 0,  1) => Direction::Down,
-        (-1,  1) => Direction::DownLeft,
-        (-1,  0) => Direction::Left,
-        (-1, -1) => Direction::UpLeft,
-        _        => Direction::Up,
-    }
-}
-
-fn fy_shuffle<T>(v: &mut Vec<T>, rng: &mut RandomNumberGenerator) {
-    for i in (1..v.len()).rev() {
-        let j = rng.range(0, (i + 1) as i32) as usize;
-        v.swap(i, j);
-    }
-}
-
-fn is_spawnable(tile: TileType) -> bool {
-    matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
 }
 
 /// BFS over the region graph treating locked doors (whose color is not in `unlocked`) as
