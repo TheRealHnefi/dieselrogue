@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn field_descends_to_goal_on_open_terrain() {
-        let map = Map::new_empty_map(12, 12);
+        let map = Map::new_empty_map(12);
         let goal = map.xy_idx(6, 6);
         let field = build_field(goal, &map);
         assert_eq!(walk(&field, &map, map.xy_idx(2, 2), goal), Some(4)); // Chebyshev distance (diagonals allowed)
@@ -358,7 +358,7 @@ mod tests {
 
     #[test]
     fn field_routes_around_wall() {
-        let mut map = Map::new_empty_map(12, 12);
+        let mut map = Map::new_empty_map(12);
         // Vertical wall at x=6 spanning y=1..=9, leaving a detour open at the
         // bottom (y=10, y=11) between the start (left) and goal (right).
         for y in 1..10 {
@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn field_reports_unreachable_goal() {
-        let mut map = Map::new_empty_map(12, 12);
+        let mut map = Map::new_empty_map(12);
         // Full vertical wall at x=6 splits the interior in two (no detour).
         for y in 1..12 {
             let idx = map.xy_idx(6, y);

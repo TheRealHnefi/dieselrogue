@@ -333,7 +333,7 @@ impl Map {
         }
     }
 
-    /// Append a patrol route and return its id. Used for ad-hoc / test routes.
+    /// Append a patrol route and return its id.
     pub fn register_patrol_route(&mut self, route: Vec<Point>) -> usize {
         self.patrol_routes.push(route);
         self.patrol_routes.len() - 1
@@ -482,8 +482,7 @@ impl Map {
     }
 
     /// Neighbours passable over static terrain, ignoring pawn occupancy.
-    /// Used to build resident [`DistField`]s that stay valid as
-    /// entities move. Costs mirror [`Map::get_available_exits`].
+    /// Costs mirror [`Map::get_available_exits`].
     pub fn terrain_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
         let mut exits = rltk::SmallVec::new();
         let x = idx as i32 % self.width as i32;
