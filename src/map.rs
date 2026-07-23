@@ -6,7 +6,55 @@ use crate::item::Item;
 use crate::tile::TileType;
 use crate::block::*;
 use crate::DistField;
+use crate::spawn::{SpawnMap, Region};
 use super::{GameError, Error};
+
+/// Patrol-route generation strategy chosen at map creation.
+pub enum PatrolStyle {
+    /// Road- and door-following routes for gameplay maps.
+    Roads,
+    /// Concentric placeholder rings for the AI benchmark map.
+    Rings,
+}
+
+/// Greedily collapse points within `radius` (Chebyshev) into one representative,
+/// keeping the distinct-waypoint count (and thus pinned flow fields) low.
+fn cluster_points(points: &[Point], radius: i32) -> Vec<Point> {
+    let mut reps: Vec<Point> = Vec::new();
+    for &p in points {
+        if reps.iter().all(|&r| (r.x - p.x).abs().max((r.y - p.y).abs()) > radius) {
+            reps.push(p);
+        }
+    }
+    reps
+}
+
+/// Evenly subsample down to `max` points, preserving spread.
+fn cap_waypoints(waypoints: &mut Vec<Point>, max: usize) {
+    if waypoints.len() <= max || max == 0 { return; }
+    let step = waypoints.len() as f32 / max as f32;
+    *waypoints = (0..max).map(|i| waypoints[(i as f32 * step) as usize]).collect();
+}
+
+/// Reorder into a greedy nearest-neighbour chain for a sensible walking order.
+fn order_nearest_neighbour(waypoints: &mut Vec<Point>) {
+    let n = waypoints.len();
+    for i in 1..n {
+        let prev = waypoints[i - 1];
+        let best = (i..n).min_by_key(|&j| {
+            let (dx, dy) = (waypoints[j].x - prev.x, waypoints[j].y - prev.y);
+            dx * dx + dy * dy
+        }).unwrap_or(i);
+        waypoints.swap(i, best);
+    }
+}
+
+/// Split an ordered waypoint list into up to `count` contiguous routes.
+fn split_routes(waypoints: &[Point], count: usize) -> Vec<Vec<Point>> {
+    let count = count.clamp(1, waypoints.len().max(1));
+    let per = (waypoints.len() + count - 1) / count;
+    waypoints.chunks(per.max(1)).map(|c| c.to_vec()).collect()
+}
 
 /// Resident cache of flow fields keyed by goal tile index, with turn-based
 /// eviction so dynamic goals (investigation / last-known cells) don't accumulate
@@ -272,7 +320,9 @@ impl Map {
         });
     }
 
-    pub fn new_game_map(size_in_blocks: usize, rng: &mut RandomNumberGenerator) -> Map {
+    /// Generate a gameplay map and its spawn analysis together. Patrol routes
+    /// depend on the analysis, so both are built here and returned as a pair.
+    pub fn new_game_map(size_in_blocks: usize, rng: &mut RandomNumberGenerator, style: PatrolStyle) -> (Map, SpawnMap) {
         println!("Generating map");
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
@@ -288,7 +338,7 @@ impl Map {
           fov_blocked: vec![false; tile_count],
           nav_fields: NavFieldCache::new(),
           patrol_routes: Vec::new(),
-          use_flow_fields: false,
+          use_flow_fields: true,
         };
 
         let mut generated_blocks = generate_block_grid(size_in_blocks, rng);
@@ -309,11 +359,18 @@ impl Map {
           }
         }
 
-        map.build_patrol_rings();
+        // Start tile mirrors the player's central spawn; feeds region depth analysis.
+        let start = map.snap_to_walkable(Point::new(map_width as i32 / 2, map_height as i32 / 2));
+        let spawn_map = crate::create_spawn_map(&map, map.pos_idx(start));
+
+        match style {
+            PatrolStyle::Roads => map.create_patrol_routes(&spawn_map, rng),
+            PatrolStyle::Rings => map.build_patrol_rings(),
+        }
         if map.use_flow_fields {
             map.prebuild_patrol_fields();
         }
-        return map;
+        (map, spawn_map)
     }
 
     pub fn new_empty_map(map_size: usize) -> Map {
@@ -356,10 +413,9 @@ impl Map {
         }
     }
 
-    /// Build the default shared patrol routes: concentric rectangular rings
-    /// centred on the map, from a ~100-tile-wide innermost ring out toward the
-    /// edges.
-    /// TODO: Update this to generate more interesting patrol routes.
+    /// Concentric rectangular rings centred on the map, from a ~100-tile-wide
+    /// innermost ring out toward the edges. Uniform, predictable geometry for the
+    /// AI benchmark map; gameplay maps use [`Map::create_patrol_routes`] instead.
     fn build_patrol_rings(&mut self) {
         const NUM_RINGS:   usize = 4;
         const INNER_WIDTH: i32   = 100; // narrowest ring spans ~100 tiles
@@ -384,6 +440,92 @@ impl Map {
             let route: Vec<Point> = corners.iter().map(|&c| self.snap_to_walkable(c)).collect();
             self.patrol_routes.push(route);
         }
+    }
+
+    /// Build gameplay patrol routes for large regions: road/door transitions for
+    /// outdoor regions, doorway-to-doorway loops for indoor ones. Route and
+    /// waypoint counts are bounded so each pinned full-map flow field stays cheap.
+    fn create_patrol_routes(&mut self, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
+        const MIN_REGION_TILES: usize = 1024;
+        const TILES_PER_ROUTE:  usize = 40_000;
+        const MAX_ROUTES:       usize = 8;
+        const MAX_WAYPOINTS:    usize = 6;
+
+        // rng reserved for future jitter; deterministic layout for now.
+        let _ = rng;
+
+        for (ri, region) in spawn_map.regions.iter().enumerate() {
+            if region.tiles.len() < MIN_REGION_TILES { continue; }
+
+            let mut waypoints = if region.is_room {
+                self.door_waypoints(ri, spawn_map)
+            } else {
+                self.road_waypoints(region)
+            };
+            if waypoints.len() < 2 { continue; }
+
+            let route_count = (region.tiles.len() / TILES_PER_ROUTE).clamp(1, MAX_ROUTES);
+            cap_waypoints(&mut waypoints, route_count * MAX_WAYPOINTS);
+            order_nearest_neighbour(&mut waypoints);
+
+            for chunk in split_routes(&waypoints, route_count) {
+                if chunk.len() >= 2 {
+                    self.register_patrol_route(chunk);
+                }
+            }
+        }
+
+        #[cfg(debug_assertions)]
+        println!("Created {} patrol routes", self.patrol_routes.len());
+    }
+
+    /// Waypoints for an outdoor region: road tiles that transition into a doorway
+    /// or terminate into open ground, clustered to one point per site.
+    fn road_waypoints(&self, region: &Region) -> Vec<Point> {
+        const ROAD_WIDTH: i32 = 6;
+        let candidates: Vec<Point> = region.tiles.iter()
+            .map(|&idx| self.idx_pos(idx))
+            .filter(|&p| self.tile_at(p.x, p.y) == Some(TileType::Road))
+            .filter(|&p| self.is_road_transition(p, ROAD_WIDTH))
+            .collect();
+        cluster_points(&candidates, ROAD_WIDTH)
+    }
+
+    /// True if road tile `p` is a doorway approach or a road end-cap. Ground on
+    /// one side alone marks a road's flank too; an end-cap additionally has road
+    /// running `road_width` deep the opposite way (crossing the width hits ground
+    /// within that span, running down the length does not).
+    fn is_road_transition(&self, p: Point, road_width: i32) -> bool {
+        const DIRS: [(i32, i32); 4] = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+        for (dx, dy) in DIRS {
+            match self.tile_at(p.x + dx, p.y + dy) {
+                Some(TileType::Doorway) => return true,
+                Some(TileType::Ground) => {
+                    let deep = (1..=road_width).all(|step|
+                        self.tile_at(p.x - dx * step, p.y - dy * step) == Some(TileType::Road));
+                    if deep { return true; }
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    /// Waypoints for an indoor region: the middle doorway tile of each boundary.
+    fn door_waypoints(&self, region_idx: usize, spawn_map: &SpawnMap) -> Vec<Point> {
+        spawn_map.boundaries.iter()
+            .filter(|b| b.region_a == region_idx || b.region_b == region_idx)
+            .filter(|b| !b.door_tiles.is_empty())
+            .map(|b| self.idx_pos(b.door_tiles[b.door_tiles.len() / 2]))
+            .collect()
+    }
+
+    /// Bounds-checked tile lookup; `None` when off-map.
+    fn tile_at(&self, x: i32, y: i32) -> Option<TileType> {
+        if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
+            return None;
+        }
+        Some(self.tiles[self.xy_idx(x, y)])
     }
 
     /// Nearest walkable-terrain tile to `p` via an expanding ring search. Falls

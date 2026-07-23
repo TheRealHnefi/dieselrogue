@@ -33,8 +33,9 @@ impl World {
     /// Create new world.
     /// # Arguments
     /// * `size` - Number of blocks that make up one size of the map.
-    pub fn new(size: usize, seed: u64) -> Self {
+    pub fn new(size: usize, seed: u64, patrol_style: PatrolStyle) -> Self {
         let mut rng = RandomNumberGenerator::seeded(seed);
+        let (map, spawn_map) = Map::new_game_map(size, &mut rng, patrol_style);
         let mut world = World {
             player_id: Option::None,
             player_xp: 0,
@@ -47,7 +48,7 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
-            map: Map::new_game_map(size, &mut rng),
+            map,
             debug_mode: false,
             parallel_ai: true,
         };
@@ -65,9 +66,8 @@ impl World {
             .map(|p| world.map.pos_idx(p.position))
             .unwrap_or_else(|_| world.map.xy_idx(
                 (world.map.width / 2) as i32, (world.map.height / 2) as i32));
-        // Topology analysis — run once, shared by all placement passes.
-        let spawn_map = create_spawn_map(&world.map, player_tile);
-        
+        // Topology analysis was computed alongside the map (shared by all passes).
+
         if true {
             let boundary_colors = world.assign_door_colors(&spawn_map);
             let start_region = spawn_map.tile_region[player_tile].unwrap_or(0);
@@ -2039,7 +2039,7 @@ mod tests {
     }
 
     fn bench_run(label: &str, size: usize, target: usize, ticks: usize, warmup: usize, use_fields: bool, parallel: bool, scenario: BenchScenario) {
-        let mut world = World::new(size, 1);
+        let mut world = World::new(size, 1, PatrolStyle::Rings);
         world.parallel_ai = parallel;
         world.map.use_flow_fields = use_fields;
 
