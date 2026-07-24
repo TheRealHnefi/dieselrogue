@@ -30,11 +30,11 @@ fn cluster_points(points: &[Point], radius: i32) -> Vec<Point> {
 }
 
 /// Evenly subsample down to `max` points, preserving spread.
-fn cap_waypoints(waypoints: &mut Vec<Point>, max: usize) {
-    if waypoints.len() <= max || max == 0 { return; }
-    let step = waypoints.len() as f32 / max as f32;
-    *waypoints = (0..max).map(|i| waypoints[(i as f32 * step) as usize]).collect();
-}
+// fn cap_waypoints(waypoints: &mut Vec<Point>, max: usize) {
+//     if waypoints.len() <= max || max == 0 { return; }
+//     let step = waypoints.len() as f32 / max as f32;
+//     *waypoints = (0..max).map(|i| waypoints[(i as f32 * step) as usize]).collect();
+// }
 
 /// Reorder into a greedy nearest-neighbour chain for a sensible walking order.
 fn order_nearest_neighbour(waypoints: &mut Vec<Point>) {
@@ -456,7 +456,7 @@ impl Map {
         const MIN_REGION_TILES: usize = 1024;
         const TILES_PER_ROUTE:  usize = 40_000;
         const MAX_ROUTES:       usize = 8;
-        const MAX_WAYPOINTS:    usize = 6;
+        //const MAX_WAYPOINTS:    usize = 6;
 
         // rng reserved for future jitter; deterministic layout for now.
         let _ = rng;
