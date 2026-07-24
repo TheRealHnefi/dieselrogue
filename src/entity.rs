@@ -544,6 +544,14 @@ impl Entity {
         self.body.resolve_status_effects();
         effects
     }
+
+    pub fn get_primary_weapon(&self) -> Option<&Item> {
+        let mut primary_weapon = self.body.get_item(SlotType::PrimaryHand);
+        if primary_weapon.is_none() {
+            primary_weapon = self.body.get_item(SlotType::TurretMount);
+        }
+        primary_weapon
+    }
 }
 
 
