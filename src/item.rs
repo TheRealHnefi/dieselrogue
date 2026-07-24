@@ -30,6 +30,7 @@ pub type MakeItem = fn() -> Item;
 /// Which fire actions a firearm exposes in the equip menu.
 enum FireMode {
     Single,           // aim + fire shot
+    SingleScoped,     // aim + + fire shot + recon
     Burst,            // aim + fire burst (no single shot)
     SingleAndBurst,   // aim + fire shot + fire burst
     Rocket,           // aim + fire rocket
@@ -75,6 +76,9 @@ impl Item {
     }
     pub fn assault_rifle() -> Self {
         Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 12, rarity: 2 })
+    }
+    pub fn sniper_rifle() -> Self {
+        Item::make_firearm(FirearmDef { name: "Sniper rifle",        glyph: 'R', fire_mode: FireMode::SingleScoped,    two_handed: true,  ammo: 5,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 10), range: 35, rarity: 2 })
     }
     pub fn machinegun() -> Self {
         Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
@@ -436,6 +440,7 @@ impl Item {
         let mut equip_actions = vec![Item::reload_action()];
         equip_actions.extend(match def.fire_mode {
             FireMode::Single         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action()],
+            FireMode::SingleScoped   => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action(), Item::recon_action()],
             FireMode::Burst          => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_burst_action()],
             FireMode::SingleAndBurst => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action(), Item::fire_burst_action()],
             FireMode::Rocket         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_rocket_action()],

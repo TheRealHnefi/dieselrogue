@@ -144,6 +144,7 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         Item::stimpack,
     ];
     let exceptional_pool: &[MakeItem] = &[
+        Item::sniper_rifle,
         Item::multi_rocket_launcher,
         Item::shock_cannon,
         Item::rocket_boots,
@@ -263,7 +264,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     }
 
     // Place guards near interesting doors
-    if false {
+    if true {
         let placement = find_interesting_guard_positions(world, spawn_map, rng);
         for (pos, facing) in placement {
             let distance_to_center = chebyshev(pos, center);
@@ -316,7 +317,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     }
 
     // Patrol routes are built during map generation (see Map::create_patrol_routes).
-    enemy_count += place_patrolling_enemies(world, spawn_map, rng);
+    enemy_count += place_patrolling_enemies(world, spawn_map, center, inner_zone_radius, middle_zone_radius, rng);
 
     #[cfg(debug_assertions)]
     println!("Placed {} enemies", enemy_count);
@@ -328,13 +329,27 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
 fn place_patrolling_enemies(
     world: &mut World,
     spawn_map: &SpawnMap,
+    center: Point,
+    inner_radius: i32,
+    middle_radius: i32,
     rng: &mut RandomNumberGenerator
 ) -> usize {
     let mut enemies = 0;
+
     for route_idx in 0..world.map.patrol_routes.len() {
         for wp_idx in 0..world.map.patrol_routes[route_idx].len() {
             let ai_profile = Profile::Patrol { route_id: route_idx, waypoint_index: wp_idx, combat_tactic: CombatTactic::Pursue };
-            match world.create_flamer_guard(world.map.patrol_routes[route_idx][wp_idx], Direction::Down) {
+            let distance = chebyshev(center, world.map.patrol_routes[route_idx][wp_idx]);
+            let result = 
+                if distance < inner_radius {
+                    world.create_light_guard(world.map.patrol_routes[route_idx][wp_idx], Direction::Down)
+                } else if distance < middle_radius {
+                    world.create_medium_guard(world.map.patrol_routes[route_idx][wp_idx], Direction::Down)
+                } else {
+                    world.create_heavy_guard(world.map.patrol_routes[route_idx][wp_idx], Direction::Down)
+                };
+
+            match result {
                 Ok(idx) => {
                     world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
                     enemies += 1;
