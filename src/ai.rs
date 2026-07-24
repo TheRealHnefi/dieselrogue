@@ -1,4 +1,5 @@
 use rltk::Point;
+use crate::ActionSource::InventoryItem;
 use crate::Map;
 use crate::{navigate_cached, greedy_step};
 use crate::Entity;
@@ -55,6 +56,7 @@ fn most_urgent(left: Option<Perception>, right: Option<Perception>) -> Option<Pe
 #[derive(Clone, Copy, Debug)]
 enum Decision {
     Idle,
+    GetReadyForCombat,
     GoTo   { dest: Point, tolerance: u32, field: FieldPref },
     Face   { toward: Point },
     Flee   { threat: Point },
@@ -392,18 +394,35 @@ impl ActorAI {
                 Profile::Guard { anchor, .. } =>
                     Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap },
             },
-            AlertLevel::Suspicious { origin, .. } =>
-                Decision::GoTo { dest: *origin, tolerance: 0, field: FieldPref::Bounded },
-            AlertLevel::Alert { last_known, search } => match search {
-                SearchBehavior::HoldAndWatch    => Decision::Face { toward: *last_known },
-                SearchBehavior::MoveToLastKnown =>
-                    Decision::GoTo { dest: *last_known, tolerance: 0, field: FieldPref::Bounded },
-                SearchBehavior::Flank           =>
-                    Decision::GoTo { dest: self.flank_destination(entity.position, *last_known, map), tolerance: 0, field: FieldPref::None },
+            AlertLevel::Suspicious { origin, .. } => {
+                if !self.is_combat_ready(entity, map) {
+                    Decision::GetReadyForCombat
+                } else {
+                    Decision::GoTo { dest: *origin, tolerance: 0, field: FieldPref::Bounded }
+                }
+            },
+            AlertLevel::Alert { last_known, search } => {
+                if !self.is_combat_ready(entity, map) {
+                    Decision::GetReadyForCombat
+                } else {
+                    match search {
+                        SearchBehavior::HoldAndWatch    => Decision::Face { toward: *last_known },
+                        SearchBehavior::MoveToLastKnown =>
+                            Decision::GoTo { dest: *last_known, tolerance: 0, field: FieldPref::Bounded },
+                        SearchBehavior::Flank           =>
+                            Decision::GoTo { dest: self.flank_destination(entity.position, *last_known, map), tolerance: 0, field: FieldPref::None }
+                    }
+                }
             },
             AlertLevel::Combat { target_id, last_seen } => match self.profile.combat_tactic() {
                 CombatTactic::Flee => Decision::Flee { threat: *last_seen },
-                _                  => Decision::Engage { target_id: *target_id, last_seen: *last_seen },
+                _                  => {
+                    if !self.is_combat_ready(entity, map) {
+                        Decision::GetReadyForCombat
+                    } else {
+                        Decision::Engage { target_id: *target_id, last_seen: *last_seen }
+                    }
+                }
             },
         }
     }
@@ -412,6 +431,14 @@ impl ActorAI {
     fn execute(&mut self, entity: &Entity, map: &Map, entities: &[Entity], decision: Decision) -> Option<Intent> {
         match decision {
             Decision::Idle => None,
+            Decision::GetReadyForCombat => {
+                let weapons = self.equippable_weapons(entity, map);
+                if weapons.len() > 0 {
+                    Some(build_intent(weapons[0].0, Some(InventoryItem(weapons[0].1.clone())), Resolution::None))
+                } else {
+                    None
+                }
+            },
             Decision::GoTo { dest, tolerance, .. } => self.navigate_to(entity, dest, map, entities, tolerance),
             Decision::Face { toward } => face_intent(entity, toward),
             Decision::Flee { threat } => {
@@ -594,13 +621,13 @@ impl ActorAI {
         false
     }
 
-    fn equippable_weapons<'a>(&self, entity: &'a Entity, map: &'a Map) -> Vec<&'a Item> {
+    fn equippable_weapons<'a>(&self, entity: &'a Entity, map: &'a Map) -> Vec<(&'a EntityAction, &'a Item)> {
         let mut retval = vec!();
         for (action, item) in entity.get_available_inventory_actions(map) {
             match action.id {
                 ActionId::Equip => {
                     match item.kind {
-                        ItemKind::Firearm { ammo, .. } if ammo >= 1 => retval.push(item),
+                        ItemKind::Firearm { ammo, .. } if ammo >= 1 => retval.push((action, item)),
                         _ => ()
                     }
                 },
