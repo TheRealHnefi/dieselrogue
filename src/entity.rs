@@ -300,10 +300,11 @@ impl Entity {
             .find(|i| i.id == item_id)
     }
 
-    /// Returns all actions currently available to `entity`: equipped-item actions
+    /// Returns actions currently available to `entity`: equipped-item actions
     /// whose preconditions pass, followed by innate actions whose preconditions pass.
     /// `Option<SlotType>` is `Some(slot)` for equipped actions, `None` for innate ones.
     /// This is the authoritative source used by both the player menu and the AI.
+    /// Inventory actions skipped for now.
     pub fn get_available_actions<'a>(&'a self, map: &Map) -> Vec<(&'a EntityAction, Option<SlotType>)> {
         let mut result = Vec::new();
         for slot in &self.body.item_slots {
@@ -318,6 +319,42 @@ impl Entity {
         for action in &self.innate_actions {
             if (action.precondition)(self, map, None) {
                 result.push((action, None));
+            }
+        }
+        result
+    }
+
+    pub fn get_available_equipment_actions<'a>(&'a self, map: &Map) -> Vec<(&'a EntityAction, SlotType)> {
+        let mut result = Vec::new();
+        for slot in &self.body.item_slots {
+            let Some(item) = &slot.item else { continue };
+            if item.proxy { continue; }
+            for action in &item.equip_actions {
+                if (action.precondition)(self, map, Some(item)) {
+                    result.push((action, slot.slot_type));
+                }
+            }
+        }
+        result
+    }
+
+    pub fn get_available_inventory_actions<'a>(&'a self, map: &Map) -> Vec<(&'a EntityAction, &'a Item)> {
+        let mut result = Vec::new();
+        for item in &self.body.inventory {
+            for action in &item.inventory_actions {
+                if (action.precondition)(self, map, Some(item)) {
+                    result.push((action, item));
+                }
+            }
+        }
+        result
+    }
+
+    pub fn get_available_innate_actions<'a>(&'a self, map: &Map) -> Vec<&'a EntityAction> {
+        let mut result = Vec::new();
+        for action in &self.innate_actions {
+            if (action.precondition)(self, map, None) {
+                result.push(action);
             }
         }
         result
