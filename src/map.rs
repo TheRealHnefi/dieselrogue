@@ -399,6 +399,9 @@ impl Map {
     /// Pre-build a permanent (pinned) full-map flow field for every distinct
     /// patrol-route waypoint.
     fn prebuild_patrol_fields(&mut self) {
+        if !self.use_flow_fields {
+            return;
+        }
         let mut goals: Vec<usize> = self.patrol_routes.iter()
             .flatten()
             .map(|&p| self.pos_idx(p))
@@ -610,6 +613,9 @@ impl Map {
     /// static terrain if absent, flooding no further than `max_cost` (pass
     /// `u32::MAX` for full-map coverage).
     pub fn ensure_field_bounded(&mut self, goal: usize, max_cost: u32) {
+        if !self.use_flow_fields {
+            return;
+        }
         if !self.nav_fields.contains(goal) {
             let field = crate::build_field_bounded(goal, self, max_cost);
             self.nav_fields.insert(goal, field);
@@ -618,6 +624,9 @@ impl Map {
 
     /// The resident flow field toward `goal`, if one has been built.
     pub fn field_for(&self, goal: usize) -> Option<&DistField> {
+        if !self.use_flow_fields {
+            return None;
+        }
         self.nav_fields.get(goal)
     }
 
@@ -634,11 +643,17 @@ impl Map {
     /// fields whose goal went undemanded for more than `ttl` turns are dropped,
     /// and the cache is capped at `cap` entries (oldest survivors evicted first).
     pub fn evict_fields(&mut self, demanded: &HashSet<usize>, ttl: u32, cap: usize) {
+        if !self.use_flow_fields {
+            return;
+        }
         self.nav_fields.evict(demanded, ttl, cap);
     }
 
     /// Drop all resident flow fields. Call whenever terrain changes.
     pub fn invalidate_fields(&mut self) {
+        if !self.use_flow_fields {
+            return;
+        }
         self.nav_fields.clear();
     }
 
