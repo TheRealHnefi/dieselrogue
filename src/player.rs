@@ -8,7 +8,6 @@ use enum_iterator::IntoEnumIterator;
 #[derive(Clone, IntoEnumIterator, PartialEq)]
 pub enum Action {
     Examine,
-    Throw,
     Shoot
 }
 
@@ -70,7 +69,6 @@ pub fn valid_actions(ecs: &World, target: Entity) -> Result<Vec<Action>, ()> {
     for action in Action::into_enum_iter() {
         match action {
             Action::Examine => ret_val.push(action),
-            Action::Throw => (),
             Action::Shoot => {
                 for item in &*player_inventory.items {
                     let firearms = ecs.read_storage::<Firearm>();

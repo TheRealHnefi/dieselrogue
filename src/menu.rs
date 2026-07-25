@@ -62,11 +62,6 @@ impl Menu {
                     text: "(E) Examine".to_string(),
                     action: Menu::action_examine
                 }),
-                player::Action::Throw => rows.push(MenuRow {
-                    hotkey: VirtualKeyCode::T,
-                    text: "(T) Throw".to_string(),
-                    action: Menu::action_throw
-                }),
                 player::Action::Shoot => rows.push(MenuRow {
                     hotkey: VirtualKeyCode::S,
                     text: "(S) Shoot".to_string(),
@@ -118,12 +113,6 @@ impl Menu {
                 game_log.entries.push("Empty space".to_string());
             }
         }
-        return RunState::AwaitingInput;
-    }
-
-    pub fn action_throw(&self, ecs: &mut World) -> RunState {
-        let mut game_log = ecs.fetch_mut::<GameLog>();
-        game_log.entries.push("Oomph".to_string());
         return RunState::AwaitingInput;
     }
 

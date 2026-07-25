@@ -1,9 +1,47 @@
 use rltk::{RGB, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size};
+use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size, TileType, Renderable, LargeRenderable};
 use std::cmp::max;
 
-pub fn draw_ui(state: &mut State, context: &mut Rltk) {
+pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
+    draw_map(&state.ecs, context);
+
+    {
+        let positions = state.ecs.read_storage::<Position>();
+        let renderables = state.ecs.read_storage::<Renderable>();
+        let large_renderables = state.ecs.read_storage::<LargeRenderable>();
+        let sizes = state.ecs.read_storage::<Size>();
+        let map = state.ecs.fetch::<Map>();
+
+        // TODO: Unify these, for efficiency?
+        for (pos, render) in (&positions, &renderables).join() {
+            let idx = map.xy_idx(pos.x, pos.y);
+            if map.visible_tiles[idx] {
+                context.set(pos.x, pos.y, render.color, render.background, render.glyph);
+            }
+        }
+
+        for (pos, render, size) in (&positions, &large_renderables, &sizes).join() {
+            assert!(size.x * size.y == render.glyphs.len() as i32, "Size and glyphmap size differ for object");
+            for x in 0..size.x {
+                for y in 0..size.y {
+                    let idx = map.xy_idx(pos.x + x, pos.y + y);
+                    if map.visible_tiles[idx] {
+                        context.set(pos.x + x, pos.y + y, render.color, render.background, render.glyphs[(x + size.x * y) as usize]);
+                    }
+                }
+            }
+        }
+    }
+
+    draw_main_ui(state, context);
+}
+
+pub fn draw_inventory_screen(_state: &mut State, context: &mut Rltk) {
+    context.draw_box(0, 0, 79, 49, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+}
+
+pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
     let mut cursor_pos = state.ecs.fetch_mut::<Point>();
@@ -116,5 +154,56 @@ fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
 
     for (i, line) in contents.iter().enumerate() {
         context.print(left + 2, top + 1 + i as i32, line.to_string());
+    }
+}
+
+pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
+    let map = ecs.fetch::<Map>();
+
+    let mut y = 0;
+    let mut x = 0;
+    for (idx, tile) in map.tiles.iter().enumerate() {
+        if map.revealed_tiles[idx] {
+            let glyph;
+            let mut foreground;
+            match tile {
+                TileType::Floor => {
+                    glyph = rltk::to_cp437('.');
+                    foreground = RGB::from_f32(0.5, 1.0, 0.5);
+                }
+                TileType::Wall => {
+                    glyph = rltk::to_cp437('#');
+                    foreground = RGB::from_f32(0.0, 1.0, 0.0);
+                }
+            }
+            if !map.visible_tiles[idx] {
+                foreground = foreground.to_greyscale();
+            }
+            ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
+        }
+        x += 1;
+        if x >= map.width {
+            x = 0;
+            y += 1;
+        }
+    }
+}
+
+pub fn draw_menu(state: &State, context: &mut Rltk) {
+    for menu in &state.menu_stack {
+        let mut width = 0;
+        for row in &menu.rows {
+            if row.text.len() > width {
+                width = row.text.len();
+            }
+        }
+        context.draw_box(menu.x, menu.y, width + 3, menu.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+        for (i, row) in menu.rows.iter().enumerate() {
+            if menu.selected_row == i {
+                context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), row.text.to_string());
+            } else {
+                context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), row.text.to_string());
+            }
+        }
     }
 }

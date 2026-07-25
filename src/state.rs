@@ -1,4 +1,4 @@
-use rltk::{Rltk, GameState, Point, console, RGB};
+use rltk::{Rltk, GameState, Point, console};
 use specs::prelude::*;
 use super::*;
 use std::time::{Instant};
@@ -12,7 +12,8 @@ pub enum RunState {
     PlayerTurn,
     EnemyTurn,
     Saving,
-    Loading
+    Loading,
+    InventoryScreen
 }
 
 pub struct State {
@@ -61,41 +62,57 @@ impl GameState for State {
             RunState::PreRun => {
                 self.run_systems();
                 new_run_state = RunState::AwaitingInput;
+                draw_main_screen(self, context);
             },
             RunState::AwaitingInput => {
-                new_run_state = player_input(self, context);
+                new_run_state = main_screen_input(self, context);
+                draw_main_screen(self, context);
             },
             RunState::MenuInput => {
                 new_run_state = menu_input(self, context);
+                draw_main_screen(self, context);
             },
             RunState::TargetingInput => {
                 new_run_state = targeting_input(self, context);
+                draw_main_screen(self, context);
             }
             RunState::PlayerTurn => {
                 self.run_systems();
-                new_run_state = RunState::EnemyTurn;                
+                new_run_state = RunState::EnemyTurn;
+                draw_main_screen(self, context);
             },
             RunState::EnemyTurn => {
                 self.run_systems();
                 new_run_state = RunState::AwaitingInput;
+                draw_main_screen(self, context);
             },
             RunState::Saving => {
-                let result = saveload_system::save_game(&mut self.ecs);
-                let mut game_log = self.ecs.fetch_mut::<GameLog>();
-                match result {
-                    Ok(_) => game_log.entries.push("Game saved.".to_string()),
-                    Err(_) => game_log.entries.push("Game could not be saved.".to_string())
+                {
+                    let result = saveload_system::save_game(&mut self.ecs);
+                    let mut game_log = self.ecs.fetch_mut::<GameLog>();
+                    match result {
+                        Ok(_) => game_log.entries.push("Game saved.".to_string()),
+                        Err(_) => game_log.entries.push("Game could not be saved.".to_string())
+                    }
+                    new_run_state = RunState::AwaitingInput;
                 }
-                new_run_state = RunState::AwaitingInput;
-            }
+                draw_main_screen(self, context);
+            },
             RunState::Loading => {
-                let result = saveload_system::load_game(&mut self.ecs);
-                let mut game_log = self.ecs.fetch_mut::<GameLog>();
-                match result {
-                    Ok(_) => game_log.entries.push("Game loaded.".to_string()),
-                    Err(_) => game_log.entries.push("Game could not be loaded.".to_string())
+                {
+                    let result = saveload_system::load_game(&mut self.ecs);
+                    let mut game_log = self.ecs.fetch_mut::<GameLog>();
+                    match result {
+                        Ok(_) => game_log.entries.push("Game loaded.".to_string()),
+                        Err(_) => game_log.entries.push("Game could not be loaded.".to_string())
+                    }
+                    new_run_state = RunState::AwaitingInput;
                 }
-                new_run_state = RunState::AwaitingInput;
+                draw_main_screen(self, context);
+            },
+            RunState::InventoryScreen => {
+                new_run_state = inventory_screen_input(self, context);
+                draw_inventory_screen(self, context);
             }
         }
         {
@@ -103,55 +120,8 @@ impl GameState for State {
             *run_writer = new_run_state;
         }
 
-        draw_map(&self.ecs, context);
-
-        {
-            let positions = self.ecs.read_storage::<Position>();
-            let renderables = self.ecs.read_storage::<Renderable>();
-            let large_renderables = self.ecs.read_storage::<LargeRenderable>();
-            let sizes = self.ecs.read_storage::<Size>();
-            let map = self.ecs.fetch::<Map>();
-
-            // TODO: Unify these, for efficiency?
-            for (pos, render) in (&positions, &renderables).join() {
-                let idx = map.xy_idx(pos.x, pos.y);
-                if map.visible_tiles[idx] {
-                    context.set(pos.x, pos.y, render.color, render.background, render.glyph);
-                }
-            }
-
-            for (pos, render, size) in (&positions, &large_renderables, &sizes).join() {
-                assert!(size.x * size.y == render.glyphs.len() as i32, "Size and glyphmap size differ for object");
-                for x in 0..size.x {
-                    for y in 0..size.y {
-                        let idx = map.xy_idx(pos.x + x, pos.y + y);
-                        if map.visible_tiles[idx] {
-                            context.set(pos.x + x, pos.y + y, render.color, render.background, render.glyphs[(x + size.x * y) as usize]);
-                        }
-                    }
-                }
-            }
-        }
-
-        draw_ui(self, context);
-
         if new_run_state == RunState::MenuInput {
-            for menu in &self.menu_stack {
-                let mut width = 0;
-                for row in &menu.rows {
-                    if row.text.len() > width {
-                        width = row.text.len();
-                    }
-                }
-                context.draw_box(menu.x, menu.y, width + 3, menu.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-                for (i, row) in menu.rows.iter().enumerate() {
-                    if menu.selected_row == i {
-                        context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), row.text.to_string());
-                    } else {
-                        context.print_color(menu.x + 2, menu.y + 1 + i as i32, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), row.text.to_string());
-                    }
-                }
-            }
+            draw_menu(self, context);
         }
 
         let tick_time = begin.elapsed().as_micros();
