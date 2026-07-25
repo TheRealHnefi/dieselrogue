@@ -160,9 +160,14 @@ impl World {
     }
 
     pub fn create_zombie_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
-        let nearest_pos = self.map.nearest_free_pawn_position(pos)?;
+        if self.map.blocked(pos.x, pos.y) {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: format!("Position ({}, {}) is already occupied", pos.x, pos.y)
+            });
+        }
 
-        let mut entity = Entity::new_human(self.entities.len(), nearest_pos, facing, name);
+        let mut entity = Entity::new_human(self.entities.len(), pos, facing, name);
         entity.ai = AI::Rotator;
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
