@@ -281,6 +281,8 @@ impl World {
                         self.entities[*vehicle_id].name));
 
                     if self.entities[*pilot_id].id == self.player_id.unwrap() {
+                        self.entities[*pilot_id].set_visible_tiles(&mut self.map, false);
+                        self.entities[*vehicle_id].set_visible_tiles(&mut self.map, true);
                         self.entities[self.player_id.unwrap()].player = false;
                         self.player_id = Some(*vehicle_id);
                         self.entities[*vehicle_id].player = true;
