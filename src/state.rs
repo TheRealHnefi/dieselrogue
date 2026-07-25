@@ -36,6 +36,7 @@ pub struct State {
     pub run_state: RunState,
     pub welcome_selected: usize,
     pub bindings: Bindings,
+    pub menu_return_state: RunState,
     pub cursor_pos: Point,
     pub log: GameLog,
 
@@ -79,6 +80,7 @@ impl State {
             run_state: if skip_intro { RunState::AwaitingInput } else { RunState::WelcomeScreen },
             welcome_selected: 0,
             bindings,
+            menu_return_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(size, seed),
@@ -129,7 +131,13 @@ impl GameState for State {
             _ => {}
         }
 
-        draw_main_screen(self, context, monotime);
+        let in_welcome_context = self.menu_return_state == RunState::WelcomeScreen
+            && self.run_state == RunState::AwaitingMenuInput;
+        if in_welcome_context {
+            draw_welcome_screen(self, context);
+        } else {
+            draw_main_screen(self, context, monotime);
+        }
 
         match self.run_state {
             RunState::DeclareIntent => {

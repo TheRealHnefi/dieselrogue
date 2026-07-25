@@ -316,8 +316,8 @@ fn action_toggle_fullscreen(state: &mut State) -> RunState {
     let mut settings = Settings::load();
     settings.fullscreen = next;
     settings.save();
-    state.menu_stack.clear();
-    state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
+    state.menu_stack.pop();
+    state.menu_stack.push(Box::new(settings_menu(state.pending_font_size, state.pending_fullscreen)));
     RunState::AwaitingMenuInput
 }
 
@@ -329,8 +329,13 @@ fn action_cycle_font_size(state: &mut State) -> RunState {
     let mut settings = Settings::load();
     settings.font_size = next;
     settings.save();
-    state.menu_stack.clear();
-    state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
+    state.menu_stack.pop();
+    state.menu_stack.push(Box::new(settings_menu(state.pending_font_size, state.pending_fullscreen)));
+    RunState::AwaitingMenuInput
+}
+
+fn action_open_settings_menu(state: &mut State) -> RunState {
+    state.menu_stack.push(Box::new(settings_menu(state.pending_font_size, state.pending_fullscreen)));
     RunState::AwaitingMenuInput
 }
 
@@ -358,7 +363,22 @@ fn action_show_inventory_item_menu(item: Item, state: &mut State) -> RunState {
     return RunState::AwaitingMenuInput;
 }
 
-pub fn main_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Option<bool>) -> MenuPanel<SystemRow> {
+pub fn main_menu() -> MenuPanel<SystemRow> {
+    MenuPanel {
+        x: 35,
+        y: 20,
+        rows: vec![
+            SystemRow { text: "Use item".to_string(),  action: action_open_item_menu    },
+            SystemRow { text: "Settings".to_string(),  action: action_open_settings_menu },
+            SystemRow { text: "Quit".to_string(),      action: action_quit              },
+        ],
+        selected_row: 0,
+        no_selectable_rows: false,
+        paper_doll: None,
+    }
+}
+
+pub fn settings_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Option<bool>) -> MenuPanel<SystemRow> {
     let settings = Settings::load();
 
     let current_size = pending_font_size.unwrap_or(settings.font_size);
@@ -379,10 +399,8 @@ pub fn main_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Option
         x: 35,
         y: 20,
         rows: vec![
-            SystemRow { text: "Use item".to_string(), action: action_open_item_menu   },
-            SystemRow { text: font_label,              action: action_cycle_font_size  },
-            SystemRow { text: fs_label,                action: action_toggle_fullscreen },
-            SystemRow { text: "Quit".to_string(),      action: action_quit             },
+            SystemRow { text: font_label, action: action_cycle_font_size   },
+            SystemRow { text: fs_label,   action: action_toggle_fullscreen },
         ],
         selected_row: 0,
         no_selectable_rows: false,
