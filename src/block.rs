@@ -15,9 +15,40 @@ fn rotate_block_90cw(block: &Block) -> Block {
   let mut tiles = vec![TileType::Ground; n * n];
   for y in 0..n {
     for x in 0..n {
-      let dst_x = n - 1 - y;
-      let dst_y = x;
-      tiles[dst_y * n + dst_x] = block.tiles[y * n + x];
+      tiles[x * n + (n - 1 - y)] = block.tiles[y * n + x];
+    }
+  }
+  Block { tiles }
+}
+
+fn mirror_horizontal(block: &Block) -> Block {
+  let n = BLOCK_SIZE;
+  let mut tiles = vec![TileType::Ground; n * n];
+  for y in 0..n {
+    for x in 0..n {
+      tiles[y * n + (n - 1 - x)] = block.tiles[y * n + x];
+    }
+  }
+  Block { tiles }
+}
+
+fn mirror_vertical(block: &Block) -> Block {
+  let n = BLOCK_SIZE;
+  let mut tiles = vec![TileType::Ground; n * n];
+  for y in 0..n {
+    for x in 0..n {
+      tiles[(n - 1 - y) * n + x] = block.tiles[y * n + x];
+    }
+  }
+  Block { tiles }
+}
+
+fn mirror_both(block: &Block) -> Block {
+  let n = BLOCK_SIZE;
+  let mut tiles = vec![TileType::Ground; n * n];
+  for y in 0..n {
+    for x in 0..n {
+      tiles[(n - 1 - y) * n + (n - 1 - x)] = block.tiles[y * n + x];
     }
   }
   Block { tiles }
@@ -78,10 +109,12 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
       let r90  = rotate_block_90cw(&block);
       let r180 = rotate_block_90cw(&r90);
       let r270 = rotate_block_90cw(&r180);
-      blocks.push(block);
-      blocks.push(r90);
-      blocks.push(r180);
-      blocks.push(r270);
+      for base in [block, r90, r180, r270] {
+        blocks.push(mirror_horizontal(&base));
+        blocks.push(mirror_vertical(&base));
+        blocks.push(mirror_both(&base));
+        blocks.push(base);
+      }
     }
   }
 
