@@ -48,7 +48,6 @@ impl PatrollingAI {
         match walk_direction {
             Some(direction) => {
                 if direction != body.facing {
-                    println!("Turn");
                     return Intent {
                         phase: IntentPhase::Movement,
                         data: IntentData::Direction(direction),
@@ -56,7 +55,6 @@ impl PatrollingAI {
                     };
                 }
                 else {
-                    println!("Walk");
                     return Intent {
                         phase: IntentPhase::Movement,
                         data: IntentData::Target(map.idx_pos(self.current_path.pop().unwrap())),
@@ -65,7 +63,6 @@ impl PatrollingAI {
                 }
             },
             None => {
-                println!("Idle");
                 return Intent {
                     phase: IntentPhase::Idle,
                     data: IntentData::Void,
