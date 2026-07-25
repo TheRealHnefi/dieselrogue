@@ -47,11 +47,43 @@ pub use animation::*;
 mod actions;
 pub use actions::*;
 
+use std::time::Instant;
+use tracing::{span, Subscriber};
+use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
+use tracing_subscriber::prelude::*;
+
+struct SpanStart(Instant);
+
+struct SlowSpanLayer {
+    threshold_ms: u128,
+}
+
+impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for SlowSpanLayer {
+    fn on_new_span(&self, _: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        if let Some(span) = ctx.span(id) {
+            span.extensions_mut().insert(SpanStart(Instant::now()));
+        }
+    }
+
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        if let Some(span) = ctx.span(&id) {
+            if let Some(start) = span.extensions().get::<SpanStart>() {
+                let elapsed_ms = start.0.elapsed().as_millis();
+                if elapsed_ms >= self.threshold_ms {
+                    tracing::warn!(span = span.name(), duration_ms = elapsed_ms, "SLOW");
+                }
+            }
+        }
+    }
+}
+
 fn main() -> rltk::BError {
-    tracing_subscriber::fmt()
-        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env()
-            .add_directive("dieselrogue=debug".parse().unwrap()))
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer()
+            .without_time()
+            .with_filter(tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive("dieselrogue=debug".parse().unwrap())))
+        .with(SlowSpanLayer { threshold_ms: 20 })
         .init();
     let context = rltk::RltkBuilder::new()
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
