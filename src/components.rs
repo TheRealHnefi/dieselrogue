@@ -101,7 +101,7 @@ pub enum ItemLocation {
 
 pub enum Effect {
     Damage {entity_id: usize, bodypart_index: usize, raw_damage: Damage},
-    OpenDoor(Point),
+    OpenDoor {pos: Point, actor_id: usize},
     DestroyWall(Point),
     Animation(Animation),
     Embark{pilot_id: usize, vehicle_id: usize},
@@ -242,6 +242,7 @@ pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, damage: Damage, range: u32},
     Wearable {armor: Armor},
     FusedExplosive {damage: Damage, timeout: u32, flash: bool},
+    Key {door_ids: Vec<usize>},
     Misc
 }
 
