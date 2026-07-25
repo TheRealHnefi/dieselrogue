@@ -7,30 +7,38 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 => {
+                if state.freelook { return freelook_move(state, Direction::Left); }
                 return handle_move_input(&mut state.world, Direction::Left, &mut state.log);
             },
             VirtualKeyCode::Right |
             VirtualKeyCode::Numpad6 => {
+                if state.freelook { return freelook_move(state, Direction::Right); }
                 return handle_move_input(&mut state.world, Direction::Right, &mut state.log);
             },
             VirtualKeyCode::Up |
             VirtualKeyCode::Numpad8 => {
+                if state.freelook { return freelook_move(state, Direction::Up); }
                 return handle_move_input(&mut state.world, Direction::Up, &mut state.log);
             },
             VirtualKeyCode::Down |
             VirtualKeyCode::Numpad2 => {
+                if state.freelook { return freelook_move(state, Direction::Down); }
                 return handle_move_input(&mut state.world, Direction::Down, &mut state.log);
             },
             VirtualKeyCode::Numpad7 => {
+                if state.freelook { return freelook_move(state, Direction::UpLeft); }
                 return handle_move_input(&mut state.world, Direction::UpLeft, &mut state.log);
             },
             VirtualKeyCode::Numpad9 => {
+                if state.freelook { return freelook_move(state, Direction::UpRight); }
                 return handle_move_input(&mut state.world, Direction::UpRight, &mut state.log);
             },
             VirtualKeyCode::Numpad3 => {
+                if state.freelook { return freelook_move(state, Direction::DownRight); }
                 return handle_move_input(&mut state.world, Direction::DownRight, &mut state.log);
             },
             VirtualKeyCode::Numpad1 => {
+                if state.freelook { return freelook_move(state, Direction::DownLeft); }
                 return handle_move_input(&mut state.world, Direction::DownLeft, &mut state.log);
             },
             VirtualKeyCode::Numpad5 => {
@@ -116,6 +124,19 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 state.menu_stack.clear();
                 state.menu_stack.push(Box::new(main_menu()));
                 return RunState::AwaitingMenuInput;
+            }
+
+            VirtualKeyCode::F => {
+                state.freelook = !state.freelook;
+                if state.freelook {
+                    state.freelook_pos = state.world.get_player()
+                        .map(|p| p.center())
+                        .unwrap_or(Point {x: 0, y: 0});
+                    state.log("Freelook ON.".to_string());
+                } else {
+                    state.log("Freelook OFF.".to_string());
+                }
+                return RunState::AwaitingInput;
             }
 
             VirtualKeyCode::F12 => {
@@ -614,7 +635,16 @@ fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog)
         Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
         Err(error) => {
             log.log(error.message);
-            return RunState::AwaitingInput;    
+            return RunState::AwaitingInput;
         }
-    }    
+    }
+}
+
+fn freelook_move(state: &mut State, direction: Direction) -> RunState {
+    let (dx, dy) = direction.delta_pos();
+    let map_w = state.world.map.width as i32;
+    let map_h = state.world.map.height as i32;
+    state.freelook_pos.x = (state.freelook_pos.x + dx).clamp(0, map_w - 1);
+    state.freelook_pos.y = (state.freelook_pos.y + dy).clamp(0, map_h - 1);
+    RunState::AwaitingInput
 }
