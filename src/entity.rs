@@ -1,5 +1,6 @@
 use crate::components::*;
 use rltk::Point;
+use crate::Map;
 
 /// Concrete type containing all data of something that acts and moves.
 #[derive(Clone)]
@@ -19,6 +20,33 @@ impl Entity {
             intent: self.intent,
             facing: self.facing
         }
+    }
+
+    pub fn resolve(&mut self, map: &Map) {
+        match self.intent.action {
+            Action::Idle => {},
+            Action::Move(pos) => {
+                if !map.blocked(pos.x, pos.y) {
+                    self.position = pos;
+                }
+            },
+            Action::Turn(direction) => {
+                self.facing.direction = direction;
+
+                match direction {
+                    Direction::Up => {self.renderable.glyph = rltk::to_cp437('8')},
+                    Direction::UpRight => {self.renderable.glyph = rltk::to_cp437('9')},
+                    Direction::Right => {self.renderable.glyph = rltk::to_cp437('6')},
+                    Direction::DownRight => {self.renderable.glyph = rltk::to_cp437('3')},
+                    Direction::Down => {self.renderable.glyph = rltk::to_cp437('2')},
+                    Direction::DownLeft => {self.renderable.glyph = rltk::to_cp437('1')},
+                    Direction::Left => {self.renderable.glyph = rltk::to_cp437('4')},
+                    Direction::UpLeft => {self.renderable.glyph = rltk::to_cp437('7')},
+                }
+            }
+        }
+
+        self.intent = Intent {action: Action::Idle};
     }
 }
 

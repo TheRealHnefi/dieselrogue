@@ -75,9 +75,15 @@ fn main() -> rltk::BError {
 
     let mut state = State::new();
 
-    let _result = state.world.create_player(Point {x: state.world.map.rooms[0].x1+1, y: state.world.map.rooms[0].y1+1},
+    let pos = Point {x: state.world.map.rooms[0].x1+1, y: state.world.map.rooms[0].y1+1};
+    let _result = state.world.create_player(pos,
         Facing { direction: Direction::Up},
         String::from("Player"));
+
+    let _result = state.world.create_entity(Point {x: pos.x + 1, y: pos.y+1},
+        Facing { direction: Direction::Up},
+        String::from("Goon"));
+    state.world.entities[0].intent = Intent {action: Action::Turn(Direction::DownLeft)};
 
     state.log.entries.push("Welcome!".to_string());
  
