@@ -61,7 +61,8 @@ impl World {
             player_id: Option::None,
             entities: vec![],
             //map: Map::new_map_rooms_and_corridors(200, 100)
-            map: Map::new_map_buildings_outdoors(2000, 2000)
+            map: Map::new_map_buildings_outdoors(200, 200)
+            //map: Map::new_empty_map(2000, 2000)
         }
     }
 
@@ -173,28 +174,6 @@ impl World {
     pub fn resolve_intent_declaration(&mut self) {
         for i in 0..self.entities.len() {
             self.entities[i].declare_intent(&self.map);
-        }
-    }
-
-    pub fn update_views(&mut self) {
-        {
-            let player = &self.entities[self.player_id.unwrap()];
-            for tile_pos in &player.viewshed.visible_tiles {
-                let index = self.map.pos_idx(*tile_pos);
-                self.map.visible_tiles[index] = false;
-            }
-        }
-
-        for entity in self.entities.iter_mut() {
-            entity.update_view(&self.map);
-        }
-
-        {
-            let player = &self.entities[self.player_id.unwrap()];
-            for tile_pos in &player.viewshed.visible_tiles {
-                let index = self.map.pos_idx(*tile_pos);
-                self.map.visible_tiles[index] = true;
-            }
         }
     }
 

@@ -76,7 +76,6 @@ impl GameState for State {
 
         match self.run_state {
             RunState::DeclareIntent => {
-                self.world.update_views();
                 self.world.resolve_intent_declaration();
                 self.run_state = RunState::AwaitingInput;
             }

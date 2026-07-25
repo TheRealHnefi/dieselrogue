@@ -59,29 +59,43 @@ fn main() -> rltk::BError {
 
     let mut state = State::new();
 
+    // Performance test setup
+    // let pos = Point {x: 0, y: 0};
+    // let _result = state.world.create_player(pos,
+    //     Direction::Up,
+    //     String::from("Player"));
+
+    // // As of 2021-12-05, performance with 100.000 zombies was fine in release mode. Debug mode suffered slightly, but was playable.
+    // // This on a 2000x2000 map.
+    // for x in 0..1000 {
+    //     for y in 1..100 {
+    //         let _result = state.world.create_entity(Point {x: pos.x + x, y: pos.y+y}, Direction::Up, String::from("Zombie"));
+    //     }
+    // }
+
+    // Feature test setup
+
     let pos = Point {x: state.world.map.rooms[0].x1+1, y: state.world.map.rooms[0].y1+1};
     let _result = state.world.create_player(pos,
         Direction::Up,
         String::from("Player"));
 
-    let _result = state.world.create_entity(Point {x: pos.x + 1, y: pos.y+1}, Direction::Up, String::from("Zombie"));
+    let max_room_index = std::cmp::min(state.world.map.rooms.len(), 5);
 
-    //let max_room_index = std::cmp::min(state.world.map.rooms.len(), 5);
+    let _result = state.world.create_patrolling_goon(Point {x: pos.x + 1, y: pos.y+1},
+        Direction::Up,
+        String::from("Goon"),
+        (0..state.world.map.rooms.len()).collect());
 
-    // let _result = state.world.create_patrolling_goon(Point {x: pos.x + 1, y: pos.y+1},
-    //     Direction::Up,
-    //     String::from("Goon"),
-    //     (0..state.world.map.rooms.len()).collect());
-
-    // let _result = state.world.create_patrolling_goon(Point {x: state.world.map.rooms[2].center().0, y: state.world.map.rooms[2].center().1},
-    //     Direction::Up,
-    //     String::from("Goon"),
-    //     (0..max_room_index).collect());
+    let _result = state.world.create_patrolling_goon(Point {x: state.world.map.rooms[2].center().0, y: state.world.map.rooms[2].center().1},
+        Direction::Up,
+        String::from("Goon"),
+        (0..max_room_index).collect());
 
     let _result = state.world.create_tank(Point {x: state.world.map.rooms[3].x1 + 1, y: state.world.map.rooms[3].y1 + 1},
         Direction::Up,
         String::from("Tank"));
-    
+
     let _ = state.world.add_item(pos, Item::grenade());
     let _ = state.world.add_item(Point{x: pos.x + 1, y: pos.y}, Item::machinegun());
     let _ = state.world.add_item(Point{x: pos.x + 2, y: pos.y}, Item::pistol());

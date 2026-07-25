@@ -109,6 +109,7 @@ impl Entity {
         self.clear_pawns(map);
         self.position = pos;
         self.create_pawns(map);
+        self.update_view(map);
     }
 
     pub fn take_item(&mut self, item: Item) -> Option<Item> {
@@ -145,8 +146,22 @@ impl Entity {
         }
     }
 
-    pub fn update_view(&mut self, map: &Map) {
+    fn update_view(&mut self, map: &mut Map) {
+        if self.is_player() {
+            for tile_pos in &self.viewshed.visible_tiles {
+                let index = map.pos_idx(*tile_pos);
+                map.visible_tiles[index] = false;
+            }
+        }
+
         self.viewshed.update(self.position, self.body.facing, map);
+
+        if self.is_player() {
+            for tile_pos in &self.viewshed.visible_tiles {
+                let index = map.pos_idx(*tile_pos);
+                map.visible_tiles[index] = true;
+            }
+        }
     }
 
     pub fn resolve_throw_grenade(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
@@ -447,7 +462,7 @@ impl Entity {
         match self.intent.data {
             IntentData::Direction(direction) => {
                 self.body.facing = direction;
-                self.create_pawns(map);
+                self.set_position(self.position, map);
             },
             _ => {
                 debug_assert!(false);
@@ -515,6 +530,10 @@ impl Entity {
 
     pub fn kill(&mut self, map: &mut Map) {
         self.clear_pawns(map);
+    }
+
+    fn is_player(&self) -> bool {
+        self.id == 0
     }
 }
 
