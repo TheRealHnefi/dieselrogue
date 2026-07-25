@@ -59,6 +59,7 @@ pub struct Entity {
 fn human_innate_actions() -> Vec<EntityAction> {
     vec![
         EntityAction {
+            id: ActionId::Shout,
             name: "Shout".to_string(),
             targeting: Targeting::None,
             phase: ExecutionPhase::Inventory,
@@ -66,6 +67,7 @@ fn human_innate_actions() -> Vec<EntityAction> {
             action: actions::shout_action,
         },
         EntityAction {
+            id: ActionId::IronBody,
             name: "Iron Body".to_string(),
             targeting: Targeting::None,
             phase: ExecutionPhase::Inventory,
@@ -73,6 +75,7 @@ fn human_innate_actions() -> Vec<EntityAction> {
             action: actions::iron_body_action,
         },
         EntityAction {
+            id: ActionId::Rush,
             name: "Rush".to_string(),
             targeting: Targeting::EntityAim { max_range: Some(3) },
             phase: ExecutionPhase::Inventory,
@@ -80,6 +83,7 @@ fn human_innate_actions() -> Vec<EntityAction> {
             action: actions::rush_action,
         },
         EntityAction {
+            id: ActionId::Twist,
             name: "Twist".to_string(),
             targeting: Targeting::EntityAim { max_range: Some(1) },
             phase: ExecutionPhase::Inventory,
@@ -87,6 +91,7 @@ fn human_innate_actions() -> Vec<EntityAction> {
             action: actions::twist_action,
         },
         EntityAction {
+            id: ActionId::Distract,
             name: "Distract".to_string(),
             targeting: Targeting::EntityAim { max_range: Some(10) },
             phase: ExecutionPhase::Inventory,
