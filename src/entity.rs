@@ -1,6 +1,7 @@
 use crate::components::*;
 use rltk::Point;
 use crate::Map;
+use crate::Item;
 
 pub enum Effect {
     Damage(usize) // damage(entity_id)
@@ -14,7 +15,8 @@ pub struct Entity {
     pub renderable: Renderable,
     pub name: String,
     pub intent: Intent,
-    pub facing: Facing
+    pub facing: Facing,
+    pub inventory: Vec<Item>
 }
 
 impl Entity {

@@ -84,7 +84,8 @@ impl World {
             renderable: Renderable::new_glyph('8'),
             name: name,
             intent: Intent { action: Action::Idle},
-            facing: facing
+            facing: facing,
+            inventory: vec!()
         };
 
         let index = self.map.xy_idx(pos.x, pos.y);
@@ -109,13 +110,21 @@ impl World {
             renderable: Renderable::new_glyph('5'),
             name: name,
             intent: Intent { action: Action::Idle},
-            facing: facing
+            facing: facing,
+            inventory: vec!()
         };
 
         let index = self.map.xy_idx(pos.x, pos.y);
         self.map.pawns[index] = Some(entity.create_pawn());
         self.entities.push(entity);
 
+        Ok(())
+    }
+
+    pub fn add_item(&mut self, pos: Point, item: Item) -> Result<(), GameError> {
+        let actual_pos = self.map.nearest_free_item_position(pos)?;
+        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
+        self.map.items[index] = Some(item);
         Ok(())
     }
 
@@ -308,6 +317,44 @@ mod tests {
             assert!(world.map.pawns[world.map.xy_idx(pos.x + 1, pos.y)].is_none());
             assert!(world.map.pawns[world.map.xy_idx(pos.x + 3, pos.y)].is_none());
             assert!(world.map.pawns[world.map.xy_idx(pos.x + 4, pos.y)].is_none());
+        }
+    }
+
+    #[test]
+    fn add_item_to_floor_works() {
+        let mut world = World::new();
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+
+        let item = Item {
+            name: String::from("Item"),
+            renderable: Renderable::new()
+        };
+
+        let _ = world.add_item(pos, item);
+
+        let index = world.map.xy_idx(pos.x, pos.y);
+        assert!(world.map.items[index].is_some());
+    }
+
+    #[test]
+    fn add_items_on_top_of_eachother_pushes_one_aside() {
+        let mut world = World::new();
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+
+        let item = Item {
+            name: String::from("Item"),
+            renderable: Renderable::new()
+        };
+
+        let _ = world.add_item(pos, item.clone());
+        let _ = world.add_item(pos, item);
+
+        assert!(world.map.items.iter().filter(|i| i.is_some()).count() == 2);
+
+        for (index, item) in world.map.items.iter().enumerate() {
+            if item.is_some() {
+                assert!(world.map.tiles[index] == TileType::Floor);
+            }
         }
     }
 }
