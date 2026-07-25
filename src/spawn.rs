@@ -619,12 +619,15 @@ impl World {
             let b_pos = spawn_map.spawn_points[bi].pos;
             let b_idx = spawn_map.spawn_points[bi].idx;
 
-            let path = navigate(a_idx, b_idx, &self.map);
-            if !path.success || path.steps.is_empty() { continue; }
+            let mut steps = Vec::new();
+            let success = navigate(a_idx, b_idx, &self.map, &mut steps);
+            if !success || steps.is_empty() { continue; }
 
+            // steps is in reversed order; index from the back to sample forward.
+            let nsteps = steps.len();
             let mut waypoints = vec![a_pos];
-            for step_i in (WAYPOINT_STEP..path.steps.len()).step_by(WAYPOINT_STEP) {
-                waypoints.push(self.map.idx_pos(path.steps[step_i]));
+            for step_i in (WAYPOINT_STEP..nsteps).step_by(WAYPOINT_STEP) {
+                waypoints.push(self.map.idx_pos(steps[nsteps - 1 - step_i]));
             }
             waypoints.push(b_pos);
 

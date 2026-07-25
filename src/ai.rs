@@ -469,8 +469,7 @@ impl ActorAI {
         if needs_repath {
             self.path_target = Some(dest_idx);
             let from_idx = map.pos_idx(entity.position);
-            let path = navigate(from_idx, dest_idx, map);
-            self.current_path = path.steps.into_iter().rev().collect();
+            navigate(from_idx, dest_idx, map, &mut self.current_path);
         }
 
         let next_pos = self.current_path.last().map(|&i| map.idx_pos(i))?;
