@@ -18,6 +18,7 @@ pub enum Ability {
     Throw,
     Juke, // Allow player to move out of order and without turning. Allows dodging shots.
     IronBody,
+    Rush,
 }
 
 impl Ability {
@@ -39,6 +40,7 @@ impl Ability {
             Ability::Throw        => "Throw",
             Ability::Juke         => "Juke",
             Ability::IronBody     => "Iron Body",
+            Ability::Rush         => "Rush",
         }.to_string()
     }
 
@@ -50,6 +52,7 @@ impl Ability {
             Ability::Disembark   => true,
             Ability::Throw       => true,
             Ability::IronBody    => false,
+            Ability::Rush        => false,
             _                    => false,
         }
     }
@@ -72,6 +75,7 @@ impl Ability {
             Ability::Throw        => false,
             Ability::Juke         => false,
             Ability::IronBody     => false,
+            Ability::Rush         => false,
         }
     }
 
@@ -109,6 +113,8 @@ impl Ability {
                 "Move instantly out of turn order. Costs 25 energy. Useful for dodging incoming fire.",
             Ability::IronBody =>
                 "Activate to harden your body for 3 turns, increasing physical resistance by 50%.",
+            Ability::Rush =>
+                "Teleport to a visible enemy and immediately strike them in melee.",
         }
     }
 
@@ -131,6 +137,7 @@ impl Ability {
             Ability::Stealth      => 4, // Legs
             Ability::Tough        => 1, // Torso
             Ability::IronBody     => 1, // Torso
+            Ability::Rush         => 2, // R. Arm
         }
     }
 }
