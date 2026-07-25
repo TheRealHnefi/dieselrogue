@@ -104,7 +104,7 @@ impl Ability {
             Ability::IronEars     => 0, // Head
             Ability::EagleEyes    => 0, // Head
             Ability::Pugilism     => 2, // R. Arm
-            Ability::Backstab     => 4, // Legs
+            Ability::Backstab     => 2, // R. Arm
             Ability::VehicleMove  => 1, // Torso
             Ability::Disembark    => 1, // Torso
             Ability::PickUp       => 2, // R. Arm
