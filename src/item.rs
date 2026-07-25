@@ -562,11 +562,11 @@ impl Item {
     }
     /// Rocket boots: a loud instant teleport onto a visible tile up to 8 away.
     fn rocket_rush_action() -> EntityAction {
-        EntityAction { id: ActionId::RocketRush,    name: "Rocket Rush".to_string(),      targeting: Targeting::Positional { max_range: Some(8) }, phase: ExecutionPhase::Instant, precondition: precondition_has_charge, action: actions::rocket_boots_action }
+        EntityAction { id: ActionId::RocketRush,    name: "Rocket Rush".to_string(),      targeting: Targeting::Positional { max_range: Some(8) }, phase: ExecutionPhase::Movement, precondition: precondition_has_charge, action: actions::rocket_boots_action }
     }
     /// Jetpack: a loud instant jump to any revealed Ground/Road tile.
     fn rocket_jump_action() -> EntityAction {
-        EntityAction { id: ActionId::RocketJump,    name: "Rocket Jump".to_string(),      targeting: Targeting::JumpTile, phase: ExecutionPhase::Instant, precondition: precondition_can_rocket_jump, action: actions::rocket_jump_action }
+        EntityAction { id: ActionId::RocketJump,    name: "Rocket Jump".to_string(),      targeting: Targeting::JumpTile, phase: ExecutionPhase::Movement, precondition: precondition_can_rocket_jump, action: actions::rocket_jump_action }
     }
     /// Tactical helmet: aim a long-range recon vision cone at a visible tile.
     fn recon_action() -> EntityAction {

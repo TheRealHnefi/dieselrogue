@@ -119,13 +119,18 @@ pub fn idle_intent() -> Intent {
 
 #[derive (PartialEq, Eq, Copy, Clone)]
 pub enum ExecutionPhase {
+    /// No action
     Idle,
+    /// Actions that take place before anyone has time to react. Can not be interrupted.
     Instant,
+    /// Actions that are internal to the entity, such as equipping or dropping items
     Inventory,
+    /// Actions that may affect other entities, such as attacks
     Attack,
+    /// Actions that move the entity, notably after attacks are resolved
     Movement,
-    ActiveItems,
-    Misc
+    /// Actions that are performed by items laying on the ground
+    ActiveItems
 }
 
 impl ExecutionPhase {
@@ -136,8 +141,7 @@ impl ExecutionPhase {
             ExecutionPhase::Inventory => Some(ExecutionPhase::Attack),
             ExecutionPhase::Attack => Some(ExecutionPhase::Movement),
             ExecutionPhase::Movement => Some(ExecutionPhase::ActiveItems),
-            ExecutionPhase::ActiveItems => Some(ExecutionPhase::Misc),
-            ExecutionPhase::Misc => None
+            ExecutionPhase::ActiveItems => None
         }
     }
 }
