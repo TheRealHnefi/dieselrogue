@@ -12,6 +12,74 @@ use crate::Ability;
 const SUSPICIOUS_TURNS: u32 = 30;
 
 // ---------------------------------------------------------------------------
+// Perception
+// ---------------------------------------------------------------------------
+
+struct Perception {
+    /// Does the entity know that the source is hostile?
+    /// Negative for things such as open doors or walking sounds
+    confirmed_hostile: bool,
+    /// Has the entity actually seen the source?
+    /// Negative if heard or gathered through indirect means
+    confirmed_visually: bool,
+    /// Does the entity know exactly where the source is?
+    /// Negative when finding dead bodies, open doors or hearing
+    confirmed_origin: bool,
+    /// The source coordinates of this perception
+    origin: Point,
+    // TODO: Could this replace confirmed_visually entirely?
+    target_id: Option<usize>
+}
+
+/// Compare two perceptions and replace the most important one, with bias
+/// towards left.
+// TODO: Clean this up - use PartialOrd?
+fn most_urgent(left: Option<Perception>, right: Option<Perception>) -> Option<Perception> {
+    if right.is_none() {
+        return left;
+    }
+    else if left.is_none() {
+        return right;
+    }
+
+    let lhs = left.unwrap();
+    let rhs = right.unwrap();
+
+    if lhs.confirmed_hostile && !rhs.confirmed_hostile {
+        return Some(lhs);
+    } else if !lhs.confirmed_hostile && rhs.confirmed_hostile {
+        return Some(rhs);
+    }
+
+    else if lhs.confirmed_visually && !rhs.confirmed_visually {
+        return Some(lhs);
+    } else if !lhs.confirmed_visually && rhs.confirmed_visually {
+        return Some(rhs);
+    }
+
+    else if lhs.confirmed_origin && !rhs.confirmed_origin {
+        return Some(lhs);
+    } else if !lhs.confirmed_origin && rhs.confirmed_origin {
+        return Some(rhs);
+    }
+
+    return Some(lhs);
+}
+
+// ---------------------------------------------------------------------------
+// Decision
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug)]
+enum Decision {
+    Idle,
+    GoTo   { dest: Point, tolerance: u32 },
+    Face   { toward: Point },
+    Flee   { threat: Point },
+    Engage { target_id: usize, last_seen: Point },
+}
+
+// ---------------------------------------------------------------------------
 // AlertLevel
 // ---------------------------------------------------------------------------
 
@@ -24,24 +92,6 @@ pub enum AlertLevel {
     Alert      { last_known: Point, search: SearchBehavior },
     /// Has detected something confirmed dangerous and has recently seen it or is seeing it now.
     Combat     { target_id: usize, last_seen: Point },
-}
-
-impl AlertLevel {
-    fn priority(&self) -> u8 {
-        match self {
-            AlertLevel::Unaware           => 0,
-            AlertLevel::Suspicious { .. } => 1,
-            AlertLevel::Alert { .. }      => 2,
-            AlertLevel::Combat { .. }     => 3,
-        }
-    }
-
-    /// Only escalate; never de-escalate through this method.
-    fn try_escalate(&mut self, candidate: AlertLevel) {
-        if candidate.priority() >= self.priority() {
-            *self = candidate;
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -92,24 +142,15 @@ pub enum Profile {
     Guard {
         anchor: Point,
         combat_tactic: CombatTactic,
-    },
-    Follow {
-        target_id: usize,
-        last_known_pos: Point,
-        combat_tactic: CombatTactic,
-    },
-    Stationary {
-        combat_tactic: CombatTactic,
-    },
+    }
+    // TODO: Add Pilot
 }
 
 impl Profile {
     fn combat_tactic(&self) -> &CombatTactic {
         match self {
             Profile::Patrol    { combat_tactic, .. } => combat_tactic,
-            Profile::Guard     { combat_tactic, .. } => combat_tactic,
-            Profile::Follow    { combat_tactic, .. } => combat_tactic,
-            Profile::Stationary{ combat_tactic }     => combat_tactic,
+            Profile::Guard     { combat_tactic, .. } => combat_tactic
         }
     }
 }
@@ -149,7 +190,6 @@ impl ActorAI {
                         .and_then(|r| r.get(*waypoint_index).copied())
                         .map(|p| (p, false)),
                 Profile::Guard { anchor, .. } => Some((*anchor, false)),
-                _ => None,
             },
             AlertLevel::Suspicious { origin, .. } => Some((*origin, true)),
             AlertLevel::Alert { last_known, search, .. } => match search {
@@ -162,6 +202,7 @@ impl ActorAI {
         }
     }
 
+    /// Follows a perceive → update → decide → execute logic for easier overview.
     pub fn compute_intent(
         &mut self,
         entity:   &Entity,
@@ -172,21 +213,15 @@ impl ActorAI {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
 
-        // Perceive: update beliefs from this turn's stimuli.
-        let prev_priority = self.alert.priority();
-        self.process_sounds(entity, sounds);
-        self.process_vision(entity, entities);
-        self.check_follow_target(entities);
-        self.tick_alert(entity, entities);
+        // Perceive: collect this turn stimuli and return perception.
+        let perception = self.perceive(entity, entities, map, sounds);
 
-        // Shout once on first crossing into Alert or above.
-        if self.alert.priority() >= 2 && prev_priority < 2 {
-            return Some(build_intent(&shout_action_def(), None, Resolution::None));
-        }
+        // Update beliefs according to perceptions
+        self.update_beliefs(entity, entities, perception);
 
-        // Update profile state, choose a decision, then carry it out.
-        self.advance_waypoint(entity, map);
-        let decision = self.decide(entity, map, entities);
+        // Make a decision
+        self.advance_waypoint(entity, map); // Move this later
+        let decision = self.decide(entity, map);
 
         // nav_field_goal is a hand-kept parallel copy of decide's nav goals; the
         // pre-pass builds a shared field for its cell, so decide must actually
@@ -199,14 +234,26 @@ impl ActorAI {
             );
         }
 
+        // Execute the decision
         self.execute(entity, map, entities, decision)
     }
 
     // --- Stimulus processing ---
 
-    fn process_sounds(&mut self, entity: &Entity, sounds: &[SoundEvent]) {
+    /// Returns the most important Perception, if any, to be acted upon later
+    fn perceive(&mut self, entity: &Entity, entities: &[Entity], map: &Map, sounds: &[SoundEvent]) -> Option<Perception> {
+        let sound_candidate = self.process_sounds(entity, sounds);
+        let visual_candidate = self.process_vision(entity, entities, map);
+
+        return most_urgent(visual_candidate, sound_candidate);
+    }
+
+    fn process_sounds(&mut self, entity: &Entity, sounds: &[SoundEvent]) -> Option<Perception> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
+
+        let mut retval: Option<Perception> = None;
+
         for s in sounds {
             let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
             if dist > s.volume as f32 || entity.center() == s.pos {
@@ -214,54 +261,102 @@ impl ActorAI {
             }
 
             let candidate = match s.kind {
-                SoundKind::Shout =>
-                    AlertLevel::Suspicious { origin: s.pos, turns_remaining: SUSPICIOUS_TURNS },
-                SoundKind::Gunshot | SoundKind::Burst | SoundKind::Explosion =>
-                    AlertLevel::Alert {
-                        last_known: s.pos,
-                        search: SearchBehavior::for_entity(entity.id),
+                SoundKind::Shout | SoundKind::Gunshot | SoundKind::Burst | SoundKind::Explosion =>
+                    Perception {
+                        confirmed_hostile: true,
+                        confirmed_origin: false,
+                        confirmed_visually: false,
+                        origin: s.pos,
+                        target_id: None
                     },
                 SoundKind::Footstep | SoundKind::Engine =>
-                    AlertLevel::Suspicious { origin: s.pos, turns_remaining: SUSPICIOUS_TURNS },
+                    Perception {
+                        confirmed_hostile: false,
+                        confirmed_origin: true,
+                        confirmed_visually: false,
+                        origin: s.pos,
+                        target_id: None
+                    },
             };
-            self.alert.try_escalate(candidate);
+            
+            retval = most_urgent(retval, Some(candidate));
         }
+
+        retval
     }
 
-    fn process_vision(&mut self, entity: &Entity, entities: &[Entity]) {
+    fn process_vision(&mut self, entity: &Entity, entities: &[Entity], map: &Map) -> Option<Perception> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
-        if let Some(player) = entities.iter().find(|e| e.kind == EntityKind::Player) {
-            let pc = player.center();
-            if entity.viewshed.visible_tiles.contains(&pc) {
-                self.alert.try_escalate(AlertLevel::Combat { target_id: player.id, last_seen: pc });
+            
+        for point in &entity.viewshed.visible_tiles {
+            // Return if player is seen, because it is more important than anything else
+            if let Some(entity_id) = map.get_entity_id(point.x, point.y) {
+                if entities[entity_id].kind == EntityKind::Player {
+                    let pc = entities[entity_id].center();
+                    return Some (Perception {
+                        confirmed_hostile: true,
+                        confirmed_origin: true,
+                        confirmed_visually: true,
+                        origin: pc,
+                        target_id: Some(entity_id)
+                    });
+                }
             }
-        }
-    }
-
-    fn check_follow_target(&mut self, entities: &[Entity]) {
-        #[cfg(debug_assertions)]
-        puffin::profile_function!();
-        if let Profile::Follow { target_id, last_known_pos, .. } = &mut self.profile {
-            match entities.iter().find(|e| e.id == *target_id) {
-                Some(t) => *last_known_pos = t.center(),
-                None    => {
-                    let lkp = *last_known_pos;
-                    self.alert.try_escalate(AlertLevel::Alert {
-                        last_known: lkp,
-                        search: SearchBehavior::MoveToLastKnown,
+            // Return on first corpse seen, because it's the current most urgent case possible.
+            if let Some(item) = map.get_item_ref(point.x, point.y) {
+                if item.kind == ItemKind::Corpse {
+                    return Some (Perception {
+                        confirmed_hostile: true,
+                        confirmed_origin: false,
+                        confirmed_visually: false,
+                        origin: point.clone(),
+                        target_id: None
                     });
                 }
             }
         }
+
+        None
     }
 
-    fn tick_alert(&mut self, entity: &Entity, entities: &[Entity]) {
+    // --- Belief updates ---
+
+    fn update_beliefs(&mut self, entity: &Entity, entities: &[Entity], perception: Option<Perception>) {
+        self.decay_alertness(entity, entities);
+        if let Some(p) = perception {
+            self.update_target(p);
+        }
+    }
+
+    fn update_target(&mut self, perception: Perception) {
+        if matches!(self.alert, AlertLevel::Combat { .. }) {
+            // We are already in combat. Ignore target updates.
+            return;
+        }
+        else if perception.confirmed_visually && perception.confirmed_hostile {
+            // Enemy spotted. We are in combat.
+            // TODO: Handle that unwrap more gracefully? Potentially replace confirmed_visually and rely on this?
+            self.alert = AlertLevel::Combat { target_id: perception.target_id.unwrap(), last_seen: perception.origin };
+        }
+        else if perception.confirmed_hostile {
+            // We know the enemy is around here somewhere. Update position.
+            // TODO: This will cause the AI to get hung up on dead bodies. Handle this with a SearchTheArea behavior.
+            self.alert = AlertLevel::Alert { last_known: perception.origin, search: SearchBehavior::MoveToLastKnown };
+        }
+        else {
+            self.alert = AlertLevel::Suspicious { origin: perception.origin, turns_remaining: SUSPICIOUS_TURNS }
+        }
+    }
+
+    fn decay_alertness(&mut self, entity: &Entity, entities: &[Entity]) {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
         // Combat → Alert when target leaves sight.
         if let AlertLevel::Combat { target_id, last_seen } = &self.alert {
             let (tid, ls) = (*target_id, *last_seen);
+            // TODO: This is probably more efficient to do the other way around - iterate over viewshed to check for existence of target id
+            // TODO: Do we even need this considering we do the same thing in the perception step?
             let still_visible = entities.iter()
                 .find(|e| e.id == tid)
                 .map_or(false, |t| entity.viewshed.visible_tiles.contains(&t.center()));
@@ -309,7 +404,7 @@ impl ActorAI {
     /// The decision tree: current (alert, profile) state → a Decision. Pure, and
     /// every Decision field is Copy, so no borrow of self outlives the call and
     /// execute can then take &mut self freely.
-    fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity]) -> Decision {
+    fn decide(&self, entity: &Entity, map: &Map) -> Decision {
         match &self.alert {
             AlertLevel::Unaware => match &self.profile {
                 Profile::Patrol { route_id, waypoint_index, .. } =>
@@ -318,13 +413,6 @@ impl ActorAI {
                         None        => Decision::Idle,
                     },
                 Profile::Guard { anchor, .. } => Decision::GoTo { dest: *anchor, tolerance: 0 },
-                Profile::Follow { target_id, last_known_pos, .. } => {
-                    let dest = entities.iter().find(|e| e.id == *target_id)
-                        .map(|t| t.center()).unwrap_or(*last_known_pos);
-                    if adjacent(entity.position, dest) { Decision::Idle }
-                    else { Decision::GoTo { dest, tolerance: 2 } }
-                },
-                Profile::Stationary { .. } => Decision::Idle,
             },
             AlertLevel::Suspicious { origin, .. } => Decision::GoTo { dest: *origin, tolerance: 0 },
             AlertLevel::Alert { last_known, search } => match search {
@@ -511,14 +599,6 @@ impl ActorAI {
 // ---------------------------------------------------------------------------
 
 /// A resolved AI decision: produced by `decide`, carried out by `execute`.
-#[derive(Clone, Copy, Debug)]
-enum Decision {
-    Idle,
-    GoTo   { dest: Point, tolerance: u32 },
-    Face   { toward: Point },
-    Flee   { threat: Point },
-    Engage { target_id: usize, last_seen: Point },
-}
 
 /// Turn to face `toward` (any distance), or None if already facing it.
 fn face_intent(entity: &Entity, toward: Point) -> Option<Intent> {

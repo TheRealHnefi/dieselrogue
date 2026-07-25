@@ -324,13 +324,14 @@ impl SlotType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, damage: Damage, range: u32},
     MeleeWeapon {damage: Damage},
     Wearable {armor: Armor},
     FusedExplosive {damage: Damage, timeout: u32, radius: u32, flash: bool},
     Key {color: usize},
+    Corpse,
     Misc
 }
 
