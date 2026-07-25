@@ -34,6 +34,7 @@ pub const KEY_COLOR_NAMES: [&str; 16] = [
 pub enum PaperDoll {
     Player,
     MaleSilhouette,
+    Tank,
 }
 
 #[derive (PartialEq, Eq, Clone, Copy)]
