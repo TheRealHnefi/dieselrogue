@@ -90,6 +90,10 @@ pub fn get_item_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity],
     if map.items[index].is_none() {
         return vec!();
     }
+    if entity.body.inventory.len() >= crate::components::INVENTORY_MAX {
+        log.log(format!("{} can't carry any more items.", entity.name));
+        return vec!();
+    }
     let item = map.items[index].take().unwrap();
     log.log(format!("{} picked up {}", entity.name, item.name));
     let mut effects = vec!();

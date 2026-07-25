@@ -32,13 +32,15 @@ const LOCATION_PANEL_HEIGHT: usize = 5;
 const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 9;
 const HEALTH_PANEL_WIDTH: usize = 45;
 const STATUS_PANEL_WIDTH: usize = UI_WIDTH - HEALTH_PANEL_WIDTH;
+const GROUND_ITEM_PANEL_HEIGHT: usize = 4;
 const INVENTORY_PANEL_HEIGHT: usize = 23;
-const EQUIPMENT_PANEL_HEIGHT: usize = 15;
-const ABILITIES_PANEL_HEIGHT: usize = 25;
+const EQUIPMENT_PANEL_HEIGHT: usize = 11;
+const ABILITIES_PANEL_HEIGHT: usize = 13;
 const LOG_NOISE_PANEL_HEIGHT: usize = UI_HEIGHT
     - ABILITIES_PANEL_HEIGHT
     - EQUIPMENT_PANEL_HEIGHT
     - INVENTORY_PANEL_HEIGHT
+    - GROUND_ITEM_PANEL_HEIGHT
     - HEALTH_AND_STATUS_PANEL_HEIGHT
     - LOCATION_PANEL_HEIGHT
     - 1;
@@ -115,6 +117,9 @@ fn draw_panel_geometry(context: &mut Rltk) {
     context.draw_hollow_box_double(UI_X_OFFSET + HEALTH_PANEL_WIDTH, offset, STATUS_PANEL_WIDTH, HEALTH_AND_STATUS_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
     offset += HEALTH_AND_STATUS_PANEL_HEIGHT;
 
+    context.draw_hollow_box_double(UI_X_OFFSET, offset, UI_WIDTH, GROUND_ITEM_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
+    offset += GROUND_ITEM_PANEL_HEIGHT;
+
     context.draw_hollow_box_double(UI_X_OFFSET, offset, UI_WIDTH, INVENTORY_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
     offset += INVENTORY_PANEL_HEIGHT;
 
@@ -134,8 +139,13 @@ fn draw_panel_geometry(context: &mut Rltk) {
     context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
     offset += HEALTH_AND_STATUS_PANEL_HEIGHT;
 
+    // Health/status split ends here; ground item panel is full-width below.
     context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
     context.set(UI_X_OFFSET + HEALTH_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╩'));
+    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    offset += GROUND_ITEM_PANEL_HEIGHT;
+
+    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
     context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
     offset += INVENTORY_PANEL_HEIGHT;
 
@@ -160,6 +170,9 @@ fn draw_panel_geometry(context: &mut Rltk) {
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Damage and armor ╠");
     context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH, offset, LABEL_COLOR, BG_COLOR, "╣ Status effects ╠");
     offset += HEALTH_AND_STATUS_PANEL_HEIGHT;
+
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Ground ╠");
+    offset += GROUND_ITEM_PANEL_HEIGHT;
 
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Inventory ╠");
     offset += INVENTORY_PANEL_HEIGHT;
@@ -253,11 +266,20 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         }
     }
 
-    // Inventory panel
+    // Ground item panel
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + 2;
+    let player_tile = state.world.map.pos_idx(state.world.get_player().map(|p| p.position).unwrap_or(rltk::Point::zero()));
+    if let Some(ground_item) = &state.world.map.items[player_tile] {
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, &ground_item.name);
+    } else {
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, INACTIVE_COLOR, BG_COLOR, "Nothing");
+    }
+
+    // Inventory panel
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + 2;
     const INVENTORY_NAME_COLUMN_WIDTH: usize = 20;
     for (i, item) in player.body.inventory.iter().enumerate() {
-        assert!(i < 20);
+        debug_assert!(i < crate::components::INVENTORY_MAX);
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y + i, LABEL_COLOR, BG_COLOR, format!("{}: {}", i, &item.name));
         match &item.kind {
             ItemKind::Firearm{ammo, max_ammo, damage, range} => {
@@ -351,7 +373,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     }
 
     // Equipment panel
-    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
     for (i, slot) in player.body.item_slots.iter().enumerate() {
         let mut slot_label = slot.slot_type.to_string();
         let mut offset_x = UI_X_OFFSET + LABEL_OFFSET;
@@ -377,7 +399,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     }
 
     // Abilities panel
-    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
     const ABILITY_TYPE_X: usize = UI_X_OFFSET + LABEL_OFFSET + 20;
     let mut abilities: Vec<&Ability> = player.body.abilities.iter().filter(|a| !a.is_innate()).collect();
     abilities.sort_by_key(|a| !a.is_passive()); // passives first
@@ -393,7 +415,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     }
 
     // Log
-    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + ABILITIES_PANEL_HEIGHT + 2;
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + ABILITIES_PANEL_HEIGHT + 2;
     let max_logs = LOG_NOISE_PANEL_HEIGHT - 2;
     let length = max(state.log.entries.len() as i32 - max_logs as i32, 0) as usize;
     for message in &state.log.entries[length..] {
@@ -453,7 +475,7 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
     if player.body.get_status_effect(&StatusEffect::Deaf(0)).is_some() {
         let panel_x = UI_X_OFFSET + ABILITIES_PANEL_WIDTH + LABEL_OFFSET;
         let panel_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
-            + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
+            + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
         let warn_color = RGB { r: 1.0, g: 0.2, b: 0.2 };
         context.print_color(panel_x, panel_y, warn_color, BG_COLOR, "Deaf!");
         return;
@@ -464,7 +486,7 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
 
     let panel_x = UI_X_OFFSET + ABILITIES_PANEL_WIDTH + LABEL_OFFSET;
     let panel_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
-        + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
+        + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
     let max_rows = ABILITIES_PANEL_HEIGHT - 2;
     let inner_width = NOISE_PANEL_WIDTH - LABEL_OFFSET - 1;
 

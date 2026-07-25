@@ -2,6 +2,8 @@ use rltk::Point;
 use std::hash::{Hash, Hasher};
 use crate::{Animation, Item};
 
+pub const INVENTORY_MAX: usize = 20;
+
 pub const KEY_COLORS: [(u8, u8, u8); 16] = [
     (220,  50,  50),  // 0  Red
     (230, 140,  30),  // 1  Orange
