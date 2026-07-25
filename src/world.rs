@@ -1363,6 +1363,22 @@ mod tests {
     //   - swarm:  a cluster all Alert to one shared cell (bounded dynamic field).
     // ---------------------------------------------------------------------
 
+    #[derive(Clone, Copy)]
+    enum BenchScenario {
+        /// Everyone Unaware, navigating shared ring corners (full-map fields).
+        Patrol,
+        /// A cluster all Alert to one shared cell within the bounded field radius.
+        Swarm,
+        /// Worst case for A*: agents scattered across the whole map, all sharing
+        /// ONE distant static goal (a guard anchor at the far outer-ring corner).
+        /// The goal is out of sight (so greedy can't short-circuit) and reached
+        /// only by long, obstacle-heavy paths — where A* pays its worst per-agent
+        /// cost (partial paths capped at MAX_EXPANSIONS, frequent repaths), while
+        /// the (static, full-map) field stays flat O(8). Covers far agents because
+        /// static goals get full-map fields, unlike the bounded Swarm case.
+        Gauntlet,
+    }
+
     fn bench_env_usize(key: &str, default: usize) -> usize {
         std::env::var(key).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
     }
@@ -1420,6 +1436,35 @@ mod tests {
         }
     }
 
+    /// Scatter guards across the whole map, all sharing one distant `anchor`
+    /// (Unaware, so they path toward it). Long out-of-sight obstacle-heavy routes
+    /// to a single shared static goal — worst case for A*, full-map field win.
+    fn bench_fill_gauntlet(world: &mut World, target: usize, anchor: Point) {
+        let (w, h) = (world.map.width as i32, world.map.height as i32);
+        let mut placed = 0usize;
+        let mut y = 2;
+        while y < h - 2 && world.entities.len() < target {
+            let mut x = 2;
+            while x < w - 2 && world.entities.len() < target {
+                if !world.map.blocked(x, y) {
+                    if world.create_guard_actor(Point { x, y }, Direction::Up, format!("Gauntlet {}", placed), CombatTactic::Pursue).is_ok() {
+                        placed += 1;
+                    }
+                }
+                x += 3;
+            }
+            y += 3;
+        }
+        // Point every guard at the same far anchor.
+        for e in world.entities.iter_mut() {
+            if let AI::Actor(actor) = &mut e.ai {
+                if let Profile::Guard { anchor: a, .. } = &mut actor.profile {
+                    *a = anchor;
+                }
+            }
+        }
+    }
+
     fn bench_report(label: &str, mut samples: Vec<f64>, actors: usize) {
         samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let n = samples.len();
@@ -1431,16 +1476,25 @@ mod tests {
         );
     }
 
-    fn bench_run(label: &str, size: usize, target: usize, ticks: usize, warmup: usize, use_fields: bool, parallel: bool, swarm: bool) {
+    fn bench_run(label: &str, size: usize, target: usize, ticks: usize, warmup: usize, use_fields: bool, parallel: bool, scenario: BenchScenario) {
         let mut world = World::new(size, 1);
         world.parallel_ai = parallel;
         world.map.use_flow_fields = use_fields;
 
-        if swarm {
-            let center = Point { x: (world.map.width / 4) as i32, y: (world.map.height / 4) as i32 };
-            bench_fill_swarm(&mut world, target, center);
-        } else {
-            bench_fill_patrollers(&mut world, target);
+        match scenario {
+            BenchScenario::Patrol => bench_fill_patrollers(&mut world, target),
+            BenchScenario::Swarm => {
+                let center = Point { x: (world.map.width / 4) as i32, y: (world.map.height / 4) as i32 };
+                bench_fill_swarm(&mut world, target, center);
+            }
+            BenchScenario::Gauntlet => {
+                // Far outer-ring corner: guaranteed walkable (snapped at map gen)
+                // and about as far from map-wide scatter as a goal gets.
+                let anchor = world.map.patrol_routes.last()
+                    .and_then(|r| r.first().copied())
+                    .unwrap_or(Point { x: 2, y: 2 });
+                bench_fill_gauntlet(&mut world, target, anchor);
+            }
         }
         let actors = world.entities.len();
 
@@ -1484,10 +1538,12 @@ mod tests {
         );
         println!("Timing World::resolve_intent_declaration per tick:\n");
 
-        bench_run("patrol fields=ON",  size, target, ticks, warmup, true,  parallel, false);
-        bench_run("patrol fields=OFF", size, target, ticks, warmup, false, parallel, false);
-        bench_run("swarm  fields=ON",  size, target, ticks, warmup, true,  parallel, true);
-        bench_run("swarm  fields=OFF", size, target, ticks, warmup, false, parallel, true);
+        bench_run("patrol   fields=ON",  size, target, ticks, warmup, true,  parallel, BenchScenario::Patrol);
+        bench_run("patrol   fields=OFF", size, target, ticks, warmup, false, parallel, BenchScenario::Patrol);
+        bench_run("swarm    fields=ON",  size, target, ticks, warmup, true,  parallel, BenchScenario::Swarm);
+        bench_run("swarm    fields=OFF", size, target, ticks, warmup, false, parallel, BenchScenario::Swarm);
+        bench_run("gauntlet fields=ON",  size, target, ticks, warmup, true,  parallel, BenchScenario::Gauntlet);
+        bench_run("gauntlet fields=OFF", size, target, ticks, warmup, false, parallel, BenchScenario::Gauntlet);
         println!();
     }
 
