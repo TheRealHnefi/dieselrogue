@@ -313,6 +313,14 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
             }
 
             let tile_pos = rltk::Point::new(tx, ty);
+
+            // Cast a ray; skip this tile if anything blocks the path before reaching it.
+            let ray = rltk::line2d(rltk::LineAlg::Bresenham, src, tile_pos);
+            let n = ray.len();
+            if ray[1..n.saturating_sub(1)].iter().any(|p| map.blocked(p.x, p.y)) {
+                continue;
+            }
+
             let tile_idx = map.pos_idx(tile_pos);
             if let Some(pawn) = &map.pawns[tile_idx] {
                 for part_index in 0..pawn.body.parts.len() {
