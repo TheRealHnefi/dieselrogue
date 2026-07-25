@@ -5,9 +5,6 @@ use rltk::Point;
 pub struct World {
     pub player_id: Option<usize>,
     pub entities: Vec<Entity>,
-
-    // TODO: Copy relevant data to map when adding/moving actors. Might be faster, since moving
-    // is relatively uncommon compared to rendering/dereferencing.
     pub map: Map
 }
 
@@ -207,6 +204,20 @@ impl World {
                     if self.map.tiles[index] == TileType::ClosedDoor {
                         self.map.tiles[index] = TileType::OpenDoor;
                         self.update_views_near_event(*pos, 10);
+                    }
+                },
+                Effect::DestroyWall(pos) => {
+                    let index = self.map.pos_idx(*pos);
+                    match self.map.tiles[index] {
+                        TileType::ClosedDoor => {
+                            self.map.tiles[index] = TileType::Floor;
+                            self.update_views_near_event(*pos, 10);
+                        },
+                        TileType::Wall => {
+                            self.map.tiles[index] = TileType::Floor;
+                            self.update_views_near_event(*pos, 10);
+                        },
+                        _ => ()
                     }
                 },
                 Effect::Animation(animation) => {

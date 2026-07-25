@@ -55,6 +55,36 @@ impl Item {
         }
     }
 
+    pub fn rocket_launcher() -> Self {
+        let equip_action = ItemAction {
+            name: "Equip".to_string(),
+            targeting: Targeting::None,
+            phase: IntentPhase::Inventory,
+            effects: Entity::resolve_equip_item
+        };
+        let drop_action = ItemAction {
+            name: "Drop".to_string(),
+            targeting: Targeting::None,
+            phase: IntentPhase::Inventory,
+            effects: Entity::resolve_drop_item
+        };
+        let fire_action = ItemAction {
+            name: "Fire".to_string(),
+            targeting: Targeting::Positional,
+            phase: IntentPhase::Attack,
+            effects: Entity::resolve_rocket_fire
+        };
+        Item {
+            renderable: Renderable::new_char('r'),
+            name: String::from("Rocket launcher"),
+            inventory_actions: vec![equip_action, drop_action],
+            equip_actions: vec!(fire_action),
+            equip_slots: vec!(SlotType::PrimaryHand, SlotType::SecondaryHand),
+            kind: ItemKind::Firearm {ammo: 1, max_ammo: 1, damage: 500},
+            proxy: false
+        }
+    }
+
     pub fn pistol() -> Self {
         let equip_action = ItemAction {
             name: "Equip".to_string(),

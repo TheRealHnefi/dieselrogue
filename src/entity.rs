@@ -432,6 +432,68 @@ impl Entity {
         result
     }
 
+    pub fn resolve_rocket_fire(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+        let mut result = vec!();
+
+        let target_pos;
+        let target_map_index;
+        let item_slot;
+
+        match self.intent.data {
+            IntentData::TargetWithEquipment{slot, target} => {
+                item_slot = slot;
+                target_map_index = map.pos_idx(target);
+                target_pos = target;
+            },
+            _ => {
+                debug_assert!(false);
+                return result;
+            }
+        }
+
+        let shot_damage;
+        match self.get_equipped_item(item_slot) {
+            Some(item) => {
+                match item.kind {
+                    ItemKind::Firearm {ammo, max_ammo, damage} => {
+                        if ammo < 1 {
+                            log.log(format!("{} pulled the trigger. 'Click'.", self.name));
+                            return result;
+                        }
+                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage};
+                        shot_damage = damage;
+                    },
+                    _ => {
+                        debug_assert!(false);
+                        return result;
+                    }
+                }
+            },
+            None => {
+                debug_assert!(false);
+                return result;
+            }
+        }
+
+        match &map.pawns[target_map_index] {
+            Some(pawn) => {
+                for part_index in 0..pawn.body.parts.len() {
+                    result.push(Effect::Damage {
+                        entity_id: pawn.entity_id,
+                        bodypart_index: part_index,
+                        raw_damage: shot_damage
+                    });
+                }
+            }
+            _ => ()
+        }
+
+        result.push(Effect::DestroyWall(target_pos));
+        result.push(Effect::Animation(explosion_animation(target_pos)));
+
+        result
+    }
+
     pub fn resolve_open_door(&mut self, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
         match self.intent.data {
             IntentData::Target(pos) => {
