@@ -92,12 +92,20 @@ impl World {
 
         world.init_static_entities();
 
+        // Assign a cycling color to every other door; drop one matching key per color used.
         let door_ids: Vec<usize> = world.entities.iter()
             .filter(|e| e.kind == EntityKind::Door)
             .map(|e| e.id)
             .collect();
-        let key_door_ids: Vec<usize> = door_ids.into_iter().step_by(2).collect();
-        let _ = world.add_item(pos, Item::key(key_door_ids));
+        let mut colors_used = std::collections::HashSet::new();
+        for (i, &door_id) in door_ids.iter().enumerate().step_by(2) {
+            let color = i % crate::components::KEY_COLORS.len();
+            world.entities[door_id].key_color = Some(color);
+            colors_used.insert(color);
+        }
+        for color in colors_used {
+            let _ = world.add_item(pos, Item::key(color));
+        }
 
         let _result = world.create_tank(Point {x: pos.x, y: pos.y - 4},
             Direction::Up,
@@ -626,9 +634,9 @@ impl World {
             Some(pawn) if self.entities[pawn.entity_id].kind == EntityKind::Door => pawn.entity_id,
             _ => return,
         };
-        if self.entities[entity_id].locked {
+        if let Some(door_color) = self.entities[entity_id].key_color {
             let has_key = self.entities[actor_id].body.inventory.iter().any(|item| {
-                matches!(&item.kind, ItemKind::Key { door_ids } if door_ids.contains(&entity_id))
+                matches!(&item.kind, ItemKind::Key { color } if *color == door_color)
             });
             if !has_key {
                 log.log("The door is locked.".to_string());

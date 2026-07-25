@@ -181,15 +181,20 @@ impl Item {
         }
     }
 
-    pub fn key(door_ids: Vec<usize>) -> Self {
+    pub fn key(color: usize) -> Self {
+        let (r, g, b) = crate::components::KEY_COLORS[color];
         Item {
             id: 0,
-            renderable: Renderable::new_char('k'),
-            name: String::from("Key"),
+            renderable: Renderable {
+                glyph: rltk::to_cp437('k'),
+                color: rltk::RGB::from_u8(r, g, b),
+                background: rltk::RGB::named(rltk::BLACK),
+            },
+            name: format!("{} key", crate::components::KEY_COLOR_NAMES[color]),
             inventory_actions: vec![Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::Key { door_ids },
+            kind: ItemKind::Key { color },
             proxy: false,
             active: false,
         }
