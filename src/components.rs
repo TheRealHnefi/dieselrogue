@@ -159,13 +159,16 @@ impl Sub for Protection {
     }
 }
 
-#[derive (Component, ConvertSaveload, Clone)]
-pub struct Damage {
+#[derive (Component, Serialize, Deserialize, Clone)]
+pub struct DamageInstance {
     pub phys: i32,
     pub heat: i32,
-    pub elec: i32,
+    pub elec: i32
+}
 
-    pub localized_target: Option<String>
+#[derive (Component, Serialize, Deserialize, Clone)]
+pub struct Damage {
+    pub instances: Vec<DamageInstance>
 }
 
 #[derive (Component, ConvertSaveload, Clone)]
