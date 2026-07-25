@@ -31,3 +31,4 @@ pub struct Pawn {
     pub intent: Intent,
     pub facing: Facing
 }
+

@@ -1,9 +1,78 @@
 use rltk::{VirtualKeyCode, Rltk};
 use super::*;
 
-pub fn main_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
-    match ctx.key {
+pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
+    match context.key {
         Some(key) => match key {
+            VirtualKeyCode::Left |
+            VirtualKeyCode::Numpad4 => {
+                if move_player_intent(Direction::Left, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+            VirtualKeyCode::Right |
+            VirtualKeyCode::Numpad6 => {
+                if move_player_intent(Direction::Right, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+            VirtualKeyCode::Up |
+            VirtualKeyCode::Numpad8 => {
+                if move_player_intent(Direction::Up, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+            VirtualKeyCode::Down |
+            VirtualKeyCode::Numpad2 => {
+                if move_player_intent(Direction::Down, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+            VirtualKeyCode::Numpad7 => {
+                if move_player_intent(Direction::UpLeft, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+            VirtualKeyCode::Numpad9 => {
+                if move_player_intent(Direction::UpRight, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+            VirtualKeyCode::Numpad3 => {
+                if move_player_intent(Direction::DownRight, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+            VirtualKeyCode::Numpad1 => {
+                if move_player_intent(Direction::DownLeft, &mut state.world).is_ok() {
+                    return RunState::Resolve;
+                }
+                else {
+                    return RunState::AwaitingInput;
+                }
+            },
+
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Menu::new_main());

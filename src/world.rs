@@ -82,7 +82,7 @@ impl World {
             position: pos,
             renderable: Renderable::new_glyph('8'),
             name: name,
-            intent: Intent { action: Action::Idle, target: Point {x: 0, y: 0}},
+            intent: Intent { action: Action::Idle},
             facing: facing
         };
 
@@ -105,7 +105,7 @@ impl World {
             position: pos,
             renderable: Renderable::new_glyph('5'),
             name: name,
-            intent: Intent { action: Action::Idle, target: Point {x: 0, y: 0}},
+            intent: Intent { action: Action::Idle},
             facing: facing
         };
 
@@ -113,6 +113,49 @@ impl World {
         self.map.pawns[index] = Some(entity.create_pawn());
         self.entities.push(entity);
 
+        Ok(())
+    }
+
+    pub fn resolve(&mut self) -> Result<(), GameError> {
+        self.verify_player_exists()?;
+        let mut player = self.player.take().unwrap();
+        
+        match player.intent.action {
+            Action::Idle => {},
+            Action::Move(pos) => {
+                if !self.map.blocked(pos.x, pos.y) {
+                    player.position = pos;
+                }
+            },
+            Action::Turn(direction) => {
+                player.facing.direction = direction;
+
+                match direction {
+                    Direction::Up => {player.renderable.glyph = rltk::to_cp437('8')},
+                    Direction::UpRight => {player.renderable.glyph = rltk::to_cp437('9')},
+                    Direction::Right => {player.renderable.glyph = rltk::to_cp437('6')},
+                    Direction::DownRight => {player.renderable.glyph = rltk::to_cp437('3')},
+                    Direction::Down => {player.renderable.glyph = rltk::to_cp437('2')},
+                    Direction::DownLeft => {player.renderable.glyph = rltk::to_cp437('1')},
+                    Direction::Left => {player.renderable.glyph = rltk::to_cp437('4')},
+                    Direction::UpLeft => {player.renderable.glyph = rltk::to_cp437('7')},
+                }
+            }
+        }
+
+        player.intent = Intent {action: Action::Idle};
+
+        self.player = Some(player);
+        Ok(())
+    }
+
+    fn verify_player_exists(&self) -> Result<(), GameError> {
+        if self.player.is_none() {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: String::from("Player does not exist")
+            });
+        }
         Ok(())
     }
 }
