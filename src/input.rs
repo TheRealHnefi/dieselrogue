@@ -715,7 +715,7 @@ fn collect_entity_targets(world: &World, max_range: Option<u32>) -> Vec<usize> {
         Ok(p) => p,
         Err(_) => return vec![],
     };
-    let player_id = player.id;
+    let player_id = player.index;
     let player_center = player.center();
 
     let mut seen = std::collections::HashSet::new();

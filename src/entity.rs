@@ -36,7 +36,9 @@ pub enum EntityKind {
 /// Call [`Entity::create_pawns`] after spawning or moving, and [`Entity::clear_pawns`] before
 /// removing an entity. [`Entity::set_position`] handles both automatically.
 pub struct Entity {
-    pub id: usize,
+    // Unstable index, recalculated every frame.
+    // TODO: Add stable ID, for AI targeting purposes
+    pub index: usize,
     pub kind: EntityKind,
     pub driving: DrivingState,
     pub sprite: Sprite,
@@ -99,7 +101,7 @@ fn human_innate_actions() -> Vec<EntityAction> {
 impl Entity {
     pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
-            id: id,
+            index: id,
             kind: EntityKind::Actor,
             driving: DrivingState::None,
             sprite: Sprite::Human,
@@ -119,7 +121,7 @@ impl Entity {
 
     pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, route_id: usize) -> Self {
         Self {
-            id: id,
+            index: id,
             kind: EntityKind::Actor,
             driving: DrivingState::None,
             sprite: Sprite::Human,
@@ -143,7 +145,7 @@ impl Entity {
 
     pub fn new_tank(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
-            id: id,
+            index: id,
             kind: EntityKind::Actor,
             driving: DrivingState::Drivable,
             sprite: Sprite::Tank,
@@ -176,7 +178,7 @@ impl Entity {
         }
 
         Self {
-            id: id,
+            index: id,
             kind: EntityKind::Door,
             driving: DrivingState::None,
             sprite: Sprite::Door,
@@ -200,7 +202,7 @@ impl Entity {
                 let index = map.xy_idx(pos.x + x as i32, pos.y + y as i32);
                 match &map.pawns[index] {
                     Some(pawn) => {
-                        if pawn.entity_id != self.id {
+                        if pawn.entity_id != self.index {
                             return false;
                         }
                     },
@@ -229,7 +231,7 @@ impl Entity {
             for y in 0..self.size_y {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = Some(Pawn {
-                    entity_id: self.id,
+                    entity_id: self.index,
                     sprite_index: x + y * self.size_x,
                 });
                 map.fov_blocked[index] = self.kind == EntityKind::Door;
@@ -430,7 +432,7 @@ impl Entity {
         let mut effects = vec![];
         if self.body.get_status_effect(&StatusEffect::Burning(0)).is_some() {
             for i in 0..self.body.parts.len() {
-                effects.push(Effect::BurnTick { entity_id: self.id, bodypart_index: i });
+                effects.push(Effect::BurnTick { entity_id: self.index, bodypart_index: i });
             }
         }
         self.body.resolve_status_effects();

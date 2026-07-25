@@ -598,7 +598,7 @@ impl World {
                 let dx = entity.position.x - pos.x;
                 let dy = entity.position.y - pos.y;
                 if dx * dx + dy * dy <= r * r && entity.can_see(pos) {
-                    effects.push(Effect::ApplyStatus { target_id: entity.id, status: StatusEffect::Blind(5) });
+                    effects.push(Effect::ApplyStatus { target_id: entity.index, status: StatusEffect::Blind(5) });
                 }
             }
             effects.push(Effect::Animation(flashbang_animation(pos, radius)));
@@ -609,7 +609,7 @@ impl World {
                 let dy = entity.position.y - pos.y;
                 if dx * dx + dy * dy <= r * r {
                     for part in 0..entity.body.parts.len() {
-                        effects.push(Effect::Damage { entity_id: entity.id, bodypart_index: part, raw_damage: damage });
+                        effects.push(Effect::Damage { entity_id: entity.index, bodypart_index: part, raw_damage: damage });
                     }
                 }
             }
@@ -900,7 +900,7 @@ impl World {
 
         log.log(format!("{} entered {}", self.entities[pilot_id].name, self.entities[vehicle_id].name));
 
-        if self.entities[pilot_id].id == self.player_id.unwrap() {
+        if self.entities[pilot_id].index == self.player_id.unwrap() {
             self.entities[pilot_id].set_visible_tiles(&mut self.map, false);
             self.entities[vehicle_id].set_visible_tiles(&mut self.map, true);
             self.entities[self.player_id.unwrap()].kind = EntityKind::Actor;
@@ -920,7 +920,7 @@ impl World {
                 self.entities[vehicle_id].create_pawns(&mut self.map);
                 self.entities[pilot_id].update_view(&mut self.map);
 
-                if self.entities[vehicle_id].id == self.player_id.unwrap() {
+                if self.entities[vehicle_id].index == self.player_id.unwrap() {
                     self.entities[vehicle_id].set_visible_tiles(&mut self.map, false);
                     self.entities[pilot_id].set_visible_tiles(&mut self.map, true);
                     self.player_id = Some(pilot_id);
@@ -1111,13 +1111,13 @@ impl World {
         }
 
         self.entities.retain(|entity| {
-            let should_be_dead = deathlist.iter().any(|&id| id == entity.id);
+            let should_be_dead = deathlist.iter().any(|&id| id == entity.index);
             return !should_be_dead;
         });
 
         // TODO: This compaction causes a bug, since AI's sometimes rely on stable entity ID's. Reconsider this approach.
         for (i, entity) in self.entities.iter_mut().enumerate() {
-            entity.id = i;
+            entity.index = i;
         }
 
         // Update player_id to the player's new index after compaction.
@@ -1139,7 +1139,7 @@ impl World {
                     for y in 0..entity.size_y {
                         let idx = map.xy_idx(entity.position.x + x as i32, entity.position.y + y as i32);
                         if let Some(pawn) = map.pawns[idx].as_mut() {
-                            pawn.entity_id = entity.id;
+                            pawn.entity_id = entity.index;
                         }
                     }
                 }
@@ -1321,7 +1321,7 @@ mod tests {
             let should_be_dead = deathlist.iter().any(|&id| id == old_id);
 
             assert!(!should_be_dead);
-            assert!(entity.id == index);
+            assert!(entity.index == index);
             assert!(world.map.pawns[world.map.xy_idx(pos.x + 1, pos.y)].is_none());
             assert!(world.map.pawns[world.map.xy_idx(pos.x + 3, pos.y)].is_none());
             assert!(world.map.pawns[world.map.xy_idx(pos.x + 4, pos.y)].is_none());
