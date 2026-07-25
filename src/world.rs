@@ -68,6 +68,44 @@ pub fn resolve_melee(&mut self, Entity: entity) -> Result<(), GameError> {
 World.cleanup(); // Delete dead entries
 */
 
+/// Overall guard density multiplier. Raise or lower to scale all guard counts.
+const GUARD_DENSITY: f32 = 1.0;
+
+fn chebyshev(a: Point, b: Point) -> i32 {
+    (a.x - b.x).abs().max((a.y - b.y).abs())
+}
+
+fn guard_too_close(pos: Point, placed: &[Point], min_dist: i32) -> bool {
+    placed.iter().any(|&p| chebyshev(pos, p) < min_dist)
+}
+
+fn dir_toward(from: Point, to: Point) -> Direction {
+    let dx = (to.x - from.x).signum();
+    let dy = (to.y - from.y).signum();
+    match (dx, dy) {
+        ( 0, -1) => Direction::Up,
+        ( 1, -1) => Direction::UpRight,
+        ( 1,  0) => Direction::Right,
+        ( 1,  1) => Direction::DownRight,
+        ( 0,  1) => Direction::Down,
+        (-1,  1) => Direction::DownLeft,
+        (-1,  0) => Direction::Left,
+        (-1, -1) => Direction::UpLeft,
+        _        => Direction::Up,
+    }
+}
+
+fn fy_shuffle<T>(v: &mut Vec<T>, rng: &mut RandomNumberGenerator) {
+    for i in (1..v.len()).rev() {
+        let j = rng.range(0, (i + 1) as i32) as usize;
+        v.swap(i, j);
+    }
+}
+
+fn is_spawnable(tile: TileType) -> bool {
+    matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
+}
+
 impl World {
     /// Create new world.
     /// # Arguments
@@ -131,46 +169,14 @@ impl World {
         world.assign_zone_keys(&zone_map, &spawn_map, &depths, &mut rng);
         world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
 
-        let candidates: Vec<Point> = spawn_map.spawn_points
-            .iter()
-            .filter(|sp| matches!(sp.category, SpawnCategory::Junction | SpawnCategory::RoomInterior))
-            .map(|sp| sp.pos)
-            .collect();
-
-        let dirs = [
-            Direction::Up, Direction::UpRight, Direction::Right, Direction::DownRight,
-            Direction::Down, Direction::DownLeft, Direction::Left, Direction::UpLeft,
-        ];
-
-        // Minimum Chebyshev distance between any two guards.
-        const MIN_GUARD_DIST: i32 = 10;
-
-        // Fisher-Yates shuffle using the shared RNG so guard placement is part of the
-        // same reproducible sequence as map generation.
-        let mut indices: Vec<usize> = (0..candidates.len()).collect();
-        for i in (1..indices.len()).rev() {
-            let j = rng.range(0, (i + 1) as i32) as usize;
-            indices.swap(i, j);
-        }
-
         let mut placed: Vec<Point> = Vec::new();
-        for &ci in &indices {
-            let pos = candidates[ci];
-            let too_close = placed.iter().any(|&p| {
-                (p.x - pos.x).abs().max((p.y - pos.y).abs()) < MIN_GUARD_DIST
-            });
-            if too_close { continue; }
-            placed.push(pos);
-            let facing = dirs[placed.len() % dirs.len()];
-            let _ = world.create_guard_actor(
-                pos,
-                facing,
-                format!("Guard {}", placed.len()),
-                CombatTactic::Pursue,
-            );
-        }
-
-        println!("Spawned {} guards.", placed.len());
+        let mut guard_n = 0usize;
+        println!("Spawning guards:");
+        world.spawn_sentinels(&mut placed, &mut guard_n, &mut rng);
+        world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+        world.spawn_squads(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+        world.spawn_idle_guards(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+        println!("Spawned {} guards total.", guard_n);
 
         // Spawn tanks on roads and in hangars, skewing toward outer zones.
         let tank_spawns = find_tank_spawns(&world.map, &spawn_map.regions);
@@ -318,6 +324,237 @@ impl World {
 
     pub fn create_stationary_actor(&mut self, pos: Point, facing: Direction, name: String, tactic: CombatTactic) -> Result<(), GameError> {
         self.create_actor(pos, facing, name, Profile::Stationary { combat_tactic: tactic })
+    }
+
+    // --- Guard placement passes -------------------------------------------
+
+    /// Stationary guards adjacent to doorways
+    fn spawn_sentinels(
+        &mut self,
+        placed: &mut Vec<Point>,
+        n: &mut usize,
+        rng: &mut RandomNumberGenerator,
+    ) {
+        const RATE: f32 = 0.30;
+        const MIN_DIST: i32 = 5;
+
+        let mut candidates: Vec<(Point, Point)> = Vec::new();
+        for idx in 0..self.map.width * self.map.height {
+            if self.map.tiles[idx] != TileType::Doorway { continue; }
+            let door_pos = self.map.idx_pos(idx);
+            for &(dx, dy) in &[(0i32, -1i32), (1, 0), (0, 1), (-1, 0)] {
+                let nx = door_pos.x + dx;
+                let ny = door_pos.y + dy;
+                if nx < 0 || ny < 0 || nx >= self.map.width as i32 || ny >= self.map.height as i32 {
+                    continue;
+                }
+                let nidx = self.map.xy_idx(nx, ny);
+                if is_spawnable(self.map.tiles[nidx]) {
+                    candidates.push((Point::new(nx, ny), door_pos));
+                    break;
+                }
+            }
+        }
+
+        fy_shuffle(&mut candidates, rng);
+        let target = ((candidates.len() as f32) * RATE * GUARD_DENSITY) as usize;
+        let mut count = 0;
+        for (guard_pos, door_pos) in candidates {
+            if count >= target { break; }
+            if guard_too_close(guard_pos, placed, MIN_DIST) { continue; }
+            let facing = dir_toward(guard_pos, door_pos);
+            *n += 1;
+            if self.create_guard_actor(guard_pos, facing, format!("Sentinel {}", n), CombatTactic::Hold).is_ok() {
+                placed.push(guard_pos);
+                count += 1;
+            }
+        }
+        println!("  Sentinels: {}", count);
+    }
+
+    /// Patrol guards following pathfinder-computed road routes.
+    fn spawn_patrollers(
+        &mut self,
+        spawn_map: &SpawnMap,
+        placed: &mut Vec<Point>,
+        n: &mut usize,
+        rng: &mut RandomNumberGenerator,
+    ) {
+        const RATE: f32 = 0.15;
+        const MIN_DIST: i32 = 15;
+        const MIN_PATROL_DIST: i32 = 20;
+        const MAX_PATROL_DIST: i32 = 80;
+        const WAYPOINT_STEP: usize = 8;
+
+        let junctions: Vec<usize> = spawn_map.spawn_points.iter()
+            .enumerate()
+            .filter(|(_, sp)| {
+                matches!(sp.category, SpawnCategory::Junction) &&
+                matches!(self.map.tiles[sp.idx], TileType::Road)
+            })
+            .map(|(i, _)| i)
+            .collect();
+
+        let mut order: Vec<usize> = (0..junctions.len()).collect();
+        fy_shuffle(&mut order, rng);
+
+        let target = ((junctions.len() as f32) * RATE * GUARD_DENSITY) as usize;
+        let mut used: Vec<usize> = Vec::new();
+        let mut count = 0;
+
+        for &oi in &order {
+            if count >= target { break; }
+            let ai = junctions[oi];
+            if used.contains(&ai) { continue; }
+            let (a_pos, a_idx) = {
+                let sp = &spawn_map.spawn_points[ai];
+                if guard_too_close(sp.pos, placed, MIN_DIST) { continue; }
+                (sp.pos, sp.idx)
+            };
+
+            let bi = order.iter()
+                .map(|&oi2| junctions[oi2])
+                .find(|&bi| {
+                    if bi == ai || used.contains(&bi) { return false; }
+                    let d = chebyshev(spawn_map.spawn_points[bi].pos, a_pos);
+                    d >= MIN_PATROL_DIST && d <= MAX_PATROL_DIST
+                });
+            let bi = match bi { Some(b) => b, None => continue };
+            let b_pos = spawn_map.spawn_points[bi].pos;
+            let b_idx = spawn_map.spawn_points[bi].idx;
+
+            let path = navigate(a_idx, b_idx, &self.map);
+            if !path.success || path.steps.is_empty() { continue; }
+
+            let mut waypoints = vec![a_pos];
+            for step_i in (WAYPOINT_STEP..path.steps.len()).step_by(WAYPOINT_STEP) {
+                waypoints.push(self.map.idx_pos(path.steps[step_i]));
+            }
+            waypoints.push(b_pos);
+
+            let facing = dir_toward(a_pos, b_pos);
+            *n += 1;
+            if self.create_patrol_actor(a_pos, facing, format!("Patroller {}", n), waypoints, CombatTactic::Pursue).is_ok() {
+                placed.push(a_pos);
+                used.push(ai);
+                used.push(bi);
+                count += 1;
+            }
+        }
+        println!("  Patrollers: {}", count);
+    }
+
+    /// Small squads — a Guard leader with Follow-profile members nearby.
+    fn spawn_squads(
+        &mut self,
+        spawn_map: &SpawnMap,
+        placed: &mut Vec<Point>,
+        n: &mut usize,
+        rng: &mut RandomNumberGenerator,
+    ) {
+        const RATE: f32 = 0.10;
+        const MIN_DIST: i32 = 12;
+        const SQUAD_SIZE: usize = 2;
+        const SQUAD_RADIUS: i32 = 5;
+
+        let room_pts: Vec<usize> = spawn_map.spawn_points.iter()
+            .enumerate()
+            .filter(|(_, sp)| matches!(sp.category, SpawnCategory::RoomInterior))
+            .map(|(i, _)| i)
+            .collect();
+
+        let mut order: Vec<usize> = (0..room_pts.len()).collect();
+        fy_shuffle(&mut order, rng);
+
+        let target = ((room_pts.len() as f32) * RATE * GUARD_DENSITY) as usize;
+        let mut count = 0;
+
+        for &oi in &order {
+            if count >= target { break; }
+            let li = room_pts[oi];
+            let (leader_pos, ok) = {
+                let sp = &spawn_map.spawn_points[li];
+                (sp.pos, !guard_too_close(sp.pos, placed, MIN_DIST))
+            };
+            if !ok { continue; }
+
+            let followers: Vec<Point> = room_pts.iter()
+                .filter(|&&fi| fi != li)
+                .filter(|&&fi| {
+                    let sp = &spawn_map.spawn_points[fi];
+                    let d = chebyshev(sp.pos, leader_pos);
+                    d > 0 && d <= SQUAD_RADIUS && !guard_too_close(sp.pos, placed, 2)
+                })
+                .map(|&fi| spawn_map.spawn_points[fi].pos)
+                .take(SQUAD_SIZE)
+                .collect();
+
+            if followers.len() < SQUAD_SIZE { continue; }
+
+            *n += 1;
+            let leader_n = *n;
+            if self.create_guard_actor(leader_pos, Direction::Down, format!("Squad Leader {}", leader_n), CombatTactic::Pursue).is_ok() {
+                placed.push(leader_pos);
+                let leader_id = self.entities.len() - 1;
+                for (fi, &fp) in followers.iter().enumerate() {
+                    let facing = dir_toward(fp, leader_pos);
+                    *n += 1;
+                    let _ = self.create_actor(
+                        fp, facing,
+                        format!("Squad Member {} ({})", fi + 1, leader_n),
+                        Profile::Follow {
+                            target_id: leader_id,
+                            last_known_pos: leader_pos,
+                            combat_tactic: CombatTactic::Pursue,
+                        },
+                    );
+                    placed.push(fp);
+                }
+                count += 1;
+            }
+        }
+        println!("  Squads: {} ({} guards each)", count, SQUAD_SIZE + 1);
+    }
+
+    /// Stationary guards scattered through room interiors.
+    fn spawn_idle_guards(
+        &mut self,
+        spawn_map: &SpawnMap,
+        placed: &mut Vec<Point>,
+        n: &mut usize,
+        rng: &mut RandomNumberGenerator,
+    ) {
+        const RATE: f32 = 0.15;
+        const MIN_DIST: i32 = 8;
+
+        let room_pts: Vec<usize> = spawn_map.spawn_points.iter()
+            .enumerate()
+            .filter(|(_, sp)| matches!(sp.category, SpawnCategory::RoomInterior))
+            .map(|(i, _)| i)
+            .collect();
+
+        let mut order: Vec<usize> = (0..room_pts.len()).collect();
+        fy_shuffle(&mut order, rng);
+
+        let target = ((room_pts.len() as f32) * RATE * GUARD_DENSITY) as usize;
+        let dirs = [Direction::Up, Direction::Right, Direction::Down, Direction::Left];
+        let mut count = 0;
+
+        for &oi in &order {
+            if count >= target { break; }
+            let (pos, ok) = {
+                let sp = &spawn_map.spawn_points[room_pts[oi]];
+                (sp.pos, !guard_too_close(sp.pos, placed, MIN_DIST))
+            };
+            if !ok { continue; }
+            let facing = dirs[count % dirs.len()];
+            *n += 1;
+            if self.create_stationary_actor(pos, facing, format!("Guard {}", n), CombatTactic::Hold).is_ok() {
+                placed.push(pos);
+                count += 1;
+            }
+        }
+        println!("  Idle guards: {}", count);
     }
 
     fn equip_pistol(&mut self, entity: &mut Entity) {
