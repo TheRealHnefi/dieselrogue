@@ -79,7 +79,8 @@ impl World {
             });
         }
 
-        let player = Entity::new_human(0, pos, facing, name);
+        let mut player = Entity::new_human(0, pos, facing, name);
+        player.player = true;
 
         player.create_pawns(&mut self.map);
         self.entities.push(player);
@@ -119,7 +120,7 @@ impl World {
 
         let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name, waypoints);
         entity.create_pawns(&mut self.map);
-            self.entities.push(entity);
+        self.entities.push(entity);
 
         Ok(())
     }
@@ -272,10 +273,18 @@ impl World {
                 },
                 Effect::Embark{pilot_id, vehicle_id} => {
                     self.entities[*pilot_id].driving = DrivingState::Driving(*vehicle_id);
+                    self.entities[*pilot_id].clear_pawns(&mut self.map);
                     self.entities[*vehicle_id].driving = DrivingState::DrivenBy(*pilot_id);
+                    
                     log.log(format!("{} entered {}",
                         self.entities[*pilot_id].name,
                         self.entities[*vehicle_id].name));
+
+                    if self.entities[*pilot_id].id == self.player_id.unwrap() {
+                        self.entities[self.player_id.unwrap()].player = false;
+                        self.player_id = Some(*vehicle_id);
+                        self.entities[*vehicle_id].player = true;
+                    }
                 },
                 Effect::Animation(animation) => {
                     animations.push(animation.clone());

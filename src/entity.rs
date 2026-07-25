@@ -23,6 +23,7 @@ pub enum DrivingState {
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
     pub id: usize,
+    pub player: bool,
     pub driving: DrivingState,
     pub sprite: Sprite,
     pub size: u32,
@@ -38,6 +39,7 @@ impl Entity {
     pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
+            player: false,
             driving: DrivingState::None,
             sprite: Sprite::Human,
             size: 1,
@@ -53,6 +55,7 @@ impl Entity {
     pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Self {
         Self {
             id: id,
+            player: false,
             driving: DrivingState::None,
             sprite: Sprite::Human,
             size: 1,
@@ -68,6 +71,7 @@ impl Entity {
     pub fn new_tank(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
+            player: false,
             driving: DrivingState::Drivable,
             sprite: Sprite::Tank,
             size: 3,
@@ -138,6 +142,13 @@ impl Entity {
         self.update_view(map);
     }
 
+    pub fn center(&self) -> Point {
+        Point {
+            x: self.position.x + self.size as i32 / 2,
+            y: self.position.y + self.size as i32 / 2
+        }
+    }
+
     pub fn take_item(&mut self, item: Item) -> Option<Item> {
         if let Some(item_index) = self.body.inventory.iter().position(|value| *value == item) {
             Some(self.body.inventory.swap_remove(item_index))
@@ -189,16 +200,16 @@ impl Entity {
     }
 
     pub fn update_view(&mut self, map: &mut Map) {
-        if self.is_player() {
+        if self.player {
             for tile_pos in &self.viewshed.visible_tiles {
                 let index = map.pos_idx(*tile_pos);
                 map.visible_tiles[index] = false;
             }
         }
 
-        self.viewshed.update(self.position, self.body.facing, map);
+        self.viewshed.update(self.center(), self.body.facing, map);
 
-        if self.is_player() {
+        if self.player {
             for tile_pos in &self.viewshed.visible_tiles {
                 let index = map.pos_idx(*tile_pos);
                 map.visible_tiles[index] = true;
@@ -662,10 +673,6 @@ impl Entity {
 
     pub fn kill(&mut self, map: &mut Map) {
         self.clear_pawns(map);
-    }
-
-    fn is_player(&self) -> bool {
-        self.id == 0
     }
 }
 

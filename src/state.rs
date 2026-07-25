@@ -110,7 +110,7 @@ impl GameState for State {
 impl State {
     pub fn get_viewport(&self) -> Rect {
         let camera_pos = match self.world.get_player() {
-            Ok(player) => player.position,
+            Ok(player) => player.center(),
             Err(_) => Point{x: (SCREEN_WIDTH / 2) as i32, y: (SCREEN_HEIGHT / 2) as i32}
         };
 

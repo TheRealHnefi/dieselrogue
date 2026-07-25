@@ -12,19 +12,15 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
-    let mut player;
-    let driving;
+    
     let player_id = world.player_id.unwrap();
+    let mut player = &mut world.entities[player_id];
 
-    match world.entities[player_id].driving {
-        DrivingState::Driving(vehicle_id) => {
-            player = &mut world.entities[vehicle_id];
-            driving = true;
-        },
-        _ => {
-            player = &mut world.entities[player_id];
-            driving = false;
-        }
+    let driving;
+    if player_id != 0 {
+        driving = true;
+    } else {
+        driving = false;
     }
 
     if !player.has_ability(Ability::Move) {
