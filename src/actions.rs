@@ -362,9 +362,11 @@ pub fn move_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
             if entity.check_fit(pos, map) {
                 entity.set_position(pos, map);
                 entity.clear_aiming();
-                let sound_kind = if entity.has_ability(Ability::VehicleMove) { SoundKind::Engine } else { SoundKind::Footstep };
-                let volume = if entity.has_ability(Ability::VehicleMove) { 15 } else { 5 };
-                result.push(Effect::Sound(SoundEvent { kind: sound_kind, pos: entity.position, volume }));
+                if entity.has_ability(Ability::VehicleMove) {
+                    result.push(Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: entity.position, volume: 15 }));
+                } else if !entity.has_ability(Ability::Stealth) {
+                    result.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos: entity.position, volume: 5 }));
+                }
             }
         },
         _ => unreachable!("move_action called with non-target intent"),
@@ -473,7 +475,9 @@ pub fn juke_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
             entity.body.energy -= ENERGY_COST;
             entity.set_position(pos, map);
             entity.clear_aiming();
-            result.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos: entity.position, volume: 5 }));
+            if !entity.has_ability(Ability::Stealth) {
+                result.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos: entity.position, volume: 5 }));
+            }
         }
     }
     result
