@@ -73,14 +73,16 @@ impl World {
             let start_region = spawn_map.tile_region[player_tile].unwrap_or(0);
             world.place_zone_keys(&spawn_map, &boundary_colors, start_region, &mut rng);
             spawn_loot(&mut world, &spawn_map, &mut rng);
+            spawn_enemies(&mut world, &spawn_map, &mut rng);
 
-            let mut placed: Vec<Point> = Vec::new();
-            let mut guard_n = 0usize;
-            println!("Spawning guards:");
-            world.spawn_sentinels(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-            world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-            println!("Spawned {} guards total.", guard_n);
+            // let mut placed: Vec<Point> = Vec::new();
+            // let mut guard_n = 0usize;
+            // println!("Spawning guards:");
+            // world.spawn_sentinels(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+            // world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+            // println!("Spawned {} guards total.", guard_n);
         } else {
+            #[cfg(debug_assertions)]
             world.spawn_debug(&spawn_map);
         }
 
@@ -101,7 +103,7 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
-            map: Map::new_empty_map(100, 100),
+            map: Map::new_empty_map(100),
             debug_mode: false,
             parallel_ai: false,
         }
@@ -117,7 +119,7 @@ impl World {
         let dim = GRID * BLOCK_SIZE;
         let mut rng = RandomNumberGenerator::new();
 
-        let mut map = Map::new_empty_map(dim, dim);
+        let mut map = Map::new_empty_map(dim);
         let middle = generate_blocks("middleblock");
         if !middle.is_empty() {
             for bx in 0..GRID {
