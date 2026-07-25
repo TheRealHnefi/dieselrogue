@@ -46,8 +46,9 @@ fn draw_map(map: &Map, viewport: Rect, ctx: &mut Rltk, blink: bool) {
             let index = map.xy_idx(x, y);
             if map.revealed_tiles[index] {
                 let mut renderable = match map.tiles[index] {
-                    TileType::Floor => render_floor_tile(map, index, blink),
-                    TileType::OpenDoor => render_open_door_tile(map, index, blink),
+                    TileType::Floor => render_open_tile(map, index, blink, '-'),
+                    TileType::Ground => render_open_tile(map, index, blink, '.'),
+                    TileType::OpenDoor => render_open_tile(map, index, blink, ' '),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),
                         color: rltk::RGB::named(rltk::GREEN),
@@ -68,7 +69,7 @@ fn draw_map(map: &Map, viewport: Rect, ctx: &mut Rltk, blink: bool) {
     }
 }
 
-fn render_floor_tile(map: &Map, tile_index: usize, blink: bool) -> Renderable {
+fn render_open_tile(map: &Map, tile_index: usize, blink: bool, empty_character: char) -> Renderable {
     match &map.pawns[tile_index] {
         Some(pawn) => Renderable {
             glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index, blink),
@@ -79,28 +80,8 @@ fn render_floor_tile(map: &Map, tile_index: usize, blink: bool) -> Renderable {
             match &map.items[tile_index] {
                 Some(item) => item.renderable,
                 None => Renderable {
-                    glyph: rltk::to_cp437('.'),
+                    glyph: rltk::to_cp437(empty_character),
                     color: RGB::from_f32(0.0, 0.5, 0.0),
-                    background: rltk::RGB::named(rltk::BLACK),
-                }
-            }
-        }
-    }
-}
-
-fn render_open_door_tile(map: &Map, tile_index: usize, blink: bool) -> Renderable {
-    match &map.pawns[tile_index] {
-        Some(pawn) => Renderable {
-            glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index, blink),
-            color: rltk::RGB::named(rltk::YELLOW),
-            background: rltk::RGB::named(rltk::BLACK)
-        },
-        None => {
-            match &map.items[tile_index] {
-                Some(item) => item.renderable,
-                None => Renderable {
-                    glyph: 32,
-                    color: rltk::RGB::named(rltk::BLACK),
                     background: rltk::RGB::named(rltk::BLACK),
                 }
             }

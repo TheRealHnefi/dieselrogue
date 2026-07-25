@@ -99,6 +99,7 @@ impl Entity {
                             TileType::Wall => return false,
                             TileType::ClosedDoor => return false,
                             TileType::Floor => (),
+                            TileType::Ground => (),
                             TileType::OpenDoor => ()
                         }
                     }
