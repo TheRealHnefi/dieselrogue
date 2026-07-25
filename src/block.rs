@@ -120,9 +120,8 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
   blocks
 }
 
-pub fn generate_block_grid(size: usize, seed: u64) -> Option<Vec<Block>> {
+pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Option<Vec<Block>> {
   println!("Generating blocks");
-  let mut rng = RandomNumberGenerator::seeded(seed);
 
   let corner_blocks = generate_blocks("corner");
   let edge_blocks   = generate_blocks("edge");
@@ -222,7 +221,7 @@ pub fn generate_block_grid(size: usize, seed: u64) -> Option<Vec<Block>> {
   }
 
   // WFC with backtracking.
-  wfc_solve(size, nb, &compat, candidates, &mut rng)
+  wfc_solve(size, nb, &compat, candidates, rng)
     .map(|indices| indices.into_iter().map(|i| all_blocks[i].clone()).collect())
 }
 

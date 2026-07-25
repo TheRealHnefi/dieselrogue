@@ -1,5 +1,5 @@
 use super::*;
-use rltk::Point;
+use rltk::{Point, RandomNumberGenerator};
 use strum::IntoEnumIterator;
 use std::collections::HashMap;
 use crate::animation::explosion_animation;
@@ -73,6 +73,7 @@ impl World {
     /// # Arguments
     /// * `size` - Number of blocks that make up one size of the map.
     pub fn new(size: usize, seed: u64) -> Self {
+        let mut rng = RandomNumberGenerator::seeded(seed);
         let mut world = World {
             player_id: Option::None,
             entities: vec![],
@@ -82,7 +83,7 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
-            map: Map::new_game_map(size, seed),
+            map: Map::new_game_map(size, &mut rng),
             debug_mode: false,
             parallel_ai: false,
         };
@@ -113,27 +114,6 @@ impl World {
             Direction::Up,
             String::from("Tank"));
 
-        let _ = world.add_item(pos, Item::knife());
-        let _ = world.add_item(pos, Item::machinegun());
-        let _ = world.add_item(pos, Item::pistol());
-        let _ = world.add_item(pos, Item::pistol());
-        let _ = world.add_item(pos, Item::rocket_launcher());
-        let _ = world.add_item(pos, Item::bulletproof_vest());
-        let _ = world.add_item(pos, Item::flamethrower());
-        let _ = world.add_item(pos, Item::grenade());
-        let _ = world.add_item(pos, Item::flashbang());
-        let _ = world.add_item(pos, Item::fire_grenade());
-        let _ = world.add_item(pos, Item::shock_grenade());
-        let _ = world.add_item(pos, Item::shock_pistol());
-
-        // Enemies spread in front of the player to test fan fire arc
-        let _ = world.create_zombie_goon(Point {x: pos.x,     y: pos.y - 3}, Direction::Down, String::from("Goon A"));
-        let _ = world.create_zombie_goon(Point {x: pos.x + 2, y: pos.y - 3}, Direction::Down, String::from("Goon B"));
-        let _ = world.create_zombie_goon(Point {x: pos.x - 2, y: pos.y - 3}, Direction::Down, String::from("Goon C"));
-        let _ = world.create_zombie_goon(Point {x: pos.x + 5, y: pos.y - 2}, Direction::Down, String::from("Goon D"));
-
-        assert!(world.create_forward_goon(Point { x: pos.x, y: pos.y + 2 }, Direction::Left,  String::from("Walker")).is_ok());
-
         // Two goons patrolling north-south along the road, north of the player.
         let ns_road_x = pos.x - 1;
         let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
@@ -155,27 +135,49 @@ impl World {
         assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
         assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
 
-        // 900 enemies across the map.
+        // Place guards at topologically interesting positions found by the spawn analysis.
+        let spawn_map = analyze(&world.map);
+
+        let candidates: Vec<Point> = spawn_map.spawn_points
+            .iter()
+            .filter(|sp| matches!(sp.category, SpawnCategory::Junction | SpawnCategory::RoomInterior))
+            .map(|sp| sp.pos)
+            .collect();
+
         let dirs = [
             Direction::Up, Direction::UpRight, Direction::Right, Direction::DownRight,
             Direction::Down, Direction::DownLeft, Direction::Left, Direction::UpLeft,
         ];
-        let grid = 30usize;
-        let cell_w = world.map.width / grid;
-        let cell_h = world.map.height / grid;
-        for gy in 0..grid {
-            for gx in 0..grid {
-                let cx = (gx * cell_w + cell_w / 2) as i32;
-                let cy = (gy * cell_h + cell_h / 2) as i32;
-                let facing = dirs[(gy * grid + gx) % dirs.len()];
-                let _ = world.create_guard_actor(
-                    Point { x: cx, y: cy },
-                    facing,
-                    format!("Guard {}", gy * grid + gx),
-                    CombatTactic::Pursue
-                );
-            }
+
+        // Minimum Chebyshev distance between any two guards.
+        const MIN_GUARD_DIST: i32 = 10;
+
+        // Fisher-Yates shuffle using the shared RNG so guard placement is part of the
+        // same reproducible sequence as map generation.
+        let mut indices: Vec<usize> = (0..candidates.len()).collect();
+        for i in (1..indices.len()).rev() {
+            let j = rng.range(0, (i + 1) as i32) as usize;
+            indices.swap(i, j);
         }
+
+        let mut placed: Vec<Point> = Vec::new();
+        for &ci in &indices {
+            let pos = candidates[ci];
+            let too_close = placed.iter().any(|&p| {
+                (p.x - pos.x).abs().max((p.y - pos.y).abs()) < MIN_GUARD_DIST
+            });
+            if too_close { continue; }
+            placed.push(pos);
+            let facing = dirs[placed.len() % dirs.len()];
+            let _ = world.create_guard_actor(
+                pos,
+                facing,
+                format!("Guard {}", placed.len()),
+                CombatTactic::Pursue,
+            );
+        }
+
+        println!("Spawned {} guards.", placed.len());
 
         return world;
     }
