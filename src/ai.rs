@@ -1,6 +1,6 @@
 use rltk::Point;
 use crate::Map;
-use crate::navigate_cached;
+use crate::{navigate_cached, greedy_step};
 use crate::Entity;
 use crate::EntityKind;
 use crate::util::adjacent;
@@ -462,9 +462,27 @@ impl ActorAI {
         }
 
         let from_idx = map.pos_idx(entity.position);
-        navigate_cached(from_idx, dest_idx, map, &mut self.current_path, &mut self.path_target, tolerance);
 
-        let next_pos = self.current_path.last().map(|&i| map.idx_pos(i))?;
+        // If the destination tile is visible, try O(8) greedy neighbour first.
+        // Fall back to A* only when greedy is stuck (no adjacent tile is closer).
+        // The A* cache is left untouched on a greedy success so it stays warm
+        // for when the target goes out of sight.
+        let next_pos = if entity.viewshed.visible_tiles.contains(&destination) {
+            if let Some(idx) = greedy_step(from_idx, dest_idx, map) {
+                // Invalidate the A* cache: the entity is moving off the cached
+                // path, so reusing it later would produce a non-adjacent first
+                // step and crash direction_to.
+                self.path_target = None;
+                Some(map.idx_pos(idx))
+            } else {
+                // Stuck on a corner with a visible target — fall through to A*.
+                navigate_cached(from_idx, dest_idx, map, &mut self.current_path, &mut self.path_target, tolerance);
+                self.current_path.last().map(|&i| map.idx_pos(i))
+            }
+        } else {
+            navigate_cached(from_idx, dest_idx, map, &mut self.current_path, &mut self.path_target, tolerance);
+            self.current_path.last().map(|&i| map.idx_pos(i))
+        }?;
 
         match direction_to(entity.position, next_pos) {
             Some(dir) if dir != entity.body.facing => Some(Intent {
