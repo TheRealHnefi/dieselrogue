@@ -62,7 +62,7 @@ impl Entity {
 
         map.pawns[old_index] = None;
         map.pawns[new_index] = Some(self.create_pawn());
-        
+
         None
     }
 
@@ -78,6 +78,11 @@ impl Entity {
             },
             _ => None
         }
+    }
+
+    pub fn kill(&mut self, map: &mut Map) {
+        let index = map.xy_idx(self.position.x, self.position.y);
+        map.pawns[index] = None;
     }
 }
 
