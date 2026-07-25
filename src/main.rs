@@ -1,8 +1,11 @@
-use rltk::{Rltk};
 use specs::prelude::*;
 
 mod state;
-use state::*;
+pub use state::*;
+mod components;
+pub use components::*;
+mod player;
+pub use player::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -14,6 +17,25 @@ fn main() -> rltk::BError {
     let mut game_state = State {
         ecs: World::new()
     };
+
+    game_state.ecs.register::<Player>();
+    game_state.ecs.register::<Position>();
+    game_state.ecs.register::<Renderable>();
+
+    let player_entity = game_state.ecs
+        .create_entity()
+        .with(Position {
+            x: 15,
+            y: 15
+        })
+        .with(Renderable {
+            glyph: rltk::to_cp437('@'),
+            color: rltk::RGB::named(rltk::YELLOW),
+            background: rltk::RGB::named(rltk::BLACK)
+        })
+        .with(Player {})
+        .build();
+    game_state.ecs.insert(player_entity);
 
     rltk::main_loop(context, game_state)
 }
