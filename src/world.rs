@@ -96,8 +96,10 @@ impl World {
             Direction::Up,
             String::from("Player"));
 
-        // As of 28/12/2021, 1000 rotating zombies has acceptable performance in release mode, but more optimiziation
-        // would be good. Typical tick duration is ~88 ms.
+        // As of 28/12/2021, 1000 rotating zombies has almost acceptable performance in release mode, but more optimiziation
+        // would be good. Typical tick duration is ~88 ms. Would like to get it down to ~20 ms.
+        // Latent zombies are almost free (can have upwards 100.000 with acceptable performance). Likely pawn creation
+        // that is the issue.
         for x in 0..100 {
             for y in 1..10 {
                 let _ = world.create_zombie_goon(Point {x: pos.x + x, y: pos.y+y}, Direction::Up, String::from("Zombie"));

@@ -15,15 +15,32 @@ pub enum TileType {
     ClosedDoor
 }
 
+pub struct Block {
+    pub dimensions: Rect
+}
+
 pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
+    pub blocks: Vec<Block>,
     pub width: usize,
     pub height: usize,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub pawns: Vec<Option<Pawn>>,
     pub items: Vec<Option<Item>>,
+}
+
+enum Side {
+    Top,
+    Bottom,
+    Left,
+    Right
+}
+
+enum Dirs {
+    Vertical,
+    Horizontal
 }
 
 impl Map {
@@ -154,23 +171,33 @@ impl Map {
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
         let tile_count = map_width * map_height;
-        Map {
+        let mut map = Map {
             tiles: vec![TileType::Floor; tile_count],
-            rooms: Vec::new(),
+            rooms: vec!(),
+            blocks: vec!(),
             width: map_width,
             height: map_height,
             revealed_tiles: vec![true; tile_count],
             visible_tiles: vec![false; tile_count],
             pawns: vec![None; tile_count],
             items: vec![None; tile_count]
+        };
+
+        for x in 0..size_in_blocks {
+            for y in 0..size_in_blocks {
+                map.create_block(x, y);
+            }
         }
+
+        return map;
     }
 
     pub fn new_empty_map(map_width: usize, map_height: usize) -> Map {
         let tile_count = map_width * map_height;
         Map {
             tiles: vec![TileType::Floor; tile_count],
-            rooms: Vec::new(),
+            rooms: vec!(),
+            blocks: vec!(),
             width: map_width,
             height: map_height,
             revealed_tiles: vec![true; tile_count],
@@ -184,7 +211,8 @@ impl Map {
         let tile_count = map_width * map_height;
         let mut map = Map {
             tiles: vec![TileType::Floor; tile_count],
-            rooms: Vec::new(),
+            rooms: vec!(),
+            blocks: vec!(),
             width: map_width,
             height: map_height,
             revealed_tiles: vec![true; tile_count],
@@ -192,18 +220,6 @@ impl Map {
             pawns: vec![None; tile_count],
             items: vec![None; tile_count]
         };
-
-        enum Side {
-            Top,
-            Bottom,
-            Left,
-            Right
-        }
-
-        enum Dirs {
-            Vertical,
-            Horizontal
-        }
 
         fn create_room(map: &mut Map, room: Rect) -> Rect {
             for x in room.x1..=room.x2 {
@@ -334,85 +350,23 @@ impl Map {
         map
     }
 
-    pub fn new_map_rooms_and_corridors(width: usize, height: usize) -> Map {
-        let tile_count = width * height;
-        let mut map = Map {
-            tiles: vec![TileType::Wall; tile_count],
-            rooms: Vec::new(),
-            width: width,
-            height: height,
-            revealed_tiles: vec![false; tile_count],
-            visible_tiles: vec![false; tile_count],
-            pawns: vec![None; tile_count],
-            items: vec![None; tile_count]
-        };
-
-        let mut rng = RandomNumberGenerator::new();
-
-        const MAX_ROOMS: i32 = 60;
-        const MIN_SIZE: i32 = 6;
-        const MAX_SIZE: i32 = 20;
-
-        for _ in 0..MAX_ROOMS {
-            let w = rng.range(MIN_SIZE, MAX_SIZE);
-            let h = rng.range(MIN_SIZE, MAX_SIZE);
-            let x =  rng.roll_dice(1, map.width as i32 - w - 1) - 1;
-            let y = rng.roll_dice(1, map.height as i32 - h - 1) - 1;
-            let new_room = Rect::new(x, y , w, h);
-
-            let mut ok = true;
-            for other_room in map.rooms.iter() {
-                if new_room.intersect(other_room) {
-                    ok = false;
-                    break;
+    fn create_block(&mut self, index_x: usize, index_y: usize) {
+        let x1 = index_x * BLOCK_SIZE;
+        let x2 = (index_x + 1) * BLOCK_SIZE - 1;
+        let y1 = index_y * BLOCK_SIZE;
+        let y2 = (index_y + 1) * BLOCK_SIZE - 1;
+        
+        for x in x1..=x2 {
+            for y in y1..=y2 {
+                let idx = self.xy_idx(x as i32, y as i32);
+                if x == x1
+                    || x == x2
+                    || y == y1
+                    || y == y2 {
+                        self.tiles[idx] = TileType::Wall;
+                } else {
+                    self.tiles[idx] = TileType::Floor;
                 }
-            }
-            if ok {
-                map.apply_room_to_map(&new_room);
-
-                if !map.rooms.is_empty() {
-                    let (new_x, new_y) = new_room.center();
-                    let (prev_x, prev_y) = map.rooms[map.rooms.len()-1].center();
-
-                    if rng.range(0,2) == 1 {
-                        map.apply_horizontal_tunnel(prev_x, new_x, prev_y);
-                        map.apply_vertical_tunnel(prev_y, new_y, new_x);
-                    } else {
-                        map.apply_vertical_tunnel(prev_y, new_y, prev_x);
-                        map.apply_horizontal_tunnel(prev_x, new_x, new_y);
-                    }
-                }
-
-                map.rooms.push(new_room);
-            }
-        }
-
-        map
-    }
-
-    fn apply_room_to_map(&mut self, room: &Rect) {
-        for y in room.y1 + 1 ..= room.y2 {
-            for x in room.x1 + 1 ..= room.x2 {
-                let idx = self.xy_idx(x, y);
-                self.tiles[idx] = TileType::Floor;
-            }
-        }
-    }
-
-    fn apply_horizontal_tunnel(&mut self, x1: i32, x2: i32, y: i32) {
-        for x in min(x1, x2) ..= max(x1, x2) {
-            let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < self.tiles.len() {
-                self.tiles[idx as usize] = TileType::Floor;
-            }
-        }
-    }
-
-    fn apply_vertical_tunnel(&mut self, y1: i32, y2: i32, x: i32) {
-        for y in min(y1, y2) ..= max(y1, y2) {
-            let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < self.tiles.len() {
-                self.tiles[idx as usize] = TileType::Floor;
             }
         }
     }
