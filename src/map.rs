@@ -169,7 +169,7 @@ impl Map {
         });
     }
 
-    pub fn new_game_map(size_in_blocks: usize) -> Map {
+    pub fn new_game_map(size_in_blocks: usize, seed: u64) -> Map {
         println!("Generating map");
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
@@ -185,9 +185,11 @@ impl Map {
           fov_blocked: vec![false; tile_count],
         };
 
-        let mut generated_blocks = generate_block_grid(size_in_blocks);
+        let mut attempt = 0u64;
+        let mut generated_blocks = generate_block_grid(size_in_blocks, seed);
         while generated_blocks.is_none() {
-          generated_blocks = generate_block_grid(size_in_blocks)
+          attempt += 1;
+          generated_blocks = generate_block_grid(size_in_blocks, seed.wrapping_add(attempt));
         }
         let blocks = generated_blocks.unwrap();
         for i in 0..size_in_blocks {

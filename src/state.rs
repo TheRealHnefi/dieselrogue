@@ -69,12 +69,12 @@ impl State {
     /// Create new game state.
     /// # Arguments
     /// * `size` - Number of blocks that make up one side of the map.
-    pub fn new_game_state(size: usize) -> Self {
+    pub fn new_game_state(size: usize, seed: u64) -> Self {
         Self {
             run_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
-            world: World::new(size),
+            world: World::new(size, seed),
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             pending_action: None,

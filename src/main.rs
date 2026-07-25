@@ -81,6 +81,30 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for SlowSpanLayer {
     }
 }
 
+fn seed_from_args() -> u64 {
+    let args: Vec<String> = std::env::args().collect();
+    let mut i = 1;
+    while i < args.len() {
+        if args[i] == "--seed" {
+            if let Some(val) = args.get(i + 1) {
+                if let Ok(n) = val.parse::<u64>() {
+                    return n;
+                } else {
+                    eprintln!("Warning: '--seed {}' is not a valid u64; using random seed.", val);
+                }
+            } else {
+                eprintln!("Warning: '--seed' requires a value; using random seed.");
+            }
+        }
+        i += 1;
+    }
+    // No --seed supplied: derive one from the system clock.
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(1)
+}
+
 fn main() -> rltk::BError {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer()
@@ -110,7 +134,10 @@ fn main() -> rltk::BError {
 
     let context = builder.build()?;
 
-    let mut state = State::new_game_state(25);
+    let seed = seed_from_args();
+    println!("RNG seed: {}", seed);
+
+    let mut state = State::new_game_state(25, seed);
 
     state.log.entries.push("Welcome!".to_string());
 
