@@ -31,6 +31,20 @@ impl PatrollingAI {
     }
 
     pub fn declare_intent(&mut self, position: Point, body: &Body, map: &Map) -> Intent {
+        // Consume the path step we're standing on, if any. This is how we detect that a
+        // move succeeded: the entity's position now matches what we declared last tick.
+        //
+        // NOTE — one-tick commit: an entity is committed to its declared target for one full
+        // tick. If a move is blocked (contested or check_fit fails), the same step is retried
+        // next tick rather than reconsidered mid-tick. Future AI variants that need to abort
+        // or redirect a move mid-cycle will need a different mechanism (e.g. a post-resolution
+        // callback, or storing the last declared target and comparing against it here).
+        if let Some(&next_idx) = self.current_path.last() {
+            if map.idx_pos(next_idx) == position {
+                self.current_path.pop();
+            }
+        }
+
         if self.waypoints[self.waypoint_index] == position {
             self.waypoint_index += 1;
             if self.waypoint_index >= self.waypoints.len() {
@@ -64,7 +78,7 @@ impl PatrollingAI {
                 else {
                     return Intent {
                         phase: ExecutionPhase::Movement,
-                        data: IntentData::Target(map.idx_pos(self.current_path.pop().unwrap())),
+                        data: IntentData::Target(map.idx_pos(*self.current_path.last().unwrap())),
                         action: actions::move_action
                     };
                 }
