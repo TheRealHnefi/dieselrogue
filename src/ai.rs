@@ -1,6 +1,6 @@
 use rltk::Point;
 use crate::Map;
-use crate::navigate;
+use crate::navigate_cached;
 use crate::Entity;
 use crate::EntityKind;
 use crate::util::adjacent;
@@ -269,7 +269,7 @@ impl ActorAI {
             AlertSnapshot::Unaware =>
                 self.unaware_intent(entity, map, entities),
             AlertSnapshot::Suspicious { origin } =>
-                self.navigate_to(entity, origin, map),
+                self.navigate_to(entity, origin, map, 0),
             AlertSnapshot::Alert { last_known, search } =>
                 self.search_intent(entity, map, last_known, search),
             AlertSnapshot::Combat { target_id, last_seen } =>
@@ -290,14 +290,14 @@ impl ActorAI {
                     self.path_target = None;
                 }
                 let dest = waypoints[*waypoint_index];
-                self.navigate_to(entity, dest, map)
+                self.navigate_to(entity, dest, map, 0)
             },
             Profile::Guard { anchor, .. } => {
                 let anchor = *anchor;
                 if entity.position == anchor {
                     None // already at post
                 } else {
-                    self.navigate_to(entity, anchor, map)
+                    self.navigate_to(entity, anchor, map, 0)
                 }
             },
             Profile::Follow { target_id, last_known_pos, .. } => {
@@ -308,7 +308,7 @@ impl ActorAI {
                 if adjacent(entity.position, dest) {
                     None
                 } else {
-                    self.navigate_to(entity, dest, map)
+                    self.navigate_to(entity, dest, map, 2)
                 }
             },
             Profile::Stationary { .. } => None,
@@ -322,10 +322,10 @@ impl ActorAI {
         puffin::profile_function!();
         match search {
             SearchBehavior::HoldAndWatch => None, // stand still, weapon ready
-            SearchBehavior::MoveToLastKnown => self.navigate_to(entity, last_known, map),
+            SearchBehavior::MoveToLastKnown => self.navigate_to(entity, last_known, map, 0),
             SearchBehavior::Flank => {
                 let flank_dest = self.flank_destination(entity.position, last_known, map);
-                self.navigate_to(entity, flank_dest, map)
+                self.navigate_to(entity, flank_dest, map, 0)
             },
         }
     }
@@ -363,7 +363,7 @@ impl ActorAI {
 
         if let CombatTactic::Flee = tactic {
             let flee_pos = self.flee_pos(entity, last_seen, map);
-            return self.navigate_to(entity, flee_pos, map);
+            return self.navigate_to(entity, flee_pos, map, 0);
         }
 
         // Try melee if adjacent to target.
@@ -414,7 +414,7 @@ impl ActorAI {
                 let dest = entities.iter().find(|e| e.id == target_id)
                     .map(|t| t.center())
                     .unwrap_or(last_seen);
-                self.navigate_to(entity, dest, map)
+                self.navigate_to(entity, dest, map, 1)
             },
             CombatTactic::Hold => None,
             CombatTactic::Flee => unreachable!(),
@@ -442,7 +442,7 @@ impl ActorAI {
 
     // --- Navigation ---
 
-    fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map) -> Option<Intent> {
+    fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map, tolerance: u32) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
         if entity.position == destination {
@@ -461,16 +461,8 @@ impl ActorAI {
             }
         }
 
-        // Recompute path if destination changed or path is stale/blocked.
-        let needs_repath = self.path_target != Some(dest_idx)
-            || self.current_path.is_empty()
-            || self.current_path.last().map_or(false, |&i| map.blocked_idx(i));
-
-        if needs_repath {
-            self.path_target = Some(dest_idx);
-            let from_idx = map.pos_idx(entity.position);
-            navigate(from_idx, dest_idx, map, &mut self.current_path);
-        }
+        let from_idx = map.pos_idx(entity.position);
+        navigate_cached(from_idx, dest_idx, map, &mut self.current_path, &mut self.path_target, tolerance);
 
         let next_pos = self.current_path.last().map(|&i| map.idx_pos(i))?;
 

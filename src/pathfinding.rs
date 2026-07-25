@@ -105,6 +105,42 @@ thread_local! {
     static SCRATCH: RefCell<AStarScratch> = RefCell::new(AStarScratch::new());
 }
 
+/// Like [`navigate`], but skips the repath when the destination has moved no
+/// more than `tolerance` tiles from the last computed target and the existing
+/// path is not stale (empty or next step blocked).
+///
+/// Pass `tolerance = 0` for fixed destinations (waypoints, anchors, last-known
+/// positions) where exact precision is required.  Use a higher value for
+/// moving targets to avoid repathing every turn.
+///
+/// `cached_target` should be stored alongside the path buffer and passed back
+/// unchanged on every call.
+pub fn navigate_cached(
+    start: usize,
+    end: usize,
+    map: &Map,
+    out: &mut Vec<usize>,
+    cached_target: &mut Option<usize>,
+    tolerance: u32,
+) -> bool {
+    let path_stale = out.is_empty()
+        || out.last().map_or(false, |&i| map.blocked_idx(i));
+
+    let dest_ok = match *cached_target {
+        Some(prev) if prev == end => true,
+        Some(prev) if tolerance > 0 =>
+            map.get_pathing_distance(prev, end) <= tolerance as f32,
+        _ => false,
+    };
+
+    if dest_ok && !path_stale {
+        return true;
+    }
+
+    *cached_target = Some(end);
+    navigate(start, end, map, out)
+}
+
 /// Find a path from `start` to `end` on `map`, writing steps into `out`.
 ///
 /// Steps are written in **reversed order**: `out[0]` is the step closest to
