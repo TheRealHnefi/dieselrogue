@@ -3,7 +3,8 @@ use crate::components::*;
 #[derive(Clone)]
 pub enum Sprite {
     Human,
-    Tank
+    Tank,
+    Door
 }
 
 impl Sprite {
@@ -11,6 +12,7 @@ impl Sprite {
         match self {
             Sprite::Human => self.human_sprite(facing, blink),
             Sprite::Tank => self.tank_sprite(index, facing),
+            Sprite::Door => self.door_sprite(facing),
         }
     }
 
@@ -146,6 +148,16 @@ impl Sprite {
                     rltk::to_cp437('/'),
                 ]
             }
+        }
+    }
+
+    fn door_sprite(&self, facing: Direction) -> rltk::FontCharType {
+        match facing {
+            Direction::Up => rltk::to_cp437('║'),
+            Direction::Right => rltk::to_cp437('═'),
+            Direction::Down => rltk::to_cp437('║'),
+            Direction::Left => rltk::to_cp437('═'),
+            _ => rltk::to_cp437('?')
         }
     }
 }

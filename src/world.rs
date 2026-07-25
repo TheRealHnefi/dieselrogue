@@ -70,6 +70,8 @@ impl World {
             Direction::Up,
             String::from("Player"));
 
+        world.init_static_entities();
+
         let _result = world.create_tank(Point {x: pos.x, y: pos.y - 4},
             Direction::Up,
             String::from("Tank"));
@@ -95,6 +97,8 @@ impl World {
         let _ = world.create_player(pos,
             Direction::Up,
             String::from("Player"));
+
+        world.init_static_entities();
 
         // As of 28/12/2021, 1000 rotating zombies has almost acceptable performance in release mode, but more optimiziation
         // would be good. Typical tick duration is ~88 ms. Would like to get it down to ~20 ms.
@@ -134,7 +138,7 @@ impl World {
         }
 
         let mut player = Entity::new_human(0, pos, facing, name);
-        player.player = true;
+        player.kind = EntityKind::Player;
 
         player.create_pawns(&mut self.map);
         self.entities.push(player);
@@ -308,18 +312,19 @@ impl World {
                 },
                 Effect::OpenDoor(pos) => {
                     let index = self.map.pos_idx(*pos);
-                    if self.map.tiles[index] == TileType::ClosedDoor {
-                        self.map.tiles[index] = TileType::OpenDoor;
-                        self.update_views_near_event(*pos, 10);
+                    match &self.map.pawns[index] {
+                        Some(pawn) => {
+                            if pawn.kind == EntityKind::Door {
+                                self.map.pawns[index] = None;
+                                self.update_views_near_event(*pos, 10);
+                            }
+                        },
+                        None => ()
                     }
                 },
                 Effect::DestroyWall(pos) => {
                     let index = self.map.pos_idx(*pos);
                     match self.map.tiles[index] {
-                        TileType::ClosedDoor => {
-                            self.map.tiles[index] = TileType::Floor;
-                            self.update_views_near_event(*pos, 10);
-                        },
                         TileType::Wall => {
                             self.map.tiles[index] = TileType::Floor;
                             self.update_views_near_event(*pos, 10);
@@ -339,9 +344,9 @@ impl World {
                     if self.entities[*pilot_id].id == self.player_id.unwrap() {
                         self.entities[*pilot_id].set_visible_tiles(&mut self.map, false);
                         self.entities[*vehicle_id].set_visible_tiles(&mut self.map, true);
-                        self.entities[self.player_id.unwrap()].player = false;
+                        self.entities[self.player_id.unwrap()].kind = EntityKind::Actor;
                         self.player_id = Some(*vehicle_id);
-                        self.entities[*vehicle_id].player = true;
+                        self.entities[*vehicle_id].kind = EntityKind::Player;
                     }
                 },
                 Effect::Disembark{pilot_id, vehicle_id} => {
@@ -360,8 +365,8 @@ impl World {
                                 self.entities[*pilot_id].set_visible_tiles(&mut self.map, true);
 
                                 self.player_id = Some(*pilot_id);
-                                self.entities[*vehicle_id].player = false;
-                                self.entities[*pilot_id].player = true;
+                                self.entities[*vehicle_id].kind = EntityKind::Actor;
+                                self.entities[*pilot_id].kind = EntityKind::Player;
                             }
 
                             log.log(format!("{} left their vehicle",
@@ -411,6 +416,16 @@ impl World {
         let entity_ids = self.map.get_entities_in_vicinity(position, radius);
         for id in entity_ids {
             self.entities[id].update_view(&mut self.map);
+        }
+    }
+
+    fn init_static_entities(&mut self) {
+        for index in 0..self.map.tiles.len() {
+            if self.map.tiles[index] == TileType::Doorway {
+                let door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Up, 1);
+                door.create_pawns(&mut self.map);
+                self.entities.push(door);
+            }
         }
     }
 }

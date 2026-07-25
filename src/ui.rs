@@ -48,17 +48,12 @@ fn draw_map(map: &Map, viewport: Rect, ctx: &mut Rltk, blink: bool) {
                 let mut renderable = match map.tiles[index] {
                     TileType::Floor => render_open_tile(map, index, blink, '-'),
                     TileType::Ground => render_open_tile(map, index, blink, '.'),
-                    TileType::OpenDoor => render_open_tile(map, index, blink, ' '),
+                    TileType::Doorway => render_open_tile(map, index, blink, ' '),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),
                         color: rltk::RGB::named(rltk::GREEN),
                         background: rltk::RGB::named(rltk::BLACK)
                     },
-                    TileType::ClosedDoor => Renderable {
-                        glyph: rltk::to_cp437('■'),
-                        color: rltk::RGB::named(rltk::GREEN),
-                        background: rltk::RGB::named(rltk::BLACK)
-                    }
                 };
                 if !map.visible_tiles[index] {
                     renderable.color = renderable.color.to_greyscale();
