@@ -81,13 +81,18 @@ pub struct Name {
 #[derive (Component, Serialize, Deserialize, Clone)]
 pub struct BlocksTile {}
 
+#[derive (Component, ConvertSaveload, Clone)]
+pub struct Firearm {
+    pub range: i32
+}
+
 #[derive (Component, Serialize, Deserialize, Clone)]
 pub struct GettableItem {}
 
 #[derive (Component, Serialize, Deserialize, Clone)]
 pub struct GettingItem {}
 
-#[derive (Component, ConvertSaveload)]
+#[derive (Component, ConvertSaveload, Clone)]
 pub struct Inventory {
     pub items: EntityVec<Entity>
 }

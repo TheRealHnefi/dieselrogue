@@ -38,6 +38,12 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::G => get_item(&mut game_state.ecs),
 
             VirtualKeyCode::T => {
+                let player = *game_state.ecs.fetch::<Entity>();
+                let positions = game_state.ecs.read_storage::<Position>();
+                let player_pos = positions.get(player).expect("Could not get player position");
+                let mut cursor_pos = game_state.ecs.fetch_mut::<Point>();
+                cursor_pos.x = player_pos.x;
+                cursor_pos.y = player_pos.y;
                 return RunState::TargetingInput;
             },
 
@@ -105,6 +111,9 @@ pub fn targeting_input(game_state: &mut State, context: &mut Rltk) -> RunState {
                 let map = game_state.ecs.fetch::<Map>();
                 cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
                 cursor_pos.x = max(cursor_pos.x - 1, 0);
+            },
+            VirtualKeyCode::Escape => {
+                return RunState::AwaitingInput;
             },
             VirtualKeyCode::Space |
             VirtualKeyCode::Return |

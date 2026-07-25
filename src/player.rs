@@ -1,6 +1,8 @@
 use specs::prelude::*;
 use super::*;
 use std::cmp::{min, max};
+use rltk::DistanceAlg::*;
+use rltk::Point;
 use enum_iterator::IntoEnumIterator;
 
 #[derive(Clone, IntoEnumIterator, PartialEq)]
@@ -61,8 +63,8 @@ pub fn valid_actions(ecs: &World, target: Entity) -> Result<Vec<Action>, ()> {
     let player = *ecs.fetch::<Entity>();
     let positions = ecs.read_storage::<Position>();
     let inventories = ecs.read_storage::<Inventory>();
-    let _player_pos = positions.get(player).ok_or(())?;
-    let _target_pos = positions.get(target).ok_or(())?;
+    let player_pos = positions.get(player).ok_or(())?;
+    let target_pos = positions.get(target).ok_or(())?;
     let player_inventory = inventories.get(player).ok_or(())?;
 
     for action in Action::into_enum_iter() {
@@ -70,16 +72,20 @@ pub fn valid_actions(ecs: &World, target: Entity) -> Result<Vec<Action>, ()> {
             Action::Examine => ret_val.push(action),
             Action::Throw => (),
             Action::Shoot => {
-                let mut has_gun = false;
                 for item in &*player_inventory.items {
-                    let names = ecs.read_storage::<Name>();
-                    let name = names.get(*item);
-                    if name.unwrap().value == "Gun" {
-                        has_gun = true;
+                    let firearms = ecs.read_storage::<Firearm>();
+                    let firearm = firearms.get(*item);
+                    match firearm {
+                        Some(_) => {
+                            let distance = Pythagoras.distance2d(Point::new(target_pos.x, target_pos.y),
+                                                                 Point::new(player_pos.x, player_pos.y));
+                            if distance <= firearm.unwrap().range as f32 {
+                                ret_val.push(action);
+                                break;
+                            }
+                        },
+                        None => ()
                     }
-                }
-                if has_gun {
-                    ret_val.push(action);
                 }
             }
         }
