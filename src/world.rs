@@ -97,7 +97,30 @@ impl World {
             });
         }
 
-        let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name);
+        let entity = Entity::new_human(self.entities.len(), pos, facing, name);
+
+        let index = self.map.xy_idx(pos.x, pos.y);
+        self.map.pawns[index] = Some(entity.create_pawn());
+        self.entities.push(entity);
+
+        Ok(())
+    }
+
+    pub fn create_patrolling_goon(&mut self, pos: Point, facing: Facing, name: String, room_indices: Vec<usize>) -> Result<(), GameError> {
+        if self.map.blocked(pos.x, pos.y) {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: format!("Tried to create entity at {},{}, but position is occupied", pos.x, pos.y)
+            });
+        }
+
+        let mut waypoints = vec!();
+        for room_index in room_indices {
+            let (x, y) = self.map.rooms[room_index].center();
+            waypoints.push(Point {x: x, y: y});
+        }
+
+        let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name, waypoints);
 
         let index = self.map.xy_idx(pos.x, pos.y);
         self.map.pawns[index] = Some(entity.create_pawn());
