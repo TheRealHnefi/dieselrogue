@@ -52,7 +52,8 @@ pub enum Intent {
     GetItem,
     Throw(usize, Point), // (inventory index, map position)
     Drop(usize), // (inventory index)
-    Equip(usize) // (inventory index)
+    Equip(usize), // (inventory index)
+    Unequip(SlotType)
 }
 
 pub enum Effect {
@@ -70,4 +71,10 @@ pub enum ItemAction {
 pub enum SlotType {
     PrimaryHand,
     SecondaryHand,
+    Headwear,
+    LeftLegwear,
+    RightLegwear,
+    Bodywear,
+    LeftArmwear,
+    RightArmwear
 }

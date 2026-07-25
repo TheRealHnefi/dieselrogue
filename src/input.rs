@@ -85,7 +85,7 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 }
             },
 
-            VirtualKeyCode::Space => {
+            VirtualKeyCode::I => {
                 state.menu_stack.clear();
                 let maybe_menu = item_menu(&state.world);
                 match maybe_menu {
@@ -98,6 +98,12 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                         return RunState::AwaitingInput;
                     }
                 }
+            },
+
+            VirtualKeyCode::E => {
+                state.menu_stack.clear();
+                state.menu_stack.push(Box::new(equipment_menu(&state.world)));
+                return RunState::AwaitingMenuInput;
             },
 
             VirtualKeyCode::Escape => {

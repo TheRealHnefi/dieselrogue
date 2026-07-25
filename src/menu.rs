@@ -50,30 +50,64 @@ pub struct ItemActionRow {
     pub action: ItemAction
 }
 
+pub struct ItemSlotRow {
+    pub text: String,
+    pub item: Option<Item>
+}
+
 impl MenuRow for SystemRow {
     fn get_action(&self) -> MenuAction {
-        return MenuAction::Simple(self.action);    
+        return MenuAction::Simple(self.action);
     }
 
     fn get_text(&self) -> String {
         return self.text.clone();
     }
-}
-
-fn show_inventory_item_menu_action(item: Item, state: &mut State) -> RunState {
-    let menu = inventory_action_menu(item);
-    state.menu_stack.push(Box::new(menu));
-
-    return RunState::AwaitingMenuInput;
 }
 
 impl MenuRow for ItemRow {
     fn get_action(&self) -> MenuAction {
-        return MenuAction::Item(self.item.clone(), show_inventory_item_menu_action);
+        return MenuAction::Item(self.item.clone(), action_show_inventory_item_menu);
     }
 
     fn get_text(&self) -> String {
         return self.text.clone();
+    }
+}
+
+impl MenuRow for ItemSlotRow {
+    fn get_action(&self) -> MenuAction {
+        match &self.item {
+            Some(item) => return MenuAction::Item(item.clone(), unequip_action),
+            None => return MenuAction::Simple(action_noop)
+        }
+    }
+
+    fn get_text(&self) -> String {
+        return self.text.clone();
+    }
+}
+
+
+fn unequip_action(item: Item, state: &mut State) -> RunState {
+    match state.world.get_player_mut() {
+        Ok(player) => {
+            for bodypart in &player.body.parts {
+                for bodyslot in &bodypart.slots {
+                    if bodyslot.slot_type == item.equip_slots[0] {
+                        player.intent = Intent::Unequip(bodyslot.slot_type);
+                        return RunState::Resolve;
+                    }
+                }
+            }
+            
+            state.log.entries.push("Can not unequip item".to_string());
+            return RunState::AwaitingMenuInput
+        },
+        Err(_) => {
+            state.log.entries.push("Can not unequip item".to_string());
+            return RunState::AwaitingMenuInput
+        }
     }
 }
 
@@ -145,6 +179,10 @@ impl MenuRow for ItemActionRow {
     }
 }
 
+fn action_noop(_state: &mut State) -> RunState {
+    return RunState::AwaitingMenuInput;
+}
+
 fn action_quit(_state: &mut State) -> RunState {
     ::std::process::exit(0);
 }
@@ -161,6 +199,13 @@ fn action_open_item_menu(state: &mut State) -> RunState {
             return RunState::AwaitingInput;
         }
     }
+}
+
+fn action_show_inventory_item_menu(item: Item, state: &mut State) -> RunState {
+    let menu = inventory_action_menu(item);
+    state.menu_stack.push(Box::new(menu));
+
+    return RunState::AwaitingMenuInput;
 }
 
 pub fn main_menu() -> MenuPanel<SystemRow> {
@@ -227,6 +272,30 @@ pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
         x: 35,
         y: 20,
         rows: action_rows,
+        selected_row: 0
+    }
+}
+
+pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
+    let mut slot_rows = vec!();
+    let player = world.get_player().unwrap();
+    for bodypart in &player.body.parts {
+        for slot in &bodypart.slots {
+            let item_name = match &slot.item {
+                Some(item) => item.name.clone(),
+                None => "Empty".to_string()
+            };
+            slot_rows.push(ItemSlotRow {
+                item: slot.item.clone(),
+                text: format!("{}: {}", bodypart.name, item_name)
+            })
+        }
+    }
+
+    MenuPanel {
+        x: 35,
+        y: 20,
+        rows: slot_rows,
         selected_row: 0
     }
 }
