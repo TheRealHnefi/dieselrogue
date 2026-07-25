@@ -124,6 +124,7 @@ impl Map {
     }
 
     pub fn new_game_map(size_in_blocks: usize) -> Map {
+        println!("Generating map");
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
         let tile_count = map_width * map_height;
