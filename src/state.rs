@@ -75,7 +75,7 @@ impl GameState for State {
 
         for (pos, render) in (&positions, &renderables).join() {
             let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] {
+            if true || map.visible_tiles[idx] {
                 context.set(pos.x, pos.y, render.color, render.background, render.glyph);
             }
         }
