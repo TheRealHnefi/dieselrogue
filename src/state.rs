@@ -65,9 +65,9 @@ impl GameState for State {
             },
             RunState::Resolve => {
                 assert!(self.world.resolve_phase(IntentPhase::Instant).is_ok());
-                assert!(self.world.resolve_phase(IntentPhase::Movement).is_ok());
                 assert!(self.world.resolve_phase(IntentPhase::Inventory).is_ok());
                 assert!(self.world.resolve_phase(IntentPhase::Attack).is_ok());
+                assert!(self.world.resolve_phase(IntentPhase::Movement).is_ok());
                 assert!(self.world.resolve_phase(IntentPhase::Misc).is_ok());
 
                 self.run_state = RunState::DeclareIntent;
