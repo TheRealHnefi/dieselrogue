@@ -69,7 +69,7 @@ World.cleanup(); // Delete dead entries
 */
 
 /// Overall guard density multiplier. Raise or lower to scale all guard counts.
-const GUARD_DENSITY: f32 = 0.5;
+const GUARD_DENSITY: f32 = 0.0005;
 
 fn chebyshev(a: Point, b: Point) -> i32 {
     (a.x - b.x).abs().max((a.y - b.y).abs())
@@ -132,27 +132,6 @@ impl World {
             String::from("Player"));
 
         world.init_static_entities();
-
-        // Two goons patrolling north-south along the road, north of the player.
-        let ns_road_x = pos.x - 1;
-        let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
-        let ns_south = Point { x: ns_road_x, y: pos.y - 40 };
-        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 15 }, Direction::Up,   String::from("Patrol NS-1"), vec![ns_north, ns_south]);
-        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 14 }, Direction::Up,   String::from("Patrol NS-2"), vec![ns_north, ns_south]);
-
-        // One goon patrolling east-west along the road, a few blocks west of the player.
-        let ew_road_y = pos.y - 1;
-        let ew_west  = Point { x: pos.x - 60, y: ew_road_y };
-        let ew_east  = Point { x: pos.x - 30, y: ew_road_y };
-        let _ = world.create_patrolling_goon(Point { x: pos.x - 30, y: ew_road_y }, Direction::Left, String::from("Patrol EW-1"), vec![ew_west, ew_east]);
-
-        let center = Point { x: pos.x + 10, y: pos.y + 10 };
-
-        // Place one goon on each cardinal side of the center, all facing inward.
-        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y - 1 }, Direction::Down,  String::from("North")).is_ok());
-        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y + 1 }, Direction::Up,    String::from("South")).is_ok());
-        assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
-        assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
 
         // Topology analysis — run once, shared by all placement passes.
         let spawn_map = analyze(&world.map);
