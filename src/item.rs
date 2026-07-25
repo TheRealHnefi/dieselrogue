@@ -15,6 +15,7 @@ pub struct Item {
     pub equip_slots: Vec<SlotType>,
     pub kind: ItemKind,
     pub proxy: bool,
+    pub locked: bool,
     pub active: bool,
     /// Minimum zone depth at which this item may spawn.
     /// 0 = any zone, 1 = depth ≥ 1, 2 = depth ≥ 2, etc.
@@ -106,6 +107,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::FusedExplosive { damage: Damage::new(10, 0, 0, 0), timeout: 4, radius: 3, flash: false },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -121,6 +123,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 3, 0), timeout: 4, radius: 3, flash: false },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -136,6 +139,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::FusedExplosive { damage: Damage::new(0, 7, 0, 0), timeout: 4, radius: 3, flash: false },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -151,6 +155,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 0, 0), timeout: 4, radius: 10, flash: true },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -168,6 +173,7 @@ impl Item {
             equip_slots: vec![SlotType::SecondaryHand],
             kind: ItemKind::MeleeWeapon { damage: Damage::new(5, 0, 0, 0) },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -185,6 +191,7 @@ impl Item {
             equip_slots: vec!(SlotType::Bodywear),
             kind: ItemKind::Wearable { armor: Armor::new(3, 0.25, 0, 0.1, 0, 0.0) },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -204,6 +211,7 @@ impl Item {
             equip_slots: vec![SlotType::TurretMount],
             kind: ItemKind::Firearm { ammo: ammo, max_ammo: ammo, damage: Damage::new(500, 0, 0, 0), range: range },
             proxy: false,
+            locked: true,
             active: false,
         }
     }
@@ -222,6 +230,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::Misc,
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -240,6 +249,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::Misc,
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -255,6 +265,7 @@ impl Item {
             equip_slots: vec![],
             kind: ItemKind::Key { color },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
@@ -277,6 +288,7 @@ impl Item {
             equip_slots: self.equip_slots.clone(),
             kind: ItemKind::Misc,
             proxy: true,
+            locked: false,
             active: false,
         }
     }
@@ -309,6 +321,7 @@ impl Item {
             equip_slots,
             kind: ItemKind::Firearm { ammo: def.ammo, max_ammo: def.ammo, damage: def.damage, range: def.range },
             proxy: false,
+            locked: false,
             active: false,
         }
     }
