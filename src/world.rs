@@ -1,5 +1,5 @@
 use super::*;
-use rltk::{Point, RandomNumberGenerator};
+use rltk::{Point, RandomNumberGenerator, Tile};
 use strum::IntoEnumIterator;
 use std::collections::HashMap;
 use crate::animation::explosion_animation;
@@ -171,7 +171,7 @@ impl World {
         let mut guard_n = 0usize;
         println!("Spawning guards:");
         world.spawn_sentinels(&mut placed, &mut guard_n, &mut rng);
-        // world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
+        world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         // world.spawn_squads(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         // world.spawn_idle_guards(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         println!("Spawned {} guards total.", guard_n);
@@ -339,7 +339,9 @@ impl World {
 
         let mut candidates: Vec<(Point, Point)> = Vec::new();
         for idx in 0..self.map.width * self.map.height {
-            if self.map.tiles[idx] != TileType::Doorway { continue; }
+            if self.map.tiles[idx] != TileType::Doorway {
+                continue;
+            }
             let door_pos = self.map.idx_pos(idx);
             // Place guard 3 tiles away from door
             for &(dx, dy) in &[(0i32, -3i32), (3, 0), (0, 3), (-3, 0)] {
@@ -360,10 +362,23 @@ impl World {
         let target = ((candidates.len() as f32) * RATE * GUARD_DENSITY) as usize;
         let mut count = 0;
         for (guard_pos, door_pos) in candidates {
-            if count >= target { break; }
-            if guard_too_close(guard_pos, placed, MIN_DIST) { continue; }
-            // Face away from the door
-            let facing = dir_toward(door_pos, guard_pos);
+            if count >= target {
+                break;
+            }
+            if guard_too_close(guard_pos, placed, MIN_DIST) {
+                continue;
+            }
+
+            let facing;
+            if self.map.get_tile(guard_pos.x, guard_pos.y) == TileType::Floor {
+                // Face the door if placed inside
+                facing = dir_toward(guard_pos, door_pos);
+            }
+            else {
+                // Face away from the door if placed outside
+                facing = dir_toward(door_pos, guard_pos);
+            }
+            
             *n += 1;
             if self.create_guard_actor(guard_pos, facing, format!("Sentinel {}", n), CombatTactic::Hold).is_ok() {
                 placed.push(guard_pos);
@@ -381,7 +396,7 @@ impl World {
         n: &mut usize,
         rng: &mut RandomNumberGenerator,
     ) {
-        const RATE: f32 = 0.15;
+        const RATE: f32 = 0.005;
         const MIN_DIST: i32 = 15;
         const MIN_PATROL_DIST: i32 = 20;
         const MAX_PATROL_DIST: i32 = 80;
