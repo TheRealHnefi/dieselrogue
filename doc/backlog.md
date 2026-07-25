@@ -1,10 +1,3 @@
-# Backlog
-
-* Doors
- * Multi-tile
- * Unlockable
- * Closable
-* Destructible walls and doors
 * Map building
  * Prisons
  * Barracks
@@ -12,9 +5,19 @@
  * Armories
  * Firing ranges
  * Roads
+ * Undestroyable walls
  * Single-building maze blocks
  * Gate blocks
  * Metalayer - paths, locked access, etc
+* Vehicles
+ * Cannon for tank
+ * Mech with machineguns
+ * Disembark via menu
+* Doors
+ * Unlockable
+ * Openable
+* Animations
+ * Screen culling
 * Armor system
 * Add a few non-item abilities
 * Noise (remember, only the noisiest noise is heard by most characters)

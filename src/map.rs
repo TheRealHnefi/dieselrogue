@@ -1,7 +1,7 @@
 use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
 use crate::Rect;
-use crate::entity::Pawn;
+use crate::entity::*;
 use crate::item::Item;
 use super::{GameError, Error};
 
@@ -222,7 +222,7 @@ impl Map {
         let y1 = index_y * BLOCK_SIZE;
         let y2 = (index_y + 1) * BLOCK_SIZE - 1;
 
-        let block_type = rng.range(0, 3);
+        let block_type = rng.range(2, 3);
         if block_type == 0 {
             self.create_block_outside_with_buildings(x1, x2, y1, y2, &mut rng);
         } else if block_type == 1 {
@@ -238,7 +238,7 @@ impl Map {
         let room_max_size = 20;
         let building_max_size = 30;
 
-        let mut buildings = vec!();
+        let mut buildings: Vec<Rect> = vec!();
 
         for _ in 0 .. max_buildings {
             let building_width = rng.range(room_min_size, building_max_size);
@@ -250,7 +250,7 @@ impl Map {
             let mut ok = true;
             {
                 for j in 0..buildings.len() {
-                    if building.intersect(&buildings[j]) {
+                    if building.intersect(&buildings[j].embiggen(1, 1)) {
                         ok = false;
                     }
                 }
@@ -265,7 +265,7 @@ impl Map {
             let mut rooms = self.split_room(building, room_min_size as i32, room_max_size, rng);
 
             if rooms.len() == 1 {
-                self.create_random_door(rooms[0], rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+                self.create_random_door(rooms[0], rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right), 2);
             }
 
             self.rooms.append(&mut rooms);
@@ -279,7 +279,7 @@ impl Map {
         let building = Rect::new(x1 as i32, y1 as i32, (x2 - x1) as i32, (y2 - y1) as i32);
         let mut rooms = self.split_room(building, room_min_size, room_max_size, rng);
         self.rooms.append(&mut rooms);
-        self.create_random_door(building, rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+        self.create_random_door(building, rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right), 2);
     }
 
     fn create_block_outside_with_hangars(&mut self,  x1: usize, x2: usize, y1: usize, y2: usize, rng: &mut rltk::RandomNumberGenerator) {
@@ -287,7 +287,7 @@ impl Map {
         let hangar_min_size = 20;
         let hangar_max_size = 40;
 
-        let mut buildings = vec!();
+        let mut buildings: Vec<Rect> = vec!();
 
         for _ in 0 .. max_hangars {
             let building_width = rng.range(hangar_min_size, hangar_max_size);
@@ -299,7 +299,7 @@ impl Map {
             let mut ok = true;
             {
                 for j in 0..buildings.len() {
-                    if building.intersect(&buildings[j]) {
+                    if building.intersect(&buildings[j].embiggen(1, 1)) {
                         ok = false;
                     }
                 }
@@ -311,13 +311,10 @@ impl Map {
                 }
             }
 
-            let mut rooms = self.split_room(building, hangar_min_size as i32, hangar_max_size as i32, rng);
+            self.fill_room_tiles(building);
+            self.create_random_door(building, rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right), 5);
 
-            if rooms.len() == 1 {
-                self.create_random_door(rooms[0], rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
-            }
-
-            self.rooms.append(&mut rooms);
+            self.rooms.push(building);
         }
 
         let max_small_buildings = 6;
@@ -334,7 +331,7 @@ impl Map {
             let mut ok = true;
             {
                 for j in 0..buildings.len() {
-                    if building.intersect(&buildings[j]) {
+                    if building.intersect(&buildings[j].embiggen(1, 1)) {
                         ok = false;
                     }
                 }
@@ -349,7 +346,7 @@ impl Map {
             let mut rooms = self.split_room(building, small_building_min_size as i32, small_building_max_size as i32, rng);
 
             if rooms.len() == 1 {
-                self.create_random_door(rooms[0], rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+                self.create_random_door(rooms[0], rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right), 2);
             }
 
             self.rooms.append(&mut rooms);
@@ -372,28 +369,48 @@ impl Map {
         }
     }
 
-    fn create_random_door(&mut self, room: Rect, rng: &mut rltk::RandomNumberGenerator, allowed_dirs: Vec<Side>) {
+    fn create_random_door(&mut self, room: Rect, rng: &mut rltk::RandomNumberGenerator, allowed_dirs: Vec<Side>, length: i32) {
         let chosen_dir = rng.range(0, allowed_dirs.len());
         match allowed_dirs[chosen_dir] {
             Side::Top => {
-                let x = rng.range(room.x1 + 1, room.x2);
-                let index = self.xy_idx(x, room.y1);
-                self.tiles[index] = TileType::Doorway;
+                if room.x1 + 1 >= room.x2 - length {
+                    return;
+                }
+                let x = rng.range(room.x1 + 1, room.x2 - length);
+                for i in 0..length {
+                    let index = self.xy_idx(x + i, room.y1);
+                    self.tiles[index] = TileType::Doorway;
+                }
             },
             Side::Bottom => {
-                let x = rng.range(room.x1 + 1, room.x2);
-                let index = self.xy_idx(x, room.y2);
-                self.tiles[index] = TileType::Doorway;
+                if room.x1 + 1 >= room.x2 - length {
+                    return;
+                }
+                let x = rng.range(room.x1 + 1, room.x2 - length);
+                for i in 0..length {
+                    let index = self.xy_idx(x + i, room.y2);
+                    self.tiles[index] = TileType::Doorway;
+                }
             },
             Side::Left => {
-                let y = rng.range(room.y1 + 1, room.y2);
-                let index = self.xy_idx(room.x1, y);
-                self.tiles[index] = TileType::Doorway;
+                if room.y1 + 1 >= room.y2 - length {
+                    return;
+                }
+                let y = rng.range(room.y1 + 1, room.y2 - length);
+                for i in 0..length {
+                    let index = self.xy_idx(room.x1, y + i);
+                    self.tiles[index] = TileType::Doorway;
+                }
             },
             Side::Right => {
-                let y = rng.range(room.y1 + 1, room.y2);
-                let index = self.xy_idx(room.x2, y);
-                self.tiles[index] = TileType::Doorway;
+                if room.y1 + 1 >= room.y2 - length {
+                    return;
+                }
+                let y = rng.range(room.y1 + 1, room.y2 - length);
+                for i in 0..length {
+                    let index = self.xy_idx(room.x2, y + i);
+                    self.tiles[index] = TileType::Doorway;
+                }
             },
         }
     }
@@ -430,9 +447,9 @@ impl Map {
 
                 result.append(&mut self.split_room(top_room, min_size, max_size, rng));
                 result.append(&mut self.split_room(bottom_room, min_size, max_size, rng));
-                self.create_random_door(top_room, rng, vec!(Side::Bottom));
-                self.create_random_door(top_room, rng, vec!(Side::Top, Side::Left, Side::Right));
-                self.create_random_door(bottom_room, rng, vec!(Side::Bottom, Side::Left, Side::Right));
+                self.create_random_door(top_room, rng, vec!(Side::Bottom), 1);
+                self.create_random_door(top_room, rng, vec!(Side::Top, Side::Left, Side::Right), 1);
+                self.create_random_door(bottom_room, rng, vec!(Side::Bottom, Side::Left, Side::Right), 1);
             },
             Dirs::Horizontal => {
                 let split_point = rng.range(room.x1 + min_size, room.x2 - min_size);
@@ -441,9 +458,9 @@ impl Map {
 
                 result.append(&mut self.split_room(left_room, min_size, max_size, rng));
                 result.append(&mut self.split_room(right_room, min_size, max_size, rng));
-                self.create_random_door(left_room, rng, vec!(Side::Right));
-                self.create_random_door(left_room, rng, vec!(Side::Top, Side::Left, Side::Bottom));
-                self.create_random_door(right_room, rng, vec!(Side::Bottom, Side::Bottom, Side::Right));
+                self.create_random_door(left_room, rng, vec!(Side::Right), 1);
+                self.create_random_door(left_room, rng, vec!(Side::Top, Side::Left, Side::Bottom), 1);
+                self.create_random_door(right_room, rng, vec!(Side::Bottom, Side::Bottom, Side::Right), 1);
             }
         }
 
@@ -470,7 +487,12 @@ impl BaseMap for Map {
             TileType::Wall => true,
             TileType::Floor => false,
             TileType::Ground => false,
-            TileType::Doorway => self.pawns[index].is_some(),
+            TileType::Doorway => {
+                match &self.pawns[index] {
+                    Some(pawn) => pawn.kind == EntityKind::Door,
+                    None => false
+                }
+            },
         }
     }
 
