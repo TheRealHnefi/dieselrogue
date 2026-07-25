@@ -68,6 +68,7 @@ pub fn drop_item(ecs: &World, item: Entity) -> Result<(), GameError> {
     let positions = ecs.read_storage::<Position>();
     let player_pos = positions.get(player).ok_or(())?;
     let index = map.xy_idx(player_pos.x, player_pos.y);
+    
     if map.tile_items[index].is_some() {
         return Err(GameError {});
     }

@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use super::{GettingItem, Position, GameLog, Name, Map, Inventory};
+use super::{GettingItem, DroppingItem, Equippable, Position, GameLog, Name, Map, Inventory};
 
 pub struct InventorySystem {}
 
@@ -7,12 +7,14 @@ impl<'a> System<'a> for InventorySystem {
     type SystemData = (WriteExpect<'a, GameLog>,
                         ReadExpect<'a, Map>,
                         ReadStorage<'a, Name>,
+                        ReadStorage<'a, Equippable>,
                         WriteStorage<'a, GettingItem>,
+                        WriteStorage<'a, DroppingItem>,
                         WriteStorage<'a, Position>,
                         WriteStorage<'a, Inventory>);
                         
     fn run(&mut self, data: Self::SystemData) {
-        let (mut game_log, map, names, mut item_getters, mut positions, mut inventories) = data;
+        let (mut game_log, map, names, equippables, mut item_getters, mut item_droppers, mut positions, mut inventories) = data;
 
         // TODO: Profile with large maps. This is setting off warning bells.
         let mut getter_collection = vec![];
@@ -38,6 +40,35 @@ impl<'a> System<'a> for InventorySystem {
         }
 
         item_getters.clear();
+
+        let mut dropper_collection = vec![];
+        for (dropper, position, name, inventory) in (&item_droppers, &positions, &names, &mut inventories).join() {
+            dropper_collection.push((dropper, name, Position {x: position.x, y: position.y }, inventory));
+        }
+
+        for (dropper, name, position, inventory) in dropper_collection {
+            let pos_index = map.xy_idx(position.x, position.y);
+            match map.tile_items[pos_index] {
+                Some(_) => {
+                    game_log.entries.push(format!("{} tried to drop item but something was in the way", name.value));
+                }
+                None => {
+                    let is_equipped = match equippables.get(dropper.item) {
+                        Some(eq) => eq.equipped,
+                        None => false
+                    };
+                    if !is_equipped {
+                        let inv_index = inventory.items.iter().position(|i| *i == dropper.item).expect("Dropped item not found in inventory");
+                        inventory.items.swap_remove(inv_index);
+                        positions.insert(dropper.item, position).expect("Dropped item could not be given a position");
+                    } else {
+                        game_log.entries.push(format!("{} tried to drop item before unequipping it", name.value));
+                    }
+                }
+            }
+        }
+
+        item_droppers.clear();
     }
 
 }
