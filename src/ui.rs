@@ -856,7 +856,7 @@ fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bo
                 let (r, g, b) = crate::components::KEY_COLORS[c];
                 rltk::RGB::from_u8(r, g, b)
             } else {
-                rltk::RGB::named(rltk::YELLOW)
+                WALL_COLOR
             };
             Renderable {
                 glyph: entity.sprite.glyph(entity.body.facing, pawn.sprite_index, blink),
