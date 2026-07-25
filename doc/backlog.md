@@ -1,12 +1,15 @@
+* Map and spawns
+ * Ensure there are no unreachable rooms
+ * Ensure that appropriate rooms are marked as interesting
 * Abilities
  * Disarm
+ * Ranged combat focused abilities
 * Vehicles
  * Mech with machineguns
-* Animations
-* Aiming
- * Playtest - should I really use this aiming system?
-* Most abilities
-* Verify handling of loss of limb vs ability availability
+* UI
+ * Animations
+ * Nicer menus
+ * Paper dolls
 * Create AI's
  * Implement suspicious hypotheses and dismissal/confirmation thereof
   * Fix sound bug
@@ -18,14 +21,10 @@
    * Bodies
    * Alerted friends
  * Implement followers, guards, pilots as the three main archetypes
- * Implement
+ * Implement better equipped guards
 * Fix unstable entity ID's
 * Savegames
 * Character progression (leveling)
- * XP from kills
- * XP from exploration
- * Show XP instead of unused location printout
-* Web!
-* GFX!
-* Sounds!
-* A pony!
+ * XP from exploration & door unlocking
+* Balancing
+* Web?
