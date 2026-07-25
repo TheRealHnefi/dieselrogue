@@ -850,6 +850,14 @@ impl World {
         animations
     }
 
+    pub fn check_levelup(&mut self) {
+        if self.player_xp >= self.player_xp_to_next_level {
+            self.player_xp -= self.player_xp_to_next_level;
+            self.player_xp_to_next_level += 1000;
+            self.pending_levelup = true;
+        }
+    }
+
     pub fn sync_active_item(&mut self, item_id: usize, location: ItemLocation) {
         if let Some(entry) = self.active_items.iter_mut().find(|e| e.item_id == item_id) {
             entry.location = location;
@@ -949,6 +957,7 @@ impl World {
         }
     }
 
+    /// The final stage of turn events.
     #[tracing::instrument(skip_all)]
     pub fn resolve_status_effects(&mut self, log: &mut GameLog) {
         self.apply_noise_deafness();
