@@ -147,258 +147,123 @@ pub fn unequip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLo
     vec!()
 }
 
-pub fn single_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-    let mut result = vec!();
-
-    let target_map_index;
-    let target_pos;
-    let item_slot;
-    let bodypart;
+/// Extracts (slot, target_pos, bodypart_index) from fire-related intent data.
+/// Returns None if the intent does not match a fire targeting variant.
+fn extract_fire_intent(entity: &Entity) -> Option<(SlotType, rltk::Point, usize)> {
     match entity.intent.data {
-        IntentData::TargetWithEquipment{slot, target} => {
-            item_slot = slot;
-            target_pos = target;
-            target_map_index = map.pos_idx(target);
-            bodypart = 0;
-        },
-        IntentData::TargetBodypartWithEquipment{slot, target, bodypart_index} => {
-            item_slot = slot;
-            target_pos = target;
-            target_map_index = map.pos_idx(target);
-            bodypart = bodypart_index;
-        },
-        _ => {
-            debug_assert!(false);
-            return result;
-        }
+        IntentData::TargetWithEquipment{slot, target} => Some((slot, target, 0)),
+        IntentData::TargetBodypartWithEquipment{slot, target, bodypart_index} => Some((slot, target, bodypart_index)),
+        _ => None,
     }
+}
 
-    let shot_damage;
-    match entity.get_equipped_item(item_slot) {
-        Some(item) => {
-            match item.kind {
-                ItemKind::Firearm {ammo, max_ammo, damage, range} => {
-                    if ammo < 1 {
-                        log.log(format!("{} pulled the trigger. 'Click'.", entity.name));
-                        return result;
-                    }
-                    item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage, range};
-                    shot_damage = damage;
-                },
-                _ => {
-                    debug_assert!(false);
-                    return result;
-                }
+/// Consumes up to `requested` ammo from the firearm in `slot`.
+/// Returns (damage, range, shots_fired) on success, where shots_fired may be less
+/// than requested if the weapon is running low. Returns None if ammo is empty.
+fn consume_ammo(entity: &mut Entity, slot: SlotType, requested: u32) -> Option<(Damage, u32, u32)> {
+    let item = entity.get_equipped_item(slot)?;
+    match item.kind {
+        ItemKind::Firearm { ammo, max_ammo, damage, range } => {
+            if ammo == 0 {
+                return None;
             }
+            let fired = requested.min(ammo);
+            item.kind = ItemKind::Firearm { ammo: ammo - fired, max_ammo, damage, range };
+            Some((damage, range, fired))
         },
+        _ => None,
+    }
+}
+
+pub fn single_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+    let (slot, target_pos, bodypart) = match extract_fire_intent(entity) {
+        Some(v) => v,
+        None => unreachable!("single_fire_action called with non-fire intent"),
+    };
+    let (damage, _range, _fired) = match consume_ammo(entity, slot, 1) {
+        Some(v) => v,
         None => {
-            debug_assert!(false);
-            return result;
+            log.log(format!("{} pulled the trigger. 'Click'.", entity.name));
+            return vec!();
         }
-    }
+    };
 
-    match &map.pawns[target_map_index] {
-        Some(pawn) => {
-            result.push(Effect::Damage {
-                entity_id: pawn.entity_id,
-                bodypart_index: bodypart,
-                raw_damage: shot_damage
-            });
-            log.log(format!("{} fired at {}", entity.name, pawn.name));
-        },
-        _ => ()
+    let mut result = vec!();
+    if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
+        result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
+        log.log(format!("{} fired at {}", entity.name, pawn.name));
     }
-
     result.push(Effect::Animation(shot_animation(entity.position, target_pos, 1)));
-
     result
 }
 
 pub fn burst_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-    let mut result = vec!();
-
-    let target_map_index;
-    let target_pos;
-    let item_slot;
-    let bodypart;
-    match entity.intent.data {
-        IntentData::TargetWithEquipment{slot, target} => {
-            item_slot = slot;
-            target_pos = target;
-            target_map_index = map.pos_idx(target);
-            bodypart = 0;
-        },
-        IntentData::TargetBodypartWithEquipment{slot, target, bodypart_index} => {
-            item_slot = slot;
-            target_pos = target;
-            target_map_index = map.pos_idx(target);
-            bodypart = bodypart_index;
-        },
-        _ => {
-            debug_assert!(false);
-            return result;
-        }
-    }
-
-    let shot_damage;
-    let mut shots = 5;
-    match entity.get_equipped_item(item_slot) {
-        Some(item) => {
-            match item.kind {
-                ItemKind::Firearm {ammo, max_ammo, damage, range} => {
-                    shot_damage = damage;
-                    if ammo == 0 {
-                        log.log(format!("{} pulled the trigger. 'Clickclickclickclickclick'.", entity.name));
-                        return result;
-                    }
-                    else if ammo < 5 {
-                        item.kind = ItemKind::Firearm {ammo: 0, max_ammo, damage, range};
-                        shots = ammo;
-                    } else {
-                        item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo, damage, range};
-                    }
-                },
-                _ => {
-                    debug_assert!(false);
-                    return result;
-                }
-            }
-        },
+    let (slot, target_pos, bodypart) = match extract_fire_intent(entity) {
+        Some(v) => v,
+        None => unreachable!("burst_fire_action called with non-fire intent"),
+    };
+    let (damage, _range, shots) = match consume_ammo(entity, slot, 5) {
+        Some(v) => v,
         None => {
-            debug_assert!(false);
-            return result;
+            log.log(format!("{} pulled the trigger. 'Clickclickclickclickclick'.", entity.name));
+            return vec!();
         }
+    };
+
+    let mut result = vec!();
+    if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
+        for _ in 0..shots {
+            result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
+        }
+        log.log(format!("{} fired {} shots at {}", entity.name, shots, pawn.name));
     }
-
-    match &map.pawns[target_map_index] {
-        Some(pawn) => {
-            for _ in 0..shots {
-                result.push(Effect::Damage {
-                    entity_id: pawn.entity_id,
-                    bodypart_index: bodypart,
-                    raw_damage: shot_damage
-                });
-            }
-            log.log(format!("{} fired {} shots at {}", entity.name, shots, pawn.name));
-        },
-        _ => ()
-    }
-
-    result.push(Effect::Animation(shot_animation(entity.position, target_pos, 5)));
-
+    result.push(Effect::Animation(shot_animation(entity.position, target_pos, shots as i32)));
     result
 }
 
 pub fn rocket_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-    let mut result = vec!();
-
-    let target_pos;
-    let target_map_index;
-    let item_slot;
-
-    match entity.intent.data {
-        IntentData::TargetWithEquipment{slot, target} => {
-            item_slot = slot;
-            target_map_index = map.pos_idx(target);
-            target_pos = target;
-        },
-        _ => {
-            debug_assert!(false);
-            return result;
-        }
-    }
-
-    let shot_damage;
-    match entity.get_equipped_item(item_slot) {
-        Some(item) => {
-            match item.kind {
-                ItemKind::Firearm {ammo, max_ammo, damage, range} => {
-                    if ammo < 1 {
-                        log.log(format!("{} pulled the trigger. 'Click'.", entity.name));
-                        return result;
-                    }
-                    item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage, range};
-                    shot_damage = damage;
-                },
-                _ => {
-                    debug_assert!(false);
-                    return result;
-                }
-            }
-        },
+    let (slot, target_pos, _bodypart) = match extract_fire_intent(entity) {
+        Some(v) => v,
+        None => unreachable!("rocket_fire_action called with non-fire intent"),
+    };
+    let (damage, _range, _fired) = match consume_ammo(entity, slot, 1) {
+        Some(v) => v,
         None => {
-            debug_assert!(false);
-            return result;
+            log.log(format!("{} pulled the trigger. 'Click'.", entity.name));
+            return vec!();
+        }
+    };
+
+    let mut result = vec!();
+    if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
+        for part_index in 0..pawn.body.parts.len() {
+            result.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part_index, raw_damage: damage });
         }
     }
-
-    match &map.pawns[target_map_index] {
-        Some(pawn) => {
-            for part_index in 0..pawn.body.parts.len() {
-                result.push(Effect::Damage {
-                    entity_id: pawn.entity_id,
-                    bodypart_index: part_index,
-                    raw_damage: shot_damage
-                });
-            }
-        }
-        _ => ()
-    }
-
     result.push(Effect::DestroyWall(target_pos));
     result.push(Effect::Animation(explosion_animation(target_pos)));
-
     result
 }
 
 pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-    let mut result = vec!();
-
-    let item_slot;
-    let target_pos;
-    match entity.intent.data {
-        IntentData::TargetWithEquipment{slot, target} => {
-            item_slot = slot;
-            target_pos = target;
-        },
-        _ => {
-            debug_assert!(false);
-            return result;
-        }
-    }
-
-    let shot_damage;
-    let range;
-    match entity.get_equipped_item(item_slot) {
-        Some(item) => {
-            match item.kind {
-                ItemKind::Firearm {ammo, max_ammo, damage, range: r} => {
-                    if ammo < 1 {
-                        log.log(format!("{} pulled the trigger. 'Click'.", entity.name));
-                        return result;
-                    }
-                    item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage, range: r};
-                    shot_damage = damage;
-                    range = r;
-                },
-                _ => {
-                    debug_assert!(false);
-                    return result;
-                }
-            }
-        },
+    let (slot, target_pos, _bodypart) = match extract_fire_intent(entity) {
+        Some(v) => v,
+        None => unreachable!("fan_fire_action called with non-fire intent"),
+    };
+    let (damage, range, _fired) = match consume_ammo(entity, slot, 1) {
+        Some(v) => v,
         None => {
-            debug_assert!(false);
-            return result;
+            log.log(format!("{} pulled the trigger. 'Click'.", entity.name));
+            return vec!();
         }
-    }
+    };
 
     let src = entity.position;
     let dx = (target_pos.x - src.x) as f32;
     let dy = (target_pos.y - src.y) as f32;
     let dir_len = (dx * dx + dy * dy).sqrt();
     if dir_len == 0.0 {
-        return result;
+        return vec!();
     }
     let dir_x = dx / dir_len;
     let dir_y = dy / dir_len;
@@ -406,6 +271,7 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
     // cos(22.5 degrees) — half of a 45-degree arc
     const HALF_ARC_COS: f32 = 0.9239;
 
+    let mut result = vec!();
     let range_i = range as i32;
     let mut arc_positions = vec!();
     for ty in (src.y - range_i)..=(src.y + range_i) {
@@ -431,7 +297,7 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
                     result.push(Effect::Damage {
                         entity_id: pawn.entity_id,
                         bodypart_index: part_index,
-                        raw_damage: shot_damage,
+                        raw_damage: damage,
                     });
                 }
                 log.log(format!("{} hit {} with fan fire", entity.name, pawn.name));
