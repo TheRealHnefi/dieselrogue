@@ -162,6 +162,29 @@ impl World {
         }
     }
 
+    pub fn update_views(&mut self) {
+        {
+            let player = &self.entities[self.player_id.unwrap()];
+            for tile_pos in &player.viewshed.visible_tiles {
+                let index = self.map.pos_idx(*tile_pos);
+                self.map.visible_tiles[index] = false;
+            }
+        }
+
+        for entity in self.entities.iter_mut() {
+            entity.viewshed.dirty = true;
+            entity.update_view(&self.map);
+        }
+
+        {
+            let player = &self.entities[self.player_id.unwrap()];
+            for tile_pos in &player.viewshed.visible_tiles {
+                let index = self.map.pos_idx(*tile_pos);
+                self.map.visible_tiles[index] = true;
+            }
+        }
+    }
+
     pub fn resolve_phase(&mut self, phase: IntentPhase) -> Result<(), GameError> {
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {

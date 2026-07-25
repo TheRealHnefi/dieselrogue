@@ -27,7 +27,13 @@ pub struct ItemSlot {
 /// Note: Slot types have to be unique.
 impl Body {
     pub fn human_body(pos: Point, facing: Direction) -> Self {
-        let mut body = Body { position: pos, facing: facing, inventory: vec!(), parts: vec!(), item_slots: vec!() };
+        let mut body = Body {
+            position: pos,
+            facing: facing,
+            inventory: vec!(),
+            parts: vec!(),
+            item_slots: vec!()
+        };
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
         body.parts.push(BodyPart {

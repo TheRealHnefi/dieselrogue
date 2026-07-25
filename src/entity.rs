@@ -4,6 +4,7 @@ use crate::Map;
 use crate::Item;
 use crate::Body;
 use crate::ai::*;
+use crate::Viewshed;
 
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
@@ -12,6 +13,7 @@ pub struct Entity {
     pub name: String,
     pub intent: Intent,
     pub body: Body,
+    pub viewshed: Viewshed,
     pub ai: AI
 }
 
@@ -23,6 +25,7 @@ impl Entity {
             name: name,
             intent: idle_intent(),
             body: Body::human_body(pos, facing),
+            viewshed: Viewshed::new(),
             ai: AI::None
         }
     }
@@ -34,6 +37,7 @@ impl Entity {
             name: name,
             intent: idle_intent(),
             body: Body::human_body(pos, facing),
+            viewshed: Viewshed::new(),
             ai: AI::Patrolling(PatrollingAI::new(waypoints))
         }
     }
@@ -73,6 +77,10 @@ impl Entity {
             }
             AI::None => ()
         }
+    }
+
+    pub fn update_view(&mut self, map: &Map) {
+        self.viewshed.update(self.body.position, self.body.facing, map);
     }
 
     pub fn resolve_throw_grenade(&mut self, map: &mut Map) -> Vec<Effect> {

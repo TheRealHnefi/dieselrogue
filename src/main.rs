@@ -32,6 +32,8 @@ mod ability;
 pub use ability::*;
 mod ai;
 pub use ai::*;
+mod viewshed;
+pub use viewshed::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;

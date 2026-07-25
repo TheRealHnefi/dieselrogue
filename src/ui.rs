@@ -56,8 +56,7 @@ fn draw_map(map: &Map, left: i32, right: i32, top: i32, bottom: i32, ctx: &mut R
             || tile_pos.y >= bottom {
             continue;
         }
-        // TODO - remove true
-        if true || map.revealed_tiles[idx] {
+        if map.revealed_tiles[idx] {
             let glyph;
             let mut foreground;
             let mut background = RGB::from_f32(0.0, 0.0, 0.0);
