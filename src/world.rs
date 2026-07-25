@@ -121,6 +121,16 @@ impl World {
         Ok(())
     }
 
+    pub fn get_player(&self) -> Result<&Entity, GameError> {
+        match self.player_id {
+            Some(id) => return Ok(&self.entities[id]),
+            None => return Err(GameError {
+                error: Error::BadPrecondition,
+                message: format!("No player exists")
+            })
+        }
+    }
+
     pub fn add_item(&mut self, pos: Point, item: Item) -> Result<(), GameError> {
         let actual_pos = self.map.nearest_free_item_position(pos)?;
         let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
