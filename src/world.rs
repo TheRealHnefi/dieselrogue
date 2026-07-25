@@ -59,15 +59,14 @@ impl World {
 
         world.init_static_entities();
 
-        // Topology analysis — run once, shared by all placement passes.
-        let spawn_map = analyze(&world.map);
-        let zone_map  = find_zones(&world.map);
-
         // Zone depths from the player's starting tile, used for placement weighting.
         let player_tile = world.get_player()
             .map(|p| world.map.pos_idx(p.position))
             .unwrap_or_else(|_| world.map.xy_idx(
                 (world.map.width / 2) as i32, (world.map.height / 2) as i32));
+        // Topology analysis — run once, shared by all placement passes.
+        let zone_map  = find_zones(&world.map);
+        let spawn_map = analyze(&world.map, zone_map.tile_zone[player_tile].unwrap_or(0));
         let start_zone = zone_map.tile_zone[player_tile].unwrap_or(0);
         let depths = zone_depths(&zone_map, start_zone);
         let interesting = mark_interesting_zones(&zone_map, &spawn_map, &mut rng);
