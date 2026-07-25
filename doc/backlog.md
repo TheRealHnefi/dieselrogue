@@ -1,6 +1,7 @@
 * UI redesign
  * Optimize map drawing (RLTK batched rendering does not seem to help much. Other approaches?)
  * Use different fonts for different resolutions to fix scaling issues
+ * Show items on ground where player is walking
 * Map building
  * Prisons
  * Barracks
@@ -19,7 +20,6 @@
  * Screen culling
 * Aiming
  * Playtest - should I really use this aiming system?
- * Break aim when moving/unequipping/losing visibility/etc
 * Limit inventory size to 20
 * Death effects (game over screen)
 * Most abilities

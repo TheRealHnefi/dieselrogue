@@ -36,7 +36,7 @@ pub struct ItemAction {
     pub action: Action
 }
 
-fn noop_action(_entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+fn noop_action(_entity: &mut Entity, _map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
     vec!()
 }
 

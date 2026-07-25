@@ -169,6 +169,6 @@ impl PatrollingAI {
     }
 }
 
-fn declare_intent_noop(_entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+fn declare_intent_noop(_entity: &mut Entity, _map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
     return vec!();
 }
