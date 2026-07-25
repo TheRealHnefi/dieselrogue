@@ -89,6 +89,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Gettable>();
     game_state.ecs.register::<GettingItem>();
     game_state.ecs.register::<DroppingItem>();
+    game_state.ecs.register::<EquippingItem>();
     game_state.ecs.register::<Inventory>();
     game_state.ecs.register::<HumanoidBody>();
 
