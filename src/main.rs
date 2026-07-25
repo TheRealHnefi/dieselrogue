@@ -1,3 +1,5 @@
+use rltk::Point;
+
 mod state;
 pub use state::*;
 mod world;
@@ -64,6 +66,8 @@ fn main() -> rltk::BError {
     context.set_active_font(1, true);
 
     let mut state = State::new();
+
+    let _result = state.world.create_player(Point {x: 5, y: 5}, Facing { direction: Direction::Up}, String::from("Player"));
 
     state.log.entries.push("Welcome!".to_string());
  

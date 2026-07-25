@@ -7,6 +7,7 @@ pub const SCREEN_HEIGHT: usize = 50;
 
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     draw_map(&state.world.map, context);
+    draw_entities(&state.world, context);
 
     // {
     //     let positions = state.ecs.read_storage::<Position>();
@@ -246,6 +247,7 @@ fn draw_map(map: &Map, ctx: &mut Rltk) {
     let mut y = 0;
     let mut x = 0;
     for (idx, tile) in map.tiles.iter().enumerate() {
+        // TODO - remove true
         if true || map.revealed_tiles[idx] {
             let glyph;
             let mut foreground;
@@ -269,6 +271,14 @@ fn draw_map(map: &Map, ctx: &mut Rltk) {
             x = 0;
             y += 1;
         }
+    }
+}
+
+pub fn draw_entities(world: &World, context: &mut Rltk) {
+    for i in 0..world.extant_entities {
+        let pos = world.positions[i];
+        let renderable = world.renderables[i];
+        context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
     }
 }
 

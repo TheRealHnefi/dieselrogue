@@ -190,6 +190,8 @@ Or perhaps no classes at all? Just perks?
 All actions are one of the following categories:
 
 * Static phases:
+ * Update viewsheds
+ * Monster decides next action
  * Take input and designate actions for player
  * Resolve out-of-order actions (instant abilities or time manipulation)
   * Potentially return to start
@@ -198,7 +200,7 @@ All actions are one of the following categories:
  * Resolve ranged attacks (including throwing items)
  * Resolve movement
  * Resolve other actions (including using items)
- * Monster decides next action
+ * Cleanup
 
 
 ## Misc:

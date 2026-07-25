@@ -3,17 +3,17 @@ use rltk::Point;
 
 /// The contents of the game world itself.
 pub struct World {
-    player: Option<Player>,
+    pub player: Option<Player>,
 
     // For ease of bookkeeping, keep explicit track of the number of extant entities
-    extant_entities: usize,
+    pub extant_entities: usize,
 
     /// All data that can be part of entities, stored as contiguous arrays.
     /// This is obviously not optimal, but simple and faster than storing all information in the objects themselves
-    positions: Vec<Point>,
-    renderables: Vec<Renderable>,
-    names: Vec<String>,
-    intents: Vec<Intent>,
+    pub positions: Vec<Point>,
+    pub renderables: Vec<Renderable>,
+    pub names: Vec<String>,
+    pub intents: Vec<Intent>,
 
     // TODO: Copy relevant data to map when adding/moving actors. Might be faster, since moving
     // is relatively uncommon compared to rendering/dereferencing.
