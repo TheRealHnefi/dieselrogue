@@ -81,6 +81,13 @@ impl World {
         let _ = world.add_item(pos, Item::pistol());
         let _ = world.add_item(pos, Item::rocket_launcher());
         let _ = world.add_item(pos, Item::bulletproof_vest());
+        let _ = world.add_item(pos, Item::flamethrower());
+
+        // Enemies spread in front of the player to test fan fire arc
+        let _ = world.create_zombie_goon(Point {x: pos.x,     y: pos.y - 3}, Direction::Down, String::from("Goon A"));
+        let _ = world.create_zombie_goon(Point {x: pos.x + 2, y: pos.y - 3}, Direction::Down, String::from("Goon B"));
+        let _ = world.create_zombie_goon(Point {x: pos.x - 2, y: pos.y - 3}, Direction::Down, String::from("Goon C"));
+        let _ = world.create_zombie_goon(Point {x: pos.x + 5, y: pos.y - 2}, Direction::Down, String::from("Goon D"));
 
         return world;
     }
