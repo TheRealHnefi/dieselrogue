@@ -11,6 +11,7 @@ use crate::actions;
 pub enum AI {
     None,
     Rotator,
+    Forward,
     Patrolling(PatrollingAI)
 }
 
