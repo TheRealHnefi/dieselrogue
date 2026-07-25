@@ -1749,6 +1749,27 @@ mod tests {
     }
 
     #[test]
+    fn multi_slot_armor_protects_every_covered_part() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let id = world.player_id.unwrap();
+
+        // Riot armor covers torso + both arms; the arm slots receive proxies at equip time.
+        let _ = world.entities[id].body.equip(Item::riot_armor());
+        world.entities[id].body.update_armor();
+
+        for slot in [SlotType::Bodywear, SlotType::LeftArmwear, SlotType::RightArmwear] {
+            let part_index = part_holding_slot(&world, id, slot);
+            assert!(world.entities[id].body.parts[part_index].armor.phys_absorption > 0,
+                "part holding {:?} should be armored (proxy resolved)", slot.to_string());
+        }
+        // A part the armor does not cover (legs) stays unarmored.
+        let legs = part_holding_slot(&world, id, SlotType::Legwear);
+        assert_eq!(world.entities[id].body.parts[legs].armor.phys_absorption, 0,
+            "legs are not covered by riot armor");
+    }
+
+    #[test]
     fn forward_goons_blocked_by_contested_center_tile() {
         let mut world = World::new_test();
 

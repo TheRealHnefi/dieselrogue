@@ -662,6 +662,9 @@ impl World {
             Item::ammo_batteries, Item::ammo_fuel,
             Item::medkit, Item::large_medkit, Item::elixir,
             Item::stimpack,
+            Item::helmet, Item::heavy_helmet,
+            Item::riot_armor, Item::riot_pants,
+            Item::heavy_combat_suit, Item::light_kevlar_pants,
         ];
 
         let item_meta: Vec<(MakeItem, u8)> =
