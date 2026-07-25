@@ -14,10 +14,39 @@ pub struct Entity {
     pub intent: Intent,
     pub facing: Facing,
     pub inventory: Vec<Item>,
-    pub body: Body
+    pub body: Body,
+    pub declare_intent: fn (entity: &mut Entity, map: &Map)
 }
 
 impl Entity {
+    pub fn new_human(id: usize, pos: Point, facing: Facing, name: String) -> Self {
+        Self {
+            id: id,
+            position: pos,
+            renderable: Renderable::new_glyph('5'),
+            name: name,
+            intent: idle_intent(),
+            facing: facing,
+            inventory: vec!(),
+            body: Body::human_body(),
+            declare_intent: Entity::declare_intent_noop
+        }
+    }
+
+    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Facing, name: String) -> Self {
+        Self {
+            id: id,
+            position: pos,
+            renderable: Renderable::new_glyph('5'),
+            name: name,
+            intent: idle_intent(),
+            facing: facing,
+            inventory: vec!(),
+            body: Body::human_body(),
+            declare_intent: Entity::declare_intent_patrolling_goon
+        }
+    }
+
     pub fn create_pawn(&self) -> Pawn {
         Pawn {
             entity_id: self.id,
@@ -314,6 +343,29 @@ impl Entity {
         let index = map.xy_idx(self.position.x, self.position.y);
         map.pawns[index] = None;
     }
+
+
+    fn declare_intent_noop(&mut self, _map: &Map) {
+        return;
+    }
+
+    fn declare_intent_patrolling_goon(&mut self, _map: &Map) {
+        let new_direction = match self.facing.direction {
+            Direction::Left => Direction::UpLeft,
+            Direction::UpLeft => Direction::Up,
+            Direction::Up => Direction::UpRight,
+            Direction::UpRight => Direction::Right,
+            Direction::Right => Direction::DownRight,
+            Direction::DownRight => Direction::Down,
+            Direction::Down => Direction::DownLeft,
+            Direction::DownLeft => Direction::Left
+        };
+        self.intent = Intent {
+            phase: IntentPhase::Movement,
+            data: IntentData::Direction(new_direction),
+            action: Self::resolve_turn
+        };
+    }
 }
 
 /// Contains information typically needed to be referenced by others. Placed on the map for quick
@@ -326,4 +378,3 @@ pub struct Pawn {
     pub intent: Intent,
     pub facing: Facing
 }
-
