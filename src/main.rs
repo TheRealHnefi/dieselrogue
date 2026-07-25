@@ -36,6 +36,8 @@ mod viewshed;
 pub use viewshed::*;
 mod util;
 pub use util::*;
+mod intent;
+pub use intent::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;

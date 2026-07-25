@@ -1,8 +1,3 @@
-use rltk::Point;
-use crate::Map;
-use crate::item::Item;
-use crate::entity::Entity;
-
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Up,
@@ -38,46 +33,6 @@ impl Renderable {
             background: rltk::RGB::named(rltk::BLACK)
         }
     }
-}
-
-#[derive (Clone)]
-pub struct Intent {
-    pub phase: IntentPhase,
-    pub data: IntentData,
-    pub action: fn (self_ref: &mut Entity, map: &mut Map) -> Vec<Effect>
-}
-
-fn intent_noop(_entity: &mut Entity, _map: &mut Map) -> Vec<Effect> {
-    vec!()
-}
-
-pub fn idle_intent() -> Intent {
-    Intent {
-        phase: IntentPhase::Idle,
-        data: IntentData::Void,
-        action: intent_noop
-    }
-}
-
-#[derive (PartialEq, Eq, Copy, Clone)]
-pub enum IntentPhase {
-    Idle,
-    Instant,
-    Inventory,
-    Attack,
-    Movement,
-    Misc
-}
-
-#[derive (Clone)]
-pub enum IntentData {
-    Void,
-    InventoryItem(Item),
-    EquippedItem(SlotType),
-    Target(Point),
-    Direction(Direction),
-    TargetWithEquipment{slot: SlotType, target: Point},
-    TargetWithInventory{item: Item, target: Point}
 }
 
 pub enum Effect {

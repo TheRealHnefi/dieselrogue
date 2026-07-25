@@ -1,6 +1,8 @@
 use crate::components::*;
 use crate::entity::Entity;
 use crate::map::Map;
+use crate::intent::*;
+use crate::GameLog;
 
 #[derive(Clone)]
 pub struct Item {
@@ -25,7 +27,7 @@ pub struct ItemAction {
     // pub preconditions <- check item charges and such
     pub targeting: Targeting,
     pub phase: IntentPhase,
-    pub effects: fn (self_ref: &mut Entity, map: &mut Map) -> Vec<Effect>
+    pub effects: fn (self_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>
 }
 
 impl Item {

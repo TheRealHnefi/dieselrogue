@@ -184,28 +184,27 @@ impl World {
         }
     }
 
-    pub fn resolve_phase(&mut self, phase: IntentPhase) -> Result<(), GameError> {
+    pub fn resolve_phase(&mut self, phase: IntentPhase, log: &mut GameLog) {
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {
             if entity.intent.phase == phase {
-                let mut entity_effects = (entity.intent.action)(entity, &mut self.map);
+                let mut entity_effects = (entity.intent.action)(entity, &mut self.map, log);
                 effects.append(&mut entity_effects);
                 entity.intent = idle_intent();
             }
         }
 
-        self.resolve_effects(&effects);
-
-        Ok(())
+        self.resolve_effects(&effects, log);
     }
 
-    fn resolve_effects(&mut self, effects: &Vec<Effect>) {
+    fn resolve_effects(&mut self, effects: &Vec<Effect>, log: &mut GameLog) {
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {
             match effect {
                 Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} => {
                     self.entities[*id].apply_damage(*part_index, *damage);
                     if self.entities[*id].mortally_wounded() {
+                        log.log(format!("{} was killed!", self.entities[*id].name));
                         deathlist.push(*id);
                     }
                 }
