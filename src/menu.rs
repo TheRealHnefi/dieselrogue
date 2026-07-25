@@ -8,7 +8,7 @@ use crate::state::*;
 use crate::World;
 use crate::actions;
 use crate::SlotType;
-use crate::{FontSize, Settings};
+use crate::{FontSize, Settings, Bindings, RebindTarget, key_to_str};
 use crate::PaperDoll;
 
 /**
@@ -378,6 +378,60 @@ pub fn main_menu() -> MenuPanel<SystemRow> {
     }
 }
 
+fn action_open_keybind_menu(state: &mut State) -> RunState {
+    let menu = Box::new(keybind_menu(&state.bindings));
+    state.menu_stack.push(menu);
+    RunState::AwaitingMenuInput
+}
+
+fn rebind_wait(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Wait) }
+fn rebind_get_item(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::GetItem) }
+fn rebind_disembark(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Disembark) }
+fn rebind_inventory(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Inventory) }
+fn rebind_equipment(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Equipment) }
+fn rebind_ability(_: &mut State)   -> RunState { RunState::AwaitingRebind(RebindTarget::Ability) }
+fn rebind_juke(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Juke) }
+fn rebind_look(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Look) }
+fn rebind_open_menu(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::OpenMenu) }
+fn rebind_freelook(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::Freelook) }
+
+pub fn keybind_menu(bindings: &Bindings) -> MenuPanel<SystemRow> {
+    let row = |name: &str, key| SystemRow {
+        text: format!("{:<16}{}", name, key_to_str(key)),
+        action: match name {
+            "Wait"      => rebind_wait,
+            "Get item"  => rebind_get_item,
+            "Disembark" => rebind_disembark,
+            "Inventory" => rebind_inventory,
+            "Equipment" => rebind_equipment,
+            "Ability"   => rebind_ability,
+            "Juke"      => rebind_juke,
+            "Look"      => rebind_look,
+            "Open menu" => rebind_open_menu,
+            _           => rebind_freelook,
+        },
+    };
+    MenuPanel {
+        x: 35,
+        y: 20,
+        rows: vec![
+            row("Wait",      bindings.wait),
+            row("Get item",  bindings.get_item),
+            row("Disembark", bindings.disembark),
+            row("Inventory", bindings.inventory),
+            row("Equipment", bindings.equipment),
+            row("Ability",   bindings.ability),
+            row("Juke",      bindings.juke),
+            row("Look",      bindings.look),
+            row("Open menu", bindings.open_menu),
+            row("Freelook",  bindings.freelook),
+        ],
+        selected_row: 0,
+        no_selectable_rows: false,
+        paper_doll: None,
+    }
+}
+
 pub fn settings_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Option<bool>) -> MenuPanel<SystemRow> {
     let settings = Settings::load();
 
@@ -399,8 +453,9 @@ pub fn settings_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Op
         x: 35,
         y: 20,
         rows: vec![
-            SystemRow { text: font_label, action: action_cycle_font_size   },
-            SystemRow { text: fs_label,   action: action_toggle_fullscreen },
+            SystemRow { text: "Key bindings".to_string(), action: action_open_keybind_menu },
+            SystemRow { text: font_label,                 action: action_cycle_font_size   },
+            SystemRow { text: fs_label,                   action: action_toggle_fullscreen },
         ],
         selected_row: 0,
         no_selectable_rows: false,

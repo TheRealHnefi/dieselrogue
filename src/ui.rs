@@ -7,6 +7,7 @@ use crate::tile::*;
 use crate::Ability;
 use crate::Rect;
 use crate::entity::Entity;
+use crate::RebindTarget;
 
 const LEVELUP_SELECT_COLOR: rltk::RGB = RGB { r: 0.9, g: 0.7, b: 0.0 };
 const LEVELUP_LIST_X: i32 = 4;
@@ -164,6 +165,24 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
         BG_COLOR,
         "Arrow keys to navigate, Enter to select",
     );
+}
+
+pub fn draw_rebind_prompt(target: RebindTarget, context: &mut Rltk) {
+    context.set_active_console(UI_CONSOLE_INDEX);
+    let name = match target {
+        RebindTarget::Wait =>      "Wait",
+        RebindTarget::GetItem =>   "Get item",
+        RebindTarget::Disembark => "Disembark",
+        RebindTarget::Inventory => "Inventory",
+        RebindTarget::Equipment => "Equipment",
+        RebindTarget::Ability =>   "Ability",
+        RebindTarget::Juke =>      "Juke",
+        RebindTarget::Look =>      "Look",
+        RebindTarget::OpenMenu =>  "Open menu",
+        RebindTarget::Freelook =>  "Freelook",
+    };
+    let text = format!("Press a key for '{}', or Esc to cancel", name);
+    context.print_color_centered(34, INACTIVE_COLOR, BG_COLOR, &text);
 }
 
 pub fn draw_welcome_splash(context: &mut Rltk) {

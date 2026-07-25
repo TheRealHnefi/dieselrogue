@@ -373,6 +373,44 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
     }
 }
 
+pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let target = match state.run_state {
+        RunState::AwaitingRebind(t) => t,
+        _ => return RunState::AwaitingMenuInput,
+    };
+
+    let key = match state.last_input.take() {
+        Some(k) => k,
+        None => return RunState::AwaitingRebind(target),
+    };
+
+    if key == VirtualKeyCode::Escape {
+        return RunState::AwaitingMenuInput;
+    }
+
+    match target {
+        RebindTarget::Wait =>      state.bindings.wait = key,
+        RebindTarget::GetItem =>   state.bindings.get_item = key,
+        RebindTarget::Disembark => state.bindings.disembark = key,
+        RebindTarget::Inventory => state.bindings.inventory = key,
+        RebindTarget::Equipment => state.bindings.equipment = key,
+        RebindTarget::Ability =>   state.bindings.ability = key,
+        RebindTarget::Juke =>      state.bindings.juke = key,
+        RebindTarget::Look =>      state.bindings.look = key,
+        RebindTarget::OpenMenu =>  state.bindings.open_menu = key,
+        RebindTarget::Freelook =>  state.bindings.freelook = key,
+    }
+
+    let mut settings = Settings::load();
+    settings.bindings = state.bindings;
+    settings.save();
+
+    let fresh = Box::new(keybind_menu(&state.bindings));
+    state.menu_stack.pop();
+    state.menu_stack.push(fresh);
+    RunState::AwaitingMenuInput
+}
+
 /// Resolve a fire action using the player's current `AimingAtGround` status.
 /// Called instead of entering cursor mode when the action has `Targeting::UseExistingAim`.
 ///

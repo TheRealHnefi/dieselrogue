@@ -137,6 +137,13 @@ fn parse_binding<'a>(
         .unwrap_or(default)
 }
 
+// ── RebindTarget ─────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RebindTarget {
+    Wait, GetItem, Disembark, Inventory, Equipment, Ability, Juke, Look, OpenMenu, Freelook,
+}
+
 // ── FontSize ─────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq)]
