@@ -1485,7 +1485,6 @@ mod tests {
             if let AI::Actor(actor) = &mut e.ai {
                 actor.alert = AlertLevel::Alert {
                     last_known: center,
-                    turns_remaining: u32::MAX,
                     search: SearchBehavior::MoveToLastKnown,
                 };
             }
