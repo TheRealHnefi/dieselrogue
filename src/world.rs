@@ -159,6 +159,21 @@ impl World {
         Ok(())
     }
 
+    pub fn resolve_inventory(&mut self) -> Result<(), GameError> {
+        let mut effects: Vec<Effect> = vec!();
+
+        for entity in self.entities.iter_mut() {
+            match entity.resolve_inventory(&mut self.map) {
+                Some(effect) => effects.push(effect),
+                None => ()
+            }
+        }
+
+        self.resolve_effects(&effects);
+
+        Ok(())
+    }
+
     fn resolve_effects(&mut self, effects: &Vec<Effect>) {
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {

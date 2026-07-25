@@ -82,6 +82,22 @@ impl Entity {
         }
     }
 
+    pub fn resolve_inventory(&mut self, map: &mut Map) -> Option<Effect> {
+        match self.intent.action {
+            Action::GetItem => {
+                self.intent = Intent {action: Action::Idle};
+
+                let index = map.xy_idx(self.position.x, self.position.y);
+                if map.items[index].is_some() {
+                    self.inventory.push(map.items[index].take().unwrap());
+                }
+                return None;
+            },
+            _ => None
+        }
+    }
+
+
     pub fn kill(&mut self, map: &mut Map) {
         let index = map.xy_idx(self.position.x, self.position.y);
         map.pawns[index] = None;
