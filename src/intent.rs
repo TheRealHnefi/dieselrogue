@@ -16,7 +16,7 @@ pub struct Intent {
 #[derive(Copy, Clone, PartialEq)]
 pub enum Targeting {
     None,
-    Positional,
+    Positional { max_range: Option<u32> },
     Detailed,
     /// Fire at the player's current aim position (set by a prior `aim_action`).
     /// If `ask_bodypart` is true and an entity occupies the aimed tile, opens

@@ -170,7 +170,18 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                 // Phase 2 of targeting: cursor position confirmed.
                 match state.pending_action.take() {
                     Some(pending) => {
-                        if pending.item_action.targeting == Targeting::Positional {
+                        if matches!(pending.item_action.targeting, Targeting::Positional { .. }) {
+                            // Reject if cursor is beyond the action's max range.
+                            if let Targeting::Positional { max_range: Some(range) } = pending.item_action.targeting {
+                                if let Ok(player) = state.world.get_player() {
+                                    let dx = state.cursor_pos.x - player.position.x;
+                                    let dy = state.cursor_pos.y - player.position.y;
+                                    if dx * dx + dy * dy > (range * range) as i32 {
+                                        state.pending_action = Some(pending);
+                                        return RunState::AwaitingPositionalTargetingInput;
+                                    }
+                                }
+                            }
                             // Phase 2a: assemble the intent directly from cursor position.
                             let data = match pending.source {
                                 Some(ActionSource::InventoryItem(item)) =>
