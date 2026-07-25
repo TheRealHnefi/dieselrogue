@@ -490,10 +490,17 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, INACTIVE_COLOR, BG_COLOR, "Nothing");
     }
 
-    // Inventory panel
+    // Inventory panel — highlight the active row while browsing it directly, and keep
+    // it highlighted while the selected item's action menu is open.
+    let inv_browsing = state.run_state == RunState::BrowsingInventory
+        || (state.run_state == RunState::AwaitingMenuInput
+            && state.menu_return_state == RunState::BrowsingInventory);
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + 2;
     for (i, item) in player.body.inventory.iter().enumerate() {
         debug_assert!(i < crate::components::INVENTORY_MAX);
+        if inv_browsing && i == state.inventory_selected {
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET - 1, offset_y + i, RGB::named(rltk::YELLOW), BG_COLOR, "►");
+        }
         print_item_info(context, item, UI_X_OFFSET + LABEL_OFFSET, offset_y + i);
     }
 
@@ -549,6 +556,15 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
     // Noise panel
     draw_noise_panel(state, context);
+}
+
+/// Screen position (x, y) of inventory row `index` in the side panel. Used to anchor
+/// the inventory action menu next to the highlighted row.
+pub fn inventory_row_pos(index: usize) -> (i32, i32) {
+    let x = (UI_X_OFFSET + LABEL_OFFSET) as i32;
+    let y = (UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
+        + GROUND_ITEM_PANEL_HEIGHT + 2) as i32 + index as i32;
+    (x, y)
 }
 
 fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: usize) {

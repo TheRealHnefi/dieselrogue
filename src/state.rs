@@ -23,6 +23,8 @@ pub enum RunState {
     DeclareIntent,
     AwaitingInput,
     AwaitingMenuInput,
+    /// Navigating the side-panel inventory list directly (no floating item menu).
+    BrowsingInventory,
     AwaitingRebind(RebindTarget, Option<&'static str>),
     AwaitingPositionalTargetingInput,
     AwaitingEntityTargetingInput,
@@ -52,6 +54,9 @@ pub struct State {
 
     pub menu_stack: Vec<Box<dyn Menu>>,
     pub pending_action: Option<PendingAction>,
+
+    /// Highlighted row while in `BrowsingInventory` (index into the player's inventory).
+    pub inventory_selected: usize,
 
     pub level_up_options: Vec<Ability>,
     pub level_up_selected: usize,
@@ -101,6 +106,7 @@ impl State {
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             pending_action: None,
+            inventory_selected: 0,
             level_up_options: vec![],
             level_up_selected: 0,
             entity_targets: vec![],
@@ -131,6 +137,7 @@ impl State {
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             pending_action: None,
+            inventory_selected: 0,
             level_up_options: vec![],
             level_up_selected: 0,
             entity_targets: vec![],
@@ -163,6 +170,7 @@ impl State {
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             pending_action: None,
+            inventory_selected: 0,
             level_up_options: vec![],
             level_up_selected: 0,
             entity_targets: vec![],
@@ -285,6 +293,9 @@ impl GameState for State {
             },
             RunState::Looking => {
                 self.run_state = looking_input(self, context);
+            },
+            RunState::BrowsingInventory => {
+                self.run_state = browse_inventory_input(self, context);
             },
             RunState::AwaitingDirectionalTargetingInput => {
                 self.run_state = directional_targeting_input(self, context);
