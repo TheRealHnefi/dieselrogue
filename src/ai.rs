@@ -6,7 +6,6 @@ use crate::EntityKind;
 use crate::util::adjacent;
 use crate::components::*;
 use crate::intent::*;
-use crate::player;
 use crate::Ability;
 
 const SUSPICIOUS_TURNS: u32 = 30;
@@ -488,7 +487,7 @@ impl ActorAI {
             if let Some((slot, range)) = find_weapon(entity) {
                 let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
                 if dist <= range as f32 {
-                    let available = player::get_entity_available_actions(entity, map);
+                    let available = entity.get_available_actions(map);
                     let fire = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::UseExistingAim { .. }));
                     let aim  = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::EntityAim { .. }));
                     if let Some(&(action, _)) = fire.or(aim) {

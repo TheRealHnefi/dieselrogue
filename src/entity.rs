@@ -54,7 +54,7 @@ pub struct Entity {
     pub paper_doll: Option<PaperDoll>,
     /// Actions the entity can perform independent of items — choosable by both
     /// the player menu and the AI. Filtered by each action's precondition at
-    /// query time via `get_entity_available_actions`.
+    /// query time via `get_available_actions`.
     pub innate_actions: Vec<EntityAction>,
 }
 
@@ -301,7 +301,28 @@ impl Entity {
         }
     }
 
-
+    /// Returns all actions currently available to `entity`: equipped-item actions
+    /// whose preconditions pass, followed by innate actions whose preconditions pass.
+    /// `Option<SlotType>` is `Some(slot)` for equipped actions, `None` for innate ones.
+    /// This is the authoritative source used by both the player menu and the AI.
+    pub fn get_available_actions<'a>(&'a self, map: &Map) -> Vec<(&'a EntityAction, Option<SlotType>)> {
+        let mut result = Vec::new();
+        for slot in &self.body.item_slots {
+            let Some(item) = &slot.item else { continue };
+            if item.proxy { continue; }
+            for action in &item.equip_actions {
+                if (action.precondition)(self, map, Some(item)) {
+                    result.push((action, Some(slot.slot_type)));
+                }
+            }
+        }
+        for action in &self.innate_actions {
+            if (action.precondition)(self, map, None) {
+                result.push((action, None));
+            }
+        }
+        result
+    }
 
     pub fn update_view(&mut self, map: &mut Map) {
         if self.kind == EntityKind::Player {
