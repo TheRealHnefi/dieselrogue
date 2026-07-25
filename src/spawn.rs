@@ -1,5 +1,5 @@
 use rltk::{Point, RandomNumberGenerator};
-use std::{cmp::max, collections::HashMap};
+use std::collections::HashMap;
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE};
 
 // ---------------------------------------------------------------------------
@@ -60,6 +60,8 @@ pub struct SpawnMap {
     /// Boundaries between regions
     pub boundaries: Vec<RegionBoundary>
 }
+
+type MakeItem = fn() -> Item;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -161,10 +163,9 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
     SpawnMap { tile_region, spawn_points, regions, boundaries }
 }
 
-pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator,) {
-    type MakeItem = fn() -> Item;
+pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
     let starting_pool: &[MakeItem] = &[Item::pistol, Item::flare_gun, Item::knife, Item::grenade];
-    let weapons_pool: &[MakeItem] = &[
+    let equipment_pool: &[MakeItem] = &[
         Item::pistol, Item::flare_gun, Item::knife,
         Item::revolver, Item::shock_pistol, Item::submachine_gun,
         Item::grenade, Item::fire_grenade, Item::flashbang,
@@ -174,8 +175,6 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         Item::shock_grenade,
         Item::rotary_machinegun,
         Item::rocket_launcher,
-    ];
-    let armor_pool:  &[MakeItem] = &[
         Item::bulletproof_vest, Item::light_kevlar_pants,
         Item::riot_armor, Item::riot_pants,
         Item::heavy_combat_suit,
@@ -195,11 +194,13 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         Item::jetpack,
     ];
 
-    let boring_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_room).collect();
-    let interesting_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.interesting).collect();
+    /// Higher means fewer items
+    const EXCEPTIONAL_ITEM_SPARSITY: usize = 4;
+    const EQUIPMENT_ITEM_SPARSITY: usize = 4;
+    const CONSUMABLE_ITEM_SPARSITY: usize = 4;
 
-    let max_depth = spawn_map.regions.iter().filter(|r| r.depth != usize::MAX).max_by_key(|r| r.depth).unwrap().depth;
-    println!("Max depth: {}", max_depth);
+    let boring_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_room && !r.interesting).collect();
+    let interesting_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.interesting).collect();
 
     let mut total_items_placed: usize = 0;
     
@@ -222,52 +223,78 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         println!("Placed {} starting items", items_placed);
     }
 
-    // Place exceptional items
-    {
-        let mut items_placed = 0;
-        let item_rarity: Vec<(MakeItem, u8)> =
-            exceptional_pool.iter().map(|&f| (f, f().rarity)).collect();
-        let weighted_pool: Vec<(MakeItem, u8)> = item_rarity.iter()
-            .flat_map(|&(f, r)| {
-                std::iter::repeat((f, r)).take(4usize.saturating_sub(r as usize))
-            })
-            .collect();
+    let exceptional_placed = place_items_in_rooms(world, exceptional_pool, &interesting_rooms, EXCEPTIONAL_ITEM_SPARSITY, rng);
+    let equipment_placed = place_items_in_rooms(world, equipment_pool, &boring_rooms, EQUIPMENT_ITEM_SPARSITY, rng);
+    let consumables_placed = place_items_in_rooms(world, consumables_pool, &boring_rooms, CONSUMABLE_ITEM_SPARSITY, rng);
 
-        let mut empty_rooms = interesting_rooms.clone();
-        for room in interesting_rooms {
-            // If room is not empty, idx will be referincing outside the array
-            let mut empty_room_idx = empty_rooms.len();
-            for i in 0 .. empty_rooms.len() {
-                if empty_rooms[i].center_idx == room.center_idx {
-                    empty_room_idx = i;
-                    break;
-                }
-            }
-            // Skip already used rooms.
-            if empty_room_idx == empty_rooms.len() { continue; }
+    total_items_placed += exceptional_placed;
+    total_items_placed += equipment_placed;
+    total_items_placed += consumables_placed;
+    println!("Placed {} exceptional items", exceptional_placed);
+    println!("Placed {} equipment items", equipment_placed);
+    println!("Placed {} consumable items", consumables_placed);
 
-            let depth_factor = rng.range(1, max_depth + 1) <= room.depth;
-            let arbitrary_factor = rng.range(0, 4) == 0;
-            if !depth_factor || !arbitrary_factor { continue; }
-
-            let item_idx = rng.range(0, weighted_pool.len());
-            let (item_to_place, rarity) = weighted_pool[item_idx];
-            
-            if world.add_item(world.map.idx_pos(room.center_idx), item_to_place()).is_ok() {
-                items_placed += 1;
-                empty_rooms.swap_remove(empty_room_idx);
-            }
-        }
-        total_items_placed += items_placed;
-        println!("Placed {} exceptional items", items_placed);
-    }
-
-    println!("Placed {} items", total_items_placed);
+    println!("Placed {} total items", total_items_placed);
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/// Returns number of placed items
+fn place_items_in_rooms(
+    world: &mut World,
+    pool: &[MakeItem],
+    rooms: &Vec<&Region>,
+    item_sparsity: usize,
+    rng: &mut RandomNumberGenerator
+) -> usize {
+    // Higher means rare items can appear at shallower depths
+    const RARITY_TOLERANCE: usize = 2;
+    // Higher means rare items are rarer compared to common items
+    const RARITY_FACTOR: usize = 1;
+
+    let max_depth = rooms.iter().filter(|r| r.depth != usize::MAX).max_by_key(|r| r.depth).unwrap().depth;
+    let max_rarity = pool.iter().max_by_key(|i| i().rarity).unwrap()().rarity as usize;
+    let min_rarity = pool.iter().min_by_key(|i| i().rarity).unwrap()().rarity as usize;
+    // Depth should be higher than rarity, giving a positive integer factor
+    let rarity_factor = max_depth / max_rarity;
+    let min_depth_factor = rarity_factor - RARITY_TOLERANCE;
+
+    let min_depth = min_depth_factor * min_rarity;
+
+    let item_rarity: Vec<(MakeItem, u8)> =
+        pool.iter().map(|&f| (f, f().rarity)).collect();
+    let weighted_pool: Vec<(MakeItem, u8)> = item_rarity.iter()
+        .flat_map(|&(f, r)| {
+            std::iter::repeat((f, r)).take(RARITY_FACTOR * (1 + max_rarity - r as usize))
+        })
+        .collect();
+
+    let mut items_placed = 0;
+    for room in rooms {
+        if !(rng.range(0, item_sparsity) == 0) { continue; }
+
+        if room.depth < min_depth { continue; }
+
+        let mut picked_item: Option<MakeItem> = None;
+        while picked_item.is_none() {
+            let item_idx = rng.range(0, weighted_pool.len());
+            let (item, rarity) = weighted_pool[item_idx];
+            
+            let item_min_depth = rarity as usize * min_depth_factor;
+            if room.depth >= item_min_depth {
+                picked_item = Some(item);
+            }
+        }        
+
+        if world.add_item(world.map.idx_pos(room.center_idx), picked_item.unwrap()()).is_ok() {
+            items_placed += 1;
+        }
+    }
+
+    items_placed
+}
 
 /// Returns true for tile types that entities can stand on.
 fn tile_passable(tile: TileType) -> bool {
@@ -790,108 +817,6 @@ impl World {
             }
         }
         println!("  Patrollers: {}", count);
-    }
-
-    pub(crate) fn spawn_loot(
-        &mut self,
-        spawn_map: &SpawnMap,
-        rng: &mut RandomNumberGenerator,
-    ) {
-        const TOTAL_LOOT: usize = 400;
-
-        type MakeItem = fn() -> Item;
-        let pool: &[MakeItem] = &[
-            Item::pistol, Item::flare_gun, Item::knife,
-            Item::revolver, Item::shock_pistol, Item::submachine_gun,
-            Item::grenade, Item::fire_grenade, Item::flashbang,
-            Item::bulletproof_vest,
-            Item::bolt_action_rifle, Item::semi_auto_rifle,
-            Item::assault_rifle, Item::machinegun,
-            Item::shock_carbine, Item::flamethrower,
-            Item::shock_grenade,
-            Item::rotary_machinegun, Item::shock_cannon,
-            Item::rocket_launcher, Item::multi_rocket_launcher,
-            Item::ammo_bullets, Item::ammo_rockets,
-            Item::ammo_batteries, Item::ammo_fuel,
-            Item::medkit, Item::large_medkit, Item::elixir,
-            Item::stimpack,
-            Item::helmet, Item::heavy_helmet,
-            Item::riot_armor, Item::riot_pants,
-            Item::heavy_combat_suit, Item::light_kevlar_pants,
-            Item::rocket_boots, Item::tactical_helmet,
-            Item::jetpack,
-        ];
-
-        let item_meta: Vec<(MakeItem, u8)> =
-            pool.iter().map(|&f| (f, f().rarity)).collect();
-        let weighted_pool: Vec<(MakeItem, u8)> = item_meta.iter()
-            .flat_map(|&(f, r)| {
-                std::iter::repeat((f, r)).take(4usize.saturating_sub(r as usize))
-            })
-            .collect();
-        if weighted_pool.is_empty() { return; }
-
-        let nz = spawn_map.regions.len();
-
-        let mut indoor_spawns: Vec<Vec<Point>> = vec![vec![]; nz];
-        for sp in &spawn_map.spawn_points {
-            let Some(zi) = spawn_map.tile_region[sp.idx] else { continue };
-            if spawn_map.regions[zi].depth == usize::MAX { continue; }
-            if self.map.tiles[sp.idx] == TileType::Floor {
-                indoor_spawns[zi].push(sp.pos);
-            }
-        }
-
-        let max_depth = (0..nz)
-            .filter(|&zi| spawn_map.regions[zi].depth != usize::MAX && !indoor_spawns[zi].is_empty())
-            .map(|zi| spawn_map.regions[zi].depth)
-            .max()
-            .unwrap_or(0);
-
-        let mut zones_by_depth: Vec<Vec<usize>> = vec![vec![]; max_depth + 1];
-        for zi in 0..nz {
-            let d = spawn_map.regions[zi].depth;
-            if d != usize::MAX && d <= max_depth && !indoor_spawns[zi].is_empty() {
-                zones_by_depth[d].push(zi);
-            }
-        }
-
-        if zones_by_depth.iter().all(|v| v.is_empty()) { return; }
-
-        let mut zone_has_item = vec![false; nz];
-        let mut placed = 0usize;
-
-        for _ in 0..TOTAL_LOOT {
-            let (make, rarity) = weighted_pool[rng.range(0, weighted_pool.len() as i32) as usize];
-
-            let base = (rarity as usize * max_depth) / 3;
-            let jitter = rng.range(-1i32, 4);
-            let mut target = ((base as i32 + jitter).max(0) as usize).min(max_depth);
-
-            if target < 4 && max_depth >= 4 && rng.range(0, 50) < 49 {
-                target = rng.range(4, max_depth as i32 + 1) as usize;
-            }
-
-            let Some(depth) = (0..=max_depth)
-                .filter(|&d| zones_by_depth[d].iter().any(|&zi| !zone_has_item[zi]))
-                .min_by_key(|&d| ((d as i32) - (target as i32)).abs())
-            else { continue };
-
-            let available: Vec<usize> = zones_by_depth[depth].iter()
-                .copied()
-                .filter(|&zi| !zone_has_item[zi])
-                .collect();
-            let zi = available[rng.range(0, available.len() as i32) as usize];
-
-            let spawns = &indoor_spawns[zi];
-            let pos = spawns[rng.range(0, spawns.len() as i32) as usize];
-
-            let _ = self.add_item(pos, make());
-            zone_has_item[zi] = true;
-            placed += 1;
-        }
-
-        println!("Spawned {} loot items.", placed);
     }
 
     /// First pass: assign lock colors to door entities.

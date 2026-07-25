@@ -67,12 +67,11 @@ impl World {
                 (world.map.width / 2) as i32, (world.map.height / 2) as i32));
         // Topology analysis — run once, shared by all placement passes.
         let spawn_map = create_spawn_map(&world.map, player_tile);
-        let start_region = spawn_map.tile_region[player_tile].unwrap_or(0);
-
+        
         if true {
             let boundary_colors = world.assign_door_colors(&spawn_map);
-            //world.place_zone_keys(&spawn_map, &boundary_colors, start_region, &mut rng);
-            //world.spawn_loot(&spawn_map, &mut rng);
+            let start_region = spawn_map.tile_region[player_tile].unwrap_or(0);
+            world.place_zone_keys(&spawn_map, &boundary_colors, start_region, &mut rng);
             spawn_loot(&mut world, &spawn_map, &mut rng);
 
             let mut placed: Vec<Point> = Vec::new();
