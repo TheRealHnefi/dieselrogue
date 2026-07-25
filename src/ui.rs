@@ -293,6 +293,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(rltk::BLACK), rltk::to_cp437('█'));
     }
     draw_enemy_viewsheds(state, viewport, context);
+    draw_precognition_ghosts(state, viewport, context);
     draw_direction_overlay(&state.world.map, &state.world.entities, viewport, context, state.world.debug_mode);
 
     if state.run_state == RunState::Looking {
@@ -955,6 +956,74 @@ fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
             tint,
             rltk::to_cp437(' '),
         );
+    }
+}
+
+fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
+    let pending = matches!(
+        state.run_state,
+        RunState::AwaitingInput
+        | RunState::Looking
+        | RunState::AwaitingPositionalTargetingInput
+        | RunState::AwaitingEntityTargetingInput
+        | RunState::AwaitingDirectionalTargetingInput
+    );
+    if !pending {
+        return;
+    }
+    let Ok(player) = state.world.get_player() else { return };
+    if !player.has_ability(Ability::Precognition) {
+        return;
+    }
+
+    const GHOST_ALPHA: f32 = 0.8;
+    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    let map = &state.world.map;
+    for entity in &state.world.entities {
+        if entity.kind != crate::entity::EntityKind::Actor {
+            continue;
+        }
+        if !map.visible_tiles[map.pos_idx(entity.center())] {
+            continue; // only preview actors the player can currently see
+        }
+        // A ghost is only meaningful when the declared intent relocates the actor.
+        if entity.intent.phase != crate::ExecutionPhase::Movement {
+            continue;
+        }
+        let crate::IntentData::Target(dest) = &entity.intent.data else { continue };
+        if *dest == entity.position {
+            continue;
+        }
+
+        let color = match entity.color {
+            Some(c) => {
+                let (r, g, b) = crate::components::KEY_COLORS[c];
+                rltk::RGBA::from_u8(r, g, b, (GHOST_ALPHA * 255.0) as u8)
+            }
+            None => rltk::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, GHOST_ALPHA),
+        };
+
+        // Redraw the actor's whole footprint, shifted to its predicted position.
+        for sx in 0..entity.size_x {
+            for sy in 0..entity.size_y {
+                let tx = dest.x + sx as i32;
+                let ty = dest.y + sy as i32;
+                if tx < viewport.x1 || tx >= viewport.x2 || ty < viewport.y1 || ty >= viewport.y2 {
+                    continue;
+                }
+                let glyph = entity.sprite.glyph(entity.body.facing, sx + sy * entity.size_x);
+                // set_fancy inverts y (see draw_direction_overlay); shift down one tile.
+                context.set_fancy(
+                    rltk::PointF::new((tx - viewport.x1) as f32, (ty - viewport.y1 + 1) as f32),
+                    0,
+                    rltk::Radians(0.0),
+                    rltk::PointF::new(1.0, 1.0),
+                    color,
+                    transparent,
+                    glyph,
+                );
+            }
+        }
     }
 }
 
