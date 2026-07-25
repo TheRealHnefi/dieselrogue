@@ -1,0 +1,58 @@
+DieselRogue design document
+
+Name ideas:
+DieselRogue
+Decodence
+
+Character:
+3 base stats:
+* Physical - shooting, punching, taking damage, sneaking
+* Intellectual - tinkering, spotting, listening, trapping
+* Spiritual - magic, willpower, bravery
+
+Classes (pick any two?) and perk ideas:
+* Soldier - aim, scout, 
+* Pugilist - disarm, stun, throw
+* Thief - predict movement, misdirection, set trap
+* Occultist - 
+* Engineer - 
+
+Combat ideas:
+* NO resource regeneration! Possibly not even stamina (call it fatigue?).
+* The above leads to NO resting! No need for a hunger clock.
+* Focus on active abilities and crowd control.
+* Few enemies in a single battle. Enemies should spread out to search if alerted, allowing takedowns.
+* Abilities and equipment should follow the half or double rule.
+* Armour should be powerful. Use damage = (power - absorbtion) * resistance.
+* Simple damage calculations! No complicated formulas - make it intuitive.
+* Localized damage for body parts.
+
+Stealth:
+* All actors have a viewing direction. Turning takes an action. 180 degree FOV for most.
+* Listening can give approximate location of enemies.
+
+Magic:
+* Glyph-based. Finding a glyph lets player name it - they don't know what it actually does.
+* Spells are glyph combinations. Since glyphs are named by the player, spells need to be discovered.
+* Known spells can be shortcutted, like any other ability.
+
+Tinkering:
+* Add/remove attributes on items.
+* Build completely new items, competitive with found items.
+* Construct consumables, but never infinites.
+
+UI:
+* Need comprehensive shortcut system.
+* Need way to see character facing and localized damage.
+
+Scenario:
+World is 1950's, parallel earth.
+
+Break into the old Castle, filled with guards. Objective is to stop the mad scientist (or steal
+his research).
+
+The Castle consists of large battlements with many rooms and a central courtyard. Various towers
+are spread out over the property and bridges cross over the courtyard high above. At the very top,
+the mad scientist is waiting. Once killed, the catacombs open and out pours various monsters.
+The protagonist has to fight through the monsters, find the hell portal in the old dungeons, and
+destroy it.

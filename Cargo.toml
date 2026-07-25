@@ -1,0 +1,10 @@
+[package]
+name = "dieselrogue"
+version = "0.1.0"
+authors = ["Johan Larsson <johan.t.larsson@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rltk = "0.8.1"
+specs = "0.16.1"
+specs-derive = "0.4.1"
