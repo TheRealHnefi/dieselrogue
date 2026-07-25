@@ -14,9 +14,7 @@ fn main() -> rltk::BError {
         .with_title("Diesel Rogue")
         .build()?;
     
-    let mut game_state = State {
-        ecs: World::new()
-    };
+    let mut game_state = State::new();
 
     game_state.ecs.register::<Player>();
     game_state.ecs.register::<Position>();
