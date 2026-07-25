@@ -203,6 +203,18 @@ pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, 
     context.print_color_centered(28, color, BG_COLOR, &text);
 }
 
+pub fn draw_game_over_screen(context: &mut Rltk) {
+    context.set_active_console(MAIN_CONSOLE_INDEX);
+    context.cls();
+    context.set_active_console(UI_CONSOLE_INDEX);
+    context.cls();
+
+    let mid = SCREEN_HEIGHT as i32 / 2;
+    context.print_color_centered(mid - 2, FIRE_COLOR,     BG_COLOR, "GAME OVER");
+    context.print_color_centered(mid,     LINE_COLOR,     BG_COLOR, "The diesels fall silent.");
+    context.print_color_centered(mid + 4, INACTIVE_COLOR, BG_COLOR, "Press any key to return to the main menu...");
+}
+
 pub fn draw_welcome_splash(context: &mut Rltk) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();

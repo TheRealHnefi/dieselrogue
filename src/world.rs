@@ -161,7 +161,7 @@ impl World {
             Direction::Up, Direction::UpRight, Direction::Right, Direction::DownRight,
             Direction::Down, Direction::DownLeft, Direction::Left, Direction::UpLeft,
         ];
-        let grid = 10usize;
+        let grid = 30usize;
         let cell_w = world.map.width / grid;
         let cell_h = world.map.height / grid;
         for gy in 0..grid {
@@ -1054,10 +1054,11 @@ impl World {
         }
 
         // Update player_id to the player's new index after compaction.
-        if let Some(old_id) = self.player_id {
+        // Returns None if the player was killed and removed.
+        if self.player_id.is_some() {
             self.player_id = self.entities.iter().position(|e| {
                 matches!(e.kind, crate::entity::EntityKind::Player)
-            }).or(Some(old_id));
+            });
         }
 
         // Pawn entity_ids are now stale. Dead entities already cleared their pawns
