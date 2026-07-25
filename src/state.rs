@@ -8,7 +8,7 @@ pub enum RunState {
     AwaitingInput,
     PreRun,
     PlayerTurn,
-    EnemyTurn
+    EnemyTurn,
 }
 
 pub struct State {
@@ -75,7 +75,7 @@ impl GameState for State {
 
         for (pos, render) in (&positions, &renderables).join() {
             let idx = map.xy_idx(pos.x, pos.y);
-            if true || map.visible_tiles[idx] {
+            if map.visible_tiles[idx] {
                 context.set(pos.x, pos.y, render.color, render.background, render.glyph);
             }
         }
@@ -87,7 +87,7 @@ impl GameState for State {
             console::log(format!("Tick time: {}", tick_time));
         }
         let tick_rate = self.last_tick.elapsed().as_micros();
-        if tick_rate > 20000 {
+        if tick_rate > 40000 {
             console::log(format!("Time since last tick: {}", tick_rate));
         }
         self.last_tick = Instant::now();
