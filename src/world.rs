@@ -390,6 +390,7 @@ impl World {
             location: ItemLocation,
             damage: Damage,
             timeout: u32,
+            radius: u32,
             flash: bool,
         }
 
@@ -400,22 +401,22 @@ impl World {
                     let idx = self.map.pos_idx(*pos);
                     self.map.items[idx].as_ref()
                         .filter(|i| i.id == active.item_id)
-                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout, flash } = i.kind {
-                            Some((damage, timeout, flash))
+                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout, radius, flash } = i.kind {
+                            Some((damage, timeout, radius, flash))
                         } else { None })
-                        .map(|(d, t, f)| (active.location.clone(), d, t, f))
+                        .map(|(d, t, r, f)| (active.location.clone(), d, t, r, f))
                 },
                 ItemLocation::InInventory(eid) => {
                     self.entities.get(*eid)
                         .and_then(|e| e.body.inventory.iter().find(|i| i.id == active.item_id))
-                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout, flash } = i.kind {
-                            Some((damage, timeout, flash))
+                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout, radius, flash } = i.kind {
+                            Some((damage, timeout, radius, flash))
                         } else { None })
-                        .map(|(d, t, f)| (active.location.clone(), d, t, f))
+                        .map(|(d, t, r, f)| (active.location.clone(), d, t, r, f))
                 },
             };
-            if let Some((location, damage, timeout, flash)) = found {
-                ticks.push(Tick { item_id: active.item_id, location, damage, timeout, flash });
+            if let Some((location, damage, timeout, radius, flash)) = found {
+                ticks.push(Tick { item_id: active.item_id, location, damage, timeout, radius, flash });
             }
         }
 
@@ -429,38 +430,7 @@ impl World {
                     ItemLocation::OnMap(p) => *p,
                     ItemLocation::InInventory(eid) => self.entities[*eid].position,
                 };
-                if tick.flash {
-                    log.log(String::from("A flashbang goes off!"));
-                    const FLASH_RADIUS: i32 = 7;
-                    for entity in &self.entities {
-                        let dx = entity.position.x - pos.x;
-                        let dy = entity.position.y - pos.y;
-                        if dx * dx + dy * dy <= FLASH_RADIUS * FLASH_RADIUS && entity.can_see(pos) {
-                            effects.push(Effect::ApplyStatus {
-                                target_id: entity.id,
-                                status: StatusEffect::Blind(5),
-                            });
-                        }
-                    }
-                } else {
-                    log.log(String::from("A grenade explodes!"));
-                    const RADIUS: i32 = 3;
-                    for entity in &self.entities {
-                        let dx = entity.position.x - pos.x;
-                        let dy = entity.position.y - pos.y;
-                        if dx * dx + dy * dy <= RADIUS * RADIUS {
-                            for part in 0..entity.body.parts.len() {
-                                effects.push(Effect::Damage {
-                                    entity_id: entity.id,
-                                    bodypart_index: part,
-                                    raw_damage: tick.damage,
-                                });
-                            }
-                        }
-                    }
-                }
-                effects.push(Effect::Animation(explosion_animation(pos)));
-                effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 25 }));
+                effects.extend(self.detonate_explosive(pos, tick.damage, tick.radius, tick.flash, log));
                 self.remove_item_from_location(tick.item_id, &tick.location);
                 exploded.push(tick.item_id);
             } else {
@@ -471,6 +441,36 @@ impl World {
         self.active_items.retain(|a| !exploded.contains(&a.item_id));
 
         self.resolve_effects(&effects, log)
+    }
+
+    fn detonate_explosive(&self, pos: Point, damage: Damage, radius: u32, flash: bool, log: &mut GameLog) -> Vec<Effect> {
+        let mut effects: Vec<Effect> = vec![];
+        let r = radius as i32;
+        if flash {
+            log.log(String::from("A flashbang goes off!"));
+            for entity in &self.entities {
+                let dx = entity.position.x - pos.x;
+                let dy = entity.position.y - pos.y;
+                if dx * dx + dy * dy <= r * r && entity.can_see(pos) {
+                    effects.push(Effect::ApplyStatus { target_id: entity.id, status: StatusEffect::Blind(5) });
+                }
+            }
+            effects.push(Effect::Animation(flashbang_animation(pos)));
+        } else {
+            log.log(String::from("A grenade explodes!"));
+            for entity in &self.entities {
+                let dx = entity.position.x - pos.x;
+                let dy = entity.position.y - pos.y;
+                if dx * dx + dy * dy <= r * r {
+                    for part in 0..entity.body.parts.len() {
+                        effects.push(Effect::Damage { entity_id: entity.id, bodypart_index: part, raw_damage: damage });
+                    }
+                }
+            }
+            effects.push(Effect::Animation(explosion_animation(pos)));
+        }
+        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 25 }));
+        effects
     }
 
     fn set_fuse_timeout(&mut self, item_id: usize, location: &ItemLocation, timeout: u32) {
