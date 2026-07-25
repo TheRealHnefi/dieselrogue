@@ -99,6 +99,7 @@ impl World {
         let _ = world.add_item(pos, Item::grenade());
         let _ = world.add_item(pos, Item::flashbang());
         let _ = world.add_item(pos, Item::fire_grenade());
+        let _ = world.add_item(pos, Item::shock_pistol());
 
         // Enemies spread in front of the player to test fan fire arc
         let _ = world.create_zombie_goon(Point {x: pos.x,     y: pos.y - 3}, Direction::Down, String::from("Goon A"));
@@ -188,14 +189,6 @@ impl World {
         let mut player = Entity::new_human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
         player.body.update_abilities();
-
-        // player.apply_status_effect(&StatusEffect::Blind(0));
-        // player.apply_status_effect(&StatusEffect::AimingAtEntity(0));
-        // player.apply_status_effect(&StatusEffect::Dazed(0));
-        // player.apply_status_effect(&StatusEffect::Deaf(0));
-        // player.apply_status_effect(&StatusEffect::Stuck(0));
-        // player.apply_status_effect(&StatusEffect::Stunned(0));
-        // player.apply_status_effect(&StatusEffect::Burning(0));
 
         player.create_pawns(&mut self.map);
         self.entities.push(player);
@@ -353,8 +346,10 @@ impl World {
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {
             if entity.intent.phase == phase {
-                let mut entity_effects = (entity.intent.action)(entity, &mut self.map, log);
-                effects.append(&mut entity_effects);
+                if entity.body.get_status_effect(&StatusEffect::Shocked(0)).is_none() {
+                    let mut entity_effects = (entity.intent.action)(entity, &mut self.map, log);
+                    effects.append(&mut entity_effects);
+                }
                 entity.intent = idle_intent();
             }
         }
@@ -528,9 +523,13 @@ impl World {
         for effect in effects.iter() {
             match effect {
                 Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} => {
+                    let elec_penetrates = self.entities[*id].body.parts[*part_index].armor.electrical_penetrates(*damage);
                     self.handle_damage(*id, *part_index, *damage, &mut deathlist, log);
                     if damage.fire > 0 {
                         self.entities[*id].apply_status_effect(&StatusEffect::Burning(5));
+                    }
+                    if elec_penetrates {
+                        self.entities[*id].apply_status_effect(&StatusEffect::Shocked(1));
                     }
                 }
                 Effect::OpenDoor(pos) =>
