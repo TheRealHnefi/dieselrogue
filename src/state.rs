@@ -37,6 +37,8 @@ pub struct State {
     pub action_item: Option<Item>,
     pub action_slot: Option<SlotType>,
 
+    pub turn: u32,
+
     last_tick: Instant,
     start_tick: Instant
 }
@@ -56,6 +58,7 @@ impl State {
             action_being_used: None,
             action_item: None,
             action_slot: None,
+            turn: 0,
             last_tick: Instant::now(),
             start_tick: Instant::now()
         }
@@ -73,6 +76,7 @@ impl State {
             action_being_used: None,
             action_item: None,
             action_slot: None,
+            turn: 0,
             last_tick: Instant::now(),
             start_tick: Instant::now()
         }
@@ -196,5 +200,6 @@ impl State {
         self.world.resolve_status_effects();
 
         self.run_state = RunState::DeclareIntent;
+        self.turn += 1;
     }
 }

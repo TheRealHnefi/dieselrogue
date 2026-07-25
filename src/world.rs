@@ -131,14 +131,10 @@ impl World {
                 message: String::from("Tried to create player, but entities already exist")
             });
         }
-        if self.map.blocked(pos.x, pos.y) {
-            return Err(GameError {
-                error: Error::BadPrecondition,
-                message: format!("Tried to create player at {},{}, but position is occupied", pos.x, pos.y)
-            });
-        }
 
-        let mut player = Entity::new_human(0, pos, facing, name);
+        let nearest_pos = self.map.nearest_free_pawn_position(pos)?;
+
+        let mut player = Entity::new_human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
 
         player.create_pawns(&mut self.map);
@@ -149,14 +145,9 @@ impl World {
     }
 
     pub fn create_zombie_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
-        if self.map.blocked(pos.x, pos.y) {
-            return Err(GameError {
-                error: Error::BadPrecondition,
-                message: format!("Tried to create entity at {},{}, but position is occupied", pos.x, pos.y)
-            });
-        }
+        let nearest_pos = self.map.nearest_free_pawn_position(pos)?;
 
-        let mut entity = Entity::new_human(self.entities.len(), pos, facing, name);
+        let mut entity = Entity::new_human(self.entities.len(), nearest_pos, facing, name);
         entity.ai = AI::Rotator;
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
@@ -165,12 +156,7 @@ impl World {
     }
 
     pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, room_indices: Vec<usize>) -> Result<(), GameError> {
-        if self.map.blocked(pos.x, pos.y) {
-            return Err(GameError {
-                error: Error::BadPrecondition,
-                message: format!("Tried to create entity at {},{}, but position is occupied", pos.x, pos.y)
-            });
-        }
+        let nearest_pos = self.map.nearest_free_pawn_position(pos)?;
 
         let mut waypoints = vec!();
         for room_index in room_indices {
@@ -178,7 +164,7 @@ impl World {
             waypoints.push(Point {x: x, y: y});
         }
 
-        let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name, waypoints);
+        let entity = Entity::new_patrolling_goon(self.entities.len(), nearest_pos, facing, name, waypoints);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
 

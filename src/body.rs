@@ -73,7 +73,7 @@ impl Body {
         body.item_slots.push(ItemSlot {slot_type: SlotType::PrimaryHand, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::RightArmwear, item: None});
         body.parts.push(BodyPart {
-            name: "Right arm".to_string(),
+            name: "R. arm".to_string(),
             vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
@@ -86,7 +86,7 @@ impl Body {
         body.item_slots.push(ItemSlot {slot_type: SlotType::SecondaryHand, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::LeftArmwear, item: None});
         body.parts.push(BodyPart {
-            name: "Left arm".to_string(),
+            name: "L. arm".to_string(),
             vital: false,
             slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
             max_damage: 8,
@@ -138,8 +138,8 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
-            armor: Armor::new(25, 0.25, 75, 0.75),
-            innate_armor: Armor::new(25, 0.25, 75, 0.75),
+            armor: Armor::new(25, 0.25, 75, 0.75, 75, 1.0),
+            innate_armor: Armor::new(25, 0.25, 75, 0.75, 75, 1.0),
             abilities: vec!(Ability::VehicleMove)
         });
 
@@ -149,8 +149,8 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
-            armor: Armor::new(100, 0.5, 150, 0.95),
-            innate_armor: Armor::new(100, 0.5, 150, 0.95),
+            armor: Armor::new(100, 0.5, 150, 0.95, 75, 1.0),
+            innate_armor: Armor::new(100, 0.5, 150, 0.95, 75, 1.0),
             abilities: vec!(Ability::Disembark)
         });
 
@@ -160,8 +160,8 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
-            armor: Armor::new(50, 0.25, 75, 0.75),
-            innate_armor: Armor::new(50, 0.25, 75, 0.75),
+            armor: Armor::new(50, 0.25, 75, 0.75, 75, 1.0),
+            innate_armor: Armor::new(50, 0.25, 75, 0.75, 75, 1.0),
             abilities: vec!()
         });
 
