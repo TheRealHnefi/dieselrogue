@@ -95,20 +95,20 @@ impl World {
 
         world.init_static_entities();
 
-        // Assign a cycling color to every other door; drop one matching key per color used.
-        let door_ids: Vec<usize> = world.entities.iter()
-            .filter(|e| e.kind == EntityKind::Door)
-            .map(|e| e.id)
-            .collect();
-        let mut colors_used = std::collections::HashSet::new();
-        for (i, &door_id) in door_ids.iter().enumerate().step_by(2) {
-            let color = i % crate::components::KEY_COLORS.len();
-            world.entities[door_id].key_color = Some(color);
-            colors_used.insert(color);
-        }
-        for color in colors_used {
-            let _ = world.add_item(pos, Item::key(color));
-        }
+        // // Assign a cycling color to every other door; drop one matching key per color used.
+        // let door_ids: Vec<usize> = world.entities.iter()
+        //     .filter(|e| e.kind == EntityKind::Door)
+        //     .map(|e| e.id)
+        //     .collect();
+        // let mut colors_used = std::collections::HashSet::new();
+        // for (i, &door_id) in door_ids.iter().enumerate().step_by(2) {
+        //     let color = i % crate::components::KEY_COLORS.len();
+        //     world.entities[door_id].key_color = Some(color);
+        //     colors_used.insert(color);
+        // }
+        // for color in colors_used {
+        //     let _ = world.add_item(pos, Item::key(color));
+        // }
 
         let _result = world.create_tank(Point {x: pos.x, y: pos.y - 4},
             Direction::Up,
@@ -135,8 +135,10 @@ impl World {
         assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
         assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
 
-        // Place guards at topologically interesting positions found by the spawn analysis.
+        // Topology analysis — run once, shared by key placement and guard spawning.
         let spawn_map = analyze(&world.map);
+        let zone_map = find_zones(&world.map);
+        world.assign_zone_keys(&zone_map, &spawn_map, &mut rng);
 
         let candidates: Vec<Point> = spawn_map.spawn_points
             .iter()
@@ -1086,6 +1088,97 @@ impl World {
         for id in entity_ids {
             self.entities[id].update_view(&mut self.map);
         }
+    }
+
+    fn assign_zone_keys(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
+        if zone_map.boundaries.is_empty() {
+            return;
+        }
+
+        // Find the zone containing the player's spawn tile.
+        let player_idx = self.get_player()
+            .map(|p| self.map.pos_idx(p.position))
+            .unwrap_or_else(|_| self.map.xy_idx(
+                (self.map.width / 2) as i32,
+                (self.map.height / 2) as i32,
+            ));
+        let start_zone = zone_map.tile_zone[player_idx].unwrap_or(0);
+
+        // BFS over zone graph to assign depth (distance in boundaries from player).
+        let n_zones = zone_map.zones.len();
+        let mut depth: Vec<Option<usize>> = vec![None; n_zones];
+        depth[start_zone] = Some(0);
+        let mut queue = vec![start_zone];
+        let mut qi = 0;
+
+        let mut adj: Vec<Vec<(usize, usize)>> = vec![vec![]; n_zones]; // zone → [(neighbour, boundary_idx)]
+        for (bi, b) in zone_map.boundaries.iter().enumerate() {
+            adj[b.zone_a].push((b.zone_b, bi));
+            adj[b.zone_b].push((b.zone_a, bi));
+        }
+        while qi < queue.len() {
+            let cur = queue[qi]; qi += 1;
+            let d = depth[cur].unwrap();
+            for &(other, _) in &adj[cur] {
+                if depth[other].is_none() {
+                    depth[other] = Some(d + 1);
+                    queue.push(other);
+                }
+            }
+        }
+
+        // Sort boundaries by the shallower side's depth so colors are assigned
+        // in order of encounter (boundary closest to player = color 0).
+        let mut order: Vec<usize> = (0..zone_map.boundaries.len()).collect();
+        order.sort_by_key(|&bi| {
+            let b = &zone_map.boundaries[bi];
+            depth[b.zone_a].unwrap_or(usize::MAX)
+                .min(depth[b.zone_b].unwrap_or(usize::MAX))
+        });
+
+        let n_colors = crate::components::KEY_COLORS.len();
+
+        // Build per-zone dead-end spawn point lookup once.
+        let zone_dead_ends: Vec<Vec<Point>> = (0..n_zones).map(|zi| {
+            let zone_set: std::collections::HashSet<usize> =
+                zone_map.zones[zi].iter().copied().collect();
+            spawn_map.spawn_points.iter()
+                .filter(|sp| sp.category == SpawnCategory::DeadEnd && zone_set.contains(&sp.idx))
+                .map(|sp| sp.pos)
+                .collect()
+        }).collect();
+
+        for (color_idx, &bi) in order.iter().enumerate() {
+            let color = color_idx % n_colors;
+            let b = &zone_map.boundaries[bi];
+
+            // Color every door entity whose pawn sits on a boundary doorway tile.
+            for &tile_idx in &b.door_tiles {
+                if let Some(pawn) = &self.map.pawns[tile_idx] {
+                    let eid = pawn.entity_id;
+                    if self.entities[eid].kind == EntityKind::Door {
+                        self.entities[eid].key_color = Some(color);
+                    }
+                }
+            }
+
+            // Place the key in the shallower zone (the one the player reaches first).
+            let shallow = if depth[b.zone_a].unwrap_or(usize::MAX)
+                            <= depth[b.zone_b].unwrap_or(usize::MAX)
+            { b.zone_a } else { b.zone_b };
+
+            let key_pos = if !zone_dead_ends[shallow].is_empty() {
+                let picks = &zone_dead_ends[shallow];
+                picks[rng.range(0, picks.len() as i32) as usize]
+            } else {
+                let tiles = &zone_map.zones[shallow];
+                self.map.idx_pos(tiles[rng.range(0, tiles.len() as i32) as usize])
+            };
+
+            let _ = self.add_item(key_pos, Item::key(color));
+        }
+
+        println!("Assigned {} zone boundary color(s).", order.len());
     }
 
     fn init_static_entities(&mut self) {
