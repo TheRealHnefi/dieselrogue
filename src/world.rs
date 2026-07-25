@@ -250,7 +250,7 @@ impl World {
         }
     }
 
-    pub fn resolve_phase(&mut self, phase: IntentPhase, log: &mut GameLog) -> Vec<Animation> {
+    pub fn resolve_phase(&mut self, phase: ExecutionPhase, log: &mut GameLog) -> Vec<Animation> {
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {
             if entity.intent.phase == phase {

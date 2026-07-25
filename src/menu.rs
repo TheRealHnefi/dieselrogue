@@ -30,7 +30,7 @@ pub trait MenuRow {
 
 pub enum MenuAction {
     Simple(fn (&mut State) -> RunState),
-    WithItemAction(Item, IntentAction, fn (Item, IntentAction, &mut State) -> RunState),
+    WithItemAction(Item, ItemAction, fn (Item, ItemAction, &mut State) -> RunState),
     WithIntent(Intent, fn (Intent, &mut State) -> RunState),
     WithItem(Item, fn (Item, &mut State) -> RunState),
     WithTargetedBodypartIndex(usize, fn (usize, &mut State) -> RunState)
@@ -57,7 +57,7 @@ pub struct ItemRow {
 pub struct ItemActionRow {
     pub text: String,
     pub item: Item,
-    pub action: IntentAction
+    pub action: ItemAction
 }
 
 pub struct ItemSlotRow {
@@ -68,7 +68,7 @@ pub struct ItemSlotRow {
 pub struct AbilityRow {
     pub text: String,
     pub item: Item,
-    pub action: IntentAction
+    pub action: ItemAction
 }
 
 pub struct TargetingRow {
@@ -455,10 +455,10 @@ fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunSt
         Ok(player) => {
             player.intent = Intent {
                 data: IntentData::EquippedItem(item.equip_slots[0]),
-                phase: IntentPhase::Inventory,
+                phase: ExecutionPhase::Inventory,
                 action: actions::unequip_item_action                
             };
-            return RunState::Resolve(IntentPhase::Instant);
+            return RunState::Resolve(ExecutionPhase::Instant);
         },
         Err(_) => {
             state.log.entries.push("Can not unequip item".to_string());
@@ -467,7 +467,7 @@ fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunSt
     }
 }
 
-fn action_target_item_action(item: Item, item_action: IntentAction, state: &mut State) -> RunState {
+fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
             state.cursor_pos = player.position;
@@ -479,7 +479,7 @@ fn action_target_item_action(item: Item, item_action: IntentAction, state: &mut 
     RunState::AwaitingPositionalTargetingInput
 }
 
-fn action_target_equipment_action(item: Item, item_action: IntentAction, state: &mut State) -> RunState {
+fn action_target_equipment_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
             state.cursor_pos = player.position;
@@ -496,7 +496,7 @@ fn action_apply_intent_to_player(intent: Intent, state: &mut State) -> RunState 
         Ok(player) => player.intent = intent,
         Err(_) => ()
     }    
-    RunState::Resolve(IntentPhase::Instant)
+    RunState::Resolve(ExecutionPhase::Instant)
 }
 
 fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut State) -> RunState {
@@ -524,12 +524,12 @@ fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut Sta
     }
 
     let intent = Intent {
-        phase: IntentPhase::Attack, // TODO: Not necessarily true
+        phase: ExecutionPhase::Attack, // TODO: Not necessarily true
         data: intent_data,
         action: state.action_being_used.take().unwrap().action
     };
 
     state.world.get_player_mut().unwrap().intent = intent;
     
-    RunState::Resolve(IntentPhase::Instant)
+    RunState::Resolve(ExecutionPhase::Instant)
 }

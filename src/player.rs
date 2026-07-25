@@ -38,7 +38,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
 
     if player.body.facing != direction {
         player.intent = Intent {
-            phase: IntentPhase::Movement,
+            phase: ExecutionPhase::Movement,
             data: IntentData::Direction(direction),
             action: actions::turn_action
         };
@@ -49,20 +49,20 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
             Some(pawn) => {
                 if pawn.kind == EntityKind::Door {
                     player.intent = Intent {
-                        phase: IntentPhase::Movement,
+                        phase: ExecutionPhase::Movement,
                         data: IntentData::Target(target_pos),
                         action: actions::open_door_action
                     };
                 }
                 else if pawn.driving == DrivingState::Drivable {
                     player.intent = Intent {
-                        phase: IntentPhase::Movement,
+                        phase: ExecutionPhase::Movement,
                         data: IntentData::Target(target_pos),
                         action: actions::embark_action
                     };
                 } else {
                     player.intent = Intent {
-                        phase: IntentPhase::Attack,
+                        phase: ExecutionPhase::Attack,
                         data: IntentData::Target(target_pos),
                         action: actions::melee_action
                     };
@@ -70,7 +70,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
             },
             None => {
                 player.intent = Intent {
-                    phase: IntentPhase::Movement,
+                    phase: ExecutionPhase::Movement,
                     data: IntentData::Target(target_pos),
                     action: actions::move_action
                 };
@@ -80,7 +80,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
         if player.check_fit(target_pos, &world.map) {
             player.intent = Intent {
-                phase: IntentPhase::Movement,
+                phase: ExecutionPhase::Movement,
                 data: IntentData::Target(target_pos),
                 action: actions::move_action
             };
@@ -108,7 +108,7 @@ pub fn disembark_player_intent(world: &mut World) -> Result<(), GameError> {
     }
 
     player.intent = Intent {
-        phase: IntentPhase::Movement,
+        phase: ExecutionPhase::Movement,
         data: IntentData::Void,
         action: actions::disembark_action
     };
@@ -129,7 +129,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
 
     if world.map.items[index].is_some() {
         player.intent = Intent {
-            phase: IntentPhase::Inventory,
+            phase: ExecutionPhase::Inventory,
             data: IntentData::Void,
             action: actions::get_item_action
         };
@@ -139,7 +139,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     Err(GameError{error: Error::BadPrecondition, message: String::from("There is no item here")})
 }
 
-pub fn get_item_actions(world: &World) -> Vec<IntentAction>{
+pub fn get_item_actions(world: &World) -> Vec<ItemAction>{
     if world.player_id.is_none() {
         return vec!();
     }

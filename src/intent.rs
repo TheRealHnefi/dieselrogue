@@ -8,7 +8,7 @@ use crate::actions::Action;
 
 #[derive (Clone)]
 pub struct Intent {
-    pub phase: IntentPhase,
+    pub phase: ExecutionPhase,
     pub data: IntentData,
     pub action: Action
 }
@@ -21,10 +21,10 @@ pub enum Targeting {
 }
 
 #[derive(Clone)]
-pub struct IntentAction {
+pub struct ItemAction {
     pub name: String,
     pub targeting: Targeting,
-    pub phase: IntentPhase,
+    pub phase: ExecutionPhase,
     pub precondition: fn (self_ref: &Entity, map: &Map, affected_item: Option<&Item>) -> bool,
     pub action: Action
 }
@@ -39,14 +39,14 @@ pub fn precondition_ok(_self_ref: &Entity, _map: &Map, _affected_item: Option<&I
 
 pub fn idle_intent() -> Intent {
     Intent {
-        phase: IntentPhase::Idle,
+        phase: ExecutionPhase::Idle,
         data: IntentData::Void,
         action: noop_action
     }
 }
 
 #[derive (PartialEq, Eq, Copy, Clone)]
-pub enum IntentPhase {
+pub enum ExecutionPhase {
     Idle,
     Instant,
     Inventory,
@@ -55,15 +55,15 @@ pub enum IntentPhase {
     Misc
 }
 
-impl IntentPhase {
-    pub fn next(&self) -> Option<IntentPhase> {
+impl ExecutionPhase {
+    pub fn next(&self) -> Option<ExecutionPhase> {
         match self {
-            IntentPhase::Idle => Some(IntentPhase::Instant),
-            IntentPhase::Instant => Some(IntentPhase::Inventory),
-            IntentPhase::Inventory => Some(IntentPhase::Attack),
-            IntentPhase::Attack => Some(IntentPhase::Movement),
-            IntentPhase::Movement => Some(IntentPhase::Misc),
-            IntentPhase::Misc => None
+            ExecutionPhase::Idle => Some(ExecutionPhase::Instant),
+            ExecutionPhase::Instant => Some(ExecutionPhase::Inventory),
+            ExecutionPhase::Inventory => Some(ExecutionPhase::Attack),
+            ExecutionPhase::Attack => Some(ExecutionPhase::Movement),
+            ExecutionPhase::Movement => Some(ExecutionPhase::Misc),
+            ExecutionPhase::Misc => None
         }
     }
 }
