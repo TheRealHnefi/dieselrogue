@@ -58,8 +58,6 @@ pub enum ActionId {
 
 #[derive(Clone)]
 pub struct EntityAction {
-    // Read by keybindings/AI from stage 5 onward.
-    #[allow(dead_code)]
     pub id: ActionId,
     pub name: String,
     pub targeting: Targeting,
@@ -189,6 +187,21 @@ pub fn move_intent(target: Point) -> Intent {
     Intent { phase: ExecutionPhase::Movement, data: IntentData::Target(target), action: actions::move_action }
 }
 
+/// Turn to face `direction`.
+pub fn turn_intent(direction: Direction) -> Intent {
+    Intent { phase: ExecutionPhase::Movement, data: IntentData::Direction(direction), action: actions::turn_action }
+}
+
+/// Melee the occupant of `target`.
+pub fn melee_intent(target: Point) -> Intent {
+    Intent { phase: ExecutionPhase::Attack, data: IntentData::Target(target), action: actions::melee_action }
+}
+
+/// Shout: raise the alarm.
+pub fn shout_action_def() -> EntityAction {
+    EntityAction { id: ActionId::Shout, name: "Shout".to_string(), targeting: Targeting::None, phase: ExecutionPhase::Inventory, precondition: |e, _, _| e.has_ability(Ability::Shout), action: actions::shout_action }
+}
+
 /// Resolve a directional step for `entity` into a concrete intent: turn, move,
 /// melee, open-door or embark depending on facing and the target tile. Shared by
 /// the player hotkey and the AI. `Ok(None)` means no intent change (e.g. a vehicle
@@ -201,11 +214,7 @@ pub fn resolve_step(entity: &Entity, direction: Direction, map: &Map, entities: 
     }
 
     if entity.body.facing != direction {
-        return Ok(Some(Intent {
-            phase: ExecutionPhase::Movement,
-            data: IntentData::Direction(direction),
-            action: actions::turn_action,
-        }));
+        return Ok(Some(turn_intent(direction)));
     }
 
     let (dx, dy) = direction.delta_pos();
@@ -228,7 +237,7 @@ pub fn resolve_step(entity: &Entity, direction: Direction, map: &Map, entities: 
                     }
                     Ok(Some(Intent { phase: ExecutionPhase::Movement, data: IntentData::Target(target), action: actions::embark_action }))
                 } else {
-                    Ok(Some(Intent { phase: ExecutionPhase::Attack, data: IntentData::Target(target), action: actions::melee_action }))
+                    Ok(Some(melee_intent(target)))
                 }
             },
             None => {
