@@ -408,10 +408,12 @@ fn sound_color(kind: &SoundKind, dist: f32) -> rltk::RGB {
 }
 
 fn draw_noise_panel(state: &State, context: &mut Rltk) {
-    let player_pos = match state.world.get_player() {
-        Ok(p) => p.center(),
+    let player = match state.world.get_player() {
+        Ok(p) => p,
         Err(_) => return,
     };
+    let player_pos = player.center();
+    let tolerance = player.body.noise_tolerance;
 
     let panel_x = UI_X_OFFSET + ABILITIES_PANEL_WIDTH + LABEL_OFFSET;
     let panel_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
@@ -419,17 +421,28 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
     let max_rows = ABILITIES_PANEL_HEIGHT - 2;
     let inner_width = NOISE_PANEL_WIDTH - LABEL_OFFSET - 1;
 
-    let mut row = 0;
-    for sound in &state.world.sounds_last_turn {
+    // Collect audible sounds with distance and noise contribution.
+    let mut audible: Vec<(&SoundEvent, f32, u32)> = state.world.sounds_last_turn.iter()
+        .filter_map(|s| {
+            let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_pos, s.pos);
+            if dist <= s.volume as f32 {
+                let noise = (s.volume as f32 - dist).max(0.0) as u32;
+                Some((s, dist, noise))
+            } else { None }
+        })
+        .collect();
+
+    // Loudest first.
+    audible.sort_by(|a, b| b.2.cmp(&a.2));
+
+    let mut noise_sum = 0u32;
+    for (row, (sound, dist, noise)) in audible.iter().enumerate() {
         if row >= max_rows {
             break;
         }
-        let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_pos, sound.pos);
-        if dist > sound.volume as f32 {
-            continue;
-        }
+
         let glyph    = sound_direction_glyph(player_pos, sound.pos);
-        let loudness = loudness_label(dist);
+        let loudness = loudness_label(*dist);
         let kind_str = match sound.kind {
             SoundKind::Gunshot   => "gunshot",
             SoundKind::Burst     => "burst",
@@ -437,13 +450,20 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
             SoundKind::Footstep  => "footstep",
             SoundKind::Engine    => "engine",
         };
-        let color = sound_color(&sound.kind, dist);
-        // e.g. "Loud explosion" left-aligned, glyph flush right
+        let color = sound_color(&sound.kind, *dist);
         let text = format!("{} {}", loudness, kind_str);
         let text = if text.len() > inner_width - 1 { text[..inner_width - 1].to_string() } else { text };
         context.print_color(panel_x, panel_y + row, color, BG_COLOR, &text);
         context.set(panel_x + inner_width - 1, panel_y + row, color, BG_COLOR, glyph);
-        row += 1;
+
+        noise_sum += noise;
+        if noise_sum >= tolerance && row + 1 < audible.len() {
+            if row + 1 < max_rows {
+                let warn_color = RGB { r: 1.0, g: 0.2, b: 0.2 };
+                context.print_color(panel_x, panel_y + row + 1, warn_color, BG_COLOR, "Too much noise!");
+            }
+            break;
+        }
     }
 }
 

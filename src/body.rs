@@ -14,6 +14,7 @@ pub struct Body {
     pub status_effects: HashSet<StatusEffect>,
     pub energy: u32,
     pub max_energy: u32,
+    pub noise_tolerance: u32,
 }
 
 #[derive(Clone)]
@@ -48,6 +49,7 @@ impl Body {
             status_effects: HashSet::new(),
             energy: 100,
             max_energy: 100,
+            noise_tolerance: 15,
         };
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
@@ -136,6 +138,7 @@ impl Body {
             status_effects: HashSet::new(),
             energy: 0,
             max_energy: 0,
+            noise_tolerance: 15,
         };
 
         body.parts.push(BodyPart {
@@ -186,6 +189,7 @@ impl Body {
             status_effects: HashSet::new(),
             energy: 0,
             max_energy: 0,
+            noise_tolerance: 15,
         };
 
         body.parts.push(BodyPart {
