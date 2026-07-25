@@ -49,6 +49,7 @@ pub enum Intent {
     Move(Point),
     Turn(Direction),
     Melee(Point),
+    Ranged(SlotType, Point, usize), // (equipment slot to use, target map position, ability index)
     GetItem,
     Throw(usize, Point), // (inventory index, map position)
     Drop(usize), // (inventory index)

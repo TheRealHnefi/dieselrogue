@@ -181,6 +181,22 @@ impl World {
         Ok(())
     }
 
+    pub fn resolve_ranged(&mut self) -> Result<(), GameError> {
+
+        let mut effects: Vec<Effect> = vec!();
+
+        for entity in self.entities.iter_mut() {
+            match entity.resolve_ranged(&mut self.map) {
+                Some(effect) => effects.push(effect),
+                None => ()
+            }
+        }
+
+        self.resolve_effects(&effects);
+
+        Ok(())
+    }
+
     pub fn resolve_throw(&mut self) -> Result<(), GameError> {
 
         let mut effects: Vec<Effect> = vec!();
