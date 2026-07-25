@@ -195,18 +195,19 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
     // Inventory panel
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + 2;
-    const INVENTORY_NAME_COLUMN_WIDTH: usize = 25;
+    const INVENTORY_NAME_COLUMN_WIDTH: usize = 20;
     for (i, item) in player.body.inventory.iter().enumerate() {
         assert!(i < 20);
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y + i, LABEL_COLOR, BG_COLOR, format!("{}: {}", i, &item.name));
         match &item.kind {
-            ItemKind::Firearm{ammo, max_ammo, damage} => {
+            ItemKind::Firearm{ammo, max_ammo, damage, range} => {
                 context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Ammo: {}\\{}", ammo, max_ammo));
 
                 let label = String::from("Dmg: ");
                 let phys = format!("{}", damage.physical);
                 let elec = format!("{}", damage.electrical);
                 let fire = format!("{}", damage.fire);
+                let pierce = format!("{}", damage.piercing);
                 let mut offset_x = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH + 15;
                 context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &label);
                 offset_x += label.len();
@@ -224,6 +225,15 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
                 offset_x += 1;
 
                 context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
+                offset_x += fire.len();
+
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_x += 1;
+
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &pierce);
+                offset_x += pierce.len();
+
+                context.print_color(offset_x + 3, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Range: {}", range));
             },
             ItemKind::Wearable{armor} => {
                 let label = String::from("Armor: ");
@@ -264,8 +274,8 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
                 offset_x += item.name.len();
 
                 match item.kind {
-                    ItemKind::Firearm{ammo, max_ammo, damage: _} => {
-                        context.print_color(offset_x, offset_y + i, color, BG_COLOR, format!("  Ammo: {}\\{}", ammo, max_ammo));
+                    ItemKind::Firearm{ammo, max_ammo, damage: _, range} => {
+                        context.print_color(offset_x, offset_y + i, color, BG_COLOR, format!("  Ammo: {}\\{}  Range: {}", ammo, max_ammo, range));
                     },
                     _ => ()
                 }

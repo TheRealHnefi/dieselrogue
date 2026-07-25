@@ -76,7 +76,6 @@ impl World {
             Direction::Up,
             String::from("Tank"));
 
-        let _ = world.add_item(pos, Item::grenade());
         let _ = world.add_item(pos, Item::machinegun());
         let _ = world.add_item(pos, Item::pistol());
         let _ = world.add_item(pos, Item::rocket_launcher());
@@ -575,7 +574,7 @@ mod tests {
         let mut world = World::new_test();
         let pos = Point {x: 1, y: 1};
 
-        let _ = world.add_item(pos, Item::grenade());
+        let _ = world.add_item(pos, Item::pistol());
 
         let index = world.map.xy_idx(pos.x, pos.y);
         assert!(world.map.items[index].is_some());
@@ -586,8 +585,8 @@ mod tests {
         let mut world = World::new_test();
         let pos = Point {x: 1, y: 1};
 
-        let _ = world.add_item(pos, Item::grenade());
-        let _ = world.add_item(pos, Item::grenade());
+        let _ = world.add_item(pos, Item::pistol());
+        let _ = world.add_item(pos, Item::pistol());
 
         assert!(world.map.items.iter().filter(|i| i.is_some()).count() == 2);
 

@@ -25,26 +25,87 @@ in level layout...
 No stats! It's just busywork to keep track of.
 
 ### Classes (pick any two?) and perk ideas:
-* Agent: Trenchcoat-wearing government operative. Specializes in ranged combat.
- - aim, scout, controlled burst, fast reload, dodge
-* Pugilist: Unstoppable strongman. Specializes in crowd control and unarmed combat.
- - disarm, stun, throw, dash, grab and hold, block
-* Burglar: Silent protagonist. Goes unseen before attacking. Relies on stealth.
- - predict movement, misdirection, lockpicking, backstab, sneak, tumble
-* Engineer: Practical intellectual. Relies on versatile equipment.
- - build consumables, handle traps, enhance equipment, assemble, disassemble
-* Pilot: 
-
-Or perhaps no classes at all? Just perks?
+No classes!
 
 ### Perk ideas
 
 #### Automatic Weapons
-* Controlled burst (burst at body part)
+* Burst
 * Long burst (double/triple burst amount)
-* Suppressive fire
-* Recoil handling (better accuracy of subsequent shots in burst)
-* Dual wielding submachine guns
+* Suppressive burst
+* Overwhelm (burst at every body part of target)
+
+#### Pistols
+* Free shot
+* Double tap
+* Instant reload
+* Disarming shot
+* Mercy kill (instantly kill burning, blind or stunned enemy)
+
+#### Rifles
+* Penetrating shot (shoot through opponents)
+* Target weakpoint (ignore armor)
+* Disarming shot
+* Execution (instantly kill unaware enemy)
+
+#### Shotguns
+* Shoot and reload
+* Double tap
+* Fan fire
+* Blinding shot
+
+#### Launchers
+* Shaped charge (explode in area shaped away from user)
+* Target structural weakpoint (destroy walls)
+* Bigger booms
+* Focused blast (bigger damage on only one bodypart)
+
+#### Conditioning
+* Double stamina
+* Refuel stamina by spending HP
+* Instant inventory management
+* Wide vision
+
+#### Mobility
+* Dodge
+* Dash
+* Free movement (take X steps without spending turn)
+
+#### Infiltration
+* Pick lock
+* Peek through keyhole
+* Block door
+* Sneak
+* Hide
+* Make noise (misdirect)
+* Disguise
+
+#### Scouting
+* Eagle eyes (long distance sight)
+* Wide vision
+* Listening
+* Spot hidden
+* Predict action
+
+#### Piloting
+* Pilot vehicle
+* Disable vehicle
+
+#### Resilience
+* Double HP
+* Innate armor
+* Tougher bodyparts
+* Disregard debuff
+
+#### Engineering
+* Build trap
+* Disarm trap
+* Fit modifications
+* Destructive modification (massively overpower weapon, destroy after x uses)
+* Modify ammo
+* Create grenade
+* Create firebomb
+* Combine two weapons to give one an ability or stat of the other? (seems waaaay OP. Does that matter?)
 
 #### Chemistry
 * Improved healing effect from medkits
@@ -53,97 +114,6 @@ Or perhaps no classes at all? Just perks?
 * Create smoke canister
 * Create KO gas canister
 * Inject berzerkium
-
-#### Conditioning
-* Double stamina
-* Refuel stamina by spending HP
-* Instant inventory management
-* Wide vision
-
-#### Engineering
-* Build trap
-* Disarm trap
-* Fit modifications
-* Destructive modification (massively overpower weapon, destroy after x uses)
-* Rocket-powered dash
-
-#### Explosives
-* Accurate throw
-* Bigger booms
-* Booby trap
-* Create grenade
-* Create firebomb
-
-#### Infiltration
-* Pick lock
-* Peek through keyhole
-* Block door
-* Thorough body search
-* Predict action
-* Sneak
-* Hide
-* Make noise (misdirect)
-* Disguise
-* Precision throwing
-
-#### Launchers
-* Safe shot (only fire if explosion does not harm user)
-* Shaped charge (explode in area shaped away from user)
-* Rapid reload
-
-#### Melee
-
-#### Mobility
-* Dodge
-* Dash
-* Slide trip (Bison low roundhouse)
-* Free movement (take X steps without spending turn)
-
-#### Pugilism
-* Triple punch
-* Dashing punch
-* Throw opponent
-* Knock out
-* Disarm
-* Trip
-* Strike weakspot (eyes if face, kidneys if torso, groin if legs etc)
-* Break bodypart (neck, arm, foot)
-* Free strike
-
-#### Piloting
-
-#### Pistols
-* Free shot
-* Double wielding
-* Melee barrage
-* Double tap
-* Human shield
-
-#### Resilience
-* Double HP
-* Innate armor
-* Tougher bodyparts
-* Disregard debuff
-* Revive
-* Gun-fu (fire at all visible opponents)
-
-#### Rifles
-* Aim
-* Penetrating shot (shoot through opponents)
-* Instant reload
-* Crippling shot
-* Shoot weakpoint
-
-#### Scouting
-* Eagle eyes (long distance sight)
-* Listening
-* Spot hidden
-
-#### Shotguns
-* Shoot and reload
-* Double shot
-* Deafen
-* Shower power (fire several shots in area, hit several targets)
 
 ### Resources:
 * HP: Local for each body part, plus overall HP. No regeneration.
@@ -158,6 +128,7 @@ Or perhaps no classes at all? Just perks?
 * Aiming at area: Can fire on any target in area next round
 * Deaf: Cannot hear noise
 * Dazed: Cannot spend fatigue on abilities
+* Suppressed: Cannot fire or move
 
 ## Combat ideas:
 * NO resource regeneration!

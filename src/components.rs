@@ -92,6 +92,7 @@ pub enum StatusEffect {
     Deaf(u32),
     Stuck(u32),
     Stunned(u32),
+    Suppressed(u32)
 }
 
 impl StatusEffect {
@@ -104,21 +105,23 @@ impl StatusEffect {
             StatusEffect::Dazed(_) => 3,
             StatusEffect::Deaf(_) => 4,
             StatusEffect::Stuck(_) => 5,
-            StatusEffect::Stunned(_) => 6
+            StatusEffect::Stunned(_) => 6,
+            StatusEffect::Suppressed(_) => 7
         }
     }
 
     pub fn to_string(&self) -> String {
         match self {
-            StatusEffect::AimingAtGround(_) => "Aiming".to_string(),
-            StatusEffect::AimingAtEntity(_) => "Aiming".to_string(),
-            StatusEffect::Blind(_) => "Blind".to_string(),
-            StatusEffect::Burning(_) => "Burning".to_string(),
-            StatusEffect::Dazed(_) => "Dazed".to_string(),
-            StatusEffect::Deaf(_) => "Deaf".to_string(),
-            StatusEffect::Stuck(_) => "Stuck".to_string(),
-            StatusEffect::Stunned(_) => "Stunned".to_string() 
-        }
+            StatusEffect::AimingAtGround(_) => "Aiming",
+            StatusEffect::AimingAtEntity(_) => "Aiming",
+            StatusEffect::Blind(_) => "Blind",
+            StatusEffect::Burning(_) => "Burning",
+            StatusEffect::Dazed(_) => "Dazed",
+            StatusEffect::Deaf(_) => "Deaf",
+            StatusEffect::Stuck(_) => "Stuck",
+            StatusEffect::Stunned(_) => "Stunned",
+            StatusEffect::Suppressed(_) => "Suppressed"
+        }.to_string()
     }
 }
 
@@ -169,7 +172,7 @@ impl SlotType {
 
 #[derive(Clone)]
 pub enum ItemKind {
-    Firearm {ammo: u32, max_ammo: u32, damage: Damage},
+    Firearm {ammo: u32, max_ammo: u32, damage: Damage, range: u32},
     Wearable {armor: Armor},
     Misc
 }
@@ -178,15 +181,17 @@ pub enum ItemKind {
 pub struct Damage {
     pub physical: u32,
     pub fire: u32,
-    pub electrical: u32
+    pub electrical: u32,
+    pub piercing: u32
 }
 
 impl Damage {
-    pub fn new(phys: u32, fire: u32, elec: u32) -> Self {
+    pub fn new(phys: u32, elec: u32, fire: u32, pierce: u32) -> Self {
         Self {
             physical: phys,
             fire: fire,
-            electrical: elec
+            electrical: elec,
+            piercing: pierce
         }
     }
 }
@@ -204,7 +209,7 @@ pub struct Armor {
 }
 
 impl Armor {
-    pub fn new(phys_abs: u32, phys_res: f32, fire_abs: u32, fire_res: f32, elec_abs: u32, elec_res: f32) -> Self {
+    pub fn new(phys_abs: u32, phys_res: f32, elec_abs: u32, elec_res: f32, fire_abs: u32, fire_res: f32) -> Self {
         Self {
             phys_absorption: phys_abs,
             phys_resistance: phys_res,
@@ -250,6 +255,6 @@ impl Armor {
         let fire = mod_dmg(damage.fire, self.fire_absorption, self.fire_resistance);
         let electrical = mod_dmg(damage.electrical, self.elec_absorption, self.elec_resistance);
 
-        return physical + fire + electrical;
+        return physical + fire + electrical + damage.piercing;
     }
 }
