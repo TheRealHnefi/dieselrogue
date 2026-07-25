@@ -122,7 +122,7 @@ impl GameState for State {
  
         if PROFILING {
             let tick_time = begin.elapsed().as_millis();
-            if tick_time + tick_interval > 30 {
+            if tick_time + tick_interval > 25 {
                 console::log(format!("Tick duration,interval: {}, {}  ", tick_time, tick_interval));
             }
             self.last_tick = Instant::now();
