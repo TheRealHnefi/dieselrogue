@@ -253,6 +253,7 @@ impl World {
         player.kind = EntityKind::Player;
         player.paper_doll = Some(PaperDoll::Player);
         player.body.update_abilities();
+        player.color = Some(5);
 
         player.create_pawns(&mut self.map);
         self.entities.push(player);
@@ -1078,7 +1079,7 @@ impl World {
             Some(pawn) if self.entities[pawn.entity_id].kind == EntityKind::Door => pawn.entity_id,
             _ => return,
         };
-        if let Some(door_color) = self.entities[entity_id].key_color {
+        if let Some(door_color) = self.entities[entity_id].color {
             let has_key = self.entities[actor_id].body.inventory.iter().any(|item| {
                 matches!(&item.kind, ItemKind::Key { color } if *color == door_color)
             });
@@ -1361,7 +1362,7 @@ impl World {
 
     fn spawn_loot(&mut self, zone_map: &ZoneMap, spawn_map: &SpawnMap,
                   depths: &[usize], rng: &mut RandomNumberGenerator) {
-        const TOTAL_LOOT: usize = 100;
+        const TOTAL_LOOT: usize = 400;
 
         type MakeItem = fn() -> Item;
         let pool: &[MakeItem] = &[
@@ -1510,7 +1511,7 @@ impl World {
                     if let Some(pawn) = &self.map.pawns[tile_idx] {
                         let eid = pawn.entity_id;
                         if self.entities[eid].kind == EntityKind::Door {
-                            self.entities[eid].key_color = Some(color);
+                            self.entities[eid].color = Some(color);
                         }
                     }
                 }
