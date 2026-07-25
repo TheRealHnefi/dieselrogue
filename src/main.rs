@@ -34,6 +34,8 @@ mod saveload_system;
 pub use saveload_system::*;
 mod serde_collections;
 pub use serde_collections::*;
+mod rex_assets;
+pub use rex_assets::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -187,6 +189,7 @@ fn main() -> rltk::BError {
     game_state.ecs.insert(cursor_pos);
     game_state.ecs.insert(RunState::PreRun);
     game_state.ecs.insert(GameLog {entries: vec!["Welcome!".to_string()]});
+    game_state.ecs.insert(rex_assets::RexAssets::new());
 
     rltk::main_loop(context, game_state)
 }
