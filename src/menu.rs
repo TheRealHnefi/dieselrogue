@@ -3,7 +3,7 @@ use crate::item::*;
 use crate::intent::*;
 use crate::state::*;
 use crate::World;
-use crate::Entity;
+use crate::actions;
 
 /**
  * Menu overview:
@@ -132,7 +132,7 @@ impl MenuRow for AbilityRow {
                 let intent = Intent {
                     phase: self.action.phase,
                     data: IntentData::EquippedItem(self.item.equip_slots[0]),
-                    action: self.action.effects
+                    action: self.action.action
                 };
                 MenuAction::WithIntent(intent, action_apply_intent_to_player)
             },
@@ -161,7 +161,7 @@ impl MenuRow for ItemActionRow {
                 let intent = Intent {
                     phase: self.action.phase,
                     data: IntentData::InventoryItem(self.item.clone()),
-                    action: self.action.effects
+                    action: self.action.action
                 };
                 MenuAction::WithIntent(intent, action_apply_intent_to_player)
             },
@@ -276,7 +276,7 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
     let mut action_rows = vec!();
     let player = state.world.get_player().unwrap();
     for inventory_action in &item.inventory_actions {
-        if (inventory_action.precondition)(player, &state.world.map) {
+        if (inventory_action.precondition)(player, &state.world.map, Some(&item)) {
             action_rows.push(ItemActionRow {
                 action: inventory_action.clone(),
                 item: item.clone(),
@@ -303,7 +303,7 @@ pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
         match &slot.item {
             Some(item) => {
                 for action in &item.equip_actions {
-                    if (action.precondition)(player, &world.map) {
+                    if (action.precondition)(player, &world.map, Some(item)) {
                         rows.push(AbilityRow {
                             text: format!("{}: {}", item.name, action.name),
                             item: item.clone(),
@@ -456,7 +456,7 @@ fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunSt
             player.intent = Intent {
                 data: IntentData::EquippedItem(item.equip_slots[0]),
                 phase: IntentPhase::Inventory,
-                action: Entity::resolve_unequip_item                
+                action: actions::unequip_item_action                
             };
             return RunState::Resolve(IntentPhase::Instant);
         },
@@ -526,7 +526,7 @@ fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut Sta
     let intent = Intent {
         phase: IntentPhase::Attack, // TODO: Not necessarily true
         data: intent_data,
-        action: state.action_being_used.take().unwrap().effects
+        action: state.action_being_used.take().unwrap().action
     };
 
     state.world.get_player_mut().unwrap().intent = intent;

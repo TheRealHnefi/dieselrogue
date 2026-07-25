@@ -1,8 +1,10 @@
 use rltk::Point;
+use rltk::console;
 use crate::components::*;
 use crate::entity::Entity;
 use crate::Map;
 use crate::intent::*;
+use crate::actions;
 
 #[derive(Clone)]
 pub struct Item {
@@ -453,7 +455,7 @@ impl Item {
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             precondition: precondition_ok,
-            effects: Entity::resolve_equip_item
+            action: actions::equip_item_action
         }
     }
     fn drop_action() -> IntentAction {
@@ -462,7 +464,7 @@ impl Item {
             targeting: Targeting::None,
             phase: IntentPhase::Inventory,
             precondition: precondition_ok,
-            effects: Entity::resolve_drop_item
+            action: actions::drop_item_action
         }
     }
     fn aim_action() -> IntentAction {
@@ -471,7 +473,7 @@ impl Item {
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
             precondition: precondition_ok,
-            effects: Entity::resolve_aim
+            action: actions::aim_action
         }
     }
     fn fire_action() -> IntentAction {
@@ -480,7 +482,7 @@ impl Item {
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
             precondition: precondition_is_aiming,
-            effects: Entity::resolve_single_fire
+            action: actions::single_fire_action
         }
     }
     fn fire_burst_action() -> IntentAction {
@@ -489,7 +491,7 @@ impl Item {
             targeting: Targeting::Detailed,
             phase: IntentPhase::Attack,
             precondition: precondition_is_aiming,
-            effects: Entity::resolve_burst_fire
+            action: actions::burst_fire_action
         }
     }
     fn fire_rocket_action() -> IntentAction {
@@ -498,7 +500,7 @@ impl Item {
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
             precondition: precondition_is_aiming,
-            effects: Entity::resolve_rocket_fire
+            action: actions::rocket_fire_action
         }
     }
     fn fan_fire_action() -> IntentAction {
@@ -507,16 +509,16 @@ impl Item {
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
             precondition: precondition_ok,
-            effects: Entity::resolve_fan_fire
+            action: actions::fan_fire_action
         }
     }
     fn throw_action() -> IntentAction {
-            IntentAction {
+        IntentAction {
             name: "Throw".to_string(),
             targeting: Targeting::Positional,
             phase: IntentPhase::Attack,
             precondition: precondition_ok,
-            effects: Entity::resolve_throw_grenade
+            action: actions::throw_grenade_action
         }
     }
 }
@@ -527,10 +529,22 @@ impl PartialEq for Item {
     }
 }
 
-pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map) -> bool {
-    let aiming = self_ref.body.get_status_effect(&StatusEffect::AimingAtGround(Point {x: 0, y: 0}));
+pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
+    let aiming = self_ref.body.get_status_effect(&StatusEffect::AimingAtGround(Point {x: 0, y: 0}, Item::pistol()));
     match aiming {
-        Some(_) => true,
+        Some(aim) => {
+            match &aim {
+                StatusEffect::AimingAtGround(p, i) => {
+                    match item {
+                        Some(i2) => {
+                            i.id == i2.id
+                        }
+                        _ => false
+                    }
+                }
+                _ => false
+            }
+        }
         None => false
     }
 }

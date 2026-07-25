@@ -151,7 +151,7 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                                     let intent = Intent {
                                         phase: action_in_use.phase,
                                         data: IntentData::TargetWithInventory{item: item_in_use, target: state.cursor_pos},
-                                        action: action_in_use.effects
+                                        action: action_in_use.action
                                     };
                                     player.intent = intent;
                                 },
@@ -161,7 +161,7 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                                             let intent = Intent {
                                                 phase: action_in_use.phase,
                                                 data: IntentData::TargetWithEquipment{slot: slot_in_use, target: state.cursor_pos},
-                                                action: action_in_use.effects
+                                                action: action_in_use.action
                                             };
                                             player.intent = intent;
                                         },
@@ -169,7 +169,7 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                                             let intent = Intent {
                                                 phase: action_in_use.phase,
                                                 data: IntentData::Target(state.cursor_pos),
-                                                action: action_in_use.effects
+                                                action: action_in_use.action
                                             };
                                             player.intent = intent;
                                         }

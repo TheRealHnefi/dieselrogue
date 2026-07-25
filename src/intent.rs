@@ -4,12 +4,13 @@ use crate::Entity;
 use crate::Map;
 use crate::components::*;
 use crate::GameLog;
+use crate::actions::Action;
 
 #[derive (Clone)]
 pub struct Intent {
     pub phase: IntentPhase,
     pub data: IntentData,
-    pub action: fn (self_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>
+    pub action: Action
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -24,15 +25,15 @@ pub struct IntentAction {
     pub name: String,
     pub targeting: Targeting,
     pub phase: IntentPhase,
-    pub precondition: fn (self_ref: &Entity, map: &Map) -> bool,
-    pub effects: fn (self_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>
+    pub precondition: fn (self_ref: &Entity, map: &Map, affected_item: Option<&Item>) -> bool,
+    pub action: Action
 }
 
-fn intent_noop(_entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+fn noop_action(_entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     vec!()
 }
 
-pub fn precondition_ok(_self_ref: &Entity, _map: &Map) -> bool {
+pub fn precondition_ok(_self_ref: &Entity, _map: &Map, _affected_item: Option<&Item>) -> bool {
     true
 }
 
@@ -40,7 +41,7 @@ pub fn idle_intent() -> Intent {
     Intent {
         phase: IntentPhase::Idle,
         data: IntentData::Void,
-        action: intent_noop
+        action: noop_action
     }
 }
 

@@ -78,6 +78,7 @@ impl World {
 
         let _ = world.add_item(pos, Item::machinegun());
         let _ = world.add_item(pos, Item::pistol());
+        let _ = world.add_item(pos, Item::pistol());
         let _ = world.add_item(pos, Item::rocket_launcher());
         let _ = world.add_item(pos, Item::bulletproof_vest());
 

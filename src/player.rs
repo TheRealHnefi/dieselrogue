@@ -4,6 +4,7 @@ use crate::error::*;
 use crate::entity::*;
 use crate::ability::*;
 use crate::intent::*;
+use crate::actions;
 use crate::World;
 
 pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
@@ -12,7 +13,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     }
     
     let player_id = world.player_id.unwrap();
-    let mut player = &mut world.entities[player_id];
+    let player = &mut world.entities[player_id];
 
     let driving = match player.driving {
         DrivingState::DrivenBy(_) => true,
@@ -39,7 +40,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         player.intent = Intent {
             phase: IntentPhase::Movement,
             data: IntentData::Direction(direction),
-            action: Entity::resolve_turn
+            action: actions::turn_action
         };
     } else if !driving {
         let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
@@ -50,20 +51,20 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
                     player.intent = Intent {
                         phase: IntentPhase::Movement,
                         data: IntentData::Target(target_pos),
-                        action: Entity::resolve_open_door
+                        action: actions::open_door_action
                     };
                 }
                 else if pawn.driving == DrivingState::Drivable {
                     player.intent = Intent {
                         phase: IntentPhase::Movement,
                         data: IntentData::Target(target_pos),
-                        action: Entity::resolve_embark
+                        action: actions::embark_action
                     };
                 } else {
                     player.intent = Intent {
                         phase: IntentPhase::Attack,
                         data: IntentData::Target(target_pos),
-                        action: Entity::resolve_melee
+                        action: actions::melee_action
                     };
                 }
             },
@@ -71,7 +72,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
                 player.intent = Intent {
                     phase: IntentPhase::Movement,
                     data: IntentData::Target(target_pos),
-                    action: Entity::resolve_move
+                    action: actions::move_action
                 };
             }
         }
@@ -81,7 +82,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
             player.intent = Intent {
                 phase: IntentPhase::Movement,
                 data: IntentData::Target(target_pos),
-                action: Entity::resolve_move
+                action: actions::move_action
             };
         }
     }
@@ -95,7 +96,7 @@ pub fn disembark_player_intent(world: &mut World) -> Result<(), GameError> {
     }
     
     let player_id = world.player_id.unwrap();
-    let mut player = &mut world.entities[player_id];
+    let player = &mut world.entities[player_id];
 
     let driving = match player.driving {
         DrivingState::DrivenBy(_) => true,
@@ -109,7 +110,7 @@ pub fn disembark_player_intent(world: &mut World) -> Result<(), GameError> {
     player.intent = Intent {
         phase: IntentPhase::Movement,
         data: IntentData::Void,
-        action: Entity::resolve_disembark
+        action: actions::disembark_action
     };
 
     Ok(())
@@ -119,7 +120,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
-    let mut player = &mut world.entities[world.player_id.unwrap()];
+    let player = &mut world.entities[world.player_id.unwrap()];
     if !player.has_ability(Ability::PickUp) {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not pick up items")});
     }
@@ -130,7 +131,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
         player.intent = Intent {
             phase: IntentPhase::Inventory,
             data: IntentData::Void,
-            action: Entity::resolve_get_item
+            action: actions::get_item_action
         };
         return Ok(());
     }

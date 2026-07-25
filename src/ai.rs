@@ -6,6 +6,7 @@ use crate::util::*;
 use crate::components::*;
 use crate::intent::*;
 use crate::GameLog;
+use crate::actions;
 
 pub enum AI {
     None,
@@ -56,14 +57,14 @@ impl PatrollingAI {
                     return Intent {
                         phase: IntentPhase::Movement,
                         data: IntentData::Direction(direction),
-                        action: Entity::resolve_turn
+                        action: actions::turn_action
                     };
                 }
                 else {
                     return Intent {
                         phase: IntentPhase::Movement,
                         data: IntentData::Target(map.idx_pos(self.current_path.pop().unwrap())),
-                        action: Entity::resolve_move
+                        action: actions::move_action
                     };
                 }
             },
