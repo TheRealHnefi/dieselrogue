@@ -28,7 +28,8 @@ pub enum MenuAction {
     Simple(fn (&mut State) -> RunState),
     WithItemAction(Item, ItemAction, fn (Item, ItemAction, &mut State) -> RunState),
     WithIntent(Intent, fn (Intent, &mut State) -> RunState),
-    WithItem(Item, fn (Item, &mut State) -> RunState)
+    WithItem(Item, fn (Item, &mut State) -> RunState),
+    WithTargetedBodypartIndex(usize, fn (usize, &mut State) -> RunState)
 }
 
 pub struct MenuPanel<T: MenuRow> {
@@ -64,6 +65,12 @@ pub struct AbilityRow {
     pub text: String,
     pub item: Item,
     pub action: ItemAction
+}
+
+pub struct TargetingRow {
+    pub text: String,
+    pub entity_id: usize,
+    pub bodypart_index: usize
 }
 
 impl MenuRow for SystemRow {
@@ -127,6 +134,9 @@ impl MenuRow for AbilityRow {
             },
             Targeting::Positional => {
                 MenuAction::WithItemAction(self.item.clone(), self.action.clone(), action_target_equipment_action)
+            },
+            Targeting::Detailed => {
+                MenuAction::WithItemAction(self.item.clone(), self.action.clone(), action_target_equipment_action)
             }
         }
     }
@@ -138,55 +148,6 @@ impl MenuRow for AbilityRow {
     fn selectable(&self) -> bool {
         true
     }
-}
-
-fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunState {
-    match state.world.get_player_mut() {
-        Ok(player) => {
-            player.intent = Intent {
-                data: IntentData::EquippedItem(item.equip_slots[0]),
-                phase: IntentPhase::Inventory,
-                action: Entity::resolve_unequip_item                
-            };
-            return RunState::Resolve;
-        },
-        Err(_) => {
-            state.log.entries.push("Can not unequip item".to_string());
-            return RunState::AwaitingMenuInput
-        }
-    }
-}
-
-fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
-    match state.world.get_player() {
-        Ok(player) => {
-            state.cursor_pos = player.body.position;
-            state.action_item = Some(item);
-            state.action_being_used = Some(item_action);
-        },
-        Err(_) => ()
-    }
-    RunState::AwaitingPositionalTargetingInput
-}
-
-fn action_target_equipment_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
-    match state.world.get_player() {
-        Ok(player) => {
-            state.cursor_pos = player.body.position;
-            state.action_slot = Some(item.equip_slots[0]);
-            state.action_being_used = Some(item_action);
-        },
-        Err(_) => ()
-    }
-    RunState::AwaitingPositionalTargetingInput
-}
-
-fn action_apply_intent_to_player(intent: Intent, state: &mut State) -> RunState {
-    match state.world.get_player_mut() {
-        Ok(player) => player.intent = intent,
-        Err(_) => ()
-    }    
-    RunState::Resolve
 }
 
 impl MenuRow for ItemActionRow {
@@ -202,8 +163,25 @@ impl MenuRow for ItemActionRow {
             },
             Targeting::Positional => {
                 MenuAction::WithItemAction(self.item.clone(), self.action.clone(), action_target_item_action)
+            },
+            Targeting::Detailed => {
+                MenuAction::WithItemAction(self.item.clone(), self.action.clone(), action_target_item_action)
             }
         }
+    }
+
+    fn get_text(&self) -> String {
+        return self.text.clone();
+    }
+
+    fn selectable(&self) -> bool {
+        true
+    }
+}
+
+impl MenuRow for TargetingRow {
+    fn get_action(&self) -> MenuAction {
+        return MenuAction::WithTargetedBodypartIndex(self.bodypart_index, action_apply_intent_to_target_bodypart);
     }
 
     fn get_text(&self) -> String {
@@ -372,6 +350,35 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
     }
 }
 
+pub fn targeting_menu(world: &World, position: Point) -> Option<MenuPanel<TargetingRow>> {
+    let mut targeting_rows = vec!();
+    let pos_index = world.map.pos_idx(position);
+    match &world.map.pawns[pos_index] {
+        Some(pawn) => {
+            for (i, bodypart) in pawn.body.parts.iter().enumerate() {
+                targeting_rows.push(TargetingRow {
+                    text: format!(
+                        "{}: {}/{}",
+                        bodypart.name,
+                        bodypart.damage,
+                        bodypart.max_damage),
+                    entity_id: pawn.entity_id,
+                    bodypart_index: i
+                });
+            }
+        },
+        None => return None
+    }
+
+    Some(MenuPanel {
+        x: 35,
+        y: 20,
+        rows: targeting_rows,
+        selected_row: 0,
+        no_selectable_rows: false
+    })
+}
+
 impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
     fn select_next(&mut self) {
         if self.no_selectable_exists() {
@@ -431,4 +438,88 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
             }
         }
     }
+}
+
+fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunState {
+    match state.world.get_player_mut() {
+        Ok(player) => {
+            player.intent = Intent {
+                data: IntentData::EquippedItem(item.equip_slots[0]),
+                phase: IntentPhase::Inventory,
+                action: Entity::resolve_unequip_item                
+            };
+            return RunState::Resolve;
+        },
+        Err(_) => {
+            state.log.entries.push("Can not unequip item".to_string());
+            return RunState::AwaitingMenuInput
+        }
+    }
+}
+
+fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
+    match state.world.get_player() {
+        Ok(player) => {
+            state.cursor_pos = player.body.position;
+            state.action_item = Some(item);
+            state.action_being_used = Some(item_action);
+        },
+        Err(_) => ()
+    }
+    RunState::AwaitingPositionalTargetingInput
+}
+
+fn action_target_equipment_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
+    match state.world.get_player() {
+        Ok(player) => {
+            state.cursor_pos = player.body.position;
+            state.action_slot = Some(item.equip_slots[0]);
+            state.action_being_used = Some(item_action);
+        },
+        Err(_) => ()
+    }
+    RunState::AwaitingPositionalTargetingInput
+}
+
+fn action_apply_intent_to_player(intent: Intent, state: &mut State) -> RunState {
+    match state.world.get_player_mut() {
+        Ok(player) => player.intent = intent,
+        Err(_) => ()
+    }    
+    RunState::Resolve
+}
+
+fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut State) -> RunState {
+    let mut intent_data = IntentData::Void;
+    match &state.action_item {
+        Some(item_being_used) => {
+            intent_data = IntentData::TargetBodypartWithInventory {
+                item: item_being_used.clone(),
+                target: state.cursor_pos,
+                bodypart_index: bodypart_index
+            };
+        },
+        None => {
+            match state.action_slot {
+                Some(slot_being_used) => {
+                    intent_data = IntentData::TargetBodypartWithEquipment {
+                        slot: slot_being_used,
+                        target: state.cursor_pos,
+                        bodypart_index: bodypart_index
+                    }
+                },
+                None => assert!(false)
+            }
+        }
+    }
+
+    let intent = Intent {
+        phase: IntentPhase::Attack, // TODO: Not necessarily true
+        data: intent_data,
+        action: state.action_being_used.take().unwrap().effects
+    };
+
+    state.world.get_player_mut().unwrap().intent = intent;
+    
+    RunState::Resolve
 }
