@@ -617,6 +617,18 @@ impl Entity {
         }
     }
 
+    pub fn resolve_disembark(&mut self, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+        match self.driving {
+            DrivingState::DrivenBy(pilot) => {
+                return vec!(Effect::Disembark{pilot_id: pilot, vehicle_id: self.id});        
+            },
+            _ => {
+                debug_assert!(false);
+                return vec!();
+            }
+        }
+    }
+
     pub fn resolve_melee(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let mut result = vec!();
 

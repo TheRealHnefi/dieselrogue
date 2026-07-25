@@ -71,7 +71,8 @@ pub enum Effect {
     OpenDoor(Point),
     DestroyWall(Point),
     Animation(Animation),
-    Embark{pilot_id: usize, vehicle_id: usize}
+    Embark{pilot_id: usize, vehicle_id: usize},
+    Disembark{pilot_id: usize, vehicle_id: usize}
 }
 
 #[derive (PartialEq, Eq, Copy, Clone)]
