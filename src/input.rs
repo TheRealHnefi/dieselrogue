@@ -149,15 +149,7 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 return RunState::AwaitingMenuInput;
             },
 
-            key if key == b.juke => {
-                let can_juke = state.world.get_player()
-                    .map(|p| p.has_ability(Ability::Juke))
-                    .unwrap_or(false);
-                if can_juke {
-                    return start_directional_action(state, juke_action_def(), None);
-                }
-                return RunState::AwaitingInput;
-            },
+            key if key == b.juke => return trigger_action_by_id(state, ActionId::Juke),
 
             key if key == b.look => {
                 if let Ok(player) = state.world.get_player() {
@@ -541,6 +533,42 @@ pub fn looking_input(state: &mut State, _context: &mut Rltk) -> RunState {
         }
     }
     RunState::Looking
+}
+
+/// Trigger a catalog action by id from a hotkey: look it up in the player's
+/// available actions and drive the same resolution the menu uses. A missing
+/// action (precondition failed / not available) is a silent no-op.
+fn trigger_action_by_id(state: &mut State, id: ActionId) -> RunState {
+    let found = {
+        let Ok(player) = state.world.get_player() else { return RunState::AwaitingInput };
+        get_entity_available_actions(player, &state.world.map).into_iter()
+            .find(|(a, _)| a.id == id)
+            .map(|(a, slot)| (a.clone(), slot))
+    };
+    let (action, slot) = match found {
+        Some(x) => x,
+        None => return RunState::AwaitingInput,
+    };
+    let source = slot.map(ActionSource::EquippedSlot);
+    match action.targeting {
+        Targeting::None => {
+            let intent = build_intent(&action, source, Resolution::None);
+            if let Ok(player) = state.world.get_player_mut() { player.intent = intent; }
+            RunState::Resolve(ExecutionPhase::Instant)
+        },
+        Targeting::Direction => start_directional_action(state, action, source),
+        Targeting::UseExistingAim { ask_bodypart } =>
+            fire_from_aim(PendingAction { entity_action: action, source }, ask_bodypart, state),
+        Targeting::EntityAim { max_range } =>
+            start_entity_targeting(PendingAction { entity_action: action, source }, max_range, state),
+        Targeting::Positional { .. } | Targeting::Detailed => {
+            if let Ok(player) = state.world.get_player() {
+                state.cursor_pos = player.position;
+            }
+            state.pending_action = Some(PendingAction { entity_action: action, source });
+            RunState::AwaitingPositionalTargetingInput
+        },
+    }
 }
 
 /// Stash a Direction-targeted action and prompt the player for a direction.
