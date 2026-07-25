@@ -620,6 +620,157 @@ fn building_v8() -> Grid {
     g
 }
 
+// ─── Mega-structure blocks ───────────────────────────────────────────────────
+// Large buildings that span 2-4 blocks. They work exactly like road blocks:
+// a fixed-width building strip exits the block only at specific edge positions,
+// with Ground everywhere else. Because Floor↔Ground is INCOMPATIBLE in WFC,
+// these blocks are isolated from standard road/building blocks and only connect
+// to other mega-structure blocks where their Floor-filled strips align.
+//
+// The building strip is ML..MH-1 (x=8..23, width 16). Edge profile at an exit:
+//   Ground×8 | Wall | Floor×14 | Wall | Ground×8
+// This never overlaps the road strip (x=13-18 for standard roads) in terms of
+// WFC compatibility, so the two networks coexist without interfering.
+//
+// One canonical orientation produces all 4 (or 2 for straight) via rotation.
+
+const ML:  usize = 8;            // mega strip left wall (inclusive)
+const MW:  usize = 16;           // mega strip width
+const MH:  usize = ML + MW;      // mega strip right exclusive = 24
+const MCX: usize = ML + MW / 2;  // strip centre x = 16
+
+fn mega_straight_v1() -> Grid {
+    // N-S building corridor, exits at both ends. 4 rotations give E-W too.
+    let mut g = empty();
+    for y in 0..N {
+        for x in ML..MH {
+            g[y][x] = if x == ML || x + 1 == MH { T::Wall } else { T::Floor };
+        }
+    }
+    win_v(&mut g, ML,     0, N);
+    win_v(&mut g, MH - 1, 0, N);
+    g
+}
+
+fn mega_straight_v2() -> Grid {
+    // N-S corridor partitioned into two rooms.
+    let mut g = mega_straight_v1();
+    for x in ML..MH { g[MCX][x] = T::Wall; }
+    gs(&mut g, MCX, MCX, T::Doorway);
+    g
+}
+
+fn mega_turn_v1() -> Grid {
+    // L-shaped building: exits north (y=0) and east (x=31).
+    // 90°CW→SE, 180°→SW, 270°CW→WN gives all four corner orientations.
+    let mut g = empty();
+    // Vertical arm: x=ML..MH-1, y=0..MH-1
+    for y in 0..MH {
+        for x in ML..MH {
+            g[y][x] = T::Floor;
+        }
+    }
+    // East arm extension: y=ML..MH-1, x=MH..N
+    for y in ML..MH {
+        for x in MH..N {
+            g[y][x] = T::Floor;
+        }
+    }
+    // West outer wall (full height of L)
+    for y in 0..MH  { g[y][ML] = T::Wall; }
+    // South outer wall (full width of L)
+    for x in ML..N  { g[MH - 1][x] = T::Wall; }
+    // East wall of the north arm above the turn
+    for y in 0..=ML { g[y][MH - 1] = T::Wall; }
+    // North face of the east arm extension
+    for x in MH..N  { g[ML][x] = T::Wall; }
+    // Windows
+    win_v(&mut g, ML,     0, MH);
+    win_h(&mut g, MH - 1, ML, N);
+    win_v(&mut g, MH - 1, 0, ML + 1);
+    win_h(&mut g, ML,     MH, N);
+    g
+}
+
+fn mega_t_v1() -> Grid {
+    // T-shaped building: exits north, south, and east. Rotations give all 4 T orientations.
+    let mut g = empty();
+    // Full N-S strip
+    for y in 0..N {
+        for x in ML..MH {
+            g[y][x] = T::Floor;
+        }
+    }
+    // East arm extension
+    for y in ML..MH {
+        for x in MH..N {
+            g[y][x] = T::Floor;
+        }
+    }
+    // West outer wall (full height)
+    for y in 0..N       { g[y][ML] = T::Wall; }
+    // East wall of N-S strip outside the T-arm
+    for y in 0..ML      { g[y][MH - 1] = T::Wall; }
+    for y in MH..N      { g[y][MH - 1] = T::Wall; }
+    // North/south faces of the east arm extension
+    for x in MH..N      { g[ML][x] = T::Wall; }
+    for x in MH..N      { g[MH - 1][x] = T::Wall; }
+    // Windows
+    win_v(&mut g, ML,     0, N);
+    win_v(&mut g, MH - 1, 0, ML);
+    win_v(&mut g, MH - 1, MH, N);
+    win_h(&mut g, ML,     MH, N);
+    win_h(&mut g, MH - 1, MH, N);
+    g
+}
+
+fn mega_cross_v1() -> Grid {
+    // + shaped building: exits on all four faces.
+    let mut g = empty();
+    // Vertical full strip
+    for y in 0..N {
+        for x in ML..MH { g[y][x] = T::Floor; }
+    }
+    // Horizontal full strip
+    for y in ML..MH {
+        for x in 0..N   { g[y][x] = T::Floor; }
+    }
+    // Walls on vertical strip (outside horizontal junction)
+    for y in 0..ML  { g[y][ML] = T::Wall; g[y][MH - 1] = T::Wall; }
+    for y in MH..N  { g[y][ML] = T::Wall; g[y][MH - 1] = T::Wall; }
+    // Walls on horizontal strip (outside vertical junction)
+    for x in 0..ML  { g[ML][x] = T::Wall; g[MH - 1][x] = T::Wall; }
+    for x in MH..N  { g[ML][x] = T::Wall; g[MH - 1][x] = T::Wall; }
+    // Windows on each arm
+    win_v(&mut g, ML,     0, ML);
+    win_v(&mut g, MH - 1, 0, ML);
+    win_v(&mut g, ML,     MH, N);
+    win_v(&mut g, MH - 1, MH, N);
+    win_h(&mut g, ML,     0, ML);
+    win_h(&mut g, MH - 1, 0, ML);
+    win_h(&mut g, ML,     MH, N);
+    win_h(&mut g, MH - 1, MH, N);
+    g
+}
+
+fn mega_dead_v1() -> Grid {
+    // Dead-end: exits only at the north face; building terminates inside.
+    // Rotations give dead-ends facing east, south, and west.
+    let mut g = empty();
+    for y in 0..MH {
+        for x in ML..MH {
+            let on_side = x == ML || x + 1 == MH;
+            let on_cap  = y + 1 == MH;
+            g[y][x] = if on_side || on_cap { T::Wall } else { T::Floor };
+        }
+    }
+    gs(&mut g, MCX, MH - 1, T::Doorway);  // door in south cap (interior entrance)
+    win_v(&mut g, ML,     0, MH);
+    win_v(&mut g, MH - 1, 0, MH);
+    win_h(&mut g, MH - 1, ML, MH);
+    g
+}
+
 // ─── Thin path blocks ────────────────────────────────────────────────────────
 // 2-tile alleys positioned off-centre (x=8-9 in canonical form). Because the
 // path edge profile (road at x=8-9) never matches the 6-wide road (x=13-18),
@@ -750,6 +901,13 @@ fn main() {
         ("roadblock_gen_hangar_v1", road_hangar_v1),
         ("roadblock_gen_hangar_v2", road_hangar_v2),
         ("roadblock_gen_hangar_v3", road_hangar_v3),
+        // Mega-structure blocks (road-like strip system; buildings span 2-4 blocks)
+        ("buildingblock_gen_mega_straight_v1", mega_straight_v1),
+        ("buildingblock_gen_mega_straight_v2", mega_straight_v2),
+        ("buildingblock_gen_mega_turn_v1",     mega_turn_v1),
+        ("buildingblock_gen_mega_t_v1",        mega_t_v1),
+        ("buildingblock_gen_mega_cross_v1",    mega_cross_v1),
+        ("buildingblock_gen_mega_dead_v1",     mega_dead_v1),
         // Thin path blocks (2-tile alley, off-centre at x=8-9)
         ("roadblock_gen_path_straight_v1", path_straight_v1),
         ("roadblock_gen_path_straight_v2", path_straight_v2),
