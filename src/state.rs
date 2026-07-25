@@ -18,9 +18,11 @@ pub enum RunState {
 
 pub struct State {
     pub ecs: World,
-    last_tick: Instant,
     pub mouse_pos: Point,
     pub menu_stack: Vec<Menu>,
+    pub inventory_screen_selection: i32,
+
+    last_tick: Instant,
 }
 
 impl State {
@@ -29,7 +31,8 @@ impl State {
             ecs: World::new(),
             last_tick: Instant::now(),
             mouse_pos: Point {x: 0, y:0},
-            menu_stack: Vec::new()
+            menu_stack: Vec::new(),
+            inventory_screen_selection: 0
         }
     }
 

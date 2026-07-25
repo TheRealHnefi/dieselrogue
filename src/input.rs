@@ -199,12 +199,34 @@ pub fn menu_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
     }
 }
 
-pub fn inventory_screen_input(_game_state: &mut State, ctx: &mut Rltk) -> RunState {
+pub fn inventory_screen_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
     match ctx.key {
         Some(key) => match key {
             VirtualKeyCode::Escape |
             VirtualKeyCode::I => {
                 return RunState::AwaitingInput;
+            },
+            VirtualKeyCode::Down |
+            VirtualKeyCode::Numpad2 => {
+                let player = game_state.ecs.fetch::<Entity>();
+                let inventories = game_state.ecs.read_storage::<Inventory>();
+                let inventory = inventories.get(*player);
+                match inventory {
+                    Some(inv) => {
+                        game_state.inventory_screen_selection = min(game_state.inventory_screen_selection + 1,
+                                                                    inv.items.len() as i32 - 1);
+                        
+                    }
+                    None => {
+                        panic!("Player lacks inventory");
+                    }
+                }
+                return RunState::InventoryScreen;
+            },
+            VirtualKeyCode::Up |
+            VirtualKeyCode::Numpad8 => {
+                game_state.inventory_screen_selection = max(game_state.inventory_screen_selection - 1, 0);
+                return RunState::InventoryScreen;
             },
             _ => {
                 return RunState::InventoryScreen;

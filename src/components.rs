@@ -101,7 +101,8 @@ pub struct Inventory {
 pub struct BodyPart {
     pub name: String,
     pub max_hitpoints: i32,
-    pub hitpoints: i32
+    pub hitpoints: i32,
+    pub equipped_item: EntityOption<Entity>
 }
 
 #[derive (Component, ConvertSaveload, Clone)]
@@ -123,27 +124,32 @@ impl HumanoidBody {
             head: BodyPart {
                 name: "head".to_string(),
                 max_hitpoints: max_hp / 4,
-                hitpoints: max_hp / 4
+                hitpoints: max_hp / 4,
+                equipped_item: EntityOption::from(None)
             },
             torso: BodyPart {
                 name: "torso".to_string(),
                 max_hitpoints: max_hp / 2,
-                hitpoints: max_hp / 2
+                hitpoints: max_hp / 2,
+                equipped_item: EntityOption::from(None)
             },
             left_arm: BodyPart {
                 name: "left arm".to_string(),
                 max_hitpoints: max_hp / 5,
-                hitpoints: max_hp / 5
+                hitpoints: max_hp / 5,
+                equipped_item: EntityOption::from(None)
             },
             right_arm: BodyPart {
                 name: "right arm".to_string(),
                 max_hitpoints: max_hp / 5,
-                hitpoints: max_hp / 5
+                hitpoints: max_hp / 5,
+                equipped_item: EntityOption::from(None)
             },
             legs: BodyPart {
                 name: "legs".to_string(),
                 max_hitpoints: max_hp / 3,
-                hitpoints: max_hp / 3
+                hitpoints: max_hp / 3,
+                equipped_item: EntityOption::from(None)
             }
         }
     }

@@ -142,7 +142,39 @@ fn main() -> rltk::BError {
             background: rltk::RGB::named(rltk::BLACK)
         })
         .with(GettableItem {})
-        .with(Name {value: "Gun".to_string()})
+        .with(Name {value: "Gun 1".to_string()})
+        .with(Firearm {range: 52})
+        .marked::<SimpleMarker<SerializeMarker>>()
+        .build();
+    game_state.ecs
+        .create_entity()
+        .with(Position {
+            x: gun_x - 1,
+            y: gun_y
+        })
+        .with(Renderable {
+            glyph: 169,
+            color: rltk::RGB::named(rltk::BLUE),
+            background: rltk::RGB::named(rltk::BLACK)
+        })
+        .with(GettableItem {})
+        .with(Name {value: "Gun 2".to_string()})
+        .with(Firearm {range: 52})
+        .marked::<SimpleMarker<SerializeMarker>>()
+        .build();
+    game_state.ecs
+        .create_entity()
+        .with(Position {
+            x: gun_x + 1,
+            y: gun_y
+        })
+        .with(Renderable {
+            glyph: 169,
+            color: rltk::RGB::named(rltk::BLUE),
+            background: rltk::RGB::named(rltk::BLACK)
+        })
+        .with(GettableItem {})
+        .with(Name {value: "Gun 3".to_string()})
         .with(Firearm {range: 52})
         .marked::<SimpleMarker<SerializeMarker>>()
         .build();

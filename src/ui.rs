@@ -85,31 +85,53 @@ pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
     let assets = state.ecs.fetch::<RexAssets>();
     context.render_xp_sprite(&assets.male_silhouette, 34, 3);
 
-    fn draw_equipment_box(x: i32, y: i32, title: String, contents: String, context: &mut Rltk) {
-        const EQ_BOX_WIDTH: i32 = 13;
-        context.draw_box(x, y, EQ_BOX_WIDTH, 2, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-        context.print(x + (EQ_BOX_WIDTH - title.len() as i32 + 1) / 2, y, title);
-        context.print(x + 1, y + 1, contents);
-    }
-    draw_equipment_box(21, 4, " HEAD ".to_string(), "Fedora".to_string(), context);
-    draw_equipment_box(21, 8, " LEFT ARM ".to_string(), "".to_string(), context);
-    draw_equipment_box(21, 26, " LEGS ".to_string(), "Pants".to_string(), context);
-    draw_equipment_box(46, 10, " TORSO ".to_string(), "Trenchcoat".to_string(), context);
-    draw_equipment_box(46, 22, " RIGHT ARM ".to_string(), "Gun".to_string(), context);
-    
-
-    let inventories = state.ecs.read_storage::<Inventory>();
     let player = state.ecs.fetch::<Entity>();
-    let inventory = inventories.get(*player);
+    let bodies = state.ecs.read_storage::<HumanoidBody>();
+    let body_maybe = bodies.get(*player);
+    match body_maybe {
+        Some(body) => {
+            fn draw_equipment_box(ecs: &World, x: i32, y: i32, title: String, contents: EntityOption<Entity>, context: &mut Rltk) {
+                let names = ecs.read_storage::<Name>();
+                const EQ_BOX_WIDTH: i32 = 13;
+                context.draw_box(x, y, EQ_BOX_WIDTH, 2, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+                context.print(x + (EQ_BOX_WIDTH - title.len() as i32 + 1) / 2, y, title);
+                match *contents {
+                    Some(item) => {
+                        let name_maybe = names.get(item);
+                        match name_maybe {
+                            Some(name) => context.print(x + 1, y + 1, name.value.to_string()),
+                            None => context.print(x + 1, y + 1, "ITEM ERROR"),
+                        }
+                    },
+                    None => ()
+                }
+            }
+            draw_equipment_box(&state.ecs, 21, 4, " HEAD ".to_string(), body.head.equipped_item, context);
+            draw_equipment_box(&state.ecs, 21, 8, " LEFT ARM ".to_string(), body.left_arm.equipped_item, context);
+            draw_equipment_box(&state.ecs, 21, 26, " LEGS ".to_string(), body.legs.equipped_item, context);
+            draw_equipment_box(&state.ecs, 46, 10, " TORSO ".to_string(), body.torso.equipped_item, context);
+            draw_equipment_box(&state.ecs, 46, 22, " RIGHT ARM ".to_string(), body.right_arm.equipped_item, context);
+        }
+        None => {
+            panic!("Player lacks body");
+        }
+    }
+
     let names = state.ecs.read_storage::<Name>();
+    let inventories = state.ecs.read_storage::<Inventory>();
+    let inventory = inventories.get(*player);
     match inventory {
         Some(inv) => {
             let mut y = 2;
             // Required since EntityVec does not implement IntoIterator
-            for item in &*inv.items {
+            for (i, item) in (&*inv.items).iter().enumerate() {
                 let name = names.get(*item);
                 assert!(name.is_some(), "Item name expected but not found");
-                context.print(2, y, &name.unwrap().value);
+                if i == state.inventory_screen_selection as usize {
+                    context.print_color(2, y, RGB::named(rltk::WHITE), RGB::named(rltk::MAGENTA), &name.unwrap().value);
+                } else {
+                    context.print(2, y, &name.unwrap().value);
+                }
                 y += 1;
             }
         },
