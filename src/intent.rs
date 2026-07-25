@@ -24,11 +24,16 @@ pub struct IntentAction {
     pub name: String,
     pub targeting: Targeting,
     pub phase: IntentPhase,
+    pub precondition: fn (self_ref: &Entity, map: &Map) -> bool,
     pub effects: fn (self_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>
 }
 
 fn intent_noop(_entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     vec!()
+}
+
+pub fn precondition_ok(_self_ref: &Entity, _map: &Map) -> bool {
+    true
 }
 
 pub fn idle_intent() -> Intent {
