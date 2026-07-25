@@ -33,6 +33,7 @@ pub enum RunState {
     RenderAnimations(ExecutionPhase),
     ResolveStatusEffects,
     GameOver,
+    Victory,
     HelpScreen,
 }
 
@@ -190,6 +191,11 @@ impl GameState for State {
                 self.run_state = game_over_input(self, context);
                 return;
             },
+            RunState::Victory => {
+                draw_victory_screen(context);
+                self.run_state = victory_input(self, context);
+                return;
+            },
             RunState::HelpScreen => {
                 draw_help_screen(self, context);
                 if self.last_input.take() == Some(VirtualKeyCode::Escape) {
@@ -250,7 +256,7 @@ impl GameState for State {
             RunState::ResolveStatusEffects => {
                 self.resolve_status_effects();
             }
-            RunState::WelcomeScreen | RunState::WelcomeSplash | RunState::GameOver | RunState::HelpScreen => unreachable!(),
+            RunState::WelcomeScreen | RunState::WelcomeSplash | RunState::GameOver | RunState::Victory | RunState::HelpScreen => unreachable!(),
         }
     }
 }

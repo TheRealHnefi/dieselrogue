@@ -215,6 +215,18 @@ pub fn draw_game_over_screen(context: &mut Rltk) {
     context.print_color_centered(mid + 4, INACTIVE_COLOR, BG_COLOR, "Press any key to return to the main menu...");
 }
 
+pub fn draw_victory_screen(context: &mut Rltk) {
+    context.set_active_console(MAIN_CONSOLE_INDEX);
+    context.cls();
+    context.set_active_console(UI_CONSOLE_INDEX);
+    context.cls();
+
+    let mid = SCREEN_HEIGHT as i32 / 2;
+    context.print_color_centered(mid - 2, LEVELUP_SELECT_COLOR, BG_COLOR, "YOU ESCAPED");
+    context.print_color_centered(mid,     LINE_COLOR,            BG_COLOR, "The diesels fade behind you.");
+    context.print_color_centered(mid + 4, INACTIVE_COLOR,        BG_COLOR, "Press any key to return to the main menu...");
+}
+
 pub fn draw_welcome_splash(context: &mut Rltk) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();

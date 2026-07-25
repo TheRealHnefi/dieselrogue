@@ -773,10 +773,26 @@ fn add_levelup_ability(world: &mut World, ability: Ability) {
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {
     match move_player_intent(direction, world) {
-        Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
+        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
+        Err(error) if matches!(error.error, Error::MapExit) => RunState::Victory,
         Err(error) => {
             log.log(error.message);
-            return RunState::AwaitingInput;
+            RunState::AwaitingInput
+        }
+    }
+}
+
+pub fn victory_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    match state.last_input.take() {
+        None => RunState::Victory,
+        Some(_) => {
+            let bindings = state.bindings;
+            let seed = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or(1);
+            *state = State::new_welcome_state(seed, bindings);
+            RunState::WelcomeScreen
         }
     }
 }

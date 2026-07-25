@@ -1,6 +1,6 @@
 use rltk::Point;
 use crate::components::*;
-use crate::error::*;
+use crate::error::{Error, GameError};
 use crate::entity::*;
 use crate::ability::*;
 use crate::intent::*;
@@ -34,6 +34,12 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         };
     } else if !driving {
         let target_pos = Point {x: player_pos.x + delta_x, y: player_pos.y + delta_y};
+        if target_pos.x < 0 || target_pos.y < 0
+            || target_pos.x >= world.map.width as i32
+            || target_pos.y >= world.map.height as i32
+        {
+            return Err(GameError { error: Error::MapExit, message: String::new() });
+        }
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
 
         // Determine what intent to set based on what's in the target tile.
