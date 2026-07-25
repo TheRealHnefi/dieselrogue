@@ -172,22 +172,34 @@ impl ActorAI {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
 
+        // Perceive: update beliefs from this turn's stimuli.
         let prev_priority = self.alert.priority();
-
         self.process_sounds(entity, sounds);
         self.process_vision(entity, entities);
         self.check_follow_target(entities);
         self.tick_alert(entity, entities);
 
-        let intent;
+        // Shout once on first crossing into Alert or above.
         if self.alert.priority() >= 2 && prev_priority < 2 {
-            intent = Some(build_intent(&shout_action_def(), None, Resolution::None));
-        }
-        else {
-            intent = self.dispatch_intent(entity, map, entities);
+            return Some(build_intent(&shout_action_def(), None, Resolution::None));
         }
 
-        intent
+        // Update profile state, choose a decision, then carry it out.
+        self.advance_waypoint(entity, map);
+        let decision = self.decide(entity, map, entities);
+
+        // nav_field_goal is a hand-kept parallel copy of decide's nav goals; the
+        // pre-pass builds a shared field for its cell, so decide must actually
+        // head there. Assert they agree (same self state, post-advance_waypoint).
+        #[cfg(debug_assertions)]
+        if let Some((goal, _)) = self.nav_field_goal(map) {
+            debug_assert!(
+                matches!(decision, Decision::GoTo { dest, .. } if dest == goal),
+                "nav_field_goal cell {:?} disagrees with decide {:?}", goal, decision,
+            );
+        }
+
+        self.execute(entity, map, entities, decision)
     }
 
     // --- Stimulus processing ---
@@ -279,90 +291,67 @@ impl ActorAI {
         }
     }
 
-    // --- Intent dispatch ---
+    // --- Decision ---
 
-    /// Extracts a Copy snapshot of the alert state so we can call &mut self methods
-    /// without a lingering borrow on self.alert.
-    fn alert_snapshot(&self) -> AlertSnapshot {
-        match &self.alert {
-            AlertLevel::Unaware =>
-                AlertSnapshot::Unaware,
-            AlertLevel::Suspicious { origin, .. } =>
-                AlertSnapshot::Suspicious { origin: *origin },
-            AlertLevel::Alert { last_known, search, .. } =>
-                AlertSnapshot::Alert { last_known: *last_known, search: *search },
-            AlertLevel::Combat { target_id, last_seen } =>
-                AlertSnapshot::Combat { target_id: *target_id, last_seen: *last_seen },
-        }
-    }
-
-    fn dispatch_intent(&mut self, entity: &Entity, map: &Map, entities: &[Entity]) -> Option<Intent> {
-        match self.alert_snapshot() {
-            AlertSnapshot::Unaware =>
-                self.unaware_intent(entity, map, entities),
-            AlertSnapshot::Suspicious { origin } =>
-                self.navigate_to(entity, origin, map, entities, 0),
-            AlertSnapshot::Alert { last_known, search } =>
-                self.search_intent(entity, map, entities, last_known, search),
-            AlertSnapshot::Combat { target_id, last_seen } =>
-                self.combat_intent(entity, map, entities, target_id, last_seen),
-        }
-    }
-
-    // --- Behaviour: Unaware ---
-
-    fn unaware_intent(&mut self, entity: &Entity, map: &Map, entities: &[Entity]) -> Option<Intent> {
-        #[cfg(debug_assertions)]
-        puffin::profile_function!();
-        match &mut self.profile {
-            Profile::Patrol { route_id, waypoint_index, .. } => {
-                let route = &map.patrol_routes[*route_id];
-                if route.is_empty() {
-                    return None;
-                }
-                // Advance waypoint if arrived.
-                if route[*waypoint_index] == entity.position {
+    /// Advance a patroller to its next waypoint once it stands on the current one.
+    fn advance_waypoint(&mut self, entity: &Entity, map: &Map) {
+        if !matches!(self.alert, AlertLevel::Unaware) { return; }
+        if let Profile::Patrol { route_id, waypoint_index, .. } = &mut self.profile {
+            if let Some(route) = map.patrol_routes.get(*route_id) {
+                if !route.is_empty() && route[*waypoint_index] == entity.position {
                     *waypoint_index = (*waypoint_index + 1) % route.len();
                     self.path_target = None;
                 }
-                let dest = route[*waypoint_index];
-                self.navigate_to(entity, dest, map, entities, 0)
-            },
-            Profile::Guard { anchor, .. } => {
-                let anchor = *anchor;
-                if entity.position == anchor {
-                    None // already at post
-                } else {
-                    self.navigate_to(entity, anchor, map, entities, 0)
-                }
-            },
-            Profile::Follow { target_id, last_known_pos, .. } => {
-                let dest = entities.iter()
-                    .find(|e| e.id == *target_id)
-                    .map(|t| t.center())
-                    .unwrap_or(*last_known_pos);
-                if adjacent(entity.position, dest) {
-                    None
-                } else {
-                    self.navigate_to(entity, dest, map, entities, 2)
-                }
-            },
-            Profile::Stationary { .. } => None,
+            }
         }
     }
 
-    // --- Behaviour: Alert (lost target / investigating) ---
-
-    fn search_intent(&mut self, entity: &Entity, map: &Map, entities: &[Entity], last_known: Point, search: SearchBehavior) -> Option<Intent> {
-        #[cfg(debug_assertions)]
-        puffin::profile_function!();
-        match search {
-            SearchBehavior::HoldAndWatch => None, // stand still, weapon ready
-            SearchBehavior::MoveToLastKnown => self.navigate_to(entity, last_known, map, entities, 0),
-            SearchBehavior::Flank => {
-                let flank_dest = self.flank_destination(entity.position, last_known, map);
-                self.navigate_to(entity, flank_dest, map, entities, 0)
+    /// The decision tree: current (alert, profile) state → a Decision. Pure, and
+    /// every Decision field is Copy, so no borrow of self outlives the call and
+    /// execute can then take &mut self freely.
+    fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity]) -> Decision {
+        match &self.alert {
+            AlertLevel::Unaware => match &self.profile {
+                Profile::Patrol { route_id, waypoint_index, .. } =>
+                    match map.patrol_routes.get(*route_id).and_then(|r| r.get(*waypoint_index)) {
+                        Some(&dest) => Decision::GoTo { dest, tolerance: 0 },
+                        None        => Decision::Idle,
+                    },
+                Profile::Guard { anchor, .. } => Decision::GoTo { dest: *anchor, tolerance: 0 },
+                Profile::Follow { target_id, last_known_pos, .. } => {
+                    let dest = entities.iter().find(|e| e.id == *target_id)
+                        .map(|t| t.center()).unwrap_or(*last_known_pos);
+                    if adjacent(entity.position, dest) { Decision::Idle }
+                    else { Decision::GoTo { dest, tolerance: 2 } }
+                },
+                Profile::Stationary { .. } => Decision::Idle,
             },
+            AlertLevel::Suspicious { origin, .. } => Decision::GoTo { dest: *origin, tolerance: 0 },
+            AlertLevel::Alert { last_known, search } => match search {
+                SearchBehavior::HoldAndWatch    => Decision::Face { toward: *last_known },
+                SearchBehavior::MoveToLastKnown => Decision::GoTo { dest: *last_known, tolerance: 0 },
+                SearchBehavior::Flank           =>
+                    Decision::GoTo { dest: self.flank_destination(entity.position, *last_known, map), tolerance: 0 },
+            },
+            AlertLevel::Combat { target_id, last_seen } => match self.profile.combat_tactic() {
+                CombatTactic::Flee => Decision::Flee { threat: *last_seen },
+                _                  => Decision::Engage { target_id: *target_id, last_seen: *last_seen },
+            },
+        }
+    }
+
+    /// Carry out a Decision, producing a concrete intent.
+    fn execute(&mut self, entity: &Entity, map: &Map, entities: &[Entity], decision: Decision) -> Option<Intent> {
+        match decision {
+            Decision::Idle => None,
+            Decision::GoTo { dest, tolerance } => self.navigate_to(entity, dest, map, entities, tolerance),
+            Decision::Face { toward } => face_intent(entity, toward),
+            Decision::Flee { threat } => {
+                let dest = self.flee_pos(entity, threat, map);
+                self.navigate_to(entity, dest, map, entities, 0)
+            },
+            Decision::Engage { target_id, last_seen } =>
+                self.engage(entity, map, entities, target_id, last_seen),
         }
     }
 
@@ -385,7 +374,7 @@ impl ActorAI {
 
     // --- Behaviour: Combat ---
 
-    fn combat_intent(
+    fn engage(
         &mut self,
         entity:    &Entity,
         map:       &Map,
@@ -395,17 +384,11 @@ impl ActorAI {
     ) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
-        let tactic = self.profile.combat_tactic().clone();
 
-        if let CombatTactic::Flee = tactic {
-            let flee_pos = self.flee_pos(entity, last_seen, map);
-            return self.navigate_to(entity, flee_pos, map, entities, 0);
-        }
-
-        // Try melee if adjacent to target — via resolve_step, so the AI turns to
-        // face first, exactly like the player.
         if let Some(target) = entities.iter().find(|e| e.id == target_id) {
             let tc = target.center();
+
+            // Melee if adjacent — via resolve_step so the AI turns to face first.
             if adjacent(entity.position, tc) {
                 return match direction_to(entity.position, tc) {
                     Some(dir) => resolve_step(entity, dir, map, entities).ok().flatten(),
@@ -413,14 +396,12 @@ impl ActorAI {
                 };
             }
 
-            // Try ranged attack if weapon equipped and target in range.
-            // Uses the same precondition system as the player menu: fire actions
-            // require an active aim status, so the AI must spend a turn aiming first.
+            // Ranged: fire if aim is ready, else spend the turn acquiring it
+            // (fire actions require an active aim status, same as the player menu).
             if let Some((slot, range)) = find_weapon(entity) {
                 let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
                 if dist <= range as f32 {
                     let available = player::get_entity_available_actions(entity, map);
-                    // Prefer a ready fire action; otherwise spend the turn acquiring aim.
                     let fire = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::UseExistingAim { .. }));
                     let aim  = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::EntityAim { .. }));
                     if let Some(&(action, _)) = fire.or(aim) {
@@ -430,16 +411,15 @@ impl ActorAI {
             }
         }
 
-        // No attack available — move or hold.
-        match tactic {
+        // No attack available — pursue or hold.
+        match self.profile.combat_tactic() {
             CombatTactic::Pursue => {
                 let dest = entities.iter().find(|e| e.id == target_id)
-                    .map(|t| t.center())
-                    .unwrap_or(last_seen);
+                    .map(|t| t.center()).unwrap_or(last_seen);
                 self.navigate_to(entity, dest, map, entities, 1)
             },
             CombatTactic::Hold => None,
-            CombatTactic::Flee => unreachable!(),
+            CombatTactic::Flee => unreachable!("Flee is routed to Decision::Flee"),
         }
     }
 
@@ -530,14 +510,25 @@ impl ActorAI {
 // Helpers
 // ---------------------------------------------------------------------------
 
-#[derive(Copy, Clone)]
-enum AlertSnapshot {
-    Unaware,
-    Suspicious { origin: Point },
-    Alert      { last_known: Point, search: SearchBehavior },
-    Combat     { target_id: usize, last_seen: Point },
+/// A resolved AI decision: produced by `decide`, carried out by `execute`.
+#[derive(Clone, Copy, Debug)]
+enum Decision {
+    Idle,
+    GoTo   { dest: Point, tolerance: u32 },
+    Face   { toward: Point },
+    Flee   { threat: Point },
+    Engage { target_id: usize, last_seen: Point },
 }
 
+/// Turn to face `toward` (any distance), or None if already facing it.
+fn face_intent(entity: &Entity, toward: Point) -> Option<Intent> {
+    match direction_toward(entity.position, toward) {
+        Some(dir) if entity.body.facing != dir => Some(turn_intent(dir)),
+        _ => None,
+    }
+}
+
+/// Direction from an adjacent `to`; debug-asserts adjacency.
 fn direction_to(from: Point, to: Point) -> Option<Direction> {
     match (to.x - from.x, to.y - from.y) {
         ( 0, -1) => Some(Direction::Up),
@@ -552,6 +543,21 @@ fn direction_to(from: Point, to: Point) -> Option<Direction> {
             debug_assert!(false, "non-adjacent delta ({},{}) from {:?} to {:?}", dx, dy, from, to);
             None
         }
+    }
+}
+
+/// Nearest 8-way direction pointing from `from` toward `to` (any distance).
+fn direction_toward(from: Point, to: Point) -> Option<Direction> {
+    match ((to.x - from.x).signum(), (to.y - from.y).signum()) {
+        ( 0, -1) => Some(Direction::Up),
+        ( 1, -1) => Some(Direction::UpRight),
+        ( 1,  0) => Some(Direction::Right),
+        ( 1,  1) => Some(Direction::DownRight),
+        ( 0,  1) => Some(Direction::Down),
+        (-1,  1) => Some(Direction::DownLeft),
+        (-1,  0) => Some(Direction::Left),
+        (-1, -1) => Some(Direction::UpLeft),
+        _        => None,
     }
 }
 
