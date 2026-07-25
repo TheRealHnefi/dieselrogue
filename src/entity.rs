@@ -195,7 +195,12 @@ impl Entity {
         self.clear_pawns(map);
         self.position = pos;
         self.create_pawns(map);
-        self.update_view(map);
+        // Player visible tiles must update immediately for correct rendering.
+        // Non-player viewsheds are refreshed at end of turn by the parallel
+        // viewshed pass in resolve_status_effects — no need to do it inline.
+        if self.kind == EntityKind::Player {
+            self.update_view(map);
+        }
     }
 
     pub fn center(&self) -> Point {
