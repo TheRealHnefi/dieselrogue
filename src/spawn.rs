@@ -1,5 +1,5 @@
 use rltk::{Point, RandomNumberGenerator};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE, AI, ActorAI, Profile};
 use crate::item::MakeItem;
 
@@ -748,7 +748,9 @@ impl World {
         println!("== Done debugging spawns ==");
 
         //self.spawn_depthmarkers(spawn_map);
-        self.spawn_interesting_markers(spawn_map);
+        //self.spawn_interesting_markers(spawn_map);
+        self.spawn_waypoint_markers();
+        self.spawn_route_path_markers();
     }
 
     /// Used for debugging spawn functionality
@@ -796,6 +798,50 @@ impl World {
                 let pos = self.map.idx_pos(*tile);
                 let _ = self.add_item(pos, Item::knife());
             }
+        }
+    }
+
+    /// Debug: drop one item type on every patrol waypoint. Pair with
+    /// [`World::spawn_route_path_markers`] to visually evaluate generated routes.
+    #[cfg(debug_assertions)]
+    #[allow(unused)]
+    fn spawn_waypoint_markers(&mut self) {
+        let waypoints: Vec<Point> = self.map.patrol_routes.iter().flatten().copied().collect();
+        for wp in waypoints {
+            let _ = self.add_item(wp, Item::medkit());
+        }
+    }
+
+    /// Debug: drop one item type along the flow-field path each patroller would
+    /// walk between consecutive waypoints (routes are cyclic). Waypoint tiles are
+    /// left bare for [`World::spawn_waypoint_markers`].
+    #[cfg(debug_assertions)]
+    #[allow(unused)]
+    fn spawn_route_path_markers(&mut self) {
+        let limit = self.map.width * self.map.height;
+        let mut path: Vec<Point> = Vec::new();
+        let mut seen: HashSet<usize> = HashSet::new();
+        for route in &self.map.patrol_routes {
+            for i in 0..route.len() {
+                let goal = self.map.pos_idx(route[(i + 1) % route.len()]);
+                let field = crate::build_field(goal, &self.map);
+                let mut cur = self.map.pos_idx(route[i]);
+                let mut guard = 0;
+                while cur != goal {
+                    match field.step(cur, &self.map) {
+                        Some(next) => cur = next,
+                        None => break,
+                    }
+                    guard += 1;
+                    if guard > limit { break; }
+                    if cur != goal && seen.insert(cur) {
+                        path.push(self.map.idx_pos(cur));
+                    }
+                }
+            }
+        }
+        for pos in path {
+            let _ = self.add_item(pos, Item::ammo_bullets());
         }
     }
 
