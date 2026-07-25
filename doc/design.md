@@ -73,6 +73,7 @@ Or perhaps no classes at all? Just perks?
 * Static phases:
  * Take input
  * Resolve out-of-order actions (special abilities or time manipulation)
+ * Resolve inventory actions (pick up/drop/equip)
  * Resolve melee attacks
  * Resolve ranged attacks
  * Resolve magic
