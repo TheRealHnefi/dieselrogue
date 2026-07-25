@@ -188,8 +188,10 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
             },
             VirtualKeyCode::Space |
             VirtualKeyCode::Return => {
-                let action = menu.get_action();
-                return action(state);
+                match menu.get_action() {
+                    MenuAction::Simple(action) => return action(state),
+                    MenuAction::Item(item, action) => return action(item, state)
+                }
             },
             _ => return RunState::AwaitingMenuInput
         }

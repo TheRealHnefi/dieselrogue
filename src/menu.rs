@@ -1,4 +1,4 @@
-use rltk::{VirtualKeyCode, Rltk, RGB};
+use rltk::{Rltk, RGB};
 use super::*;
 
 /**
@@ -22,7 +22,11 @@ pub trait MenuRow {
     fn get_text(&self) -> String;
 }
 
-type MenuAction = fn (&mut State) -> RunState;
+//type MenuAction = fn (&mut State) -> RunState;
+pub enum MenuAction {
+    Simple(fn (&mut State) -> RunState),
+    Item(Item, fn (Item, &mut State) -> RunState)
+}
 
 pub struct MenuPanel<T: MenuRow> {
     pub x: i32,
@@ -49,7 +53,7 @@ pub struct ItemActionRow {
 
 impl MenuRow for SystemRow {
     fn get_action(&self) -> MenuAction {
-        return self.action;
+        return MenuAction::Simple(self.action);    
     }
 
     fn get_text(&self) -> String {
@@ -57,17 +61,20 @@ impl MenuRow for SystemRow {
     }
 }
 
-fn temp_item_action(state: &mut State) -> RunState {
-    state.menu_stack.pop();
-    if state.menu_stack.is_empty() {
-        RunState::AwaitingInput;
-    }
+fn show_inventory_item_menu_action(item: Item, state: &mut State) -> RunState {
+    let menu = inventory_action_menu(item);
+    state.menu_stack.push(Box::new(menu));
+
+    return RunState::AwaitingMenuInput;
+}
+
+fn test(number: usize, state: &mut State) -> RunState {
     return RunState::AwaitingMenuInput;
 }
 
 impl MenuRow for ItemRow {
     fn get_action(&self) -> MenuAction {
-        return temp_item_action;
+        return MenuAction::Item(self.item.clone(), show_inventory_item_menu_action);
     }
 
     fn get_text(&self) -> String {
@@ -83,7 +90,7 @@ impl MenuRow for ItemActionRow {
     fn get_action(&self) -> MenuAction {
         match self.action {
             ItemAction::Throw(_) => {
-                temp_throw_action
+                MenuAction::Simple(temp_throw_action)
             }
         }
     }
@@ -139,6 +146,24 @@ pub fn item_menu(world: &World) -> MenuPanel<ItemRow> {
         x: 35,
         y: 20,
         rows: item_rows,
+        selected_row: 0
+    }
+}
+
+pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
+    let mut action_rows = vec!();
+    for inventory_action in &item.inventory_actions {
+        action_rows.push(ItemActionRow {
+            action: inventory_action.clone(),
+            item: item.clone(),
+            text: "Throw for now".to_string()
+        });
+    }
+
+    MenuPanel {
+        x: 35,
+        y: 20,
+        rows: action_rows,
         selected_row: 0
     }
 }
