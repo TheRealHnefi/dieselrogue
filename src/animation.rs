@@ -1,10 +1,23 @@
 use rltk::{RGB, Rltk, Point};
 use crate::Renderable;
 use crate::Rect;
+use crate::MAIN_CONSOLE_INDEX;
 
 pub fn shot_animation(start_pos: Point, target_pos: Point, number_of_shots: i32) -> Animation {
-    let particle_red = Particle::Background(RGB::named(rltk::RED));
-    let particle_yellow = Particle::Background(RGB::named(rltk::YELLOW));
+    let particle_red = Particle::Complete(
+        Renderable {
+            glyph: rltk::to_cp437(' '),
+            color: RGB::named(rltk::BLACK),
+            background: RGB::named(rltk::RED)
+        }
+    );
+    let particle_yellow = Particle::Complete(
+        Renderable {
+            glyph: rltk::to_cp437(' '),
+            color: RGB::named(rltk::BLACK),
+            background: RGB::named(rltk::YELLOW)
+        }
+    );
     let mut frames = vec!();
     
     for _ in 0..number_of_shots {
@@ -96,8 +109,8 @@ pub fn explosion_animation(pos: Point) -> Animation {
 
 #[derive(Clone)]
 enum Particle {
-    Complete(Renderable),
-    Background(rltk::RGB)
+    Complete(Renderable)
+    // Background-only particle makes sense, but does not work with rltk::fancy_console
 }
 
 #[derive(Clone)]
@@ -139,6 +152,7 @@ impl AnimationSystem {
     }
 
     pub fn render(&mut self, viewport: Rect, monotime: u128, context: &mut Rltk) -> bool {
+        context.set_active_console(MAIN_CONSOLE_INDEX);
         let delta_time = (monotime - self.start_time) as u32;
         self.start_time = monotime;
 
@@ -179,9 +193,7 @@ impl Animation {
 
             match particle {
                 Particle::Complete(renderable) =>
-                    context.set(screen_pos.x, screen_pos.y, renderable.color, renderable.background, renderable.glyph),
-                Particle::Background(color) =>
-                    context.set_bg(screen_pos.x, screen_pos.y, *color)
+                    context.set(screen_pos.x, screen_pos.y, renderable.color, renderable.background, renderable.glyph)
             }
         }
     }

@@ -16,8 +16,8 @@ const UI_WIDTH: usize = SCREEN_WIDTH - VIEWPORT_WIDTH - 1;
 const UI_X_OFFSET: usize = VIEWPORT_WIDTH;
 const UI_Y_OFFSET: usize = 0;
 
-const MAIN_CONSOLE_INDEX: usize = 0;
-const UI_CONSOLE_INDEX: usize = 1;
+pub const MAIN_CONSOLE_INDEX: usize = 0;
+pub const UI_CONSOLE_INDEX: usize = 1;
 
 const LOCATION_PANEL_HEIGHT: usize = 5;
 const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 8;
