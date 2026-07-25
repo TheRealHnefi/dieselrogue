@@ -637,7 +637,7 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
                         background: rltk::RGB::named(rltk::BLACK)
                     },
                     TileType::Window => Renderable {
-                        glyph: 255,
+                        glyph: 8,
                         color: rltk::RGB::named(rltk::GREEN),
                         background: rltk::RGB::named(rltk::BLACK)
                     }
