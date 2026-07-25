@@ -41,6 +41,7 @@ pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState 
 
 #[tracing::instrument(skip_all)]
 pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let b = state.bindings;
     match state.last_input.take() {
         Some(key) => match key {
             VirtualKeyCode::Left |
@@ -79,11 +80,11 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 if state.freelook { return freelook_move(state, Direction::DownLeft); }
                 return handle_move_input(&mut state.world, Direction::DownLeft, &mut state.log);
             },
-            VirtualKeyCode::Numpad5 => {
+            key if key == b.wait => {
                 return RunState::Resolve(ExecutionPhase::Instant);
             },
 
-            VirtualKeyCode::G => {
+            key if key == b.get_item => {
                 match getitem_player_intent(&mut state.world) {
                     Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
                     Err(error) => {
@@ -93,7 +94,7 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 }
             },
 
-            VirtualKeyCode::D => {
+            key if key == b.disembark => {
                 match disembark_player_intent(&mut state.world) {
                     Ok(_) => return RunState::Resolve(ExecutionPhase::Instant),
                     Err(error) => {
@@ -103,7 +104,7 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 }
             },
 
-            VirtualKeyCode::I => {
+            key if key == b.inventory => {
                 state.menu_stack.clear();
                 let maybe_menu = item_menu(&state.world);
                 match maybe_menu {
@@ -118,19 +119,19 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 }
             },
 
-            VirtualKeyCode::E => {
+            key if key == b.equipment => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Box::new(equipment_menu(&state.world)));
                 return RunState::AwaitingMenuInput;
             },
 
-            VirtualKeyCode::A => {
+            key if key == b.ability => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Box::new(ability_menu(&state.world)));
                 return RunState::AwaitingMenuInput;
             },
 
-            VirtualKeyCode::J => {
+            key if key == b.juke => {
                 let can_juke = state.world.get_player()
                     .map(|p| p.has_ability(Ability::Juke))
                     .unwrap_or(false);
@@ -141,11 +142,30 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 return RunState::AwaitingInput;
             },
 
-            VirtualKeyCode::L => {
+            key if key == b.look => {
                 if let Ok(player) = state.world.get_player() {
                     state.cursor_pos = player.position;
                 }
                 return RunState::Looking;
+            },
+
+            key if key == b.open_menu => {
+                state.menu_stack.clear();
+                state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
+                return RunState::AwaitingMenuInput;
+            },
+
+            key if key == b.freelook => {
+                state.freelook = !state.freelook;
+                if state.freelook {
+                    state.freelook_pos = state.world.get_player()
+                        .map(|p| p.center())
+                        .unwrap_or(Point {x: 0, y: 0});
+                    state.log("Freelook ON.".to_string());
+                } else {
+                    state.log("Freelook OFF.".to_string());
+                }
+                return RunState::AwaitingInput;
             },
 
             VirtualKeyCode::Key1 => {
@@ -157,25 +177,6 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
                 }
                 return RunState::AwaitingInput;
             },
-
-            VirtualKeyCode::Escape => {
-                state.menu_stack.clear();
-                state.menu_stack.push(Box::new(main_menu(state.pending_font_size, state.pending_fullscreen)));
-                return RunState::AwaitingMenuInput;
-            }
-
-            VirtualKeyCode::F => {
-                state.freelook = !state.freelook;
-                if state.freelook {
-                    state.freelook_pos = state.world.get_player()
-                        .map(|p| p.center())
-                        .unwrap_or(Point {x: 0, y: 0});
-                    state.log("Freelook ON.".to_string());
-                } else {
-                    state.log("Freelook OFF.".to_string());
-                }
-                return RunState::AwaitingInput;
-            }
 
             VirtualKeyCode::F10 => {
                 state.world.parallel_ai = !state.world.parallel_ai;
