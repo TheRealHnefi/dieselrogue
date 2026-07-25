@@ -165,6 +165,8 @@ impl World {
 
         let mut player = Entity::new_human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
+        player.body.parts[0].abilities.push(Ability::WideVision); // Head
+        player.body.update_abilities();
 
         // player.apply_status_effect(&StatusEffect::Blind(0));
         // player.apply_status_effect(&StatusEffect::AimingAtEntity(0));
