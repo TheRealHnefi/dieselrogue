@@ -15,7 +15,9 @@ pub struct Body {
 #[derive(Clone)]
 pub struct BodyPart {
     pub name: String,
-    pub slot_index: Vec<usize>
+    pub slot_index: Vec<usize>,
+    pub max_damage: u32,
+    pub damage: u32
 }
 
 #[derive(Clone)]
@@ -38,34 +40,44 @@ impl Body {
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
         body.parts.push(BodyPart {
             name: "Head".to_string(),
-            slot_index: vec!(body.item_slots.len() - 1)
+            slot_index: vec!(body.item_slots.len() - 1),
+            max_damage: 10,
+            damage: 0
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Bodywear, item: None});
         body.parts.push(BodyPart {
             name: "Torso".to_string(),
-            slot_index: vec!(body.item_slots.len() - 1)
+            slot_index: vec!(body.item_slots.len() - 1),
+            max_damage: 15,
+            damage: 0
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::PrimaryHand, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::RightArmwear, item: None});
         body.parts.push(BodyPart {
             name: "Right arm".to_string(),
-            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1)
+            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            max_damage: 8,
+            damage: 0
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::SecondaryHand, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::LeftArmwear, item: None});
         body.parts.push(BodyPart {
             name: "Left arm".to_string(),
-            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1)
+            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            max_damage: 8,
+            damage: 0
         });
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Legwear, item: None});
         body.item_slots.push(ItemSlot {slot_type: SlotType::Footwear, item: None});
         body.parts.push(BodyPart {
             name: "Legs".to_string(),
-            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1)
+            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            max_damage: 12,
+            damage: 0
         });
 
         for i in 0 .. body.item_slots.len() - 1 {

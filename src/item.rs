@@ -78,7 +78,7 @@ impl Item {
             inventory_actions: vec![equip_action, drop_action],
             equip_actions: vec!(fire_action),
             equip_slots: vec!(SlotType::PrimaryHand),
-            kind: ItemKind::Firearm {ammo: 5, max_ammo: 5},
+            kind: ItemKind::Firearm {ammo: 5, max_ammo: 5, damage: 5},
             proxy: false
         }
     }
@@ -114,7 +114,7 @@ impl Item {
             inventory_actions: vec![equip_action, drop_action],
             equip_actions: vec!(fire_action, fire_burst_action),
             equip_slots: vec!(SlotType::PrimaryHand, SlotType::SecondaryHand),
-            kind: ItemKind::Firearm {ammo: 30, max_ammo: 30},
+            kind: ItemKind::Firearm {ammo: 30, max_ammo: 30, damage: 5},
             proxy: false
         }
     }

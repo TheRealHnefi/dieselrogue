@@ -1,7 +1,4 @@
 use super::*;
-//use std::cmp::{min, max};
-//use rltk::DistanceAlg::*;
-//use rltk::Point;
 
 pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {

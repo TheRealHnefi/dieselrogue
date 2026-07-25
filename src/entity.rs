@@ -102,7 +102,15 @@ impl Entity {
         self.take_item(used_item);
         
         match &map.pawns[target_map_index] {
-            Some(pawn) => result.push(Effect::Damage{entity_id: pawn.entity_id}),
+            Some(pawn) => {
+                for part_index in 0..pawn.body.parts.len() {
+                    result.push(Effect::Damage{
+                        entity_id: pawn.entity_id,
+                        bodypart_index: part_index,
+                        raw_damage: 5
+                    });
+                }
+            }
             _ => return result
         }
     
@@ -211,14 +219,16 @@ impl Entity {
             }
         }
     
+        let shot_damage;
         match self.get_equipped_item(item_slot) {
             Some(item) => {
                 match item.kind {
-                    ItemKind::Firearm {ammo, max_ammo} => {
+                    ItemKind::Firearm {ammo, max_ammo, damage} => {
                         if ammo < 1 {
                             return result;
                         }
-                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo: max_ammo};
+                        item.kind = ItemKind::Firearm {ammo: ammo - 1, max_ammo, damage};
+                        shot_damage = damage;
                     },
                     _ => {
                         debug_assert!(false);
@@ -231,9 +241,13 @@ impl Entity {
                 return result;
             }
         }
-    
+
         match &map.pawns[target_map_index] {
-            Some(pawn) => result.push(Effect::Damage{entity_id: pawn.entity_id}),
+            Some(pawn) => result.push(Effect::Damage {
+                entity_id: pawn.entity_id,
+                bodypart_index: 1,
+                raw_damage: shot_damage
+            }),
             _ => return result
         }
         result
@@ -255,14 +269,16 @@ impl Entity {
             }
         }
     
+        let burst_damage;
         match self.get_equipped_item(item_slot) {
             Some(item) => {
                 match item.kind {
-                    ItemKind::Firearm {ammo, max_ammo} => {
+                    ItemKind::Firearm {ammo, max_ammo, damage} => {
                         if ammo < 5 {
                             return result;
                         }
-                        item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo: max_ammo};
+                        item.kind = ItemKind::Firearm {ammo: ammo - 5, max_ammo, damage};
+                        burst_damage = damage * 5;
                     },
                     _ => {
                         debug_assert!(false);
@@ -277,7 +293,11 @@ impl Entity {
         }
     
         match &map.pawns[target_map_index] {
-            Some(pawn) => result.push(Effect::Damage{entity_id: pawn.entity_id}),
+            Some(pawn) => result.push(Effect::Damage {
+                entity_id: pawn.entity_id,
+                bodypart_index: 1,
+                raw_damage: burst_damage
+            }),
             _ => return result
         }
         result
@@ -336,7 +356,11 @@ impl Entity {
             IntentData::Target(pos) => {
                 let index = map.xy_idx(pos.x, pos.y);
                 let id = map.pawns[index].as_ref().unwrap().entity_id;
-                result.push(Effect::Damage{entity_id: id})
+                result.push(Effect::Damage {
+                    entity_id: id,
+                    bodypart_index: 1,
+                    raw_damage: 1
+                });
             },
             _ => {
                 debug_assert!(false);
@@ -345,6 +369,21 @@ impl Entity {
         }
 
         result
+    }
+
+    pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: u32) -> bool {
+        self.body.parts[bodypart_index].damage += raw_damage;
+
+        println!("{} was hit in {} for {} damage, now has {} damage",
+            self.name,
+            self.body.parts[bodypart_index].name,
+            raw_damage,
+            self.body.parts[bodypart_index].damage);
+
+        if bodypart_index < 2 && self.body.parts[bodypart_index].damage >= self.body.parts[bodypart_index].max_damage {
+            return true;
+        }
+        return false;
     }
 
     pub fn kill(&mut self, map: &mut Map) {

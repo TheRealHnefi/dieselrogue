@@ -203,8 +203,10 @@ impl World {
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {
             match effect {
-                Effect::Damage{entity_id: id} => {
-                    deathlist.push(*id);
+                Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} => {
+                    if self.entities[*id].apply_damage(*part_index, *damage) {
+                        deathlist.push(*id);
+                    }
                 }
             }
         }
