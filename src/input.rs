@@ -139,50 +139,31 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                 return RunState::AwaitingInput;
             },
             VirtualKeyCode::Return => {
-                let player = state.world.get_player_mut().unwrap();
-
-                match state.action_being_used.take() {
-                    Some(action_in_use) => {
-
-                        if action_in_use.targeting == Targeting::Positional {
-
-                            match state.action_item.take() {
-                                Some(item_in_use) => {
-                                    let intent = Intent {
-                                        phase: action_in_use.phase,
-                                        data: IntentData::TargetWithInventory{item: item_in_use, target: state.cursor_pos},
-                                        action: action_in_use.action
-                                    };
-                                    player.intent = intent;
-                                },
-                                None => {
-                                    match state.action_slot.take() {
-                                        Some(slot_in_use) => {
-                                            let intent = Intent {
-                                                phase: action_in_use.phase,
-                                                data: IntentData::TargetWithEquipment{slot: slot_in_use, target: state.cursor_pos},
-                                                action: action_in_use.action
-                                            };
-                                            player.intent = intent;
-                                        },
-                                        None => {
-                                            let intent = Intent {
-                                                phase: action_in_use.phase,
-                                                data: IntentData::Target(state.cursor_pos),
-                                                action: action_in_use.action
-                                            };
-                                            player.intent = intent;
-                                        }
-                                    }
-                                }
-                            }
+                // Phase 2 of targeting: cursor position confirmed.
+                match state.pending_action.take() {
+                    Some(pending) => {
+                        if pending.item_action.targeting == Targeting::Positional {
+                            // Phase 2a: assemble the intent directly from cursor position.
+                            let data = match pending.source {
+                                Some(ActionSource::InventoryItem(item)) =>
+                                    IntentData::TargetWithInventory { item, target: state.cursor_pos },
+                                Some(ActionSource::EquippedSlot(slot)) =>
+                                    IntentData::TargetWithEquipment { slot, target: state.cursor_pos },
+                                None =>
+                                    IntentData::Target(state.cursor_pos),
+                            };
+                            state.world.get_player_mut().unwrap().intent = Intent {
+                                phase: pending.item_action.phase,
+                                data,
+                                action: pending.item_action.action,
+                            };
                             return RunState::Resolve(ExecutionPhase::Instant);
-                        }
-                        else if action_in_use.targeting == Targeting::Detailed {
+                        } else {
+                            // Phase 2b: Detailed targeting — open the bodypart menu.
+                            // action_apply_intent_to_target_bodypart will complete the intent.
                             state.menu_stack.clear();
-                            state.action_being_used = Some(action_in_use);
-                            let maybe_menu = targeting_menu(&state.world, state.cursor_pos);
-                            match maybe_menu {
+                            state.pending_action = Some(pending);
+                            match targeting_menu(&state.world, state.cursor_pos) {
                                 Some(menu) => {
                                     state.menu_stack.push(Box::new(menu));
                                     return RunState::AwaitingMenuInput;
@@ -194,7 +175,7 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                             }
                         }
                     },
-                    None => return RunState::AwaitingInput
+                    None => return RunState::AwaitingInput,
                 }
             },
             _ => {
@@ -235,7 +216,15 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
             VirtualKeyCode::Return => {
                 match menu.get_action() {
                     MenuAction::Simple(action) => return action(state),
-                    MenuAction::WithItemAction(item, itemaction, action) => return action(item, itemaction, state),
+                    // Phase 1 of targeting: store the pending action and enter cursor mode.
+                    // The flow continues in positional_targeting_input.
+                    MenuAction::WithPendingAction(pending) => {
+                        if let Ok(player) = state.world.get_player() {
+                            state.cursor_pos = player.position;
+                        }
+                        state.pending_action = Some(pending);
+                        return RunState::AwaitingPositionalTargetingInput;
+                    },
                     MenuAction::WithIntent(intent, action) => return action(intent, state),
                     MenuAction::WithItem(item, action) => return action(item, state),
                     MenuAction::WithTargetedBodypartIndex(index, action) => return action(index, state)

@@ -4,12 +4,10 @@ use std::time::Instant;
 use crate::AnimationSystem;
 use crate::World;
 use crate::GameLog;
-use crate::ItemAction;
-use crate::Item;
 use crate::Menu;
+use crate::PendingAction;
 use crate::ExecutionPhase;
 use crate::ui::*;
-use crate::components::*;
 use crate::input::*;
 use crate::Rect;
 
@@ -33,9 +31,7 @@ pub struct State {
     pub animation_system: AnimationSystem,
 
     pub menu_stack: Vec<Box<dyn Menu>>,
-    pub action_being_used: Option<ItemAction>,
-    pub action_item: Option<Item>,
-    pub action_slot: Option<SlotType>,
+    pub pending_action: Option<PendingAction>,
 
     pub turn: u32,
 
@@ -55,9 +51,7 @@ impl State {
             world: World::new(size),
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
-            action_being_used: None,
-            action_item: None,
-            action_slot: None,
+            pending_action: None,
             turn: 0,
             last_tick: Instant::now(),
             start_tick: Instant::now()
@@ -73,9 +67,7 @@ impl State {
             world: World::new_performance_test(),
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
-            action_being_used: None,
-            action_item: None,
-            action_slot: None,
+            pending_action: None,
             turn: 0,
             last_tick: Instant::now(),
             start_tick: Instant::now()
