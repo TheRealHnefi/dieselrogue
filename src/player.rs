@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode, Rltk};
 use specs::prelude::*;
-use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed};
+use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed, Map};
 use std::cmp::{min, max};
 
 pub fn try_move_player(direction: Direction, ecs: &mut World) {
@@ -9,6 +9,7 @@ pub fn try_move_player(direction: Direction, ecs: &mut World) {
     let mut players = ecs.write_storage::<Player>();
     let mut renderables = ecs.write_storage::<Renderable>();
     let mut viewsheds = ecs.write_storage::<Viewshed>();
+    let map = ecs.fetch::<Map>();
 
     let (delta_x, delta_y, glyph);
     match direction {
@@ -22,16 +23,20 @@ pub fn try_move_player(direction: Direction, ecs: &mut World) {
         Direction::UPLEFT => {delta_x = -1; delta_y = -1; glyph = rltk::to_cp437('7')},
     }
 
-    for (_player, pos, facing, renderable, viewshed) in (&mut players, &mut positions, &mut facings, &mut renderables, &mut viewsheds).join() {
+    for (_player, pos, facing, renderable, viewshed) in
+        (&mut players, &mut positions, &mut facings, &mut renderables, &mut viewsheds).join() {
         if facing.direction == direction {
-            pos.x = min(79, max(0, pos.x + delta_x));
-            pos.y = min(49, max(0, pos.y + delta_y));
+            let dest_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
+            if !map.blocked_tiles[dest_idx] {
+                pos.x = min(map.width - 1, max(0, pos.x + delta_x));
+                pos.y = min(map.height - 1, max(0, pos.y + delta_y));
+                viewshed.dirty = true;
+            }
         } else {
             facing.direction = direction;
             renderable.glyph = glyph;
+            viewshed.dirty = true;
         }
-
-        viewshed.dirty = true;
     }
 }
 

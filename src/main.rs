@@ -12,6 +12,8 @@ mod rect;
 pub use rect::*;
 mod visibility_system;
 pub use visibility_system::*;
+mod map_indexing_system;
+pub use map_indexing_system::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -28,6 +30,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Facing>();
     game_state.ecs.register::<Renderable>();
     game_state.ecs.register::<Viewshed>();
+    game_state.ecs.register::<BlocksTile>();
 
     let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();

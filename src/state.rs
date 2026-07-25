@@ -19,6 +19,8 @@ impl State {
     fn run_systems(&mut self) {
         let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
+        let mut mapindex = MapIndexingSystem {};
+        mapindex.run_now(&self.ecs);
     }
 }
 
@@ -32,7 +34,7 @@ impl GameState for State {
 
         self.run_systems();
 
-        draw_map(&self.ecs, context); // Expensive
+        draw_map(&self.ecs, context);
 
         let positions = self.ecs.read_storage::<Position>();
         let renderables = self.ecs.read_storage::<Renderable>();
