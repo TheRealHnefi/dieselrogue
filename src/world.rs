@@ -89,6 +89,19 @@ impl World {
         let _ = world.create_zombie_goon(Point {x: pos.x - 2, y: pos.y - 3}, Direction::Down, String::from("Goon C"));
         let _ = world.create_zombie_goon(Point {x: pos.x + 5, y: pos.y - 2}, Direction::Down, String::from("Goon D"));
 
+        // Two goons patrolling north-south along the road, north of the player.
+        let ns_road_x = pos.x - 1;
+        let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
+        let ns_south = Point { x: ns_road_x, y: pos.y - 40 };
+        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 15 }, Direction::Up,   String::from("Patrol NS-1"), vec![ns_north, ns_south]);
+        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 14 }, Direction::Up,   String::from("Patrol NS-2"), vec![ns_north, ns_south]);
+
+        // One goon patrolling east-west along the road, a few blocks west of the player.
+        let ew_road_y = pos.y - 1;
+        let ew_west  = Point { x: pos.x - 60, y: ew_road_y };
+        let ew_east  = Point { x: pos.x - 30, y: ew_road_y };
+        let _ = world.create_patrolling_goon(Point { x: pos.x - 30, y: ew_road_y }, Direction::Left, String::from("Patrol EW-1"), vec![ew_west, ew_east]);
+
         return world;
     }
 
@@ -175,6 +188,20 @@ impl World {
         Ok(())
     }
 
+    pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Result<(), GameError> {
+        if self.map.blocked(pos.x, pos.y) {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: format!("Position ({}, {}) is already occupied", pos.x, pos.y)
+            });
+        }
+
+        let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name, waypoints);
+        entity.create_pawns(&mut self.map);
+        self.entities.push(entity);
+
+        Ok(())
+    }
 
     pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         for x in 0..3 {
@@ -594,5 +621,56 @@ mod tests {
                 assert!(world.map.tiles[index] == TileType::Ground);
             }
         }
+    }
+
+    fn simulate_tick(world: &mut World) {
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_intent_declaration();
+        let mut phase = ExecutionPhase::Idle;
+        loop {
+            world.resolve_phase(phase, &mut log);
+            match phase.next() {
+                Some(next) => phase = next,
+                None => break,
+            }
+        }
+    }
+
+    #[test]
+    fn actors_walking_in_line() {
+        let mut world = World::new_test();
+
+        // Five goons start in a row, all facing the same direction, patrolling
+        // to a destination further along the row. Each goon is one step behind
+        // the next — they walk in single file and must not collide.
+        let y = 5;
+        let number_of_entities = 5;
+        let destination = Point { x: 20, y };
+        let waypoints = vec![destination];
+
+        for i in 0..number_of_entities {
+            let pos = Point { x: i as i32, y };
+            assert!(world.create_patrolling_goon(pos, Direction::Right, format!("{}", i), waypoints.clone()).is_ok());
+        }
+
+        for _ in 0..30 {
+            simulate_tick(&mut world);
+        }
+
+        // All entities must still be alive
+        assert_eq!(world.entities.len(), number_of_entities);
+
+        // No two entities may occupy the same tile
+        let positions: Vec<Point> = world.entities.iter().map(|e| e.position).collect();
+        for i in 0..positions.len() {
+            for j in (i + 1)..positions.len() {
+                assert_ne!(positions[i], positions[j], "entities {} and {} share a position", i, j);
+            }
+        }
+
+        // The leading entity (started furthest ahead) must have advanced toward the destination
+        let leader_start_x = (number_of_entities - 1) as i32;
+        let leader = world.entities.iter().find(|e| e.name == format!("{}", number_of_entities - 1)).unwrap();
+        assert!(leader.position.x > leader_start_x, "leader entity did not move");
     }
 }
