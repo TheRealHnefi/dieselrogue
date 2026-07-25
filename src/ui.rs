@@ -275,11 +275,21 @@ fn draw_map(map: &Map, ctx: &mut Rltk) {
 }
 
 pub fn draw_entities(world: &World, context: &mut Rltk) {
-    for i in 0..world.extant_entities {
-        let pos = world.positions[i];
-        let renderable = world.renderables[i];
-        context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
+    match &world.player {
+        Some(player) => {
+            draw_entity(player, context);
+        },
+        None => ()
     }
+    for entity in &world.entities {
+        draw_entity(entity, context);
+    }
+}
+
+fn draw_entity(entity: &Entity, context: &mut Rltk) {
+    let pos = entity.position;
+    let renderable = entity.renderable;
+    context.set(pos.x, pos.y, renderable.color, renderable.background, renderable.glyph);
 }
 
 // pub fn draw_menu(state: &State, context: &mut Rltk) {

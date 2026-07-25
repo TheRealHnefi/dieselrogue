@@ -42,12 +42,20 @@ pub use game_log::*;
 // pub use rex_assets::*;
 
 #[derive(Debug)]
+pub enum Error {
+    Generic,
+    BadPrecondition
+}
+
+#[derive(Debug)]
 pub struct GameError {
+    pub error: Error,
+    pub message: &'static str
 }
 
 impl From<()> for GameError {
     fn from(_err: ()) -> Self {
-        GameError {}
+        GameError {error: Error::Generic, message: ""}
     }
 }
 
