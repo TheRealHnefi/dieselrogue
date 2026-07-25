@@ -321,7 +321,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     // Abilities panel
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + 2;
     const ABILITY_TYPE_X: usize = UI_X_OFFSET + LABEL_OFFSET + 20;
-    let mut abilities: Vec<&Ability> = player.body.abilities.iter().collect();
+    let mut abilities: Vec<&Ability> = player.body.abilities.iter().filter(|a| !a.is_innate()).collect();
     abilities.sort_by_key(|a| !a.is_passive()); // passives first
     for ability in abilities {
         let (name_color, type_label) = if ability.is_passive() {
