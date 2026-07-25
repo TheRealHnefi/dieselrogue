@@ -85,10 +85,11 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for SlowSpanLayer {
     }
 }
 
-fn parse_args() -> (u64, bool) {
+fn parse_args() -> (u64, bool, bool) {
     let args: Vec<String> = std::env::args().collect();
     let mut seed: Option<u64> = None;
     let mut skip_intro = false;
+    let mut ai_test = false;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -105,6 +106,7 @@ fn parse_args() -> (u64, bool) {
                 }
             },
             "--skip-intro" => skip_intro = true,
+            "--ai-test" => ai_test = true,
             _ => {}
         }
         i += 1;
@@ -115,7 +117,7 @@ fn parse_args() -> (u64, bool) {
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(1)
     });
-    (resolved_seed, skip_intro)
+    (resolved_seed, skip_intro, ai_test)
 }
 
 fn main() -> rltk::BError {
@@ -154,10 +156,12 @@ fn main() -> rltk::BError {
 
     let context = builder.build()?;
 
-    let (seed, skip_intro) = parse_args();
+    let (seed, skip_intro, ai_test) = parse_args();
     println!("RNG seed: {}", seed);
 
-    let mut state = if skip_intro {
+    let mut state = if ai_test {
+        State::new_ai_test_state(seed, settings.bindings)
+    } else if skip_intro {
         State::new_game_state(25, seed, true, settings.bindings)
     } else {
         State::new_welcome_state(seed, settings.bindings)

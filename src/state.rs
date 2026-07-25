@@ -147,6 +147,38 @@ impl State {
         }
     }
 
+    /// State wrapping the AI-behaviour testbed map (see [`World::new_ai_testbed`]).
+    /// Skips the intro and drops straight into gameplay on the small 3×3 map.
+    pub fn new_ai_test_state(seed: u64, bindings: Bindings) -> Self {
+        Self {
+            run_state: RunState::AwaitingInput,
+            welcome_selected: 0,
+            seed,
+            bindings,
+            menu_return_state: RunState::AwaitingInput,
+            help_return_state: RunState::AwaitingInput,
+            cursor_pos: Point {x: 0, y:0},
+            log: GameLog {entries: vec![]},
+            world: World::new_ai_testbed(),
+            animation_system: AnimationSystem::new(),
+            menu_stack: vec![],
+            pending_action: None,
+            level_up_options: vec![],
+            level_up_selected: 0,
+            entity_targets: vec![],
+            entity_target_index: 0,
+            turn: 0,
+            freelook: false,
+            freelook_pos: Point {x: 0, y: 0},
+            rex_assets: RexAssets::new(),
+            pending_font_size: None,
+            pending_fullscreen: None,
+            last_input: None,
+            strafe_held: false,
+            start_tick: Instant::now()
+        }
+    }
+
     pub fn log(&mut self, message: String) {
         self.log.log(message);
     }

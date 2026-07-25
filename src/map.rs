@@ -371,7 +371,7 @@ impl Map {
 
     /// Nearest walkable-terrain tile to `p` via an expanding ring search. Falls
     /// back to the clamped point if none is found.
-    fn snap_to_walkable(&self, p: Point) -> Point {
+    pub fn snap_to_walkable(&self, p: Point) -> Point {
         let px = p.x.clamp(1, self.width as i32 - 1);
         let py = p.y.clamp(1, self.height as i32 - 1);
         if self.terrain_passable(px, py) {
