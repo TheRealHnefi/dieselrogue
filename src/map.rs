@@ -138,7 +138,11 @@ impl Map {
           items: vec![None; tile_count]
         };
 
-        let blocks = generate_block_grid(size_in_blocks);
+        let mut generated_blocks = generate_block_grid(size_in_blocks);
+        while generated_blocks.is_none() {
+          generated_blocks = generate_block_grid(size_in_blocks)
+        }
+        let blocks = generated_blocks.unwrap();
         for i in 0..size_in_blocks {
           for j in 0..size_in_blocks {
             for x in 0..BLOCK_SIZE {
