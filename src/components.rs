@@ -1,6 +1,6 @@
 use rltk::Point;
 use std::hash::{Hash, Hasher};
-use crate::{Animation, Item};
+use crate::{Animation, GameError, Item, Error};
 
 pub const INVENTORY_MAX: usize = 20;
 
@@ -99,6 +99,22 @@ impl Direction {
             Direction::DownLeft  => (-1,  1),
             Direction::Left      => (-1,  0),
             Direction::UpLeft    => (-1, -1),
+        }
+    }
+
+    pub fn delta_to_dir(dx: i32, dy: i32) -> Result<Direction, GameError> {
+        match (dx, dy) {
+            ( 0, -1) => Ok(Direction::Up),
+            ( 1, -1) => Ok(Direction::UpRight),
+            ( 1,  0) => Ok(Direction::Right),
+            ( 1,  1) => Ok(Direction::DownRight),
+            ( 0,  1) => Ok(Direction::Down),
+            (-1,  1) => Ok(Direction::DownLeft),
+            (-1,  0) => Ok(Direction::Left),
+            (-1, -1) => Ok(Direction::UpLeft),
+            _ => Err(GameError {
+                error: Error::UnsolvableSituation,
+                message: format!("Bad delta: ({},{})", dx, dy)})
         }
     }
 

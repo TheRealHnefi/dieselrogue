@@ -282,34 +282,87 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
         middle_area,
         outer_area);
 
-    {
+    let mut enemy_count = 0;
+    // Naive guard placement for testing
+    if false {
         for _ in 0..(inner_area / ENEMY_SPARSITY) {
             let pos = find_enemy_placement(world, spawn_map, center_zone_radius, inner_zone_radius, rng);
             let result = world.create_light_guard(center + pos, Direction::Up);
-            if result.is_err() {
-                println!("Error placing guard");
+            match result {
+                Ok(_) => enemy_count += 1,
+                Err(e) => print!("{}", e.message)
             }
         }
         for _ in 0..(middle_area / ENEMY_SPARSITY) {
             let pos = find_enemy_placement(world, spawn_map, inner_zone_radius, middle_zone_radius, rng);
             let result = world.create_medium_guard(center + pos, Direction::Up);
-            if result.is_err() {
-                println!("Error placing guard");
+            match result {
+                Ok(_) => enemy_count += 1,
+                Err(e) => print!("{}", e.message)
             }
         }
         for _ in 0..(outer_area / ENEMY_SPARSITY) {
             let pos = find_enemy_placement(world, spawn_map, middle_zone_radius, outer_zone_radius, rng);
             let result = world.create_heavy_guard(center + pos, Direction::Up);
-            if result.is_err() {
-                println!("Error placing guard");
+            match result {
+                Ok(_) => enemy_count += 1,
+                Err(e) => print!("{}", e.message)
             }
         }
     }
+
+    {
+        let placement = find_interesting_guard_positions(world, spawn_map, rng);
+        for (pos, facing) in placement {
+            let result = world.create_light_guard(pos, facing);
+            match result {
+                Ok(_) => enemy_count += 1,
+                Err(e) => print!("{}", e.message)
+            }
+        }
+    }
+
+    println!("Placed {} enemies", enemy_count);
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/// Places where guards should stand to guard interesting doorways
+fn find_interesting_guard_positions(
+    world: &mut World,
+    spawn_map: &SpawnMap,
+    rng: &mut RandomNumberGenerator
+) -> Vec<(Point, Direction)> {
+    let mut result: Vec<(Point, Direction)> = Vec::new();
+
+    let interesting_doors: Vec<&RegionBoundary> = spawn_map.boundaries.iter().filter(|b| spawn_map.regions[b.region_a].is_interesting || spawn_map.regions[b.region_b].is_interesting).collect();
+
+    for door in interesting_doors {
+        let middle_idx = door.door_tiles[door.door_tiles.len() / 2];
+        let candidate_positions = world.map.get_available_exits(middle_idx);
+        let position_idx = candidate_positions[rng.range(0, candidate_positions.len())].0; // The first value of the tuple is the tile index
+        let pos = world.map.idx_pos(position_idx);
+        let door_pos = world.map.idx_pos(middle_idx);
+        // Face away from door being guarded
+        let mut facing = Direction::Up;
+        match Direction::delta_to_dir(pos.x - door_pos.x, pos.y - door_pos.y) {
+            Ok(dir) => facing = dir,
+            Err(e) => println!("Error when placing guard by door: {}", e.message)
+        }
+        // If looking into a wall, face door instead
+        let (d_pos_x, d_pos_y) = facing.delta_pos();
+        if world.map.get_tile(pos.x + d_pos_x, pos.y + d_pos_y) == TileType::Wall {
+            match Direction::delta_to_dir(door_pos.x - pos.x, door_pos.y - pos.y) {
+                Ok(dir) => facing = dir,
+                Err(e) => println!("Error when placing guard by door: {}", e.message)
+            }
+        }
+        result.push((pos, facing))
+    }
+    result
+}
 
 fn find_enemy_placement(
     world: &mut World,
