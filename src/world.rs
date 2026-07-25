@@ -135,12 +135,11 @@ impl World {
         assert!(world.create_forward_goon(Point { x: pos.x, y: pos.y + 2 }, Direction::Left,  String::from("Walker")).is_ok());
 
         // Two goons patrolling north-south along the road, north of the player.
-        // TODO: This is often slow because of badly coded AI. Fix later.
-        // let ns_road_x = pos.x - 1;
-        // let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
-        // let ns_south = Point { x: ns_road_x, y: pos.y - 40 };
-        // let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 15 }, Direction::Up,   String::from("Patrol NS-1"), vec![ns_north, ns_south]);
-        // let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 14 }, Direction::Up,   String::from("Patrol NS-2"), vec![ns_north, ns_south]);
+        let ns_road_x = pos.x - 1;
+        let ns_north = Point { x: ns_road_x, y: pos.y - 70 };
+        let ns_south = Point { x: ns_road_x, y: pos.y - 40 };
+        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 15 }, Direction::Up,   String::from("Patrol NS-1"), vec![ns_north, ns_south]);
+        let _ = world.create_patrolling_goon(Point { x: ns_road_x, y: pos.y - 14 }, Direction::Up,   String::from("Patrol NS-2"), vec![ns_north, ns_south]);
 
         // One goon patrolling east-west along the road, a few blocks west of the player.
         let ew_road_y = pos.y - 1;

@@ -50,6 +50,8 @@ mod settings;
 pub use settings::*;
 mod rex_assets;
 pub use rex_assets::*;
+mod pathfinding;
+pub use pathfinding::*;
 
 use std::time::Instant;
 use tracing::{span, Subscriber};

@@ -1,5 +1,6 @@
 use rltk::Point;
 use crate::Map;
+use crate::navigate;
 use crate::Entity;
 use crate::EntityKind;
 use crate::util::adjacent;
@@ -422,14 +423,8 @@ impl ActorAI {
         if needs_repath {
             self.path_target = Some(dest_idx);
             let from_idx = map.pos_idx(entity.position);
-            let path = rltk::a_star_search(from_idx, dest_idx, map);
-            self.current_path = if path.success {
-                let mut steps: Vec<usize> = path.steps.iter().rev().cloned().collect();
-                steps.pop(); // remove starting position
-                steps
-            } else {
-                vec![]
-            };
+            let path = navigate(from_idx, dest_idx, map);
+            self.current_path = path.steps.into_iter().rev().collect();
         }
 
         let next_pos = self.current_path.last().map(|&i| map.idx_pos(i))?;
