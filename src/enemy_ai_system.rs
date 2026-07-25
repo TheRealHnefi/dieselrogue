@@ -40,8 +40,15 @@ impl<'a> System<'a> for EnemyAI {
                     &mut *map
                 );                
                 if path.success {
-                    let step_x = path.steps[1] as i32 % map.width;
-                    let step_y = path.steps[1] as i32 / map.width;
+                    let step_x;
+                    let step_y;
+                    if path.steps.len() > 1 {
+                        step_x = path.steps[1] as i32 % map.width;
+                        step_y = path.steps[1] as i32 / map.width;
+                    } else {
+                        step_x = path.steps[0] as i32 % map.width;
+                        step_y = path.steps[0] as i32 / map.width;
+                    }
 
                     let mut did_turn = false;
 
