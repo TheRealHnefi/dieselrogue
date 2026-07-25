@@ -38,6 +38,8 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Renderable>();
     game_state.ecs.register::<Viewshed>();
     game_state.ecs.register::<BlocksTile>();
+    game_state.ecs.register::<GettableItem>();
+    game_state.ecs.register::<GettingItem>();
     game_state.ecs.register::<HumanoidBody>();
 
     let map = Map::new_map_rooms_and_corridors();
@@ -86,6 +88,21 @@ fn main() -> rltk::BError {
         .with(Facing {direction: Direction::UP})
         .with(HumanoidBody::new(20))
         .build();
+
+        let (gun_x, gun_y) = map.rooms[2].center();
+        game_state.ecs
+            .create_entity()
+            .with(Position {
+                x: gun_x,
+                y: gun_y
+            })
+            .with(Renderable {
+                glyph: 169,
+                color: rltk::RGB::named(rltk::BLUE),
+                background: rltk::RGB::named(rltk::BLACK)
+            })
+            .with(GettableItem {})
+            .build();
 
     game_state.ecs.insert(map);
     game_state.ecs.insert(RunState::PreRun);
