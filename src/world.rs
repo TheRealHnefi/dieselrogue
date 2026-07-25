@@ -68,7 +68,13 @@ impl World {
         if self.player.is_some() {
             return Err(GameError {
                 error: Error::BadPrecondition,
-                message: "Tried to create player, but one already exists"
+                message: String::from("Tried to create player, but one already exists")
+            });
+        }
+        if self.map.blocked(pos.x, pos.y) {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: format!("Tried to create player at {},{}, but position is occupied", pos.x, pos.y)
             });
         }
 
@@ -80,12 +86,21 @@ impl World {
             facing: facing
         };
 
+        let index = self.map.xy_idx(pos.x, pos.y);
+        self.map.pawns[index] = Some(player.create_pawn());
         self.player = Some(player);
 
         Ok(())
     }
 
     pub fn create_entity(&mut self, pos: Point, facing: Facing, name: String) -> Result<(), GameError> {
+        if self.map.blocked(pos.x, pos.y) {
+            return Err(GameError {
+                error: Error::BadPrecondition,
+                message: format!("Tried to create entity at {},{}, but position is occupied", pos.x, pos.y)
+            });
+        }
+
         let entity = Entity {
             position: pos,
             renderable: Renderable::new_glyph('5'),
@@ -94,6 +109,8 @@ impl World {
             facing: facing
         };
 
+        let index = self.map.xy_idx(pos.x, pos.y);
+        self.map.pawns[index] = Some(entity.create_pawn());
         self.entities.push(entity);
 
         Ok(())
@@ -118,7 +135,7 @@ mod tests {
     fn create_player() {
         let mut world = World::new();
 
-        let pos = Point {x: 0, y: 0};
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Facing {direction: Direction::Up};
         let name = "Player";
         let result = world.create_player(pos, facing, String::from(name));
@@ -131,15 +148,74 @@ mod tests {
     }
 
     #[test]
+    fn create_two_players_fails() {
+        let mut world = World::new();
+
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let facing = Facing {direction: Direction::Up};
+        let name = "Player";
+        let _res = world.create_player(pos, facing, String::from(name));
+        let result = world.create_player(Point {x: pos.x+1, y: pos.y+1}, facing, String::from("P2"));
+
+        assert!(result.is_err());
+        world = assert_worldsize(world, 1);
+        let player = world.player.unwrap();
+        assert_eq!(player.position, pos);
+        assert_eq!(player.name, name);
+    }
+
+    #[test]
     fn create_entity() {
         let mut world = World::new();
 
-        let pos = Point {x: 0, y: 0};
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
         let facing = Facing {direction: Direction::Up};
         let name = "Entity";
         let result = world.create_entity(pos, facing, String::from(name));
 
         assert!(result.is_ok());
+        world = assert_worldsize(world, 1);
+        assert_eq!(world.entities[0].position, pos);
+        assert_eq!(world.entities[0].name, name);
+    }
+
+    #[test]
+    fn create_two_entities() {
+        let mut world = World::new();
+
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let facing = Facing {direction: Direction::Up};
+        let name = "Entity";
+        let result1 = world.create_entity(pos, facing, String::from(name));
+
+        let pos2 = Point {x: pos.x + 1, y: pos.y + 1};
+        let name2 = "Entity2";
+        let result2 = world.create_entity(pos2, facing, String::from(name2));
+
+        assert!(result1.is_ok());
+        assert!(result2.is_ok());
+        world = assert_worldsize(world, 2);
+        assert_eq!(world.entities[0].position, pos);
+        assert_eq!(world.entities[0].name, name);
+        assert_eq!(world.entities[1].position, pos2);
+        assert_eq!(world.entities[1].name, name2);
+    }
+
+    #[test]
+    fn create_two_entities_on_same_pos_fails() {
+        let mut world = World::new();
+
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let facing = Facing {direction: Direction::Up};
+        let name = "Entity";
+        let result1 = world.create_entity(pos, facing, String::from(name));
+
+        let pos2 = pos;
+        let name2 = "Entity2";
+        let result2 = world.create_entity(pos2, facing, String::from(name2));
+
+        assert!(result1.is_ok());
+        assert!(result2.is_err());
         world = assert_worldsize(world, 1);
         assert_eq!(world.entities[0].position, pos);
         assert_eq!(world.entities[0].name, name);
