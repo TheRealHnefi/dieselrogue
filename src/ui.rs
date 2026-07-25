@@ -1,6 +1,6 @@
 use rltk::{RGB, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size};
+use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size, RunState};
 use std::cmp::max;
 
 pub fn draw_ui(state: &mut State, context: &mut Rltk) {
@@ -35,7 +35,7 @@ pub fn draw_ui(state: &mut State, context: &mut Rltk) {
             for item in &inv.items {
                 let name = names.get(*item);
                 assert!(name.is_some(), "Item name expected but not found");
-                context.print(50, y, &name.unwrap().value);
+                context.print(60, y, &name.unwrap().value);
                 y += 1;
             }
         },
@@ -89,6 +89,8 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
         }
     }
     if !tooltip.is_empty() {
+        let run_state = ecs.fetch::<RunState>();
+
         let mut width: i32 = 0;
         for s in tooltip.iter() {
             if width < s.len() as i32 {
@@ -97,10 +99,24 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
         }
         width += 3;
 
+        let mut action_list: Vec<String> = Vec::new();
+        action_list.push("Shoot".to_string());
+        action_list.push("Throw".to_string());
+        action_list.push("Inspect".to_string());
+
+        let mut action_width: i32 = 0;
+        for action in action_list.iter() {
+            if action_width < action.len() as i32 {
+                action_width = action.len() as i32;
+            }
+        }
+        action_width += 3;
+        
+
         if cursor_position.x > 40 {
             let arrow_pos = Point::new(cursor_position.x - 1, cursor_position.y);
             let left_x = cursor_position.x - width;
-            let mut y = cursor_position.y + 1;
+            let mut y = cursor_position.y;
 
             context.draw_box(left_x - 1, y - 1, width -1, tooltip.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
@@ -109,6 +125,15 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
                 y += 1;
             }
             context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &">".to_string());
+
+            if *run_state == RunState::TargetingInput {
+                context.draw_box(left_x - action_width - 1, cursor_position.y, action_width, action_list.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+                y = cursor_position.y + 1;
+                for action in action_list.iter() {
+                    context.print_color(left_x - action_width, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), action);
+                    y += 1;
+                }
+            }
         } else {
             let arrow_pos = Point::new(cursor_position.x + 1, cursor_position.y);
             let left_x = cursor_position.x + 3;
@@ -121,6 +146,15 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
                 y += 1;
             }
             context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &"<".to_string());
+
+            if *run_state == RunState::TargetingInput {
+                context.draw_box(left_x + width - 2, cursor_position.y, action_width, action_list.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+                y = cursor_position.y + 1;
+                for action in action_list.iter() {
+                    context.print_color(left_x + width - 1, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), action);
+                    y += 1;
+                }
+            }
         }
     }
 }
