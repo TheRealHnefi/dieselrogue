@@ -21,14 +21,14 @@ pub fn try_move_player(direction: Direction, ecs: &mut World) {
 
     let (delta_x, delta_y, glyph);
     match direction {
-        Direction::UP => {delta_x = 0; delta_y = -1; glyph = rltk::to_cp437('8')},
-        Direction::UPRIGHT => {delta_x = 1; delta_y = -1; glyph = rltk::to_cp437('9')},
-        Direction::RIGHT => {delta_x = 1; delta_y = 0; glyph = rltk::to_cp437('6')},
-        Direction::DOWNRIGHT => {delta_x = 1; delta_y = 1; glyph = rltk::to_cp437('3')},
-        Direction::DOWN => {delta_x = 0; delta_y = 1; glyph = rltk::to_cp437('2')},
-        Direction::DOWNLEFT => {delta_x = -1; delta_y = 1; glyph = rltk::to_cp437('1')},
-        Direction::LEFT => {delta_x = -1; delta_y = 0; glyph = rltk::to_cp437('4')},
-        Direction::UPLEFT => {delta_x = -1; delta_y = -1; glyph = rltk::to_cp437('7')},
+        Direction::Up => {delta_x = 0; delta_y = -1; glyph = rltk::to_cp437('8')},
+        Direction::UpRight => {delta_x = 1; delta_y = -1; glyph = rltk::to_cp437('9')},
+        Direction::Right => {delta_x = 1; delta_y = 0; glyph = rltk::to_cp437('6')},
+        Direction::DownRight => {delta_x = 1; delta_y = 1; glyph = rltk::to_cp437('3')},
+        Direction::Down => {delta_x = 0; delta_y = 1; glyph = rltk::to_cp437('2')},
+        Direction::DownLeft => {delta_x = -1; delta_y = 1; glyph = rltk::to_cp437('1')},
+        Direction::Left => {delta_x = -1; delta_y = 0; glyph = rltk::to_cp437('4')},
+        Direction::UpLeft => {delta_x = -1; delta_y = -1; glyph = rltk::to_cp437('7')},
     }
 
     for (_player, pos, facing, renderable, viewshed) in

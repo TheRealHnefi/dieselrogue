@@ -53,15 +53,15 @@ impl<'a> System<'a> for EnemyAI {
                     let mut did_turn = false;
 
                     let new_direction;
-                    if pos.x - step_x == 0 && pos.y - step_y == 1 { new_direction = Direction::UP }
-                    else if pos.x - step_x == -1 && pos.y - step_y == 1 { new_direction = Direction::UPRIGHT }
-                    else if pos.x - step_x == -1 && pos.y - step_y == 0 { new_direction = Direction::RIGHT }
-                    else if pos.x - step_x == -1 && pos.y - step_y == -1 { new_direction = Direction::DOWNRIGHT }
-                    else if pos.x - step_x == 0 && pos.y - step_y == -1 { new_direction = Direction::DOWN }
-                    else if pos.x - step_x == 1 && pos.y - step_y == -1 { new_direction = Direction::DOWNLEFT }
-                    else if pos.x - step_x == 1 && pos.y - step_y == 0 { new_direction = Direction::LEFT }
-                    else if pos.x - step_x == 1 && pos.y - step_y == 1 { new_direction = Direction::UPLEFT }
-                    else { new_direction = Direction::UP }
+                    if pos.x - step_x == 0 && pos.y - step_y == 1 { new_direction = Direction::Up }
+                    else if pos.x - step_x == -1 && pos.y - step_y == 1 { new_direction = Direction::UpRight }
+                    else if pos.x - step_x == -1 && pos.y - step_y == 0 { new_direction = Direction::Right }
+                    else if pos.x - step_x == -1 && pos.y - step_y == -1 { new_direction = Direction::DownRight }
+                    else if pos.x - step_x == 0 && pos.y - step_y == -1 { new_direction = Direction::Down }
+                    else if pos.x - step_x == 1 && pos.y - step_y == -1 { new_direction = Direction::DownLeft }
+                    else if pos.x - step_x == 1 && pos.y - step_y == 0 { new_direction = Direction::Left }
+                    else if pos.x - step_x == 1 && pos.y - step_y == 1 { new_direction = Direction::UpLeft }
+                    else { new_direction = Direction::Up }
 
                     if new_direction != facing.direction {
                         facing.direction = new_direction;
@@ -69,28 +69,28 @@ impl<'a> System<'a> for EnemyAI {
                         did_turn = true;
                     }
                     match new_direction {
-                        Direction::UP => {
+                        Direction::Up => {
                             renderable.glyph = rltk::to_cp437('8');
                         },
-                        Direction::UPRIGHT => {
+                        Direction::UpRight => {
                             renderable.glyph = rltk::to_cp437('9');
                         },
-                        Direction::RIGHT => {
+                        Direction::Right => {
                             renderable.glyph = rltk::to_cp437('6');
                         },
-                        Direction::DOWNRIGHT => {
+                        Direction::DownRight => {
                             renderable.glyph = rltk::to_cp437('3');
                         },
-                        Direction::DOWN => {
+                        Direction::Down => {
                             renderable.glyph = rltk::to_cp437('2');
                         },
-                        Direction::DOWNLEFT => {
+                        Direction::DownLeft => {
                             renderable.glyph = rltk::to_cp437('1');
                         },
-                        Direction::LEFT => {
+                        Direction::Left => {
                             renderable.glyph = rltk::to_cp437('4');
                         },
-                        Direction::UPLEFT => {
+                        Direction::UpLeft => {
                             renderable.glyph = rltk::to_cp437('7');
                         }
                     }

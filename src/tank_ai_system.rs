@@ -38,22 +38,22 @@ impl<'a> System<'a> for TankAI {
                     
             if viewshed.visible_tiles.contains(&player_pos) {
                 let new_direction;
-                if pos.x - player_pos.x == 0 && pos.y - player_pos.y == 1 { new_direction = Direction::UP }
-                else if pos.x - player_pos.x <= -1 && pos.y - player_pos.y >= 1 { new_direction = Direction::UPRIGHT }
-                else if pos.x - player_pos.x <= -1 && pos.y - player_pos.y == 0 { new_direction = Direction::RIGHT }
-                else if pos.x - player_pos.x <= -1 && pos.y - player_pos.y <= -1 { new_direction = Direction::DOWNRIGHT }
-                else if pos.x - player_pos.x == 0 && pos.y - player_pos.y <= -1 { new_direction = Direction::DOWN }
-                else if pos.x - player_pos.x >= 1 && pos.y - player_pos.y <= -1 { new_direction = Direction::DOWNLEFT }
-                else if pos.x - player_pos.x >= 1 && pos.y - player_pos.y == 0 { new_direction = Direction::LEFT }
-                else if pos.x - player_pos.x >= 1 && pos.y - player_pos.y >= 1 { new_direction = Direction::UPLEFT }
-                else { new_direction = Direction::UP }
+                if pos.x - player_pos.x == 0 && pos.y - player_pos.y == 1 { new_direction = Direction::Up }
+                else if pos.x - player_pos.x <= -1 && pos.y - player_pos.y >= 1 { new_direction = Direction::UpRight }
+                else if pos.x - player_pos.x <= -1 && pos.y - player_pos.y == 0 { new_direction = Direction::Right }
+                else if pos.x - player_pos.x <= -1 && pos.y - player_pos.y <= -1 { new_direction = Direction::DownRight }
+                else if pos.x - player_pos.x == 0 && pos.y - player_pos.y <= -1 { new_direction = Direction::Down }
+                else if pos.x - player_pos.x >= 1 && pos.y - player_pos.y <= -1 { new_direction = Direction::DownLeft }
+                else if pos.x - player_pos.x >= 1 && pos.y - player_pos.y == 0 { new_direction = Direction::Left }
+                else if pos.x - player_pos.x >= 1 && pos.y - player_pos.y >= 1 { new_direction = Direction::UpLeft }
+                else { new_direction = Direction::Up }
 
                 if new_direction != facing.direction {
                     facing.direction = new_direction;
                     viewshed.dirty = true;
                 }
                 match new_direction {
-                    Direction::UP => {
+                    Direction::Up => {
                         renderable.glyphs[0] = rltk::to_cp437('╒');
                         renderable.glyphs[1] = rltk::to_cp437('│');
                         renderable.glyphs[2] = rltk::to_cp437('╕');
@@ -64,7 +64,7 @@ impl<'a> System<'a> for TankAI {
                         renderable.glyphs[7] = rltk::to_cp437('═');
                         renderable.glyphs[8] = rltk::to_cp437('╛');
                     },
-                    Direction::UPRIGHT => {
+                    Direction::UpRight => {
                         renderable.glyphs[0] = rltk::to_cp437('┌');
                         renderable.glyphs[1] = rltk::to_cp437('/');
                         renderable.glyphs[2] = rltk::to_cp437('/');
@@ -75,7 +75,7 @@ impl<'a> System<'a> for TankAI {
                         renderable.glyphs[7] = rltk::to_cp437('/');
                         renderable.glyphs[8] = rltk::to_cp437('┘');
                     },
-                    Direction::RIGHT => {
+                    Direction::Right => {
                         renderable.glyphs[0] = rltk::to_cp437('╓');
                         renderable.glyphs[1] = rltk::to_cp437('╥');
                         renderable.glyphs[2] = rltk::to_cp437('╖');
@@ -86,7 +86,7 @@ impl<'a> System<'a> for TankAI {
                         renderable.glyphs[7] = rltk::to_cp437('╨');
                         renderable.glyphs[8] = rltk::to_cp437('╜');
                     },
-                    Direction::DOWNRIGHT => {
+                    Direction::DownRight => {
                         renderable.glyphs[0] = rltk::to_cp437('/');
                         renderable.glyphs[1] = rltk::to_cp437('\\');
                         renderable.glyphs[2] = rltk::to_cp437('┐');
@@ -97,7 +97,7 @@ impl<'a> System<'a> for TankAI {
                         renderable.glyphs[7] = rltk::to_cp437('\\');
                         renderable.glyphs[8] = rltk::to_cp437('\\');
                     },
-                    Direction::DOWN => {
+                    Direction::Down => {
                         renderable.glyphs[0] = rltk::to_cp437('╒');
                         renderable.glyphs[1] = rltk::to_cp437('═');
                         renderable.glyphs[2] = rltk::to_cp437('╕');
@@ -108,7 +108,7 @@ impl<'a> System<'a> for TankAI {
                         renderable.glyphs[7] = rltk::to_cp437('│');
                         renderable.glyphs[8] = rltk::to_cp437('╛');
                     },
-                    Direction::DOWNLEFT => {
+                    Direction::DownLeft => {
                         renderable.glyphs[0] = rltk::to_cp437('┌');
                         renderable.glyphs[1] = rltk::to_cp437('/');
                         renderable.glyphs[2] = rltk::to_cp437('\\');
@@ -119,7 +119,7 @@ impl<'a> System<'a> for TankAI {
                         renderable.glyphs[7] = rltk::to_cp437('/');
                         renderable.glyphs[8] = rltk::to_cp437('┘');
                     },
-                    Direction::LEFT => {
+                    Direction::Left => {
                         renderable.glyphs[0] = rltk::to_cp437('╓');
                         renderable.glyphs[1] = rltk::to_cp437('╥');
                         renderable.glyphs[2] = rltk::to_cp437('╖');
@@ -130,7 +130,7 @@ impl<'a> System<'a> for TankAI {
                         renderable.glyphs[7] = rltk::to_cp437('╨');
                         renderable.glyphs[8] = rltk::to_cp437('╜');
                     },
-                    Direction::UPLEFT => {
+                    Direction::UpLeft => {
                         renderable.glyphs[0] = rltk::to_cp437('\\');
                         renderable.glyphs[1] = rltk::to_cp437('\\');
                         renderable.glyphs[2] = rltk::to_cp437('┐');

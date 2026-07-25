@@ -60,6 +60,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Position>();
     game_state.ecs.register::<Size>();
     game_state.ecs.register::<Direction>();
+    game_state.ecs.register::<ItemSlot>();
     game_state.ecs.register::<Facing>();
     game_state.ecs.register::<Vehicle>();
     game_state.ecs.register::<Renderable>();
@@ -68,7 +69,8 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Name>();
     game_state.ecs.register::<BlocksTile>();
     game_state.ecs.register::<Firearm>();
-    game_state.ecs.register::<GettableItem>();
+    game_state.ecs.register::<Equippable>();
+    game_state.ecs.register::<Gettable>();
     game_state.ecs.register::<GettingItem>();
     game_state.ecs.register::<Inventory>();
     game_state.ecs.register::<HumanoidBody>();
@@ -95,7 +97,7 @@ fn main() -> rltk::BError {
             range: 10,
             dirty: true
         })
-        .with(Facing {direction: Direction::UP})
+        .with(Facing {direction: Direction::Up})
         .with(HumanoidBody::new(20))
         .with(Inventory {items: EntityVec::new()})
         .with(Name {value: "Player".to_string()})
@@ -121,7 +123,7 @@ fn main() -> rltk::BError {
             range: 5,
             dirty: true
         })
-        .with(Facing {direction: Direction::UP})
+        .with(Facing {direction: Direction::Up})
         .with(BlocksTile {})
         .with(HumanoidBody::new(20))
         .with(Inventory {items: EntityVec::new()})
@@ -129,7 +131,7 @@ fn main() -> rltk::BError {
         .marked::<SimpleMarker<SerializeMarker>>()
         .build();
 
-    let (gun_x, gun_y) = map.rooms[2].center();
+    let (gun_x, gun_y) = (player_x, player_y);
     game_state.ecs
         .create_entity()
         .with(Position {
@@ -141,9 +143,33 @@ fn main() -> rltk::BError {
             color: rltk::RGB::named(rltk::BLUE),
             background: rltk::RGB::named(rltk::BLACK)
         })
-        .with(GettableItem {})
-        .with(Name {value: "Gun 1".to_string()})
+        .with(Gettable {})
+        .with(Name {value: "Tommygun".to_string()})
         .with(Firearm {range: 52})
+        .with(Equippable {
+            equipped: false,
+            slot: ItemSlot::MainWeapon
+        })
+        .marked::<SimpleMarker<SerializeMarker>>()
+        .build();
+    game_state.ecs
+        .create_entity()
+        .with(Position {
+            x: gun_x,
+            y: gun_y + 1
+        })
+        .with(Renderable {
+            glyph: 169,
+            color: rltk::RGB::named(rltk::BLUE),
+            background: rltk::RGB::named(rltk::BLACK)
+        })
+        .with(Gettable {})
+        .with(Name {value: "M1911".to_string()})
+        .with(Firearm {range: 52})
+        .with(Equippable {
+            equipped: false,
+            slot: ItemSlot::MainWeapon
+        })
         .marked::<SimpleMarker<SerializeMarker>>()
         .build();
     game_state.ecs
@@ -153,13 +179,16 @@ fn main() -> rltk::BError {
             y: gun_y
         })
         .with(Renderable {
-            glyph: 169,
+            glyph: 30,
             color: rltk::RGB::named(rltk::BLUE),
             background: rltk::RGB::named(rltk::BLACK)
         })
-        .with(GettableItem {})
-        .with(Name {value: "Gun 2".to_string()})
-        .with(Firearm {range: 52})
+        .with(Gettable {})
+        .with(Name {value: "Fedora".to_string()})
+        .with(Equippable {
+            equipped:false,
+            slot: ItemSlot::Head
+        })
         .marked::<SimpleMarker<SerializeMarker>>()
         .build();
     game_state.ecs
@@ -169,13 +198,16 @@ fn main() -> rltk::BError {
             y: gun_y
         })
         .with(Renderable {
-            glyph: 169,
+            glyph: 239,
             color: rltk::RGB::named(rltk::BLUE),
             background: rltk::RGB::named(rltk::BLACK)
         })
-        .with(GettableItem {})
-        .with(Name {value: "Gun 3".to_string()})
-        .with(Firearm {range: 52})
+        .with(Gettable {})
+        .with(Name {value: "Trenchcoat".to_string()})
+        .with(Equippable {
+            equipped: false,
+            slot: ItemSlot::Torso
+        })
         .marked::<SimpleMarker<SerializeMarker>>()
         .build();
 
@@ -209,7 +241,7 @@ fn main() -> rltk::BError {
             dirty: true
         })
         .with(BlocksTile {})
-        .with(Facing {direction: Direction::UP})
+        .with(Facing {direction: Direction::Up})
         .with(Vehicle {})
         .with(Name {value: "Tank".to_string()})
         .marked::<SimpleMarker<SerializeMarker>>()
