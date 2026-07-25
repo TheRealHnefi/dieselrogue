@@ -1120,6 +1120,7 @@ impl World {
             return !should_be_dead;
         });
 
+        // TODO: This compaction causes a bug, since AI's sometimes rely on stable entity ID's. Reconsider this approach.
         for (i, entity) in self.entities.iter_mut().enumerate() {
             entity.id = i;
         }
