@@ -123,19 +123,24 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
 pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Option<Vec<Block>> {
   println!("Generating blocks");
 
-  let corner_blocks = generate_blocks("corner");
-  let edge_blocks   = generate_blocks("edge");
+  let corner_blocks   = generate_blocks("corner");
+  let edge_blocks     = generate_blocks("edge");
   let mut base_blocks = generate_blocks("road");
   base_blocks.extend(generate_blocks("building"));
+  let middle_variants = generate_blocks("middleblock");
 
   let nc = corner_blocks.len();
   let ne = edge_blocks.len();
 
-  // Single pool: corners first, then edges, then base.
+  // Pool layout: corners | edges | base | middle.
+  // Middle blocks are excluded from regular interior cells and only placed at the center.
   let mut all_blocks: Vec<Block> = corner_blocks;
   all_blocks.extend(edge_blocks);
   all_blocks.extend(base_blocks);
+  let middle_start = all_blocks.len();
+  all_blocks.extend(middle_variants);
   let nb = all_blocks.len();
+  let n_middle = nb - middle_start;
 
   // Pre-compute pairwise compatibility for all 4 directions.
   // compat[d][a * nb + b] = is_block_valid(all_blocks[a], dirs[d], all_blocks[b])
@@ -185,7 +190,7 @@ pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Opti
     } else if is_outer_edge || on_inner_ring {
       (nc..nc + ne).collect()
     } else {
-      (nc + ne..nb).collect()
+      (nc + ne..middle_start).collect()  // base only; middle blocks excluded
     };
 
     // Pre-filter for map boundary: the block's face on the map edge must be wall-like.
@@ -198,13 +203,23 @@ pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Opti
     pool
   }).collect();
 
+  // Force the center cell to one of the loaded middle block variants.
+  // Because middle blocks have few candidates relative to other interior cells,
+  // WFC will collapse the center very early, seeding the rest of the layout.
+  let center = (size / 2) * size + (size / 2);
+  if n_middle > 0 {
+    candidates[center] = (middle_start..nb).collect();
+    println!("  Middle block variants available: {}", n_middle);
+  }
+
   if candidates.iter().any(|c| c.is_empty()) {
     println!("Block files cannot satisfy boundary constraints — giving up.");
     return None;
   }
 
   // Seed propagation from every ring cell so interior candidates are pruned before WFC starts.
-  let ring_cells: Vec<usize> = (0..n).filter(|&idx| {
+  // Include the center so its constraints radiate outward from the start.
+  let mut seeds: Vec<usize> = (0..n).filter(|&idx| {
     let x = idx % size;
     let y = idx / size;
     let on_outer = x == 0 || x == size-1 || y == 0 || y == size-1;
@@ -214,8 +229,9 @@ pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Opti
       && (x == inner_min || x == inner_max || y == inner_min || y == inner_max);
     on_outer || on_inner
   }).collect();
+  if n_middle > 0 { seeds.push(center); }
 
-  if wfc_propagate(&ring_cells, &mut candidates, size, nb, &compat).is_err() {
+  if wfc_propagate(&seeds, &mut candidates, size, nb, &compat).is_err() {
     println!("Initial propagation failed — block files may be incompatible.");
     return None;
   }
