@@ -118,7 +118,7 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: human_innate_actions(),
-            xp_value: 0
+            xp_value: 1000
         }
     }
 
@@ -441,10 +441,6 @@ impl Entity {
             }
         }
         return false;
-    }
-
-    pub fn kill(&mut self, map: &mut Map) {
-        self.clear_pawns(map);
     }
 
     pub fn apply_status_effect(&mut self, status: &StatusEffect) {
