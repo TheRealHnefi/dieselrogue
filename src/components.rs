@@ -1,3 +1,4 @@
+use rltk::Point;
 use crate::Animation;
 
 #[derive (PartialEq, Eq, Clone, Copy)]
@@ -67,6 +68,7 @@ impl Renderable {
 
 pub enum Effect {
     Damage {entity_id: usize, bodypart_index: usize, raw_damage: u32},
+    OpenDoor(Point),
     Animation(Animation)
 }
 

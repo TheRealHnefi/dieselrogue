@@ -202,6 +202,12 @@ impl World {
                         deathlist.push(*id);
                     }
                 },
+                Effect::OpenDoor(pos) => {
+                    let index = self.map.pos_idx(*pos);
+                    if self.map.tiles[index] == TileType::ClosedDoor {
+                        self.map.tiles[index] = TileType::OpenDoor;
+                    }
+                },
                 Effect::Animation(animation) => {
                     animations.push(animation.clone());
                 }
