@@ -266,6 +266,9 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
                             // Fire using the current aim status — no cursor step needed.
                             return fire_from_aim(pending, ask_bodypart, state);
                         }
+                        if let Targeting::EntityAim { max_range } = pending.item_action.targeting {
+                            return start_entity_targeting(pending, max_range, state);
+                        }
                         // Phase 1 of positional/detailed targeting: enter cursor mode.
                         // The flow continues in positional_targeting_input.
                         if let Ok(player) = state.world.get_player() {
@@ -458,6 +461,137 @@ pub fn level_up_input(state: &mut State, context: &mut Rltk) -> RunState {
         VirtualKeyCode::Escape => RunState::AwaitingInput,
         _ => RunState::AwaitingLevelUpInput,
     }
+}
+
+pub fn entity_targeting_input(state: &mut State, context: &mut Rltk) -> RunState {
+    if let Some(key) = context.key {
+        match key {
+            VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 |
+            VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 |
+            VirtualKeyCode::Numpad7 | VirtualKeyCode::Numpad9 => {
+                if !state.entity_targets.is_empty() {
+                    if state.entity_target_index == 0 {
+                        state.entity_target_index = state.entity_targets.len() - 1;
+                    } else {
+                        state.entity_target_index -= 1;
+                    }
+                    sync_entity_cursor(state);
+                }
+            },
+            VirtualKeyCode::Right | VirtualKeyCode::Numpad6 |
+            VirtualKeyCode::Down  | VirtualKeyCode::Numpad2 |
+            VirtualKeyCode::Numpad1 | VirtualKeyCode::Numpad3 => {
+                if !state.entity_targets.is_empty() {
+                    state.entity_target_index = (state.entity_target_index + 1) % state.entity_targets.len();
+                    sync_entity_cursor(state);
+                }
+            },
+            VirtualKeyCode::Return | VirtualKeyCode::Space => {
+                return confirm_entity_target(state);
+            },
+            VirtualKeyCode::Escape => {
+                state.pending_action = None;
+                return RunState::AwaitingInput;
+            },
+            _ => {}
+        }
+    }
+    RunState::AwaitingEntityTargetingInput
+}
+
+pub fn start_entity_targeting(pending: PendingAction, max_range: Option<u32>, state: &mut State) -> RunState {
+    let targets = collect_entity_targets(&state.world, max_range);
+    if targets.is_empty() {
+        state.log("No targets in range.".to_string());
+        return RunState::AwaitingInput;
+    }
+    state.entity_targets = targets;
+    state.entity_target_index = 0;
+    state.pending_action = Some(pending);
+    sync_entity_cursor(state);
+    RunState::AwaitingEntityTargetingInput
+}
+
+fn sync_entity_cursor(state: &mut State) {
+    if let Some(&entity_id) = state.entity_targets.get(state.entity_target_index) {
+        if let Some(entity) = state.world.entities.get(entity_id) {
+            let center = entity.center();
+            state.cursor_pos = center;
+        }
+    }
+}
+
+fn collect_entity_targets(world: &World, max_range: Option<u32>) -> Vec<usize> {
+    let player = match world.get_player() {
+        Ok(p) => p,
+        Err(_) => return vec![],
+    };
+    let player_id = player.id;
+    let player_center = player.center();
+
+    let mut seen = std::collections::HashSet::new();
+    let mut targets = vec![];
+
+    for (idx, slot) in world.map.pawns.iter().enumerate() {
+        let pawn = match slot { Some(p) => p, None => continue };
+        if pawn.entity_id == player_id { continue; }
+        if !world.map.visible_tiles[idx] { continue; }
+        if !seen.insert(pawn.entity_id) { continue; }
+
+        let entity = match world.entities.get(pawn.entity_id) {
+            Some(e) => e,
+            None => continue,
+        };
+
+        if let Some(range) = max_range {
+            let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_center, entity.center());
+            if dist > range as f32 { continue; }
+        }
+
+        targets.push(pawn.entity_id);
+    }
+
+    targets
+}
+
+fn confirm_entity_target(state: &mut State) -> RunState {
+    let pending = match state.pending_action.take() {
+        Some(p) => p,
+        None => return RunState::AwaitingInput,
+    };
+
+    if state.entity_targets.is_empty() {
+        state.log("No targets in range.".to_string());
+        return RunState::AwaitingInput;
+    }
+
+    let entity_id = state.entity_targets[state.entity_target_index];
+
+    let slot = match pending.source {
+        Some(ActionSource::EquippedSlot(s)) => s,
+        _ => return RunState::AwaitingInput,
+    };
+
+    let entity_center = match state.world.entities.get(entity_id) {
+        Some(e) => e.center(),
+        None => {
+            state.log("Target no longer exists.".to_string());
+            return RunState::AwaitingInput;
+        }
+    };
+
+    match state.world.get_player_mut() {
+        Ok(player) => {
+            player.intent = Intent {
+                phase: pending.item_action.phase,
+                data: IntentData::TargetWithEquipment { slot, target: entity_center },
+                action: pending.item_action.action,
+            };
+        },
+        Err(_) => return RunState::AwaitingInput,
+    }
+
+    RunState::Resolve(ExecutionPhase::Instant)
 }
 
 fn add_levelup_ability(world: &mut World, ability: Ability) {

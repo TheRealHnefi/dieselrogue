@@ -76,6 +76,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
     context.cls();
 
     let in_cursor_mode = state.run_state == RunState::AwaitingPositionalTargetingInput
+        || state.run_state == RunState::AwaitingEntityTargetingInput
         || state.run_state == RunState::Looking;
     if in_cursor_mode && blink {
         let invalid_target = state.pending_action.as_ref().map(|pa| {

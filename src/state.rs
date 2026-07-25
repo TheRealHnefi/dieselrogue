@@ -18,6 +18,7 @@ pub enum RunState {
     AwaitingInput,
     AwaitingMenuInput,
     AwaitingPositionalTargetingInput,
+    AwaitingEntityTargetingInput,
     Looking,
     AwaitingJukeInput,
     AwaitingLevelUpInput,
@@ -40,6 +41,9 @@ pub struct State {
     pub level_up_options: Vec<Ability>,
     pub level_up_selected: usize,
 
+    pub entity_targets: Vec<usize>,
+    pub entity_target_index: usize,
+
     pub turn: u32,
 
     start_tick: Instant
@@ -60,6 +64,8 @@ impl State {
             pending_action: None,
             level_up_options: vec![],
             level_up_selected: 0,
+            entity_targets: vec![],
+            entity_target_index: 0,
             turn: 0,
             start_tick: Instant::now()
         }
@@ -77,6 +83,8 @@ impl State {
             pending_action: None,
             level_up_options: vec![],
             level_up_selected: 0,
+            entity_targets: vec![],
+            entity_target_index: 0,
             turn: 0,
             start_tick: Instant::now()
         }
@@ -108,6 +116,9 @@ impl GameState for State {
             },
             RunState::AwaitingPositionalTargetingInput => {
                 self.run_state = positional_targeting_input(self, context);
+            },
+            RunState::AwaitingEntityTargetingInput => {
+                self.run_state = entity_targeting_input(self, context);
             },
             RunState::Looking => {
                 self.run_state = looking_input(self, context);

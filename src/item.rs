@@ -235,11 +235,11 @@ impl Item {
 impl Item {
     fn make_firearm(def: FirearmDef) -> Item {
         let equip_actions = match def.fire_mode {
-            FireMode::Single        => vec![Item::aim_action(def.range), Item::fire_action()],
-            FireMode::Burst         => vec![Item::aim_action(def.range), Item::fire_burst_action()],
-            FireMode::SingleAndBurst => vec![Item::aim_action(def.range), Item::fire_action(), Item::fire_burst_action()],
-            FireMode::Rocket        => vec![Item::aim_action(def.range), Item::fire_rocket_action()],
-            FireMode::Fan           => vec![Item::aim_action(def.range), Item::fan_fire_action()],
+            FireMode::Single         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action()],
+            FireMode::Burst          => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_burst_action()],
+            FireMode::SingleAndBurst => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action(), Item::fire_burst_action()],
+            FireMode::Rocket         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_rocket_action()],
+            FireMode::Fan            => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fan_fire_action()],
         };
         let equip_slots = if def.two_handed {
             vec![SlotType::PrimaryHand, SlotType::SecondaryHand]
@@ -279,6 +279,9 @@ impl Item {
     }
     fn fan_fire_action() -> ItemAction {
         ItemAction { name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::fan_fire_action      }
+    }
+    fn aim_at_entity_action(range: u32) -> ItemAction {
+        ItemAction { name: "Aim at entity".to_string(),    targeting: Targeting::EntityAim { max_range: Some(range) },   phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::aim_action           }
     }
     fn prime_action() -> ItemAction {
         ItemAction { name: "Prime".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::prime_grenade_action }
