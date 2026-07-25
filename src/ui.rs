@@ -292,6 +292,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
         let cursor_color = if invalid_target { RGB::named(rltk::RED) } else { RGB::named(rltk::PINK) };
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(rltk::BLACK), rltk::to_cp437('█'));
     }
+    draw_enemy_viewsheds(state, viewport, context);
     draw_direction_overlay(&state.world.map, &state.world.entities, viewport, context, state.world.debug_mode);
 
     if state.run_state == RunState::Looking {
@@ -869,8 +870,7 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
 
 /// Draws each directional actor's facing arrow one tile ahead of it, in the direction
 /// it faces. Runs on the UI console (above the map), so the arrow alpha-blends over
-/// whatever tile it lands on. This is the shared translucent overlay layer that enemy
-/// viewsheds and precognition ghosts will also draw into.
+/// whatever tile it lands on.
 fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, debug_mode: bool) {
     const ARROW_ALPHA: f32 = 0.85;
     for x in viewport.x1..viewport.x2 {
@@ -909,6 +909,52 @@ fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, contex
                 arrow,
             );
         }
+    }
+}
+
+fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
+    if state.run_state != RunState::Looking {
+        return;
+    }
+    let Ok(player) = state.world.get_player() else { return };
+    if !player.has_ability(Ability::Precognition) {
+        return;
+    }
+
+    let map = &state.world.map;
+    let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    for entity in &state.world.entities {
+        if entity.kind != crate::entity::EntityKind::Actor {
+            continue;
+        }
+        if !map.visible_tiles[map.pos_idx(entity.center())] {
+            continue; // actor out of the player's sight — its sightline stays hidden
+        }
+        for tile in &entity.viewshed.visible_tiles {
+            seen.insert(map.pos_idx(*tile));
+        }
+    }
+
+    let tint = rltk::RGBA::from_f32(0.8, 0.8, 0.8, 0.22);
+    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    for idx in seen {
+        if !map.revealed_tiles[idx] {
+            continue; // don't paint over unexplored void
+        }
+        let pos = map.idx_pos(idx);
+        if pos.x < viewport.x1 || pos.x >= viewport.x2 || pos.y < viewport.y1 || pos.y >= viewport.y2 {
+            continue;
+        }
+        // set_fancy inverts y (see draw_direction_overlay); shift down one tile to align.
+        context.set_fancy(
+            rltk::PointF::new((pos.x - viewport.x1) as f32, (pos.y - viewport.y1 + 1) as f32),
+            0,
+            rltk::Radians(0.0),
+            rltk::PointF::new(1.0, 1.0),
+            transparent,
+            tint,
+            rltk::to_cp437(' '),
+        );
     }
 }
 
