@@ -38,6 +38,7 @@ pub enum RunState {
 pub struct State {
     pub run_state: RunState,
     pub welcome_selected: usize,
+    pub seed: u64,
     pub bindings: Bindings,
     pub menu_return_state: RunState,
     pub cursor_pos: Point,
@@ -78,10 +79,41 @@ impl State {
     /// Create new game state.
     /// # Arguments
     /// * `size` - Number of blocks that make up one side of the map.
+    /// Create a welcome-screen-only state with a dummy world.
+    /// World generation is deferred until the player starts a new game.
+    pub fn new_welcome_state(seed: u64, bindings: Bindings) -> Self {
+        Self {
+            run_state: RunState::WelcomeScreen,
+            welcome_selected: 0,
+            seed,
+            bindings,
+            menu_return_state: RunState::AwaitingInput,
+            cursor_pos: Point {x: 0, y: 0},
+            log: GameLog {entries: vec![]},
+            world: World::new_test(),
+            animation_system: AnimationSystem::new(),
+            menu_stack: vec![],
+            pending_action: None,
+            level_up_options: vec![],
+            level_up_selected: 0,
+            entity_targets: vec![],
+            entity_target_index: 0,
+            turn: 0,
+            freelook: false,
+            freelook_pos: Point {x: 0, y: 0},
+            rex_assets: RexAssets::new(),
+            pending_font_size: None,
+            pending_fullscreen: None,
+            last_input: None,
+            start_tick: Instant::now(),
+        }
+    }
+
     pub fn new_game_state(size: usize, seed: u64, skip_intro: bool, bindings: Bindings) -> Self {
         Self {
             run_state: if skip_intro { RunState::AwaitingInput } else { RunState::WelcomeScreen },
             welcome_selected: 0,
+            seed,
             bindings,
             menu_return_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
