@@ -1,5 +1,6 @@
 use super::*;
 use rltk::Point;
+use strum::IntoEnumIterator;
 use std::collections::HashMap;
 
 /// The contents of the game world itself.
@@ -169,9 +170,6 @@ impl World {
 
         let mut player = Entity::new_human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
-        player.body.parts[0].abilities.push(Ability::WideVision);   // Head
-        player.body.parts[0].abilities.push(Ability::Precognition); // Head
-        player.body.parts[4].abilities.push(Ability::Juke);         // Legs
         player.body.update_abilities();
 
         // player.apply_status_effect(&StatusEffect::Blind(0));
@@ -276,13 +274,10 @@ impl World {
     }
 
     pub fn compute_levelup_options(&self) -> Vec<Ability> {
-        let all = [
-            Ability::HumanMove, Ability::VehicleMove, Ability::PickUp,
-            Ability::WideVision, Ability::Precognition,
-            Ability::Embark, Ability::Disembark, Ability::Juke,
-        ];
         match self.get_player() {
-            Ok(player) => all.iter().cloned().filter(|a| !a.is_innate() && !player.has_ability(a.clone())).collect(),
+            Ok(player) => Ability::iter()
+                .filter(|a| !a.is_innate() && !player.has_ability(a.clone()))
+                .collect(),
             Err(_) => vec![],
         }
     }
