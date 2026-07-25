@@ -17,6 +17,7 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
   for path in paths {
     let filename = path.as_ref().unwrap().file_name().into_string().unwrap();
     if filename.contains(filter) {
+      println!("Parsing {}", filename);
       let mut block = Block {
         tiles: vec![TileType::Ground; BLOCK_SIZE * BLOCK_SIZE]
       };
@@ -40,6 +41,10 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
           },
           'W' => {
             block.tiles[index] = TileType::Wall;
+            index += 1;
+          },
+          'x' => {
+            block.tiles[index] = TileType::Window;
             index += 1;
           },
           'D' => {
@@ -67,7 +72,8 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
 pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
   println!("Generating blocks");
   let mut rng = RandomNumberGenerator::new();
-  let base_blocks = generate_blocks("road");
+  let mut base_blocks = generate_blocks("road");
+  base_blocks.extend(generate_blocks("building"));
   let edge_blocks = generate_blocks("edge");
   let corner_blocks = generate_blocks("corner");
   let mut grid: Vec<Option<Block>> = vec![None; size * size];
@@ -177,6 +183,7 @@ fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> b
     match (t1, t2) {
       (None, Some(TileType::Wall)) => true,
       (None, Some(TileType::Doorway)) => true,
+      (None, Some(TileType::Window)) => true,
       (Some(TileType::Wall), Some(TileType::Wall)) => true,
       (Some(TileType::Wall), Some(TileType::Floor)) => true,
       (Some(TileType::Wall), Some(TileType::Fence)) => true,
@@ -187,6 +194,7 @@ fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> b
       (Some(TileType::Road), Some(TileType::Road)) => true,
       (Some(TileType::Road), Some(TileType::Doorway)) => true,
       (Some(TileType::Fence), Some(TileType::Fence)) => true,
+      (Some(TileType::Window), _) => true,
       (_, _) => false
     }
   }
@@ -204,7 +212,7 @@ mod tests {
   use super::BLOCK_SIZE;
 
   fn is_tile_char(c: char) -> bool {
-    matches!(c, '.' | '_' | '-' | 'W' | 'D' | ' ')
+    matches!(c, '.' | '_' | '-' | 'W' | 'D' | ' ' | 'x' | '#')
   }
 
   #[test]
