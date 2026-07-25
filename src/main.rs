@@ -46,6 +46,8 @@ mod animation;
 pub use animation::*;
 mod actions;
 pub use actions::*;
+mod settings;
+pub use settings::*;
 
 use std::time::Instant;
 use tracing::{span, Subscriber};
@@ -85,19 +87,23 @@ fn main() -> rltk::BError {
                 .add_directive("dieselrogue=debug".parse().unwrap())))
         .with(SlowSpanLayer { threshold_ms: 5 })
         .init();
+
+    let settings = Settings::load();
+    let tile_px        = settings.font_size.tile_px();
+    let font_file      = settings.font_size.font_file();
+    let font_native_px = settings.font_size.font_native_px();
+
     let context = rltk::RltkBuilder::new()
-        .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
-        .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")
+        .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
+        .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
         .with_dimensions(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT)
         .with_title("Diesel Rogue")
         .with_resource_path("resources")
-        .with_font("rexpaint_cp437_10x10.png", 10, 10)
-        .with_tile_dimensions(10, 10)
-        //.with_fullscreen(true)
+        .with_font(font_file, font_native_px, font_native_px)
+        .with_tile_dimensions(tile_px, tile_px)
         .build()?;
 
     let mut state = State::new_game_state(25);
-    //let mut state = State::new_performance_test();
 
     state.log.entries.push("Welcome!".to_string());
 

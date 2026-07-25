@@ -11,6 +11,7 @@ use crate::ExecutionPhase;
 use crate::ui::*;
 use crate::input::*;
 use crate::Rect;
+use crate::FontSize;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -49,6 +50,9 @@ pub struct State {
     pub freelook: bool,
     pub freelook_pos: Point,
 
+    /// Font size chosen in the menu but not yet applied (requires restart).
+    pub pending_font_size: Option<FontSize>,
+
     start_tick: Instant
 }
 
@@ -72,6 +76,7 @@ impl State {
             turn: 0,
             freelook: false,
             freelook_pos: Point {x: 0, y: 0},
+            pending_font_size: None,
             start_tick: Instant::now()
         }
     }
@@ -93,6 +98,7 @@ impl State {
             turn: 0,
             freelook: false,
             freelook_pos: Point {x: 0, y: 0},
+            pending_font_size: None,
             start_tick: Instant::now()
         }
     }
