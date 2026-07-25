@@ -107,7 +107,7 @@ impl Item {
         Item::make_ammo(AmmoKind::Batteries, "Batteries", rltk::RGB::from_f32(0.20, 0.80, 0.90), 12)
     }
     pub fn ammo_fuel() -> Self {
-        Item::make_ammo(AmmoKind::Fuel,      "Fuel",      rltk::RGB::from_f32(0.90, 0.50, 0.10), 20)
+        Item::make_ammo(AmmoKind::Fuel,      "Fuel",      rltk::RGB::from_f32(0.90, 0.50, 0.10), 5)
     }
 
     // ---- Healing ----------------------------------------------------------
@@ -320,7 +320,7 @@ impl Item {
             inventory_actions: vec![Item::equip_action(), Item::reload_action(), Item::drop_action()],
             equip_actions: vec![Item::rocket_jump_action(), Item::reload_action()],
             equip_slots: vec![SlotType::Bodywear],
-            kind: ItemKind::Powered { charges: 3, max_charges: 3, ammo_kind: AmmoKind::Fuel },
+            kind: ItemKind::Powered { charges: 1, max_charges: 1, ammo_kind: AmmoKind::Fuel },
             proxy: false,
             locked: false,
             active: false,

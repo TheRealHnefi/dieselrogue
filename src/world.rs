@@ -199,6 +199,9 @@ impl World {
         world.spawn_test_patroller(center, 18, 12, "Patroller A");
         world.spawn_test_patroller(center, 32, 16, "Patroller B");
 
+        let _ = world.add_item(center, Item::jetpack());
+        let _ = world.add_item(center, Item::rocket_boots());
+
         world
     }
 
