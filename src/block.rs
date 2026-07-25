@@ -192,3 +192,89 @@ fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> b
 pub fn block_xy_idx(x: usize, y: usize) -> usize {
   (y as usize * BLOCK_SIZE) + x as usize
 }
+
+#[cfg(test)]
+mod tests {
+  use std::fs;
+  use super::BLOCK_SIZE;
+
+  fn is_tile_char(c: char) -> bool {
+    matches!(c, '.' | '_' | '-' | 'W' | 'D' | ' ')
+  }
+
+  #[test]
+  fn block_files_are_valid() {
+    let dir = fs::read_dir("resources/blocks")
+      .expect("resources/blocks directory must exist");
+
+    let mut failures: Vec<String> = vec![];
+    let mut file_count = 0;
+
+    for entry in dir {
+      let entry = entry.expect("directory entry must be readable");
+      let filename = entry.file_name().into_string()
+        .expect("filename must be valid UTF-8");
+      if !filename.ends_with(".txt") {
+        continue;
+      }
+      file_count += 1;
+
+      let data = fs::read(entry.path())
+        .unwrap_or_else(|_| panic!("block file '{}' must be readable", filename));
+
+      let unknown: Vec<char> = data.iter()
+        .map(|&b| b as char)
+        .filter(|&c| !is_tile_char(c) && !c.is_ascii_whitespace())
+        .collect();
+      if !unknown.is_empty() {
+        failures.push(format!(
+          "  {}: unrecognized characters {:?} (silently dropped by parser)",
+          filename, unknown
+        ));
+      }
+
+      let tile_count = data.iter().filter(|&&b| is_tile_char(b as char)).count();
+      let expected = BLOCK_SIZE * BLOCK_SIZE;
+      if tile_count != expected {
+        failures.push(format!(
+          "  {}: {} tiles (expected {})",
+          filename, tile_count, expected
+        ));
+      }
+
+      let lines: Vec<&[u8]> = data.split(|&b| b == b'\n')
+        .map(|l| l.strip_suffix(b"\r").unwrap_or(l))
+        .filter(|l| !l.is_empty())
+        .collect();
+      if lines.len() != BLOCK_SIZE {
+        failures.push(format!(
+          "  {}: {} lines (expected {})",
+          filename, lines.len(), BLOCK_SIZE
+        ));
+      }
+      let bad_lines: Vec<String> = lines.iter().enumerate()
+        .filter_map(|(i, line)| {
+          if line.len() != BLOCK_SIZE {
+            Some(format!("line {} is {} chars", i + 1, line.len()))
+          } else {
+            None
+          }
+        })
+        .collect();
+      if !bad_lines.is_empty() {
+        failures.push(format!(
+          "  {}: wrong line lengths: {}",
+          filename, bad_lines.join(", ")
+        ));
+      }
+    }
+
+    assert!(file_count > 0, "no .txt files found in resources/blocks");
+    assert!(
+      failures.is_empty(),
+      "{} block file(s) failed validation:\n{}",
+      failures.len(),
+      failures.join("\n")
+    );
+  }
+}
