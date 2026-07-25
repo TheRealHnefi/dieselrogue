@@ -5,22 +5,14 @@ use std::time::{Instant};
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
     AwaitingInput,
-    TargetingInput,
-    MenuInput,
-    PreRun,
-    PlayerTurn,
-    EnemyTurn,
-    Saving,
-    Loading,
-    InventoryScreen
 }
 
 pub struct State {
     pub run_state: RunState,
     pub mouse_pos: Point,
     pub log: GameLog,
-//    pub menu_stack: Vec<Menu>,
-//    pub inventory_screen_selection: i32,
+
+    pub world: World,
 
     last_tick: Instant,
 }
@@ -28,9 +20,10 @@ pub struct State {
 impl State {
     pub fn new() -> Self {
         Self {
-            run_state: RunState::PreRun,
+            run_state: RunState::AwaitingInput,
             mouse_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
+            world: World::new(),
             last_tick: Instant::now(),
         }
     }
@@ -48,7 +41,7 @@ impl GameState for State {
         context.cls();
 
         match self.run_state {
-            RunState::PreRun => {
+            RunState::AwaitingInput => {
                 self.execute();
                 self.run_state = RunState::AwaitingInput;
             },

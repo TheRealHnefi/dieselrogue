@@ -2,8 +2,12 @@ use rltk::{Point};
 
 mod state;
 pub use state::*;
-// mod components;
-// pub use components::*;
+mod world;
+pub use world::*;
+mod entity;
+pub use entity::*;
+mod components;
+pub use components::*;
 // mod player;
 // pub use player::*;
 // mod map;
@@ -61,36 +65,11 @@ fn main() -> rltk::BError {
     
     context.set_active_font(1, true);
 
-    let mut game_state = State::new();
+    let mut state = State::new();
 
-    // let player_entity = game_state.ecs
-    //     .create_entity()
-    //     .with(Position {
-    //         x: player_x,
-    //         y: player_y
-    //     })
-    //     .with(Renderable {
-    //         glyph: rltk::to_cp437('8'),
-    //         color: rltk::RGB::named(rltk::YELLOW),
-    //         background: rltk::RGB::named(rltk::BLACK)
-    //     })
-    //     .with(Player {})
-    //     .with(Viewshed {
-    //         visible_tiles: Vec::new(),
-    //         range: 10,
-    //         dirty: true
-    //     })
-    //     .with(Facing {direction: Direction::Up})
-    //     .with(HumanoidBody::new(20))
-    //     .with(Inventory {items: EntityVec::new()})
-    //     .with(Name {value: "Player".to_string()})
-    //     .marked::<SimpleMarker<SerializeMarker>>()
-    //     .build();
-    // game_state.ecs.insert(player_entity);
+    let player = state.world.create_entity();
 
-    let cursor_pos = Point{x:0, y:0};
-
-    game_state.log.entries.push("Welcome!".to_string());
+    state.log.entries.push("Welcome!".to_string());
  
-    rltk::main_loop(context, game_state)
+    rltk::main_loop(context, state)
 }
