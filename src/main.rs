@@ -17,6 +17,8 @@ mod map_indexing_system;
 pub use map_indexing_system::*;
 mod enemy_ai_system;
 pub use enemy_ai_system::*;
+mod tank_ai_system;
+pub use tank_ai_system::*;
 mod ui;
 pub use ui::*;
 mod game_log;

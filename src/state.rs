@@ -34,6 +34,8 @@ impl State {
         mapindex.run_now(&self.ecs);
         let mut enemy_ai = EnemyAI {};
         enemy_ai.run_now(&self.ecs);
+        let mut tank_ai = TankAI {};
+        tank_ai.run_now(&self.ecs);
         let mut inventory_system = InventorySystem {};
         inventory_system.run_now(&self.ecs);
     }

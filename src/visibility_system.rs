@@ -1,5 +1,5 @@
 use specs::prelude::*;
-use super::{Viewshed, Position, Map, Player, Facing, Direction};
+use super::{Viewshed, Position, Map, Player, Facing, Direction, Size};
 use rltk::{field_of_view, Point};
 
 pub struct VisibilitySystem {}
@@ -10,15 +10,22 @@ impl<'a> System<'a> for VisibilitySystem {
                         WriteStorage<'a, Viewshed>,
                         WriteStorage<'a, Position>,
                         ReadStorage<'a, Player>,
-                        ReadStorage<'a, Facing>);
+                        ReadStorage<'a, Facing>,
+                        ReadStorage<'a, Size>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut map, entities, mut viewsheds, positions, player, facings) = data;
+        let (mut map, entities, mut viewsheds, positions, player, facings, sizes) = data;
 
-        for (ent, viewshed, pos) in (&entities, &mut viewsheds, &positions).join() {
+        for (ent, viewshed, position, size) in (&entities, &mut viewsheds, &positions, (&sizes).maybe()).join() {
             if viewshed.dirty {
                 viewshed.dirty = false;
                 viewshed.visible_tiles.clear();
+                let pos = match size {
+                    Some(s) => {
+                        Point::new(position.x + s.x/2, position.y + s.y/2)
+                    }
+                    None => Point::new(position.x, position.y)
+                };
                 viewshed.visible_tiles = field_of_view(Point::new(pos.x, pos.y), viewshed.range, &*map);
 
                 let maybe_facing: Option<&Facing> = facings.get(ent);
