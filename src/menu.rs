@@ -6,7 +6,6 @@ use crate::intent::*;
 use crate::player::disembark_player_intent;
 use crate::state::*;
 use crate::World;
-use crate::actions;
 use crate::SlotType;
 use crate::{FontSize, Settings, Bindings, RebindTarget, key_to_str};
 use crate::PaperDoll;
@@ -774,11 +773,11 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
 fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunState {
     match state.world.get_player_mut() {
         Ok(player) => {
-            player.intent = Intent {
-                data: IntentData::EquippedItem(item.equip_slots[0]),
-                phase: ExecutionPhase::Inventory,
-                action: actions::unequip_item_action                
-            };
+            player.intent = build_intent(
+                &unequip_action_def(),
+                Some(ActionSource::EquippedSlot(item.equip_slots[0])),
+                Resolution::None,
+            );
             return RunState::Resolve(ExecutionPhase::Instant);
         },
         Err(_) => {
