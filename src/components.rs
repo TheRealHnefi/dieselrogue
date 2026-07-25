@@ -68,7 +68,7 @@ impl Renderable {
 }
 
 pub enum Effect {
-    Damage {entity_id: usize, bodypart_index: usize, raw_damage: u32},
+    Damage {entity_id: usize, bodypart_index: usize, raw_damage: Damage},
     OpenDoor(Point),
     DestroyWall(Point),
     Animation(Animation),
@@ -123,7 +123,74 @@ pub enum SlotType {
 
 #[derive(Clone)]
 pub enum ItemKind {
-    Firearm {ammo: u32, max_ammo: u32, damage: u32},
+    Firearm {ammo: u32, max_ammo: u32, damage: Damage},
     Misc
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub struct Damage {
+    pub physical: u32,
+    pub fire: u32
+}
+
+impl Damage {
+    pub fn new(phys: u32, fire: u32) -> Self {
+        Self {
+            physical: phys,
+            fire: fire
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct Armor {
+    pub phys_absorption: u32,
+    pub phys_resistance: f32,
+
+    pub fire_absorption: u32,
+    pub fire_resistance: f32,
+}
+
+impl Armor {
+    pub fn new(phys_abs: u32, phys_res: f32, fire_abs: u32, fire_res: f32) -> Self {
+        Self {
+            phys_absorption: phys_abs,
+            phys_resistance: phys_res,
+            fire_absorption: fire_abs,
+            fire_resistance: fire_res
+        }
+    }
+
+    pub fn zero() -> Self {
+        Self {
+            phys_absorption: 0,
+            phys_resistance: 0.0,
+            fire_absorption: 0,
+            fire_resistance: 0.0
+        }
+    }
+
+    pub fn add(&self, other: &Armor) -> Armor {
+        Armor {
+            phys_absorption: self.phys_absorption + other.phys_absorption,
+            phys_resistance: self.phys_resistance + other.phys_resistance,
+            fire_absorption: self.fire_absorption + other.fire_absorption,
+            fire_resistance: self.fire_resistance + other.fire_resistance
+        }
+    }
+
+    pub fn modify_damage(&self, damage: Damage) -> u32 {
+        fn mod_dmg(dmg: u32, abs: u32, res: f32) -> u32 {
+            if abs >= dmg
+            || res >= 1.0 {
+                return 0;
+            }
+            return ((dmg - abs) as f32 * (1.0 - res)) as u32;
+        }
+
+        let physical = mod_dmg(damage.physical, self.phys_absorption, self.phys_resistance);
+        let fire = mod_dmg(damage.fire, self.fire_absorption, self.fire_resistance);
+
+        return physical + fire;
+    }
+}

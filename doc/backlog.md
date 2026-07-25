@@ -1,3 +1,5 @@
+* Armor system
+* Noise (remember, only the noisiest noise is heard by most characters)
 * Map building
  * Prisons
  * Barracks
@@ -18,10 +20,7 @@
  * Openable
 * Animations
  * Screen culling
-* Armor system
 * Add a few non-item abilities
-* Noise (remember, only the noisiest noise is heard by most characters)
-* Destroyable walls
 * Aiming:
  * Playtest - should I really use this aiming system?
  * Make entity able to aim at other entities (not just positions)

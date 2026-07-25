@@ -222,7 +222,7 @@ impl Map {
         let y1 = index_y * BLOCK_SIZE;
         let y2 = (index_y + 1) * BLOCK_SIZE - 1;
 
-        let block_type = rng.range(2, 3);
+        let block_type = rng.range(0, 3);
         if block_type == 0 {
             self.create_block_outside_with_buildings(x1, x2, y1, y2, &mut rng);
         } else if block_type == 1 {
