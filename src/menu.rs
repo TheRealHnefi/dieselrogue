@@ -460,7 +460,7 @@ fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunSt
 fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
-            state.cursor_pos = player.body.position;
+            state.cursor_pos = player.position;
             state.action_item = Some(item);
             state.action_being_used = Some(item_action);
         },
@@ -472,7 +472,7 @@ fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut St
 fn action_target_equipment_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
-            state.cursor_pos = player.body.position;
+            state.cursor_pos = player.position;
             state.action_slot = Some(item.equip_slots[0]);
             state.action_being_used = Some(item_action);
         },

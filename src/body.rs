@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use rltk::Point;
 use crate::components::*;
 use crate::item::*;
 use crate::error::*;
@@ -7,7 +6,6 @@ use crate::Ability;
 
 #[derive(Clone)]
 pub struct Body {
-    pub position: Point,
     pub facing: Direction,
     pub inventory: Vec<Item>,
     pub parts: Vec<BodyPart>,
@@ -33,9 +31,8 @@ pub struct ItemSlot {
 
 /// Note: Slot types have to be unique.
 impl Body {
-    pub fn human_body(pos: Point, facing: Direction) -> Self {
+    pub fn human_body(facing: Direction) -> Self {
         let mut body = Body {
-            position: pos,
             facing: facing,
             inventory: vec!(),
             parts: vec!(),
@@ -107,6 +104,29 @@ impl Body {
         body.update_abilities();
 
         return body;
+    }
+
+    pub fn tank_body(facing: Direction) -> Self {
+        let mut body = Body {
+            facing: facing,
+            inventory: vec!(),
+            parts: vec!(),
+            item_slots: vec!(),
+            abilities: HashSet::new()
+        };
+
+        body.parts.push(BodyPart {
+            name: "Treads".to_string(),
+            vital: false,
+            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            max_damage: 12,
+            damage: 0,
+            abilities: vec!(Ability::Move)
+        });
+
+        body.update_abilities();
+
+        body
     }
 
     pub fn can_equip(&self, item: Item) -> bool {

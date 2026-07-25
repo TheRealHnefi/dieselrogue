@@ -28,7 +28,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
             action: Entity::resolve_turn
         };
     } else {
-        let target_pos = Point {x: player.body.position.x + delta_x, y: player.body.position.y + delta_y};
+        let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
 
         if world.map.pawns[index].is_some() {
@@ -58,7 +58,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not pick up items")});
     }
 
-    let index = world.map.xy_idx(player.body.position.x, player.body.position.y);
+    let index = world.map.xy_idx(player.position.x, player.position.y);
 
     if world.map.items[index].is_some() {
         player.intent = Intent {
