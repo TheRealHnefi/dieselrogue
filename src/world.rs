@@ -686,30 +686,50 @@ impl World {
     }
 
     fn post_resolve(&mut self, deathlist: Vec<usize>) {
-        let death_infos: Vec<(Sprite, Point, u32, u32)> = deathlist.iter().map(|&id| (
-            self.entities[id].sprite.clone(),
-            self.entities[id].position,
-            self.entities[id].size_x,
-            self.entities[id].size_y,
-        )).collect();
+        struct DeathInfo {
+            sprite: Sprite,
+            position: Point,
+            size_x: u32,
+            size_y: u32,
+            drops: Vec<Item>,
+        }
+
+        let death_infos: Vec<DeathInfo> = deathlist.iter().map(|&id| {
+            let entity = &self.entities[id];
+            let mut drops: Vec<Item> = entity.body.inventory.clone();
+            for slot in &entity.body.item_slots {
+                if let Some(item) = &slot.item {
+                    if !item.proxy {
+                        drops.push(item.clone());
+                    }
+                }
+            }
+            DeathInfo {
+                sprite: entity.sprite.clone(),
+                position: entity.position,
+                size_x: entity.size_x,
+                size_y: entity.size_y,
+                drops,
+            }
+        }).collect();
 
         for id in &deathlist {
             self.entities[*id].kill(&mut self.map);
         }
 
-        for (sprite, position, size_x, size_y) in death_infos {
-            match sprite {
+        for info in death_infos {
+            match info.sprite {
                 Sprite::Human => {
-                    let index = self.map.pos_idx(position);
+                    let index = self.map.pos_idx(info.position);
                     let mut corpse = Item::corpse();
                     corpse.id = self.next_item_id;
                     self.next_item_id += 1;
                     self.map.items[index] = Some(corpse);
                 },
                 Sprite::Tank => {
-                    for dx in 0..size_x as i32 {
-                        for dy in 0..size_y as i32 {
-                            let index = self.map.xy_idx(position.x + dx, position.y + dy);
+                    for dx in 0..info.size_x as i32 {
+                        for dy in 0..info.size_y as i32 {
+                            let index = self.map.xy_idx(info.position.x + dx, info.position.y + dy);
                             let mut rubble = Item::rubble();
                             rubble.id = self.next_item_id;
                             self.next_item_id += 1;
@@ -718,6 +738,9 @@ impl World {
                     }
                 },
                 Sprite::Door => (),
+            }
+            for item in info.drops {
+                let _ = self.add_item(info.position, item);
             }
         }
 
