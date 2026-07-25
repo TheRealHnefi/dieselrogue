@@ -1,68 +1,40 @@
-use std::collections::HashMap;
 use crate::components::*;
 use rltk::Point;
 use crate::Map;
 use crate::Item;
 use crate::Body;
+use crate::ai::*;
 
 /// Concrete type containing all data of something that acts and moves.
-#[derive(Clone)]
 pub struct Entity {
     pub id: usize,
-    pub position: Point,
     pub renderable: Renderable,
     pub name: String,
     pub intent: Intent,
-    pub facing: Facing,
-    pub inventory: Vec<Item>,
     pub body: Body,
-    pub declare_intent: fn (entity: &mut Entity, map: &Map),
-    memories: HashMap<String, Memory>
-}
-
-#[derive(Clone)]
-enum Memory {
-    Number(i32),
-    Position(Point)
+    pub ai: AI
 }
 
 impl Entity {
-    pub fn new_human(id: usize, pos: Point, facing: Facing, name: String) -> Self {
+    pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
-            position: pos,
             renderable: Renderable::new_glyph('5'),
             name: name,
             intent: idle_intent(),
-            facing: facing,
-            inventory: vec!(),
-            body: Body::human_body(),
-            declare_intent: Entity::declare_intent_noop,
-            memories: HashMap::new()
+            body: Body::human_body(pos, facing),
+            ai: AI::None
         }
     }
 
-    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Facing, name: String, waypoints: Vec<Point>) -> Self {
-        let mut memories = HashMap::new();
-        for (i, waypoint) in waypoints.iter().enumerate() {
-            memories.insert(format!("WAYPOINT {}", i), Memory::Position(*waypoint));
-        }
-        if memories.len() == 0 {
-            memories.insert(format!("WAYPOINT {}", 0), Memory::Position(pos));
-        }
-        memories.insert(format!("CURRENT WAYPOINT"), Memory::Number(0));
-
+    pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Self {
         Self {
             id: id,
-            position: pos,
             renderable: Renderable::new_glyph('5'),
             name: name,
             intent: idle_intent(),
-            facing: facing,
-            inventory: vec!(),
-            body: Body::human_body(),
-            declare_intent: Entity::declare_intent_patrolling_goon,
-            memories: memories
+            body: Body::human_body(pos, facing),
+            ai: AI::Patrolling(PatrollingAI::new(waypoints))
         }
     }
 
@@ -72,13 +44,13 @@ impl Entity {
             renderable: self.renderable,
             name: self.name.clone(),
             intent: self.intent.clone(),
-            facing: self.facing
+            body: self.body.clone()
         }
     }
 
     pub fn take_item(&mut self, item: Item) -> Option<Item> {
-        if let Some(item_index) = self.inventory.iter().position(|value| *value == item) {
-            Some(self.inventory.swap_remove(item_index))
+        if let Some(item_index) = self.body.inventory.iter().position(|value| *value == item) {
+            Some(self.body.inventory.swap_remove(item_index))
         }
         else {
             None
@@ -91,6 +63,15 @@ impl Entity {
         }
         else {
             None
+        }
+    }
+
+    pub fn declare_intent(&mut self, map: &Map) {
+        match &mut self.ai {
+            AI::Patrolling(ai) => {
+                self.intent = ai.declare_intent(&self.body, map);
+            }
+            AI::None => ()
         }
     }
 
@@ -133,7 +114,7 @@ impl Entity {
             }
         }
     
-        let target_pos = map.nearest_free_item_position(self.position).unwrap();
+        let target_pos = map.nearest_free_item_position(self.body.position).unwrap();
         let map_index = map.pos_idx(target_pos);
     
         map.items[map_index] = self.take_item(inventory_item);
@@ -142,9 +123,9 @@ impl Entity {
     }
 
     pub fn resolve_get_item(&mut self, map: &mut Map) -> Vec<Effect> {
-        let index = map.xy_idx(self.position.x, self.position.y);
+        let index = map.xy_idx(self.body.position.x, self.body.position.y);
         if map.items[index].is_some() {
-            self.inventory.push(map.items[index].take().unwrap());
+            self.body.inventory.push(map.items[index].take().unwrap());
         }
 
         vec!()
@@ -168,11 +149,11 @@ impl Entity {
                 match unequipped_result {
                     Ok(unequipped_items) => {
                         for unequipped_item in unequipped_items {
-                            self.inventory.push(unequipped_item);
+                            self.body.inventory.push(unequipped_item);
                         }
                     },
                     Err(_) => {
-                        self.inventory.push(item);
+                        self.body.inventory.push(item);
                     }
                 }
             }
@@ -198,7 +179,7 @@ impl Entity {
         }
     
         match self.body.unequip(equipped_item) {
-            Some(item) => self.inventory.push(item),
+            Some(item) => self.body.inventory.push(item),
             None => ()
         }
         
@@ -298,9 +279,9 @@ impl Entity {
         match self.intent.data {
             IntentData::Target(pos) => {
                 if !map.blocked(pos.x, pos.y) {
-                    let old_index = map.xy_idx(self.position.x, self.position.y);
+                    let old_index = map.xy_idx(self.body.position.x, self.body.position.y);
                     let new_index = map.xy_idx(pos.x, pos.y);
-                    self.position = pos;
+                    self.body.position = pos;
                     map.pawns[old_index] = None;
                     map.pawns[new_index] = Some(self.create_pawn());
                 }
@@ -317,7 +298,7 @@ impl Entity {
     pub fn resolve_turn(&mut self, map: &mut Map) -> Vec<Effect> {
         match self.intent.data {
             IntentData::Direction(direction) => {
-                self.facing.direction = direction;
+                self.body.facing = direction;
                 match direction {
                     Direction::Up => {self.renderable.glyph = rltk::to_cp437('8')},
                     Direction::UpRight => {self.renderable.glyph = rltk::to_cp437('9')},
@@ -328,7 +309,7 @@ impl Entity {
                     Direction::Left => {self.renderable.glyph = rltk::to_cp437('4')},
                     Direction::UpLeft => {self.renderable.glyph = rltk::to_cp437('7')},
                 }
-                let index = map.xy_idx(self.position.x, self.position.y);
+                let index = map.xy_idx(self.body.position.x, self.body.position.y);
                 map.pawns[index] = Some(self.create_pawn());
             },
             _ => {
@@ -359,109 +340,8 @@ impl Entity {
     }
 
     pub fn kill(&mut self, map: &mut Map) {
-        let index = map.xy_idx(self.position.x, self.position.y);
+        let index = map.xy_idx(self.body.position.x, self.body.position.y);
         map.pawns[index] = None;
-    }
-
-
-    fn declare_intent_noop(&mut self, _map: &Map) {
-        return;
-    }
-
-    fn declare_intent_patrolling_goon(&mut self, map: &Map) {
-        let waypoint_index_memory = self.memories.get("CURRENT WAYPOINT").unwrap();
-        let mut waypoint_index = match waypoint_index_memory {
-            Memory::Number(index) => *index as usize,
-            _ => return
-        };
-        let mut waypoints = vec!();
-        
-        for i in 0.. {
-            let waypoint_string = format!("WAYPOINT {}", i);
-            match self.memories.get(&waypoint_string) {
-                Some(waypoint) => waypoints.push(waypoint.clone()),
-                None => break
-            };
-        }
-        match waypoints[waypoint_index] {
-            Memory::Position(waypoint) => {
-                if waypoint == self.position {
-                    waypoint_index += 1;
-                    if waypoint_index >= waypoints.len() {
-                        waypoint_index = 0;
-                    }
-                    self.memories.insert("CURRENT WAYPOINT".to_string(), Memory::Number(waypoint_index as i32));
-                    return;
-                }
-                let path = rltk::a_star_search(
-                    map.pos_idx(self.position),
-                    map.pos_idx(waypoint),
-                    map);
-                
-                if path.success && path.steps.len() > 1 {
-                    let walk_direction;
-                    let step = map.idx_pos(path.steps[1]);
-                    if self.position.x - step.x == 0 {
-                        if self.position.y - step.y == -1 {
-                            walk_direction = Direction::Up;
-                        }
-                        else if self.position.y - step.y == 1 {
-                            walk_direction = Direction::Down;
-                        }
-                        else {
-                            panic!("X was 0, but Y is not -1 or 1");
-                        }
-                    }
-                    else if self.position.x - step.x == -1 {
-                        if self.position.y - step.y == -1 {
-                            walk_direction = Direction::UpLeft;
-                        }
-                        else if self.position.y - step.y == 1 {
-                            walk_direction = Direction::DownLeft;
-                        }
-                        else if self.position.y - step.y == 0 {
-                            walk_direction = Direction::Left;
-                        }
-                        else {
-                            panic!("X was -1, but Y is not 0, -1 or 1");
-                        }
-                    }
-                    else if self.position.x - step.x == 1 {
-                        if self.position.y - step.y == -1 {
-                            walk_direction = Direction::UpRight;
-                        }
-                        else if self.position.y - step.y == 1 {
-                            walk_direction = Direction::DownRight;
-                        }
-                        else if self.position.y - step.y == 0 {
-                            walk_direction = Direction::Right;
-                        }
-                        else {
-                            panic!("X was 1, but Y is not 0, -1 or 1");
-                        }
-                    }
-                    else {
-                        panic!("X was not 0, -1 or 1");
-                    }
-
-                    if walk_direction != self.facing.direction {
-                        self.intent = Intent {
-                            phase: IntentPhase::Movement,
-                            data: IntentData::Direction(walk_direction),
-                            action: Self::resolve_turn
-                        };
-                    }
-                    else {
-                        self.intent = Intent {
-                            phase: IntentPhase::Movement,
-                            data: IntentData::Target(step),
-                            action: Self::resolve_move
-                        };
-                    }
-                }
-            },
-            _ => return
-        }
     }
 }
 
@@ -473,5 +353,5 @@ pub struct Pawn {
     pub renderable: Renderable,
     pub name: String,
     pub intent: Intent,
-    pub facing: Facing
+    pub body: Body
 }

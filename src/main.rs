@@ -30,6 +30,8 @@ mod body;
 pub use body::*;
 mod ability;
 pub use ability::*;
+mod ai;
+pub use ai::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -49,18 +51,18 @@ fn main() -> rltk::BError {
 
     let pos = Point {x: state.world.map.rooms[0].x1+1, y: state.world.map.rooms[0].y1+1};
     let _result = state.world.create_player(pos,
-        Facing { direction: Direction::Up},
+        Direction::Up,
         String::from("Player"));
 
     let max_room_index = std::cmp::min(state.world.map.rooms.len(), 5);
 
     let _result = state.world.create_patrolling_goon(Point {x: pos.x + 1, y: pos.y+1},
-        Facing { direction: Direction::Up},
+        Direction::Up,
         String::from("Goon"),
         (0..state.world.map.rooms.len()).collect());
 
     let _result = state.world.create_patrolling_goon(Point {x: state.world.map.rooms[2].center().0, y: state.world.map.rooms[2].center().1},
-        Facing { direction: Direction::Up},
+        Direction::Up,
         String::from("Goon"),
         (0..max_room_index).collect());
     
