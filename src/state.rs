@@ -156,9 +156,6 @@ impl GameState for State {
     // Runs every frame.
     #[tracing::instrument(skip_all)]
     fn tick(&mut self, context: &mut Rltk) {
-        #[cfg(debug_assertions)]
-        puffin::GlobalProfiler::lock().new_frame();
-
         if context.key.is_some() {
             self.last_input = context.key;
         }
@@ -231,6 +228,8 @@ impl GameState for State {
 
         match self.run_state {
             RunState::DeclareIntent => {
+                #[cfg(debug_assertions)]
+                puffin::GlobalProfiler::lock().new_frame();
                 self.world.resolve_intent_declaration();
                 self.run_state = RunState::AwaitingInput;
             }
