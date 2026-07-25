@@ -52,6 +52,8 @@ pub struct State {
 
     /// Font size chosen in the menu but not yet applied (requires restart).
     pub pending_font_size: Option<FontSize>,
+    /// Fullscreen toggle chosen in the menu but not yet applied (requires restart).
+    pub pending_fullscreen: Option<bool>,
 
     start_tick: Instant
 }
@@ -77,6 +79,7 @@ impl State {
             freelook: false,
             freelook_pos: Point {x: 0, y: 0},
             pending_font_size: None,
+            pending_fullscreen: None,
             start_tick: Instant::now()
         }
     }
@@ -99,6 +102,7 @@ impl State {
             freelook: false,
             freelook_pos: Point {x: 0, y: 0},
             pending_font_size: None,
+            pending_fullscreen: None,
             start_tick: Instant::now()
         }
     }

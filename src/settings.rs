@@ -68,21 +68,29 @@ impl FontSize {
 
 pub struct Settings {
     pub font_size: FontSize,
+    pub fullscreen: bool,
 }
 
 impl Settings {
     pub fn load() -> Self {
-        let font_size = fs::read_to_string(SETTINGS_PATH)
+        let v: Option<serde_json::Value> = fs::read_to_string(SETTINGS_PATH)
             .ok()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .and_then(|s| serde_json::from_str(&s).ok());
+        let font_size = v.as_ref()
             .and_then(|v| v["font_px"].as_u64())
             .map(|px| FontSize::from_px(px as u32))
             .unwrap_or(FontSize::Medium);
-        Settings { font_size }
+        let fullscreen = v.as_ref()
+            .and_then(|v| v["fullscreen"].as_bool())
+            .unwrap_or(false);
+        Settings { font_size, fullscreen }
     }
 
     pub fn save(&self) {
-        let json = serde_json::json!({ "font_px": self.font_size.tile_px() });
+        let json = serde_json::json!({
+            "font_px":    self.font_size.tile_px(),
+            "fullscreen": self.fullscreen,
+        });
         let _ = fs::write(SETTINGS_PATH, serde_json::to_string_pretty(&json).unwrap());
     }
 }
