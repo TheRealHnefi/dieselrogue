@@ -1,7 +1,7 @@
 use super::*;
 use rltk::{Point, RandomNumberGenerator};
 use strum::IntoEnumIterator;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crate::animation::explosion_animation;
 
 pub struct ActiveItem {
@@ -309,38 +309,59 @@ impl World {
 
     #[tracing::instrument(skip_all)]
     pub fn resolve_intent_declaration(&mut self) {
-        // Step 0: Build resident flow fields only for static goals SHARED by
-        // enough unaware actors to amortize the cost. A field floods the whole
-        // map once, so it only beats per-agent A* when many agents descend the
-        // same field; a goal wanted by one agent is far cheaper via A* (which is
-        // bounded to MAX_EXPANSIONS). We therefore count demand per exact goal
-        // cell and build only the popular ones (capped per turn to bound the
-        // one-time spike). Agents whose goal has no field fall back to A* in
-        // navigate_to, so this is a safe no-op when goals are all distinct.
+        // Step 0: Maintain shared flow fields for the goals actors will navigate
+        // to — both static (patrol waypoints / guard anchors) and dynamic
+        // (investigation origins / last-known positions carried over from prior
+        // turns). A field only beats per-agent A* when many agents descend the
+        // same one, so we count demand per exact goal cell and build only goals
+        // shared by >= FIELD_DEMAND_THRESHOLD actors (beliefs derive from shared
+        // events — the same sound pos, the same sighting — so groups naturally
+        // land on identical cells). Others fall back to A* in navigate_to, so
+        // this is a safe no-op when goals are distinct. Dynamic goals get
+        // radius-bounded fields (interested agents cluster near the goal); static
+        // goals get full-map fields. Fields persist across turns and are evicted
+        // once their goal goes undemanded.
         //
-        // Built serially under &mut map before the read-only intent loop so that
-        // loop can read the fields under a shared borrow.
-        const FIELD_DEMAND_THRESHOLD: usize = 16; // min agents sharing a goal
-        const MAX_FIELD_BUILDS_PER_TURN: usize = 4; // backstop against spikes
+        // Read before this turn's stimulus is processed, so a just-changed belief
+        // simply misses its field for one turn. Built serially under &mut map so
+        // the read-only intent loop below can read fields under a shared borrow.
+        const FIELD_DEMAND_THRESHOLD:    usize = 12;   // min actors sharing a goal
+        const MAX_FIELD_BUILDS_PER_TURN: usize = 4;    // backstop against spikes
+        const DYNAMIC_FIELD_MAX_COST:    u32   = 800;  // ~80-tile investigation radius
+        const FIELD_EVICT_TTL:           u32   = 60;   // turns undemanded before eviction
+        const FIELD_CACHE_CAP:           usize = 64;   // hard backstop on resident fields
 
-        let mut demand: HashMap<usize, usize> = HashMap::new();
+        // Count demand per goal cell, tracking whether a bounded field suffices.
+        let mut demand: HashMap<usize, (usize, bool)> = HashMap::new();
         {
             let map = &self.map;
             for e in &self.entities {
                 if let AI::Actor(actor) = &e.ai {
-                    if let Some(p) = actor.static_nav_goal(map) {
-                        *demand.entry(map.pos_idx(p)).or_insert(0) += 1;
+                    if let Some((p, bounded)) = actor.nav_field_goal(map) {
+                        let entry = demand.entry(map.pos_idx(p)).or_insert((0, bounded));
+                        entry.0 += 1;
+                        entry.1 &= bounded; // any full-map (static) requester wins
                     }
                 }
             }
         }
-        // Most-demanded first; skip goals under threshold or already built.
-        let mut popular: Vec<(usize, usize)> = demand.into_iter()
-            .filter(|&(goal, n)| n >= FIELD_DEMAND_THRESHOLD && self.map.field_for(goal).is_none())
+
+        // Evict fields whose goal is no longer demanded (TTL hysteresis + cap).
+        let demanded: HashSet<usize> = demand.keys().copied().collect();
+        self.map.evict_fields(&demanded, FIELD_EVICT_TTL, FIELD_CACHE_CAP);
+
+        // Build the most-demanded new goals, gated by threshold and per-turn cap.
+        let mut popular: Vec<(usize, usize, bool)> = demand.into_iter()
+            .filter(|&(goal, (n, _))| n >= FIELD_DEMAND_THRESHOLD && self.map.field_for(goal).is_none())
+            .map(|(goal, (n, bounded))| (goal, n, bounded))
             .collect();
         popular.sort_unstable_by(|a, b| b.1.cmp(&a.1));
-        for (goal, _) in popular.into_iter().take(MAX_FIELD_BUILDS_PER_TURN) {
-            self.map.ensure_field(goal);
+        for (goal, _, bounded) in popular.into_iter().take(MAX_FIELD_BUILDS_PER_TURN) {
+            if bounded {
+                self.map.ensure_field_bounded(goal, DYNAMIC_FIELD_MAX_COST);
+            } else {
+                self.map.ensure_field(goal);
+            }
         }
 
         // Step 1: Extract all AI states so we can hold &self.entities (immutable)

@@ -208,10 +208,18 @@ impl DistField {
     }
 }
 
-/// Build a [`DistField`] toward `goal` by flooding outward over static terrain
-/// (walls block; pawns are ignored — see [`DistField`]).  Cost is O(reachable
-/// tiles); intended to be built once and cached, not called per agent per turn.
+/// Build a full-map [`DistField`] toward `goal` (see [`build_field_bounded`]).
 pub fn build_field(goal: usize, map: &Map) -> DistField {
+    build_field_bounded(goal, map, u32::MAX)
+}
+
+/// Build a [`DistField`] toward `goal` by flooding outward over static terrain
+/// (walls block; pawns are ignored — see [`DistField`]), stopping once the cost
+/// exceeds `max_cost`. Tiles past that horizon stay [`u16::MAX`] (unreachable),
+/// so agents there fall back to A*. Pass `u32::MAX` for a full-map field (static
+/// goals); a bound keeps dynamic-goal fields (investigation / last-known) cheap,
+/// since interested agents cluster near the goal. Cost is O(tiles within bound).
+pub fn build_field_bounded(goal: usize, map: &Map, max_cost: u32) -> DistField {
     println!("Building field");
     let size = map.width * map.height;
     let mut dist = vec![u16::MAX; size];
@@ -233,7 +241,7 @@ pub fn build_field(goal: usize, map: &Map) -> DistField {
         for (nb, cost) in map.terrain_exits(current.idx) {
             let step = if cost > 1.0 { DistField::DIAG } else { DistField::ORTHO };
             let nd = d + step;
-            if nd < dist[nb] as u32 {
+            if nd <= max_cost && nd < dist[nb] as u32 {
                 // Reserve u16::MAX for "unreachable"; clamp so it never collides.
                 dist[nb] = nd.min(u16::MAX as u32 - 1) as u16;
                 open.push(Node { idx: nb, f: nd as f32, g: 0.0 });
