@@ -35,6 +35,11 @@ impl NavFieldCache {
         self.idle.insert(goal, 0);
     }
 
+    fn clear(&mut self) {
+        self.fields.clear();
+        self.idle.clear();
+    }
+
     /// Age fields against this turn's `demanded` goal set: reset demanded ones to
     /// 0, age the rest, evict those past `ttl`, then enforce a hard `cap` (oldest
     /// survivors first). Called once per turn under `&mut map`.
@@ -412,6 +417,16 @@ impl Map {
         self.nav_fields.evict(demanded, ttl, cap);
     }
 
+    /// Drop all resident flow fields. Call whenever terrain changes: fields are
+    /// baked over static terrain, so a wall coming down leaves them stale (they'd
+    /// miss the new shortcut and treat newly-opened tiles as unreachable). The
+    /// Step 0 pre-pass rebuilds only the still-demanded goals next turn, throttled
+    /// by its per-turn build budget. Terrain edits only ever *add* connectivity,
+    /// so even a stale field is never wrong — just suboptimal until refreshed.
+    pub fn invalidate_fields(&mut self) {
+        self.nav_fields.clear();
+    }
+
     /// Neighbours passable over **static terrain**, ignoring transient pawn
     /// occupancy. Used to build resident [`DistField`]s that stay valid as
     /// entities move. Costs mirror [`Map::get_available_exits`] (1.0 / 1.45).
@@ -527,6 +542,18 @@ mod tests {
         let demanded: HashSet<usize> = std::iter::once(goal).collect();
         for _ in 0..100 { map.evict_fields(&demanded, 5, 64); }
         assert!(map.field_for(goal).is_some());
+    }
+
+    #[test]
+    fn invalidate_clears_all_fields() {
+        let mut map = Map::new_empty_map(30, 30);
+        let a = map.xy_idx(10, 10);
+        let b = map.xy_idx(20, 20);
+        map.ensure_field(a);
+        map.ensure_field(b);
+        assert!(map.field_for(a).is_some() && map.field_for(b).is_some());
+        map.invalidate_fields();
+        assert!(map.field_for(a).is_none() && map.field_for(b).is_none());
     }
 
     #[test]
