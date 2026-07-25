@@ -80,6 +80,14 @@ const BY1: usize = 5;
 const BY2: usize = 27;
 const BDY: usize = (BY1 + BY2) / 2; // = 16
 
+// ─── Thin path constants ─────────────────────────────────────────────────────
+// 2-tile alley at x=8-9 (off-center left). The loader's 180° rotation maps
+// this to x=22-23 (off-center right), so one canonical orientation is enough.
+const PL:  usize = 8;            // path left edge (inclusive)
+const PW:  usize = 2;            // path width in tiles
+const PH:  usize = PL + PW;     // path right edge (exclusive) = 10
+const PCX: usize = PL + PW / 2; // path centre x = 9
+
 // ─── Road draw helpers ───────────────────────────────────────────────────────
 
 /// Full vertical (N-S) road strip.
@@ -612,6 +620,81 @@ fn building_v8() -> Grid {
     g
 }
 
+// ─── Thin path blocks ────────────────────────────────────────────────────────
+// 2-tile alleys positioned off-centre (x=8-9 in canonical form). Because the
+// path edge profile (road at x=8-9) never matches the 6-wide road (x=13-18),
+// these blocks form their own WFC sub-network and sit alongside—but separate
+// from—the main road network.
+
+fn path_straight_v1() -> Grid {
+    // Bare alley through open ground.
+    let mut g = empty();
+    v_road(&mut g, PCX, PW);
+    g
+}
+
+fn path_straight_v2() -> Grid {
+    // Alley running alongside a large building on the wide side.
+    let mut g = path_straight_v1();
+    let rx1 = PH + 1;                          // = 11, first building column
+    bld(&mut g, rx1, 2, N - 1, 29);
+    door(&mut g, rx1, (2 + 29) / 2);           // west wall door opens onto alley
+    win_v(&mut g, N - 2, 3, 28);
+    win_h(&mut g, 2,  rx1, N - 1);
+    win_h(&mut g, 28, rx1, N - 1);
+    g
+}
+
+fn path_straight_v3() -> Grid {
+    // Alley squeezed between a narrow left building and a wide right building.
+    let mut g = path_straight_v1();
+    // Narrow left building (x=1..7)
+    bld(&mut g, 1, 2, PL, 29);
+    door(&mut g, PL - 1, (2 + 29) / 2);        // east wall door faces alley
+    win_v(&mut g, 1, 3, 28);
+    win_h(&mut g, 2,  1, PL);
+    win_h(&mut g, 28, 1, PL);
+    // Wide right building (x=11..30)
+    let rx1 = PH + 1;
+    bld(&mut g, rx1, 2, N - 1, 29);
+    door(&mut g, rx1, (2 + 29) / 2);
+    win_v(&mut g, N - 2, 3, 28);
+    win_h(&mut g, 2,  rx1, N - 1);
+    win_h(&mut g, 28, rx1, N - 1);
+    g
+}
+
+fn path_turn_v1() -> Grid {
+    // L-shaped path: N exit + E exit. Rotations give all 4 turn orientations.
+    let mut g = empty();
+    v_road_seg(&mut g, PCX, PW, 0, PCX + 1);  // vertical arm y=0..9
+    h_road_seg(&mut g, PCX, PW, PL, N);        // horizontal arm x=8..31
+    g
+}
+
+fn path_t_v1() -> Grid {
+    // T-junction: straight N-S path with an east branch.
+    let mut g = empty();
+    v_road(&mut g, PCX, PW);
+    h_road_seg(&mut g, PCX, PW, PH, N);        // east branch x=10..31
+    g
+}
+
+fn path_cross_v1() -> Grid {
+    // 4-way crossing of two thin paths.
+    let mut g = empty();
+    v_road(&mut g, PCX, PW);
+    h_road(&mut g, PCX, PW);
+    g
+}
+
+fn path_dead_v1() -> Grid {
+    // Path enters from N and terminates mid-block.
+    let mut g = empty();
+    v_road_seg(&mut g, PCX, PW, 0, N / 2 + 1);
+    g
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 fn main() {
@@ -667,6 +750,14 @@ fn main() {
         ("roadblock_gen_hangar_v1", road_hangar_v1),
         ("roadblock_gen_hangar_v2", road_hangar_v2),
         ("roadblock_gen_hangar_v3", road_hangar_v3),
+        // Thin path blocks (2-tile alley, off-centre at x=8-9)
+        ("roadblock_gen_path_straight_v1", path_straight_v1),
+        ("roadblock_gen_path_straight_v2", path_straight_v2),
+        ("roadblock_gen_path_straight_v3", path_straight_v3),
+        ("roadblock_gen_path_turn_v1",     path_turn_v1),
+        ("roadblock_gen_path_t_v1",        path_t_v1),
+        ("roadblock_gen_path_cross_v1",    path_cross_v1),
+        ("roadblock_gen_path_dead_v1",     path_dead_v1),
         // Building blocks (no road exits)
         ("buildingblock_gen_v1", building_v1),
         ("buildingblock_gen_v2", building_v2),
