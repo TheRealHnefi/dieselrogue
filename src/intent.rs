@@ -32,6 +32,9 @@ pub enum Targeting {
     /// Pick one of the acting entity's own body parts (no map cursor). Used by items
     /// applied to the self, such as medkits.
     SelfBodypart,
+    /// Pick any previously-revealed Ground/Road tile (need not be currently visible,
+    /// no range limit). Used by the jetpack's Rocket Jump.
+    JumpTile,
 }
 
 /// Stable identity for a catalog action. Lets keybindings and the AI reference
@@ -57,6 +60,7 @@ pub enum ActionId {
     Heal,
     Stim,
     RocketRush,
+    RocketJump,
     Recon,
     GetItem,
     Unequip,

@@ -263,43 +263,55 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                 // Phase 2 of targeting: cursor position confirmed.
                 match state.pending_action.take() {
                     Some(pending) => {
-                        if matches!(pending.entity_action.targeting, Targeting::Positional { .. }) {
-                            // Reject if cursor is on a non-visible tile.
-                            let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
-                            if !state.world.map.visible_tiles[cursor_idx] {
-                                state.pending_action = Some(pending);
-                                return RunState::AwaitingPositionalTargetingInput;
-                            }
-                            // Reject if cursor is beyond the action's max range.
-                            if let Targeting::Positional { max_range: Some(range) } = pending.entity_action.targeting {
-                                if let Ok(player) = state.world.get_player() {
+                        let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
+                        match pending.entity_action.targeting {
+                            Targeting::Positional { max_range } => {
+                                // Reject a non-visible tile or one beyond the action's range.
+                                let mut ok = state.world.map.visible_tiles[cursor_idx];
+                                if let (true, Some(range), Ok(player)) = (ok, max_range, state.world.get_player()) {
                                     let dx = state.cursor_pos.x - player.position.x;
                                     let dy = state.cursor_pos.y - player.position.y;
-                                    if dx * dx + dy * dy > (range * range) as i32 {
-                                        state.pending_action = Some(pending);
+                                    ok = dx * dx + dy * dy <= (range * range) as i32;
+                                }
+                                if !ok {
+                                    state.pending_action = Some(pending);
+                                    return RunState::AwaitingPositionalTargetingInput;
+                                }
+                                let cursor = state.cursor_pos;
+                                let PendingAction { entity_action, source } = pending;
+                                state.world.get_player_mut().unwrap().intent =
+                                    build_intent(&entity_action, source, Resolution::Position(cursor));
+                                return RunState::Resolve(ExecutionPhase::Instant);
+                            },
+                            Targeting::JumpTile => {
+                                // Accept any previously-revealed Ground/Road tile (need not be visible).
+                                let revealed = state.world.map.revealed_tiles[cursor_idx];
+                                let jumpable = revealed && matches!(state.world.map.tiles[cursor_idx],
+                                    TileType::Ground | TileType::Road);
+                                if !jumpable {
+                                    state.pending_action = Some(pending);
+                                    return RunState::AwaitingPositionalTargetingInput;
+                                }
+                                let cursor = state.cursor_pos;
+                                let PendingAction { entity_action, source } = pending;
+                                state.world.get_player_mut().unwrap().intent =
+                                    build_intent(&entity_action, source, Resolution::Position(cursor));
+                                return RunState::Resolve(ExecutionPhase::Instant);
+                            },
+                            _ => {
+                                // Detailed targeting — open the bodypart menu.
+                                // action_apply_intent_to_target_bodypart will complete the intent.
+                                state.menu_stack.clear();
+                                state.pending_action = Some(pending);
+                                match targeting_menu(&state.world, state.cursor_pos) {
+                                    Some(menu) => {
+                                        state.menu_stack.push(Box::new(menu));
+                                        return RunState::AwaitingMenuInput;
+                                    }
+                                    None => {
+                                        state.log("No target".to_string());
                                         return RunState::AwaitingPositionalTargetingInput;
                                     }
-                                }
-                            }
-                            // Phase 2a: assemble the intent directly from cursor position.
-                            let cursor = state.cursor_pos;
-                            let PendingAction { entity_action, source } = pending;
-                            state.world.get_player_mut().unwrap().intent =
-                                build_intent(&entity_action, source, Resolution::Position(cursor));
-                            return RunState::Resolve(ExecutionPhase::Instant);
-                        } else {
-                            // Phase 2b: Detailed targeting — open the bodypart menu.
-                            // action_apply_intent_to_target_bodypart will complete the intent.
-                            state.menu_stack.clear();
-                            state.pending_action = Some(pending);
-                            match targeting_menu(&state.world, state.cursor_pos) {
-                                Some(menu) => {
-                                    state.menu_stack.push(Box::new(menu));
-                                    return RunState::AwaitingMenuInput;
-                                }
-                                None => {
-                                    state.log("No target".to_string());
-                                    return RunState::AwaitingPositionalTargetingInput;
                                 }
                             }
                         }
@@ -715,7 +727,7 @@ fn trigger_action_by_id(state: &mut State, id: ActionId) -> RunState {
             fire_from_aim(PendingAction { entity_action: action, source }, ask_bodypart, state),
         Targeting::EntityAim { max_range } =>
             start_entity_targeting(PendingAction { entity_action: action, source }, max_range, state),
-        Targeting::Positional { .. } | Targeting::Detailed => {
+        Targeting::Positional { .. } | Targeting::Detailed | Targeting::JumpTile => {
             if let Ok(player) = state.world.get_player() {
                 state.cursor_pos = player.position;
             }

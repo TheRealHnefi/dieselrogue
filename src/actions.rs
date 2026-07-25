@@ -111,15 +111,37 @@ pub fn juke_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
 }
 
 /// Rocket boots: instantly teleport onto the chosen tile (targeting already guarantees it
-/// is visible and within range), landing with a loud engine roar. Stealth does not muffle it.
+/// is visible and within range), landing with a loud engine roar. Stealth does not muffle
+/// it, and it spends one charge. Nothing happens (and no charge is spent) if the tile is blocked.
 pub fn rocket_boots_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
-    let IntentData::TargetWithEquipment { target, .. } = entity.intent.data else { return vec![]; };
+    let IntentData::TargetWithEquipment { slot, target } = entity.intent.data else { return vec![]; };
     if !entity.check_fit(target, map) {
         return vec![Effect::Log(format!("{} can't land there.", entity.name))];
     }
+    let Some(item_id) = entity.get_equipped_item_ref(slot).map(|i| i.id) else { return vec![]; };
     vec![
         Effect::Move { entity_id: entity.index, pos: target },
         Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: target, volume: 30 }),
+        Effect::ConsumeCharge { entity_id: entity.index, item_id },
+    ]
+}
+
+/// Jetpack Rocket Jump: teleport to the chosen tile — validated as a revealed Ground/Road
+/// tile by targeting — falling back to the nearest free tile if it is occupied. Booms loudly
+/// at both origin and destination, and spends one charge.
+pub fn rocket_jump_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let IntentData::TargetWithEquipment { slot, target } = entity.intent.data else { return vec![]; };
+    let Some(item_id) = entity.get_equipped_item_ref(slot).map(|i| i.id) else { return vec![]; };
+    let dest = match map.nearest_free_pawn_position(target) {
+        Ok(pos) => pos,
+        Err(_) => return vec![Effect::Log(format!("{} found nowhere to land.", entity.name))],
+    };
+    let origin = entity.position;
+    vec![
+        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: origin, volume: 30 }),
+        Effect::Move { entity_id: entity.index, pos: dest },
+        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: dest, volume: 30 }),
+        Effect::ConsumeCharge { entity_id: entity.index, item_id },
     ]
 }
 
