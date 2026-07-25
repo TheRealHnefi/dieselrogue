@@ -1,4 +1,4 @@
-use rltk::{Rltk, GameState, Point, console};
+use rltk::{Rltk, GameState, Point};
 use std::cmp::max;
 use std::time::Instant;
 use crate::AnimationSystem;
@@ -35,7 +35,6 @@ pub struct State {
 
     pub turn: u32,
 
-    last_tick: Instant,
     start_tick: Instant
 }
 
@@ -53,7 +52,6 @@ impl State {
             menu_stack: vec![],
             pending_action: None,
             turn: 0,
-            last_tick: Instant::now(),
             start_tick: Instant::now()
         }
     }
@@ -69,7 +67,6 @@ impl State {
             menu_stack: vec![],
             pending_action: None,
             turn: 0,
-            last_tick: Instant::now(),
             start_tick: Instant::now()
         }
     }
@@ -79,14 +76,10 @@ impl State {
     }
 }
 
-const PROFILING: bool = true;
-
 impl GameState for State {
-    /// Called periodically as real time advances.
+    // Runs every frame. Raise RUST_LOG to trace to see per-frame timings.
+    #[tracing::instrument(skip_all, level = "trace")]
     fn tick(&mut self, context: &mut Rltk) {
-        let begin = Instant::now();
-        let tick_interval = self.last_tick.elapsed().as_millis();
-
         let monotime = self.start_tick.elapsed().as_millis();
         draw_main_screen(self, context, monotime);
 
@@ -114,14 +107,6 @@ impl GameState for State {
             RunState::ResolveStatusEffects => {
                 self.resolve_status_effects();
             }
-        }
- 
-        if PROFILING {
-            let tick_time = begin.elapsed().as_millis();
-            if tick_time + tick_interval > 25 {
-                console::log(format!("Tick duration,interval: {}, {}  ", tick_time, tick_interval));
-            }
-            self.last_tick = Instant::now();
         }
     }
 }

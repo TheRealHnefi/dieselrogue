@@ -277,6 +277,7 @@ impl World {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn resolve_intent_declaration(&mut self) {
         for i in 0..self.entities.len() {
             match self.entities[i].driving {
