@@ -23,15 +23,27 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     }
 
     if player.facing.direction != direction {
-        player.intent = Intent::Turn(direction);
+        player.intent = Intent {
+            phase: IntentPhase::Movement,
+            data: IntentData::Direction(direction),
+            action: Entity::resolve_turn
+        };
     } else {
         let target_pos = Point {x: player.position.x + delta_x, y: player.position.y + delta_y};
         let index = world.map.xy_idx(target_pos.x, target_pos.y);
 
         if world.map.pawns[index].is_some() {
-            player.intent = Intent::Melee(target_pos);
+            player.intent = Intent {
+                phase: IntentPhase::Attack,
+                data: IntentData::Target(target_pos),
+                action: Entity::resolve_melee
+            };
         } else {
-            player.intent = Intent::Move(target_pos);
+            player.intent = Intent {
+                phase: IntentPhase::Movement,
+                data: IntentData::Target(target_pos),
+                action: Entity::resolve_move
+            };
         }
     }
 
@@ -47,7 +59,11 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     let index = world.map.xy_idx(player.position.x, player.position.y);
 
     if world.map.items[index].is_some() {
-        player.intent = Intent::GetItem;
+        player.intent = Intent {
+            phase: IntentPhase::Inventory,
+            data: IntentData::Void,
+            action: Entity::resolve_get_item
+        };
         return Ok(());
     }
 

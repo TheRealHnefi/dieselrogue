@@ -26,8 +26,9 @@ pub trait MenuRow {
 
 pub enum MenuAction {
     Simple(fn (&mut State) -> RunState),
-    Item(Item, fn (Item, &mut State) -> RunState),
-    EquipmentAbility(ItemSlot, usize, fn (ItemSlot, usize, &mut State) -> RunState)
+    WithItemAction(Item, ItemAction, fn (Item, ItemAction, &mut State) -> RunState),
+    WithIntent(Intent, fn (Intent, &mut State) -> RunState),
+    WithItem(Item, fn (Item, &mut State) -> RunState)
 }
 
 pub struct MenuPanel<T: MenuRow> {
@@ -54,16 +55,15 @@ pub struct ItemActionRow {
     pub action: ItemAction
 }
 
-pub struct ItemSlotRow {
-    pub text: String,
-    pub item: Option<Item>
-}
+// pub struct ItemSlotRow {
+//     pub text: String,
+//     pub item: Option<Item>
+// }
 
-pub struct AbilityRow {
-    pub text: String,
-    pub index: usize,
-    pub slot: ItemSlot
-}
+// pub struct AbilityRow {
+//     pub text: String,
+//     pub intent: Intent
+// }
 
 impl MenuRow for SystemRow {
     fn get_action(&self) -> MenuAction {
@@ -81,7 +81,7 @@ impl MenuRow for SystemRow {
 
 impl MenuRow for ItemRow {
     fn get_action(&self) -> MenuAction {
-        return MenuAction::Item(self.item.clone(), action_show_inventory_item_menu);
+        return MenuAction::WithItem(self.item.clone(), action_show_inventory_item_menu);
     }
 
     fn get_text(&self) -> String {
@@ -93,133 +93,108 @@ impl MenuRow for ItemRow {
     }
 }
 
-impl MenuRow for ItemSlotRow {
-    fn get_action(&self) -> MenuAction {
-        match &self.item {
-            Some(item) => return MenuAction::Item(item.clone(), unequip_action),
-            None => return MenuAction::Simple(action_noop)
-        }
-    }
+// impl MenuRow for ItemSlotRow {
+//     fn get_action(&self) -> MenuAction {
+//         match &self.item {
+//             Some(item) => return MenuAction::WithItem(item.clone(), unequip_action),
+//             None => return MenuAction::Simple(action_noop)
+//         }
+//     }
 
-    fn get_text(&self) -> String {
-        return self.text.clone();
-    }
+//     fn get_text(&self) -> String {
+//         return self.text.clone();
+//     }
 
-    fn selectable(&self) -> bool {
-        match &self.item {
-            Some(item) => !item.proxy,
-            None => false
-        }
-    }
-}
+//     fn selectable(&self) -> bool {
+//         match &self.item {
+//             Some(item) => !item.proxy,
+//             None => false
+//         }
+//     }
+// }
 
-impl MenuRow for AbilityRow {
-    fn get_action(&self) -> MenuAction {
-        return MenuAction::EquipmentAbility(self.slot.clone(), self.index, fire_action);
-    }
+// impl MenuRow for AbilityRow {
+//     fn get_action(&self) -> MenuAction {
+//         return MenuAction::WithIntent(self.intent, ability_action);
+//     }
 
-    fn get_text(&self) -> String {
-        return self.text.clone();
-    }
+//     fn get_text(&self) -> String {
+//         return self.text.clone();
+//     }
 
-    fn selectable(&self) -> bool {
-        true
-    }
-}
+//     fn selectable(&self) -> bool {
+//         true
+//     }
+// }
 
-fn fire_action(slot: ItemSlot, ability_index: usize, state: &mut State) -> RunState {
-    match state.world.get_player_mut() {
-        Ok(player) => {
-            state.cursor_pos = player.position;
-            state.ability_being_used = Some((slot, ability_index));
-            RunState::AwaitingPositionalTargetingInput
-        },
-        Err(_) => {
-            state.log.entries.push("Can not fire weapon".to_string());
-            return RunState::AwaitingMenuInput
-        }
-    }
-}
-
-fn unequip_action(item: Item, state: &mut State) -> RunState {
-    match state.world.get_player_mut() {
-        Ok(player) => {
-            for bodyslot in &player.body.item_slots {
-                if bodyslot.slot_type == item.equip_slots[0] {
-                    player.intent = Intent::Unequip(bodyslot.slot_type);
-                    return RunState::Resolve;
-                }
-            }
+// fn ability_action(intent: Intent, state: &mut State) -> RunState {
+//     match state.world.get_player_mut() {
+//         Ok(player) => {
+//             debug_assert!(false); //TODO: add intent to state, determine if this is a targeting intent or not
+//             state.cursor_pos = player.position;
             
-            state.log.entries.push("Can not unequip item".to_string());
-            return RunState::AwaitingMenuInput
-        },
-        Err(_) => {
-            state.log.entries.push("Can not unequip item".to_string());
-            return RunState::AwaitingMenuInput
-        }
-    }
-}
+//             RunState::AwaitingPositionalTargetingInput
+//         },
+//         Err(_) => {
+//             state.log.entries.push("Can not fire weapon".to_string());
+//             return RunState::AwaitingMenuInput
+//         }
+//     }
+// }
 
-fn equip_action(item: Item, state: &mut State) -> RunState {
-    match state.world.get_player_mut() {
-        Ok(player) => {
-            let mut item_index = 0;
-            for (index, inventory_item) in player.inventory.iter().enumerate() {
-                if inventory_item == &item && player.body.can_equip(item.clone()) {
-                    item_index = index;
-                    break;
-                }
-            }
-            player.intent = Intent::Equip(item_index);
-            return RunState::Resolve;
-        },
-        Err(_) => {
-            state.log.entries.push("Can not equip item".to_string());
-            return RunState::AwaitingMenuInput
-        }
-    }
-}
+// fn action_apply_unequip_intent_to_player(item: Item, state: &mut State) -> RunState {
+//     match state.world.get_player_mut() {
+//         Ok(player) => {
+//             for bodyslot in &player.body.item_slots {
+//                 if bodyslot.slot_type == item.equip_slots[0] {
+//                     player.intent = Intent::Unequip(bodyslot.slot_type);
+//                     return RunState::Resolve;
+//                 }
+//             }
+            
+//             state.log.entries.push("Can not unequip item".to_string());
+//             return RunState::AwaitingMenuInput
+//         },
+//         Err(_) => {
+//             state.log.entries.push("Can not unequip item".to_string());
+//             return RunState::AwaitingMenuInput
+//         }
+//     }
+// }
 
-fn throw_action(item: Item, state: &mut State) -> RunState {
+fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut State) -> RunState {
     match state.world.get_player() {
         Ok(player) => {
             state.cursor_pos = player.position;
             state.item_being_used = Some(item);
+            state.item_action_being_used = Some(item_action);
         },
         Err(_) => ()
     }
     RunState::AwaitingPositionalTargetingInput
 }
 
-fn drop_action(item: Item, state: &mut State) -> RunState {
+fn action_apply_intent_to_player(intent: Intent, state: &mut State) -> RunState {
     match state.world.get_player_mut() {
-        Ok(player) => {
-            let mut item_index = 0;
-            for (index, inventory_item) in player.inventory.iter().enumerate() {
-                if inventory_item == &item {
-                    item_index = index;
-                    break;
-                }
-            }
-            player.intent = Intent::Drop(item_index);
-        },
+        Ok(player) => player.intent = intent,
         Err(_) => ()
-    }
+    }    
     RunState::Resolve
 }
 
 impl MenuRow for ItemActionRow {
     fn get_action(&self) -> MenuAction {
-        match self.action {
-            ItemAction::Throw(_) => {
-                MenuAction::Item(self.item.clone(), throw_action)
+        match self.action.targeting {
+            Targeting::None => {
+                let intent = Intent {
+                    phase: self.action.phase,
+                    data: IntentData::InventoryItem(self.item.clone()),
+                    action: self.action.effects
+                };
+                MenuAction::WithIntent(intent, action_apply_intent_to_player)
             },
-            ItemAction::Equip => {
-                MenuAction::Item(self.item.clone(), equip_action)
-            },
-            ItemAction::Drop => {
-                MenuAction::Item(self.item.clone(), drop_action)
+            Targeting::Positional => {
+                MenuAction::WithItemAction(self.item.clone(), self.action.clone(), action_target_item_action)
             }
         }
     }
@@ -231,10 +206,6 @@ impl MenuRow for ItemActionRow {
     fn selectable(&self) -> bool {
         true
     }
-}
-
-fn action_noop(_state: &mut State) -> RunState {
-    return RunState::AwaitingMenuInput;
 }
 
 fn action_quit(_state: &mut State) -> RunState {
@@ -258,7 +229,6 @@ fn action_open_item_menu(state: &mut State) -> RunState {
 fn action_show_inventory_item_menu(item: Item, state: &mut State) -> RunState {
     let menu = inventory_action_menu(item);
     state.menu_stack.push(Box::new(menu));
-
     return RunState::AwaitingMenuInput;
 }
 
@@ -312,15 +282,10 @@ pub fn item_menu(world: &World) -> Option<MenuPanel<ItemRow>> {
 pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
     let mut action_rows = vec!();
     for inventory_action in &item.inventory_actions {
-        let description = match inventory_action {
-            ItemAction::Throw(_) => "Throw".to_string(),
-            ItemAction::Equip => "Equip".to_string(),
-            ItemAction::Drop => "Drop".to_string()
-        };
         action_rows.push(ItemActionRow {
             action: inventory_action.clone(),
             item: item.clone(),
-            text: description
+            text: inventory_action.name.clone()
         });
     }
 
@@ -333,68 +298,68 @@ pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
     }
 }
 
-pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
-    let mut slot_rows = vec!();
-    let mut first_selectable_row = -1;
-    let player = world.get_player().unwrap();
-    for bodypart in &player.body.parts {
-        slot_rows.push(ItemSlotRow {
-            item: None,
-            text: format!("{}:", bodypart.name)
-        });
-        for slot_index in &bodypart.slot_index {
-            let item_name = match &player.body.item_slots[*slot_index].item {
-                Some(item) => {
-                    if first_selectable_row == -1 && !item.proxy {
-                        first_selectable_row = slot_rows.len() as i32;
-                    }
-                    item.name.clone()
-                },
-                None => "---".to_string()
-            };
-            slot_rows.push(ItemSlotRow {
-                item: player.body.item_slots[*slot_index].item.clone(),
-                text: format!("    {}", item_name)
-            })
-        }
-    }
+// pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
+//     let mut rows = vec!();
+//     let mut no_selectable_rows = true;
+//     let player = world.get_player().unwrap();
 
-    MenuPanel {
-        x: 35,
-        y: 20,
-        rows: slot_rows,
-        selected_row: first_selectable_row as usize,
-        no_selectable_rows: first_selectable_row == -1
-    }
-}
+//     for slot in &player.body.item_slots {
+//         match &slot.item {
+//             Some(item) => {
+//                 for (index, ability) in (&item.equip_abilities).iter().enumerate() {
+//                     rows.push(AbilityRow {  text: format!("{}: {}", item.name, ability.name),
+//                                             index: index,
+//                                             slot: slot.clone() });
+//                     no_selectable_rows = false;
+//                 }
+//             },
+//             None => ()
+//         }
+//     }
 
-pub fn ability_menu(world: &World) -> MenuPanel<AbilityRow> {
-    let mut rows = vec!();
-    let mut no_selectable_rows = true;
-    let player = world.get_player().unwrap();
+//     MenuPanel {
+//         x: 35,
+//         y: 20,
+//         rows: rows,
+//         selected_row: 0,
+//         no_selectable_rows: no_selectable_rows
+//     }
+// }
 
-    for slot in &player.body.item_slots {
-        match &slot.item {
-            Some(item) => {
-                for (index, ability) in (&item.equip_abilities).iter().enumerate() {
-                    rows.push(AbilityRow {  text: format!("{}: {}", item.name, ability.name),
-                                            index: index,
-                                            slot: slot.clone() });
-                    no_selectable_rows = false;
-                }
-            },
-            None => ()
-        }
-    }
+// pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
+//     let mut slot_rows = vec!();
+//     let mut first_selectable_row = -1;
+//     let player = world.get_player().unwrap();
+//     for bodypart in &player.body.parts {
+//         slot_rows.push(ItemSlotRow {
+//             item: None,
+//             text: format!("{}:", bodypart.name)
+//         });
+//         for slot_index in &bodypart.slot_index {
+//             let item_name = match &player.body.item_slots[*slot_index].item {
+//                 Some(item) => {
+//                     if first_selectable_row == -1 && !item.proxy {
+//                         first_selectable_row = slot_rows.len() as i32;
+//                     }
+//                     item.name.clone()
+//                 },
+//                 None => "---".to_string()
+//             };
+//             slot_rows.push(ItemSlotRow {
+//                 item: player.body.item_slots[*slot_index].item.clone(),
+//                 text: format!("    {}", item_name)
+//             })
+//         }
+//     }
 
-    MenuPanel {
-        x: 35,
-        y: 20,
-        rows: rows,
-        selected_row: 0,
-        no_selectable_rows: no_selectable_rows
-    }
-}
+//     MenuPanel {
+//         x: 35,
+//         y: 20,
+//         rows: slot_rows,
+//         selected_row: first_selectable_row as usize,
+//         no_selectable_rows: first_selectable_row == -1
+//     }
+// }
 
 impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
     fn select_next(&mut self) {

@@ -83,7 +83,7 @@ impl World {
             position: pos,
             renderable: Renderable::new_glyph('8'),
             name: name,
-            intent: Intent::Idle,
+            intent: idle_intent(),
             facing: facing,
             inventory: vec!(),
             body: Body::human_body()
@@ -110,7 +110,7 @@ impl World {
             position: pos,
             renderable: Renderable::new_glyph('5'),
             name: name,
-            intent: Intent::Idle,
+            intent: idle_intent(),
             facing: facing,
             inventory: vec!(),
             body: Body::human_body()
@@ -150,76 +150,13 @@ impl World {
         Ok(())
     }
 
-    pub fn resolve_movement(&mut self) -> Result<(), GameError> {
-
+    pub fn resolve_phase(&mut self, phase: IntentPhase) -> Result<(), GameError> {
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {
-            match entity.resolve_movement(&mut self.map) {
-                Some(effect) => effects.push(effect),
-                None => ()
-            }
-        }
-
-        self.resolve_effects(&effects);
-
-        Ok(())
-    }
-
-    pub fn resolve_melee(&mut self) -> Result<(), GameError> {
-
-        let mut effects: Vec<Effect> = vec!();
-
-        for entity in self.entities.iter_mut() {
-            match entity.resolve_melee(&mut self.map) {
-                Some(effect) => effects.push(effect),
-                None => ()
-            }
-        }
-
-        self.resolve_effects(&effects);
-
-        Ok(())
-    }
-
-    pub fn resolve_ranged(&mut self) -> Result<(), GameError> {
-
-        let mut effects: Vec<Effect> = vec!();
-
-        for entity in self.entities.iter_mut() {
-            match entity.resolve_ranged(&mut self.map) {
-                Some(effect) => effects.push(effect),
-                None => ()
-            }
-        }
-
-        self.resolve_effects(&effects);
-
-        Ok(())
-    }
-
-    pub fn resolve_throw(&mut self) -> Result<(), GameError> {
-
-        let mut effects: Vec<Effect> = vec!();
-
-        for entity in self.entities.iter_mut() {
-            match entity.resolve_throw(&mut self.map) {
-                Some(effect) => effects.push(effect),
-                None => ()
-            }
-        }
-
-        self.resolve_effects(&effects);
-
-        Ok(())
-    }
-
-    pub fn resolve_inventory(&mut self) -> Result<(), GameError> {
-        let mut effects: Vec<Effect> = vec!();
-
-        for entity in self.entities.iter_mut() {
-            match entity.resolve_inventory(&mut self.map) {
-                Some(effect) => effects.push(effect),
-                None => ()
+            if entity.intent.phase == phase {
+                let mut entity_effects = (entity.intent.action)(entity, &mut self.map);
+                effects.append(&mut entity_effects);
+                entity.intent = idle_intent();
             }
         }
 
@@ -232,7 +169,7 @@ impl World {
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {
             match effect {
-                Effect::Damage(id) => {
+                Effect::Damage{entity_id: id} => {
                     deathlist.push(*id);
                 }
             }
