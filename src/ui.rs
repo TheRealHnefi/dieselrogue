@@ -369,23 +369,30 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     draw_noise_panel(state, context);
 }
 
-fn sound_direction_label(player_pos: rltk::Point, sound_pos: rltk::Point) -> &'static str {
+fn sound_direction_glyph(player_pos: rltk::Point, sound_pos: rltk::Point) -> rltk::FontCharType {
     let dx = sound_pos.x - player_pos.x;
     let dy = sound_pos.y - player_pos.y;
     if dx == 0 && dy == 0 {
-        return "here";
+        return rltk::to_cp437('•');
     }
     let angle = (dy as f32).atan2(dx as f32).to_degrees();
     match angle as i32 {
-        -180..=-158 | 158..=180 => "W",
-        -157..=-113              => "NW",
-        -112..=-68               => "N",
-        -67..=-23                => "NE",
-        -22..=22                 => "E",
-        23..=67                  => "SE",
-        68..=112                 => "S",
-        _                        => "SW",
+        -180..=-158 | 158..=180 => rltk::to_cp437('◄'),
+        -157..=-113              => rltk::to_cp437('┌'),
+        -112..=-68               => rltk::to_cp437('▲'),
+        -67..=-23                => rltk::to_cp437('┐'),
+        -22..=22                 => rltk::to_cp437('►'),
+        23..=67                  => rltk::to_cp437('┘'),
+        68..=112                 => rltk::to_cp437('▼'),
+        _                        => rltk::to_cp437('└'),
     }
+}
+
+fn loudness_label(dist: f32) -> &'static str {
+    if dist <= 3.0       { "Loud"    }
+    else if dist <= 8.0  { "Close"   }
+    else if dist <= 15.0 { "Distant" }
+    else                 { "Faint"   }
 }
 
 fn sound_color(kind: &SoundKind, dist: f32) -> rltk::RGB {
@@ -420,18 +427,20 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
         if dist > sound.volume as f32 {
             continue;
         }
-        let dir = sound_direction_label(player_pos, sound.pos);
-        let label = match sound.kind {
-            SoundKind::Gunshot   => "Gunshot",
-            SoundKind::Burst     => "Burst",
-            SoundKind::Explosion => "Explosion",
-            SoundKind::Footstep  => "Footstep",
+        let glyph    = sound_direction_glyph(player_pos, sound.pos);
+        let loudness = loudness_label(dist);
+        let kind_str = match sound.kind {
+            SoundKind::Gunshot   => "gunshot",
+            SoundKind::Burst     => "burst",
+            SoundKind::Explosion => "explosion",
+            SoundKind::Footstep  => "footstep",
         };
         let color = sound_color(&sound.kind, dist);
-        // "Explosion NW" = 12 chars — fits inner_width exactly
-        let text = format!("{:<9} {:<2}", label, dir);
-        let text = if text.len() > inner_width { text[..inner_width].to_string() } else { text };
+        // e.g. "Loud explosion" left-aligned, glyph flush right
+        let text = format!("{} {}", loudness, kind_str);
+        let text = if text.len() > inner_width - 1 { text[..inner_width - 1].to_string() } else { text };
         context.print_color(panel_x, panel_y + row, color, BG_COLOR, &text);
+        context.set(panel_x + inner_width - 1, panel_y + row, color, BG_COLOR, glyph);
         row += 1;
     }
 }
