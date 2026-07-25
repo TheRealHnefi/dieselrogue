@@ -169,47 +169,12 @@ impl World {
                 let cx = (gx * cell_w + cell_w / 2) as i32;
                 let cy = (gy * cell_h + cell_h / 2) as i32;
                 let facing = dirs[(gy * grid + gx) % dirs.len()];
-                let _ = world.create_zombie_goon(
+                let _ = world.create_guard_actor(
                     Point { x: cx, y: cy },
                     facing,
-                    format!("Zombie {}", gy * grid + gx),
+                    format!("Guard {}", gy * grid + gx),
+                    CombatTactic::Pursue
                 );
-            }
-        }
-
-        return world;
-    }
-
-    /// Create new world for performance testing.
-    pub fn new_performance_test() -> Self {
-        let mut world = World {
-            player_id: Option::None,
-            entities: vec![],
-            next_item_id: 0,
-            pending_levelup: false,
-            sounds: vec![],
-            sounds_last_turn: vec![],
-            active_items: vec![],
-            active_items_ticked: false,
-            map: Map::new_game_map(10),
-            debug_mode: false,
-            parallel_ai: false,
-        };
-
-        let pos = Point {x: 0, y: 0};
-        let _ = world.create_player(pos,
-            Direction::Up,
-            String::from("Player"));
-
-        world.init_static_entities();
-
-        // As of 28/12/2021, 1000 rotating zombies has almost acceptable performance in release mode, but more optimiziation
-        // would be good. Typical tick duration is ~88 ms. Would like to get it down to ~20 ms.
-        // Latent zombies are almost free (can have upwards 100.000 with acceptable performance). Likely pawn creation
-        // that is the issue.
-        for x in 0..100 {
-            for y in 1..10 {
-                let _ = world.create_zombie_goon(Point {x: pos.x + x, y: pos.y+y}, Direction::Up, String::from("Zombie"));
             }
         }
 
@@ -283,8 +248,35 @@ impl World {
         self.equip_pistol(&mut entity);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
-
         Ok(())
+    }
+
+    /// Creates an NPC with the full profile+alert AI system.
+    pub fn create_actor(&mut self, pos: Point, facing: Direction, name: String, profile: Profile) -> Result<(), GameError> {
+        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
+        let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
+        entity.ai = AI::Actor(ActorAI::new(profile));
+        self.equip_pistol(&mut entity);
+        entity.create_pawns(&mut self.map);
+        self.entities.push(entity);
+        Ok(())
+    }
+
+    pub fn create_patrol_actor(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>, tactic: CombatTactic) -> Result<(), GameError> {
+        self.create_actor(pos, facing, name, Profile::Patrol {
+            waypoints,
+            waypoint_index: 0,
+            combat_tactic: tactic,
+        })
+    }
+
+    pub fn create_guard_actor(&mut self, pos: Point, facing: Direction, name: String, tactic: CombatTactic) -> Result<(), GameError> {
+        let anchor = self.map.nearest_free_pawn_position(pos)?;
+        self.create_actor(pos, facing, name, Profile::Guard { anchor, combat_tactic: tactic })
+    }
+
+    pub fn create_stationary_actor(&mut self, pos: Point, facing: Direction, name: String, tactic: CombatTactic) -> Result<(), GameError> {
+        self.create_actor(pos, facing, name, Profile::Stationary { combat_tactic: tactic })
     }
 
     fn equip_pistol(&mut self, entity: &mut Entity) {
@@ -366,23 +358,21 @@ impl World {
             .map(|e| std::mem::replace(&mut e.ai, AI::None))
             .collect();
 
-        // Step 2: Compute intents. Each closure only reads map, entities, and sounds,
-        // so it is safe to run across a thread pool.
+        // Step 2: Compute intents and collect any sounds emitted by AIs (e.g. alert shouts).
+        // Each closure only reads map, entities, and sounds — safe to run on a thread pool.
         let map = &self.map;
         let entities = &self.entities;
         let sounds = &self.sounds_last_turn[..];
 
-        let compute = |(ai, entity): (&mut AI, &Entity)| -> Option<Intent> {
+        let compute = |(ai, entity): (&mut AI, &Entity)| -> (Option<Intent>, Vec<SoundEvent>) {
             match entity.driving {
-                // Pilots produce no intent of their own while driving.
-                DrivingState::Driving(_) => None,
-                // Vehicles are handled separately in step 3 (cross-entity dependency).
-                DrivingState::DrivenBy(_) => None,
+                DrivingState::Driving(_)  => (None, vec![]),
+                DrivingState::DrivenBy(_) => (None, vec![]),
                 _ => ai.compute_intent(entity, map, entities, sounds),
             }
         };
 
-        let mut intents: Vec<Option<Intent>> = if self.parallel_ai {
+        let results: Vec<(Option<Intent>, Vec<SoundEvent>)> = if self.parallel_ai {
             use rayon::prelude::*;
             ai_states.par_iter_mut()
                 .zip(entities.par_iter())
@@ -395,16 +385,24 @@ impl World {
                 .collect()
         };
 
+        // Separate intents and emitted sounds; extend sounds after the map/entities borrows end.
+        let mut ai_sounds: Vec<SoundEvent> = vec![];
+        let mut intents: Vec<Option<Intent>> = results.into_iter()
+            .map(|(intent, emitted)| { ai_sounds.extend(emitted); intent })
+            .collect();
+
         // Step 3: Resolve vehicle-pilot pairs sequentially.
-        // The vehicle's intent is computed using the pilot's AI (already extracted
-        // into ai_states), with the vehicle entity as the positional reference.
         for i in 0..entities.len() {
             if let DrivingState::DrivenBy(pilot_id) = entities[i].driving {
-                intents[i] = ai_states[pilot_id].compute_intent(
+                let (intent, emitted) = ai_states[pilot_id].compute_intent(
                     &entities[i], map, entities, sounds,
                 );
+                intents[i] = intent;
+                ai_sounds.extend(emitted);
             }
         }
+        // map/entities borrows end here; now safe to borrow self.sounds.
+        self.sounds.extend(ai_sounds);
 
         // Step 4: Restore AI states and apply computed intents.
         for ((entity, ai), maybe_intent) in self.entities.iter_mut()

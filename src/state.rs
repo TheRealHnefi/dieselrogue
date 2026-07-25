@@ -84,29 +84,6 @@ impl State {
         }
     }
 
-    /// Create new game state for performance testing.
-    pub fn new_performance_test() -> Self {
-        Self {
-            run_state: RunState::AwaitingInput,
-            cursor_pos: Point {x: 0, y:0},
-            log: GameLog {entries: vec![]},
-            world: World::new_performance_test(),
-            animation_system: AnimationSystem::new(),
-            menu_stack: vec![],
-            pending_action: None,
-            level_up_options: vec![],
-            level_up_selected: 0,
-            entity_targets: vec![],
-            entity_target_index: 0,
-            turn: 0,
-            freelook: false,
-            freelook_pos: Point {x: 0, y: 0},
-            pending_font_size: None,
-            pending_fullscreen: None,
-            start_tick: Instant::now()
-        }
-    }
-
     pub fn log(&mut self, message: String) {
         self.log.log(message);
     }
