@@ -48,6 +48,7 @@ pub struct Entity {
     pub viewshed: Viewshed,
     pub ai: AI,
     pub key_color: Option<usize>,
+    pub paper_doll: Option<PaperDoll>,
 }
 
 impl Entity {
@@ -66,6 +67,7 @@ impl Entity {
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::None,
             key_color: None,
+            paper_doll: None,
         }
     }
 
@@ -88,6 +90,7 @@ impl Entity {
                 combat_tactic: CombatTactic::Pursue,
             })),
             key_color: None,
+            paper_doll: None,
         }
     }
 
@@ -106,6 +109,7 @@ impl Entity {
             viewshed: Viewshed::new(20, FieldOfView::Fov90),
             ai: AI::Rotator,
             key_color: None,
+            paper_doll: None,
         }
     }
 
@@ -137,6 +141,7 @@ impl Entity {
             viewshed: Viewshed::new(0, FieldOfView::Fov360),
             ai: AI::None,
             key_color: None,
+            paper_doll: None,
         }
     }
 

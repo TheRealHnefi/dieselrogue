@@ -9,6 +9,7 @@ use crate::World;
 use crate::actions;
 use crate::SlotType;
 use crate::{FontSize, Settings};
+use crate::PaperDoll;
 
 /**
  * Menu overview:
@@ -25,7 +26,7 @@ pub trait Menu {
     fn no_selectable_exists(&self) -> bool;
     fn get_action(&self) -> MenuAction;
     fn draw(&self, context: &mut Rltk, show_cursor: bool);
-    fn shows_paper_doll(&self) -> bool { false }
+    fn paper_doll_kind(&self) -> Option<PaperDoll> { None }
     /// Returns (x, y, width, height) of the menu box, matching what draw() renders.
     fn bounds(&self) -> Option<(i32, i32, i32, i32)> { None }
 }
@@ -78,7 +79,7 @@ pub struct MenuPanel<T: MenuRow> {
     pub rows: Vec<T>,
     pub selected_row: usize,
     no_selectable_rows: bool,
-    pub paper_doll: bool,
+    pub paper_doll: Option<PaperDoll>,
 }
 
 pub struct SystemRow {
@@ -385,7 +386,7 @@ pub fn main_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Option
         ],
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: false,
+        paper_doll: None,
     }
 }
 
@@ -413,7 +414,7 @@ pub fn item_menu(world: &World) -> Option<MenuPanel<ItemRow>> {
         rows: item_rows,
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: false,
+        paper_doll: None,
     })
 }
 
@@ -436,7 +437,7 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
         rows: action_rows,
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: false,
+        paper_doll: None,
     }
 }
 
@@ -559,7 +560,7 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
         rows,
         selected_row: 0,
         no_selectable_rows,
-        paper_doll: false,
+        paper_doll: None,
     }
 }
 
@@ -567,6 +568,7 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
     let mut slot_rows = vec!();
     let mut first_selectable_row = -1;
     let player = world.get_player().unwrap();
+    let doll = player.paper_doll;
     for bodypart in &player.body.parts {
         slot_rows.push(ItemSlotRow {
             item: None,
@@ -595,7 +597,7 @@ pub fn equipment_menu(world: &World) -> MenuPanel<ItemSlotRow> {
         rows: slot_rows,
         selected_row: first_selectable_row as usize,
         no_selectable_rows: first_selectable_row == -1,
-        paper_doll: true,
+        paper_doll: doll,
     }
 }
 
@@ -626,7 +628,7 @@ pub fn targeting_menu(world: &World, position: Point) -> Option<MenuPanel<Target
         rows: targeting_rows,
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: false,
+        paper_doll: None,
     })
 }
 
@@ -656,7 +658,7 @@ pub fn entity_equipment_view(entity: &Entity) -> MenuPanel<EntityViewRow> {
         rows,
         selected_row: 0,
         no_selectable_rows: true,
-        paper_doll: false,
+        paper_doll: entity.paper_doll,
     }
 }
 
@@ -693,7 +695,7 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
         self.no_selectable_rows
     }
 
-    fn shows_paper_doll(&self) -> bool {
+    fn paper_doll_kind(&self) -> Option<PaperDoll> {
         self.paper_doll
     }
 

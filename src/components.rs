@@ -28,6 +28,14 @@ pub const KEY_COLOR_NAMES: [&str; 16] = [
     "Purple", "Magenta", "Pink", "Brown", "White", "Silver", "Gray", "Gold",
 ];
 
+/// Which paper-doll image to show when inspecting an entity.
+/// Add a variant here whenever a new sprite sheet is added to RexAssets.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PaperDoll {
+    Player,
+    MaleSilhouette,
+}
+
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Up,
