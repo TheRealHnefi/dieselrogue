@@ -1,4 +1,3 @@
-* Armor system
 * Noise (remember, only the noisiest noise is heard by most characters)
 * Map building
  * Prisons
