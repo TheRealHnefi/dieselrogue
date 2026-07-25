@@ -147,7 +147,16 @@ pub fn unequip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLo
     match entity.body.unequip(equipped_item) {
         Some(item) => {
             log.log(format!("{} unequipped {}", entity.name, item.name));
+            let unequipped_id = item.id;
             entity.body.inventory.push(item);
+            let aimed_item_id = entity.body.status_effects.iter().find_map(|s| match s {
+                StatusEffect::AimingAtGround(_, i) => Some(i.id),
+                StatusEffect::AimingAtEntity(_, i) => Some(i.id),
+                _ => None,
+            });
+            if aimed_item_id == Some(unequipped_id) {
+                entity.clear_aiming();
+            }
         },
         None => ()
     }
