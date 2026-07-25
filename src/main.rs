@@ -1,4 +1,5 @@
 use specs::prelude::*;
+use rltk::{Point};
 
 mod state;
 pub use state::*;
@@ -113,7 +114,10 @@ fn main() -> rltk::BError {
             .with(Name {value: "Gun".to_string()})
             .build();
 
+    let cursor_pos = Point{x:0, y:0};
+
     game_state.ecs.insert(map);
+    game_state.ecs.insert(cursor_pos);
     game_state.ecs.insert(RunState::PreRun);
     game_state.ecs.insert(GameLog {entries: vec!["Welcome!".to_string()]});
 
