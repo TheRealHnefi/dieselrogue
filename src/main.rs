@@ -36,6 +36,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Renderable>();
     game_state.ecs.register::<Viewshed>();
     game_state.ecs.register::<BlocksTile>();
+    game_state.ecs.register::<HumanoidBody>();
 
     let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
@@ -58,6 +59,7 @@ fn main() -> rltk::BError {
             dirty: true
         })
         .with(Facing {direction: Direction::UP})
+        .with(HumanoidBody::new(20))
         .build();
     game_state.ecs.insert(player_entity);
 
@@ -80,6 +82,7 @@ fn main() -> rltk::BError {
             dirty: true
         })
         .with(Facing {direction: Direction::UP})
+        .with(HumanoidBody::new(20))
         .build();
 
     game_state.ecs.insert(map);
