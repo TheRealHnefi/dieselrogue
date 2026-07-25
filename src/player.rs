@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Direction, Facing, Player, State, Renderable, Viewshed, Map, RunState, GettingItem};
+use super::*;
 use std::cmp::{min, max};
 
 pub fn try_move_player(direction: Direction, ecs: &mut World) {
@@ -78,6 +78,30 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::T => {
                 return RunState::TargetingInput;
             },
+
+            VirtualKeyCode::Escape => {
+                game_state.menu_stack.clear();
+
+                fn quit_function(ecs: &mut World)  {
+                    ::std::process::exit(0);
+                }
+
+                let quit_row = MenuRow {
+                    hotkey: VirtualKeyCode::Q,
+                    text: "(Q) Quit".to_string(),
+                    functor: quit_function
+                };
+
+                let main_menu = Menu {
+                    x: 35,
+                    y: 20,
+                    rows: vec![quit_row]
+                };
+                game_state.menu_stack.push(main_menu);
+
+                return RunState::MenuInput;
+            }
+
             _ => {
                 return RunState::AwaitingInput;
             }
@@ -156,6 +180,30 @@ pub fn targeting_input(game_state: &mut State, context: &mut Rltk) -> RunState {
     }
     RunState::TargetingInput
 }
+
+pub fn menu_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
+    match ctx.key {
+        Some(key) => match key {
+            VirtualKeyCode::Escape => {
+                game_state.menu_stack.clear();
+                return RunState::AwaitingInput;
+            },
+            _ => {
+                let rows = &game_state.menu_stack.last().unwrap().rows;
+                for row in rows {
+                    if row.hotkey == key {
+                        (row.functor)(&mut game_state.ecs);
+                    }
+                }
+                return RunState::MenuInput;
+            }
+        }
+        None => {
+            return RunState::MenuInput;
+        }
+    }
+}
+
 
 fn get_item(ecs: &mut World) {
     let player = ecs.fetch::<Entity>();

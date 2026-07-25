@@ -1,4 +1,4 @@
-use rltk::{Rltk, GameState, Point, console};
+use rltk::{Rltk, GameState, Point, console, RGB};
 use specs::prelude::*;
 use super::*;
 use std::time::{Instant};
@@ -7,6 +7,7 @@ use std::time::{Instant};
 pub enum RunState {
     AwaitingInput,
     TargetingInput,
+    MenuInput,
     PreRun,
     PlayerTurn,
     EnemyTurn,
@@ -15,7 +16,8 @@ pub enum RunState {
 pub struct State {
     pub ecs: World,
     last_tick: Instant,
-    pub mouse_pos: Point
+    pub mouse_pos: Point,
+    pub menu_stack: Vec<Menu>
 }
 
 impl State {
@@ -23,7 +25,8 @@ impl State {
         Self {
             ecs: World::new(),
             last_tick: Instant::now(),
-            mouse_pos: Point {x: 0, y:0}
+            mouse_pos: Point {x: 0, y:0},
+            menu_stack: Vec::new()
         }
     }
 
@@ -59,6 +62,9 @@ impl GameState for State {
             },
             RunState::AwaitingInput => {
                 new_run_state = player_input(self, context);
+            },
+            RunState::MenuInput => {
+                new_run_state = menu_input(self, context);
             },
             RunState::TargetingInput => {
                 new_run_state = targeting_input(self, context);
@@ -108,6 +114,21 @@ impl GameState for State {
         }
 
         draw_ui(self, context);
+
+        if new_run_state == RunState::MenuInput {
+            for menu in &self.menu_stack {
+                let mut width = 0;
+                for row in &menu.rows {
+                    if row.text.len() > width {
+                        width = row.text.len();
+                    }
+                }
+                context.draw_box(menu.x, menu.y, width + 3, menu.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+                for (i, row) in menu.rows.iter().enumerate() {
+                    context.print(menu.x + 2, menu.y + 1 + i as i32, row.text.to_string());
+                }
+            }
+        }
 
         let tick_time = begin.elapsed().as_micros();
         if tick_time > 6000 {
