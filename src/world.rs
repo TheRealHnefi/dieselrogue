@@ -148,8 +148,8 @@ impl World {
         let _ = world.create_player(center, Direction::Up, String::from("Player"));
 
         // Two concentric circular patrol routes, one patroller each.
-        world.spawn_test_patroller(center, 18, 12, "Patroller A");
-        world.spawn_test_patroller(center, 32, 16, "Patroller B");
+        world.spawn_test_patroller(center, 18, 12);
+        world.spawn_test_patroller(center, 32, 16);
 
         let _ = world.add_item(center, Item::jetpack());
         let _ = world.add_item(center, Item::rocket_boots());
@@ -160,7 +160,7 @@ impl World {
     /// Register a circular patrol route of `waypoints` points at `radius` around
     /// `center` (each snapped to a walkable tile) and spawn one patrolling actor
     /// on it. Helper for [`World::new_ai_testbed`].
-    fn spawn_test_patroller(&mut self, center: Point, radius: i32, waypoints: usize, name: &str) {
+    fn spawn_test_patroller(&mut self, center: Point, radius: i32, waypoints: usize) {
         use std::f32::consts::TAU;
         let route: Vec<Point> = (0..waypoints).map(|i| {
             let theta = TAU * (i as f32) / (waypoints as f32);
@@ -173,7 +173,11 @@ impl World {
 
         let start = route[0];
         let route_id = self.map.register_patrol_route(route);
-        let _ = self.create_patrol_actor(start, Direction::Up, name.to_string(), route_id, 0, CombatTactic::Pursue);
+        let ai_profile = Profile::Patrol { route_id: route_id, waypoint_index: 0, combat_tactic: CombatTactic::Pursue };
+        match self.create_light_guard(start, Direction::Up) {
+            Ok(idx) => self.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile)),
+            Err(_) => ()
+        }
     }
 
     pub fn create_player(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
@@ -199,41 +203,6 @@ impl World {
 
         Ok(())
     }
-
-    // Old enemy creation functions. TODO: REMOVE ----------------------
-    /// Creates an NPC with the full profile+alert AI system.
-    pub fn create_actor(&mut self, pos: Point, facing: Direction, name: String, profile: Profile) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
-        let mut entity = Entity::human(self.entities.len(), actual_pos, facing, name);
-        entity.ai = AI::Actor(ActorAI::new(profile));
-        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
-        self.equip_pistol(&mut entity);
-        entity.create_pawns(&mut self.map);
-        self.entities.push(entity);
-        Ok(())
-    }
-
-    pub fn create_patrol_actor(&mut self, pos: Point, facing: Direction, name: String, route_id: usize, waypoint_index: usize, tactic: CombatTactic) -> Result<(), GameError> {
-        self.create_actor(pos, facing, name, Profile::Patrol {
-            route_id,
-            waypoint_index,
-            combat_tactic: tactic,
-        })
-    }
-
-    pub fn create_guard_actor(&mut self, pos: Point, facing: Direction, name: String, tactic: CombatTactic) -> Result<(), GameError> {
-        let anchor = self.map.nearest_free_pawn_position(pos)?;
-        self.create_actor(pos, facing, name, Profile::Guard { anchor, combat_tactic: tactic })
-    }
-
-    fn equip_pistol(&mut self, entity: &mut Entity) {
-        let mut pistol = Item::pistol();
-        pistol.id = self.next_item_id;
-        self.next_item_id += 1;
-        let _ = entity.body.equip(pistol);
-        entity.body.update_armor();
-    }
-    // End of old actor creation functions       ----------------------
 
     // Enemy creation --------------------------
     pub fn create_light_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
@@ -1431,7 +1400,6 @@ mod tests {
         let mut entity = Entity::human(world.entities.len(), actual_pos, facing, name);
         entity.ai = ai;
         entity.paper_doll = Some(PaperDoll::MaleSilhouette);
-        world.equip_pistol(&mut entity);
         entity.create_pawns(&mut world.map);
         world.entities.push(entity);
 
@@ -1965,8 +1933,13 @@ mod tests {
                     let pos = Point { x, y };
                     let route_id = world.map.nearest_patrol_route(pos);
                     let wpi = world.map.nearest_waypoint_index(route_id, pos);
-                    if world.create_patrol_actor(pos, Direction::Up, format!("Bench {}", placed), route_id, wpi, CombatTactic::Pursue).is_ok() {
-                        placed += 1;
+                    let ai_profile = Profile::Patrol { route_id: route_id, waypoint_index: wpi, combat_tactic: CombatTactic::Pursue };
+                    match world.create_light_guard(pos, Direction::Up) {
+                        Ok(idx) => {
+                            world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
+                            placed += 1;
+                        },
+                        Err(_) => ()
                     }
                 }
                 x += 3;
@@ -1987,8 +1960,13 @@ mod tests {
             let mut x = (center.x - R).max(2);
             while x < (center.x + R).min(w - 2) && world.entities.len() < target {
                 if !world.map.blocked(x, y) {
-                    if world.create_guard_actor(Point { x, y }, Direction::Up, format!("Swarm {}", placed), CombatTactic::Pursue).is_ok() {
-                        placed += 1;
+                    let ai_profile = Profile::Guard { anchor: center, combat_tactic: CombatTactic::Pursue };
+                    match world.create_light_guard(Point {x, y}, Direction::Up) {
+                        Ok(idx) => {
+                            world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
+                            placed += 1;
+                        },
+                        Err(_) => ()
                     }
                 }
                 x += 2;
@@ -2016,21 +1994,18 @@ mod tests {
             let mut x = 2;
             while x < w - 2 && world.entities.len() < target {
                 if !world.map.blocked(x, y) {
-                    if world.create_guard_actor(Point { x, y }, Direction::Up, format!("Gauntlet {}", placed), CombatTactic::Pursue).is_ok() {
-                        placed += 1;
+                    let ai_profile = Profile::Guard { anchor: anchor, combat_tactic: CombatTactic::Pursue};
+                    match world.create_light_guard(Point {x, y}, Direction::Up) {
+                        Ok(idx) => {
+                            world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
+                            placed += 1;
+                        },
+                        Err(_) => ()
                     }
                 }
                 x += 3;
             }
             y += 3;
-        }
-        // Point every guard at the same far anchor.
-        for e in world.entities.iter_mut() {
-            if let AI::Actor(actor) = &mut e.ai {
-                if let Profile::Guard { anchor: a, .. } = &mut actor.profile {
-                    *a = anchor;
-                }
-            }
         }
     }
 

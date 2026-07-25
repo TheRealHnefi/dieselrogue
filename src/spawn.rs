@@ -317,7 +317,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     }
 
     // Patrol routes are built during map generation (see Map::create_patrol_routes).
-    enemy_count += place_patrolling_enemies(world, spawn_map, center, inner_zone_radius, middle_zone_radius, rng);
+    enemy_count += place_patrolling_enemies(world, center, inner_zone_radius, middle_zone_radius);
 
     #[cfg(debug_assertions)]
     println!("Placed {} enemies", enemy_count);
@@ -328,11 +328,9 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
 // ---------------------------------------------------------------------------
 fn place_patrolling_enemies(
     world: &mut World,
-    spawn_map: &SpawnMap,
     center: Point,
     inner_radius: i32,
-    middle_radius: i32,
-    rng: &mut RandomNumberGenerator
+    middle_radius: i32
 ) -> usize {
     let mut enemies = 0;
 
