@@ -97,20 +97,17 @@ pub struct Map {
     pub fov_blocked: Vec<bool>,
     /// Resident cache of static-terrain flow fields, keyed by goal tile index.
     /// Built lazily via [`Map::ensure_field`]/[`Map::ensure_field_bounded`] and
-    /// shared across all agents navigating to that goal. Terrain-only (see
-    /// [`DistField`]), so entries stay valid as pawns move; evicted once their
+    /// shared across all agents navigating to that goal. Evicted once their
     /// goal goes undemanded (see [`Map::evict_fields`]).
     nav_fields: NavFieldCache,
     /// Shared, read-only patrol routes as ordered loops of waypoints. Built once
-    /// at map generation (concentric rings) and referenced by `Profile::Patrol`
-    /// via index, so many patrollers share the same waypoint cells — which lets
-    /// their navigation amortize onto shared flow fields. Append ad-hoc routes
-    /// via [`Map::register_patrol_route`].
+    /// at map generation and referenced by `Profile::Patrol` via index, so many patrollers
+    /// share the same waypoint cells which lets their navigation amortize onto shared flow fields.
+    /// Append ad-hoc routes via [`Map::register_patrol_route`].
     pub patrol_routes: Vec<Vec<Point>>,
     /// When `false`, the flow-field layer is bypassed entirely: [`Map::field_step`]
     /// returns `None` and the Step 0 pre-pass skips building/evicting fields, so
-    /// all AI navigation falls back to A*. Lets a benchmark compare fields vs
-    /// pure A*. Defaults to `true`.
+    /// all AI navigation falls back to A*. Defaults to `true`.
     pub use_flow_fields: bool,
 }
 
@@ -319,18 +316,14 @@ impl Map {
         }
     }
 
-    /// Append a patrol route and return its id. Used for ad-hoc / test routes;
-    /// the standard concentric rings are built at map generation.
+    /// Append a patrol route and return its id. Used for ad-hoc / test routes.
     pub fn register_patrol_route(&mut self, route: Vec<Point>) -> usize {
         self.patrol_routes.push(route);
         self.patrol_routes.len() - 1
     }
 
     /// Pre-build a permanent (pinned) full-map flow field for every distinct
-    /// patrol-route waypoint. These static goals are known at map generation, so
-    /// building them once up front — rather than lazily when patrol demand first
-    /// crosses the threshold mid-game — avoids ~full-map-flood spikes during play.
-    /// One-time cost at level load (≤ one field per distinct ring corner).
+    /// patrol-route waypoint.
     fn prebuild_patrol_fields(&mut self) {
         let mut goals: Vec<usize> = self.patrol_routes.iter()
             .flatten()
@@ -348,8 +341,8 @@ impl Map {
 
     /// Build the default shared patrol routes: concentric rectangular rings
     /// centred on the map, from a ~100-tile-wide innermost ring out toward the
-    /// edges. Each route is the four ring corners (a closed loop); corners are
-    /// snapped to the nearest walkable tile so patrollers can actually reach them.
+    /// edges.
+    /// TODO: Update this to generate more interesting patrol routes.
     fn build_patrol_rings(&mut self) {
         const NUM_RINGS:   usize = 4;
         const INNER_WIDTH: i32   = 100; // narrowest ring spans ~100 tiles
@@ -377,7 +370,7 @@ impl Map {
     }
 
     /// Nearest walkable-terrain tile to `p` via an expanding ring search. Falls
-    /// back to the clamped point if none is found (not expected on a real map).
+    /// back to the clamped point if none is found.
     fn snap_to_walkable(&self, p: Point) -> Point {
         let px = p.x.clamp(1, self.width as i32 - 1);
         let py = p.y.clamp(1, self.height as i32 - 1);
@@ -400,7 +393,7 @@ impl Map {
     }
 
     /// Index of the patrol route whose extent best matches `pos`'s distance from
-    /// the map centre — distributes patrollers across the concentric rings.
+    /// the map centre — distributes patrollers across the path.
     pub fn nearest_patrol_route(&self, pos: Point) -> usize {
         let (cx, cy) = (self.width as i32 / 2, self.height as i32 / 2);
         let d = (pos.x - cx).abs().max((pos.y - cy).abs());
@@ -430,14 +423,14 @@ impl Map {
     }
 
     /// Ensure a resident full-map flow field toward `goal` exists (see
-    /// [`Map::ensure_field_bounded`]). Idempotent and cheap once warm.
+    /// [`Map::ensure_field_bounded`]).
     pub fn ensure_field(&mut self, goal: usize) {
         self.ensure_field_bounded(goal, u32::MAX);
     }
 
     /// Ensure a resident flow field toward `goal` exists, building it once over
     /// static terrain if absent, flooding no further than `max_cost` (pass
-    /// `u32::MAX` for full-map coverage). Idempotent.
+    /// `u32::MAX` for full-map coverage).
     pub fn ensure_field_bounded(&mut self, goal: usize, max_cost: u32) {
         if !self.nav_fields.contains(goal) {
             let field = crate::build_field_bounded(goal, self, max_cost);
@@ -450,10 +443,8 @@ impl Map {
         self.nav_fields.get(goal)
     }
 
-    /// Next step from `from` down the flow field toward `goal`, or `None` if no
-    /// field covers the goal, the goal is out of a bounded field's reach, or
-    /// flow fields are disabled ([`Map::use_flow_fields`]). Callers fall back to
-    /// A* on `None`.
+    /// Next step from `from` down the flow field toward `goal`.
+    /// Callers should fall back to A* on `None`.
     pub fn field_step(&self, from: usize, goal: usize) -> Option<usize> {
         if !self.use_flow_fields {
             return None;
@@ -468,19 +459,14 @@ impl Map {
         self.nav_fields.evict(demanded, ttl, cap);
     }
 
-    /// Drop all resident flow fields. Call whenever terrain changes: fields are
-    /// baked over static terrain, so a wall coming down leaves them stale (they'd
-    /// miss the new shortcut and treat newly-opened tiles as unreachable). The
-    /// Step 0 pre-pass rebuilds only the still-demanded goals next turn, throttled
-    /// by its per-turn build budget. Terrain edits only ever *add* connectivity,
-    /// so even a stale field is never wrong — just suboptimal until refreshed.
+    /// Drop all resident flow fields. Call whenever terrain changes.
     pub fn invalidate_fields(&mut self) {
         self.nav_fields.clear();
     }
 
-    /// Neighbours passable over **static terrain**, ignoring transient pawn
-    /// occupancy. Used to build resident [`DistField`]s that stay valid as
-    /// entities move. Costs mirror [`Map::get_available_exits`] (1.0 / 1.45).
+    /// Neighbours passable over static terrain, ignoring pawn occupancy.
+    /// Used to build resident [`DistField`]s that stay valid as
+    /// entities move. Costs mirror [`Map::get_available_exits`].
     pub fn terrain_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
         let mut exits = rltk::SmallVec::new();
         let x = idx as i32 % self.width as i32;
@@ -536,6 +522,8 @@ impl Map {
         }
     }
 
+    /// Checks for available exits for pathfinding, with a pathfinding cost. Treats
+    /// diagonals as more costly to serve as a conservative heuristic.
     pub fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
         let mut exits = rltk::SmallVec::new();
         let x = idx as i32 % self.width as i32;
