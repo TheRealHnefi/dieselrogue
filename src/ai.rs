@@ -157,6 +157,8 @@ impl ActorAI {
     // --- Stimulus processing ---
 
     fn process_sounds(&mut self, entity: &Entity, sounds: &[SoundEvent]) {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         for s in sounds {
             let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
             if dist > s.volume as f32 { continue; }
@@ -178,6 +180,8 @@ impl ActorAI {
     }
 
     fn process_vision(&mut self, entity: &Entity, entities: &[Entity]) {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         if let Some(player) = entities.iter().find(|e| e.kind == EntityKind::Player) {
             let pc = player.center();
             if entity.viewshed.visible_tiles.contains(&pc) {
@@ -187,6 +191,8 @@ impl ActorAI {
     }
 
     fn check_follow_target(&mut self, entities: &[Entity]) {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         if let Profile::Follow { target_id, last_known_pos, .. } = &mut self.profile {
             match entities.iter().find(|e| e.id == *target_id) {
                 Some(t) => *last_known_pos = t.center(),
@@ -203,6 +209,8 @@ impl ActorAI {
     }
 
     fn tick_alert(&mut self, entity: &Entity, entities: &[Entity]) {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         // Combat → Alert when target leaves sight.
         if let AlertLevel::Combat { target_id, last_seen } = &self.alert {
             let (tid, ls) = (*target_id, *last_seen);
@@ -272,6 +280,8 @@ impl ActorAI {
     // --- Behaviour: Unaware ---
 
     fn unaware_intent(&mut self, entity: &Entity, map: &Map, entities: &[Entity]) -> Option<Intent> {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         match &mut self.profile {
             Profile::Patrol { waypoints, waypoint_index, .. } => {
                 // Advance waypoint if arrived.
@@ -308,6 +318,8 @@ impl ActorAI {
     // --- Behaviour: Alert (lost target / investigating) ---
 
     fn search_intent(&mut self, entity: &Entity, map: &Map, last_known: Point, search: SearchBehavior) -> Option<Intent> {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         match search {
             SearchBehavior::HoldAndWatch => None, // stand still, weapon ready
             SearchBehavior::MoveToLastKnown => self.navigate_to(entity, last_known, map),
@@ -319,6 +331,8 @@ impl ActorAI {
     }
 
     fn flank_destination(&self, from: Point, target: Point, map: &Map) -> Point {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         // Approach last-known from a perpendicular angle (5 tiles offset).
         let dx = target.x - from.x;
         let dy = target.y - from.y;
@@ -343,6 +357,8 @@ impl ActorAI {
         target_id: usize,
         last_seen: Point,
     ) -> Option<Intent> {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         let tactic = self.profile.combat_tactic().clone();
 
         if let CombatTactic::Flee = tactic {
@@ -406,6 +422,8 @@ impl ActorAI {
     }
 
     fn flee_pos(&self, entity: &Entity, threat: Point, map: &Map) -> Point {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         let deltas: [(i32,i32);8] = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)];
         deltas.iter()
             .map(|(dx,dy)| Point { x: entity.position.x + dx, y: entity.position.y + dy })
@@ -425,6 +443,8 @@ impl ActorAI {
     // --- Navigation ---
 
     fn navigate_to(&mut self, entity: &Entity, destination: Point, map: &Map) -> Option<Intent> {
+        #[cfg(debug_assertions)]
+        puffin::profile_function!();
         if entity.position == destination {
             return None;
         }

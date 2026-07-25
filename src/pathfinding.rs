@@ -49,6 +49,8 @@ impl PartialOrd for Node {
 /// Returns an empty `steps` vec only when no visited neighbour of `start` exists
 /// (completely walled in) or when `start == end`.
 pub fn navigate(start: usize, end: usize, map: &Map) -> NavPath {
+    #[cfg(debug_assertions)]
+    puffin::profile_function!();
     if start == end {
         return NavPath { steps: vec![], success: true };
     }
