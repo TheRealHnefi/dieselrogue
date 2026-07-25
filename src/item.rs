@@ -105,6 +105,20 @@ impl Item {
         }
     }
 
+    pub fn flashbang() -> Self {
+        Item {
+            id: 0,
+            renderable: Renderable::new_char('f'),
+            name: String::from("Flashbang"),
+            inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 0, 0), timeout: 4 },
+            proxy: false,
+            active: false,
+        }
+    }
+
     pub fn bulletproof_vest() -> Self {
         Item {
             id: 0,
