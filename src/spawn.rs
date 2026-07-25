@@ -70,8 +70,8 @@ pub fn analyze(map: &Map) -> SpawnMap {
 
         let category = match degree {
             1 => Some(SpawnCategory::DeadEnd),
-            3..=4 if !in_room => Some(SpawnCategory::Junction),
             4 if in_room => Some(SpawnCategory::RoomInterior),
+            3..=4 => Some(SpawnCategory::Junction),
             _ => None,
         };
 
@@ -94,7 +94,10 @@ pub fn analyze(map: &Map) -> SpawnMap {
         }
         println!("== Spawn analysis ==");
         println!("   Found {} dead ends, {} junctions, {} room interiors, {} total", deadends, junctions, interiors, spawn_points.len());
-        println!("   Found {} regions", regions.len());
+        println!("   Found {} regions, smallest is {} tiles, biggest is {} tiles",
+            regions.len(),
+            regions.iter().min_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len(),
+            regions.iter().max_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len());
         println!("== End spawn analysis ==");
     }
 
@@ -509,6 +512,22 @@ fn classify_boundary(map: &Map, boundary: &ZoneBoundary) -> BoundaryKind {
 }
 
 impl World {
+    /// Used for debugging spawn functionality
+    #[cfg(debug_assertions)]
+    pub(crate) fn spawn_debug(
+        &mut self,
+        zone_map: &ZoneMap,
+        spawn_map: &SpawnMap,
+        depths: &[usize],
+        interesting: &[bool]
+    ) {
+        println!("== Debugging spawns ==");
+        println!("   Zone map size: {}", zone_map.zones.len());
+        println!("   Spawn map size: regions: {}, spawn points: {}", spawn_map.regions.len(), spawn_map.spawn_points.len());
+        println!("   Depths size: {}", depths.len());
+        println!("   Interesting size: {}", interesting.len());
+    }
+
     /// Stationary guards adjacent to doorways.
     pub(crate) fn spawn_sentinels(
         &mut self,
