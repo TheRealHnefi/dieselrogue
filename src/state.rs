@@ -6,6 +6,7 @@ use std::time::{Instant};
 pub enum RunState {
     AwaitingInput,
     AwaitingMenuInput,
+    AwaitingPositionalTargetingInput,
     Resolve
 }
 
@@ -16,7 +17,8 @@ pub struct State {
 
     pub world: World,
 
-    pub menu_stack: Vec<Menu>,
+    pub system_menu_stack: Vec<SystemMenu>,
+    pub action_menu_stack: Vec<ActionMenu>,
 
     last_tick: Instant,
 }
@@ -28,7 +30,8 @@ impl State {
             mouse_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(),
-            menu_stack: vec![],
+            system_menu_stack: vec![],
+            action_menu_stack: vec![],
             last_tick: Instant::now(),
         }
     }
@@ -44,10 +47,13 @@ impl GameState for State {
         match self.run_state {
             RunState::AwaitingInput => {
                 self.run_state = main_screen_input(self, context);
-            }
+            },
             RunState::AwaitingMenuInput => {
                 self.run_state = menu_input(self, context);
-            }
+            },
+            RunState::AwaitingPositionalTargetingInput => {
+                self.run_state = RunState::AwaitingInput;
+            },
             RunState::Resolve => {
                 debug_assert!(self.world.resolve_movement().is_ok());
                 debug_assert!(self.world.resolve_inventory().is_ok());

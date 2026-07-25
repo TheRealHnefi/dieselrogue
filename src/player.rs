@@ -53,3 +53,19 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
 
     Err(GameError{error: Error::BadPrecondition, message: String::from("There is no item here")})
 }
+
+pub fn get_item_actions(world: &World) -> Vec<ItemAction>{
+    if world.player_id.is_none() {
+        return vec!();
+    }
+
+    let player = &world.entities[world.player_id.unwrap()];
+
+    // TODO: Filter duplicates?
+    let mut valid_actions = vec!();
+    for item in &player.inventory {
+        valid_actions.append(&mut item.inventory_actions.clone());
+    }
+
+    return valid_actions;
+}
