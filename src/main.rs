@@ -16,6 +16,8 @@ mod map_indexing_system;
 pub use map_indexing_system::*;
 mod enemy_ai_system;
 pub use enemy_ai_system::*;
+mod ui;
+pub use ui::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
