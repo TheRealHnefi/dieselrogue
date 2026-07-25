@@ -2,7 +2,7 @@ use rltk::{RGB, Rltk, Point};
 use crate::Renderable;
 use crate::Rect;
 
-pub fn shoot_animation(start_pos: Point, target_pos: Point) -> Animation {
+pub fn single_shot_animation(start_pos: Point, target_pos: Point) -> Animation {
     let particle = Particle::Background(RGB::named(rltk::RED));
 
     let frame = Frame {
@@ -18,6 +18,36 @@ pub fn shoot_animation(start_pos: Point, target_pos: Point) -> Animation {
         done: false
     }
 }
+
+pub fn burst_shot_animation(start_pos: Point, target_pos: Point) -> Animation {
+    let particle = Particle::Background(RGB::named(rltk::RED));
+
+    let frame_shot = Frame {
+        particles: vec!(particle.clone(), particle.clone()),
+        positions: vec!(start_pos, target_pos),
+        duration_ms: 150
+    };
+
+    let frame_cycle = Frame {
+        particles: vec!(),
+        positions: vec!(),
+        duration_ms: 150
+    };
+
+    Animation {
+        frames: vec!(
+            frame_shot.clone(),
+            frame_cycle.clone(),
+            frame_shot.clone(),
+            frame_cycle.clone(),
+            frame_shot.clone()
+        ),
+        current_frame: 0,
+        time_spent_in_current_frame: 0,
+        done: false
+    }
+}
+
 
 pub fn explosion_animation(pos: Point) -> Animation {
     let particle = Particle::Complete(
