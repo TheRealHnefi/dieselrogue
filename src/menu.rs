@@ -384,16 +384,16 @@ fn action_open_keybind_menu(state: &mut State) -> RunState {
     RunState::AwaitingMenuInput
 }
 
-fn rebind_wait(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Wait) }
-fn rebind_get_item(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::GetItem) }
-fn rebind_disembark(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Disembark) }
-fn rebind_inventory(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Inventory) }
-fn rebind_equipment(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Equipment) }
-fn rebind_ability(_: &mut State)   -> RunState { RunState::AwaitingRebind(RebindTarget::Ability) }
-fn rebind_juke(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Juke) }
-fn rebind_look(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Look) }
-fn rebind_open_menu(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::OpenMenu) }
-fn rebind_freelook(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::Freelook) }
+fn rebind_wait(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Wait,      None) }
+fn rebind_get_item(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::GetItem,   None) }
+fn rebind_disembark(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Disembark, None) }
+fn rebind_inventory(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Inventory, None) }
+fn rebind_equipment(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Equipment, None) }
+fn rebind_ability(_: &mut State)   -> RunState { RunState::AwaitingRebind(RebindTarget::Ability,   None) }
+fn rebind_juke(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Juke,      None) }
+fn rebind_look(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Look,      None) }
+fn rebind_open_menu(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::OpenMenu,  None) }
+fn rebind_freelook(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::Freelook,  None) }
 
 pub fn keybind_menu(bindings: &Bindings) -> MenuPanel<SystemRow> {
     let row = |name: &str, key| SystemRow {
