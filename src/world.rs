@@ -1429,9 +1429,9 @@ impl World {
             let jitter = rng.range(-1i32, 4); // -1 .. +3
             let mut target = ((base as i32 + jitter).max(0) as usize).min(max_depth);
 
-            // Depths 0-2 are less likely: with 2/3 probability reroll to a deeper target.
-            if target < 3 && max_depth >= 3 && rng.range(0, 3) < 2 {
-                target = rng.range(3, max_depth as i32 + 1) as usize;
+            // Depths 0-2 are much less likely
+            if target < 4 && max_depth >= 4 && rng.range(0, 50) < 49 {
+                target = rng.range(4, max_depth as i32 + 1) as usize;
             }
 
             // Find the nearest depth with at least one available (item-free) indoor zone.
