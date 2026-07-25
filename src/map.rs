@@ -93,6 +93,44 @@ impl Map {
         return self.find_nearest_tile(pos, 5, is_free);
     }
 
+    pub fn nearest_free_pawn_position_sized(&self, pos: Point, size_x: u32, size_y: u32) -> Result<Point, GameError> {
+        let fits = |p: Point| -> bool {
+            for dx in 0..size_x as i32 {
+                for dy in 0..size_y as i32 {
+                    let x = p.x + dx;
+                    let y = p.y + dy;
+                    if x >= self.width as i32 || y >= self.height as i32 || x < 0 || y < 0 {
+                        return false;
+                    }
+                    if self.blocked_idx(self.xy_idx(x, y)) {
+                        return false;
+                    }
+                }
+            }
+            true
+        };
+
+        if fits(pos) {
+            return Ok(pos);
+        }
+
+        for distance in 1..=5_i32 {
+            for dx in -distance..=distance {
+                for dy in -distance..=distance {
+                    let candidate = Point { x: pos.x + dx, y: pos.y + dy };
+                    if fits(candidate) {
+                        return Ok(candidate);
+                    }
+                }
+            }
+        }
+
+        Err(GameError {
+            message: String::from("Could not find open spot"),
+            error: Error::UnsolvableSituation,
+        })
+    }
+
     fn find_nearest_tile(&self, pos: Point, radius: usize, good_tile: fn (&Map, usize) -> bool) -> Result<Point, GameError> {
         let mut index = self.xy_idx(pos.x, pos.y);
 
