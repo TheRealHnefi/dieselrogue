@@ -485,6 +485,16 @@ pub fn juke_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], log
     result
 }
 
+pub fn iron_body_action(entity: &mut Entity, _map: &mut Map, _entities: &[Entity], log: &mut GameLog) -> Vec<Effect> {
+    const ENERGY_COST: u32 = 50;
+    if entity.body.energy < ENERGY_COST {
+        log.log(format!("{} is too exhausted to use Iron Body", entity.name));
+        return vec!();
+    }
+    entity.body.energy -= ENERGY_COST;
+    vec!(Effect::ApplyStatus { target_id: entity.id, status: StatusEffect::IronBody(3) })
+}
+
 pub fn aim_action(entity: &mut Entity, map: &mut Map, _entities: &[Entity], _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::TargetWithEquipment{slot, target} => {
