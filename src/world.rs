@@ -79,6 +79,7 @@ impl World {
         }
 
         let player = Entity {
+            id: 0,
             position: pos,
             renderable: Renderable::new_glyph('8'),
             name: name,
@@ -102,6 +103,7 @@ impl World {
         }
 
         let entity = Entity {
+            id: self.entities.len(),
             position: pos,
             renderable: Renderable::new_glyph('5'),
             name: name,
@@ -116,9 +118,16 @@ impl World {
         Ok(())
     }
 
-    pub fn resolve(&mut self) -> Result<(), GameError> {
+    pub fn resolve_movement(&mut self) -> Result<(), GameError> {
+
+        let mut effects: Vec<Effect> = vec!();
         match &mut self.player {
-            Some(player) => player.resolve(&mut self.map),
+            Some(player) => {
+                match player.resolve_movement(&mut self.map) {
+                    Some(effect) => effects.push(effect),
+                    None => ()
+                }
+            },
             None => {
                 return Err(GameError {
                    error: Error::BadPrecondition,
@@ -128,9 +137,69 @@ impl World {
         }
 
         for entity in self.entities.iter_mut() {
-            entity.resolve(&mut self.map);
+            match entity.resolve_movement(&mut self.map) {
+                Some(effect) => effects.push(effect),
+                None => ()
+            }
         }
+
+        self.resolve_effects(&effects);
+
         Ok(())
+    }
+
+    pub fn resolve_melee(&mut self) -> Result<(), GameError> {
+
+        let mut effects: Vec<Effect> = vec!();
+        match &mut self.player {
+            Some(player) => {
+                match player.resolve_melee(&mut self.map) {
+                    Some(effect) => effects.push(effect),
+                    None => ()
+                }
+            },
+            None => {
+                return Err(GameError {
+                   error: Error::BadPrecondition,
+                   message: String::from("Player does not exist")
+                })
+            }
+        }
+
+        for entity in self.entities.iter_mut() {
+            match entity.resolve_melee(&mut self.map) {
+                Some(effect) => effects.push(effect),
+                None => ()
+            }
+        }
+
+        self.resolve_effects(&effects);
+
+        Ok(())
+    }
+
+    fn resolve_effects(&mut self, effects: &Vec<Effect>) {
+        let mut deathlist: Vec<usize> = vec!();
+        for effect in effects.iter() {
+            match effect {
+                Effect::Damage(id) => {
+                    deathlist.push(*id);
+                }
+            }
+        }
+
+        self.post_resolve(deathlist);
+    }
+
+    fn post_resolve(&mut self, deathlist: Vec<usize>) {
+        self.entities.retain(|entity| {
+            let should_be_dead = deathlist.iter().any(|&id| id == entity.id);
+            return !should_be_dead;
+        });
+
+        for (i, entity) in self.entities.iter_mut().enumerate() {
+            entity.id = i;
+        }
     }
 }
 
@@ -235,5 +304,35 @@ mod tests {
         world = assert_worldsize(world, 1);
         assert_eq!(world.entities[0].position, pos);
         assert_eq!(world.entities[0].name, name);
+    }
+
+    #[test]
+    fn deathlisted_entities_die_others_reordered() {
+        let number_of_entities:usize = 5;
+        let mut world = World::new();
+
+        // Create a bunch of entities, named after their id
+        let pos = Point {x: world.map.rooms[0].x1+1, y: world.map.rooms[0].y1+1};
+        let facing = Facing {direction: Direction::Up};
+        for i in 0..number_of_entities {
+            assert!(world.create_entity(Point{x: pos.x+i as i32, y: pos.y}, facing, format!("{}", i)).is_ok());
+        }
+        // doom a few
+        let deathlist: Vec<usize> = vec![1,3,4];
+
+        // execute the doomed ones
+        world.post_resolve(deathlist.clone());
+
+        // check that number of survivors is correct
+        assert!(world.entities.len() == number_of_entities - deathlist.len());
+
+        // check that surviving individuals are named and ordered correctly
+        for (index, entity) in world.entities.iter().enumerate() {
+            let old_id = entity.name.parse::<usize>().unwrap();
+            let should_be_dead = deathlist.iter().any(|&id| id == old_id);
+
+            assert!(!should_be_dead);
+            assert!(entity.id == index);
+        }
     }
 }

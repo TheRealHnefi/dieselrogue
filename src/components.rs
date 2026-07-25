@@ -48,11 +48,12 @@ pub struct Intent {
     pub action: Action
 }
 
-#[derive (Copy, Clone)]
+#[derive (PartialEq, Eq, Copy, Clone)]
 pub enum Action {
     Idle,
     Move(Point),
-    Turn(Direction)
+    Turn(Direction),
+    Melee(Point),
 }
 
 // #[derive (Component, ConvertSaveload, Clone)]

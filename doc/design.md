@@ -194,7 +194,7 @@ All actions are one of the following categories:
  * Monster decides next action
  * Take input and designate actions for player
  * Resolve out-of-order actions (instant abilities or time manipulation)
-  * Potentially return to start
+  * Potentially return to start - if movement occurs, need to reassess entire situation
  * Resolve inventory actions (get/drop/equip)
  * Resolve melee attacks
  * Resolve ranged attacks (including throwing items)
@@ -206,6 +206,7 @@ All actions are one of the following categories:
 ## Misc:
 * Multi-tile actors, like mechs and tanks - pilotable!
 * Fluid mechanics. Possible to have fuel leak and ignite. Precursor to fortress mode?
+* Items that give active abilities, but never overlap with perks abilities
 
 ## Projectile Weapons:
 ### Examples:

@@ -49,7 +49,8 @@ impl GameState for State {
                 self.run_state = menu_input(self, context);
             }
             RunState::Resolve => {
-                let _result = self.world.resolve();
+                debug_assert!(self.world.resolve_movement().is_ok());
+                debug_assert!(self.world.resolve_melee().is_ok());
                 self.run_state = main_screen_input(self, context);
             }
         }
