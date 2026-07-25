@@ -504,9 +504,16 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         print_item_info(context, item, UI_X_OFFSET + LABEL_OFFSET, offset_y + i);
     }
 
-    // Equipment panel
+    // Equipment panel — highlight the active row while browsing it directly, and keep
+    // it highlighted while the selected slot's action menu is open.
+    let eq_browsing = state.run_state == RunState::BrowsingEquipment
+        || (state.run_state == RunState::AwaitingMenuInput
+            && state.menu_return_state == RunState::BrowsingEquipment);
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
     for (i, slot) in player.body.item_slots.iter().enumerate() {
+        if eq_browsing && i == state.equipment_selected {
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET - 1, offset_y + i, RGB::named(rltk::YELLOW), BG_COLOR, "►");
+        }
         let mut slot_label = slot.slot_type.to_string();
         slot_label.push(':');
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y + i, LABEL_COLOR, BG_COLOR, slot_label);
@@ -564,6 +571,15 @@ pub fn inventory_row_pos(index: usize) -> (i32, i32) {
     let x = (UI_X_OFFSET + LABEL_OFFSET) as i32;
     let y = (UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
         + GROUND_ITEM_PANEL_HEIGHT + 2) as i32 + index as i32;
+    (x, y)
+}
+
+/// Screen position (x, y) of equipment row `index` in the side panel. Used to anchor
+/// the equipment action menu next to the highlighted row.
+pub fn equipment_row_pos(index: usize) -> (i32, i32) {
+    let x = (UI_X_OFFSET + LABEL_OFFSET) as i32;
+    let y = (UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
+        + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2) as i32 + index as i32;
     (x, y)
 }
 

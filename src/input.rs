@@ -141,8 +141,16 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
 
             key if key == b.equipment => {
                 state.menu_stack.clear();
-                state.menu_stack.push(Box::new(equipment_menu(&state.world)));
-                return RunState::AwaitingMenuInput;
+                match first_selectable_slot(&state.world) {
+                    Some(idx) => {
+                        state.equipment_selected = idx;
+                        return RunState::BrowsingEquipment;
+                    }
+                    None => {
+                        state.log("Nothing to unequip".to_string());
+                        return RunState::AwaitingInput;
+                    }
+                }
             },
 
             key if key == b.ability => {
@@ -530,6 +538,74 @@ pub fn browse_inventory_input(state: &mut State, _context: &mut Rltk) -> RunStat
             RunState::AwaitingMenuInput
         }
         _ => RunState::BrowsingInventory,
+    }
+}
+
+/// True when equipment slot `i` holds an item that can be unequipped (not proxy/locked).
+fn slot_selectable(world: &World, i: usize) -> bool {
+    world.get_player().ok()
+        .and_then(|p| p.body.item_slots.get(i))
+        .and_then(|s| s.item.as_ref())
+        .map(|it| !it.proxy && !it.locked)
+        .unwrap_or(false)
+}
+
+fn first_selectable_slot(world: &World) -> Option<usize> {
+    let len = world.get_player().map(|p| p.body.item_slots.len()).unwrap_or(0);
+    (0..len).find(|&i| slot_selectable(world, i))
+}
+
+/// Navigate the side-panel equipment list directly: up/down move the highlight over
+/// unequippable slots, Enter opens the slot's action menu (returning here on cancel),
+/// Esc exits.
+pub fn browse_equipment_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let slots_len = state.world.get_player()
+        .map(|p| p.body.item_slots.len())
+        .unwrap_or(0);
+    if slots_len == 0 {
+        return RunState::AwaitingInput;
+    }
+    if state.equipment_selected >= slots_len {
+        state.equipment_selected = slots_len - 1;
+    }
+
+    let Some(key) = state.last_input.take() else {
+        return RunState::BrowsingEquipment;
+    };
+
+    match key {
+        VirtualKeyCode::Up | VirtualKeyCode::Numpad8 => {
+            if let Some(prev) = (0..state.equipment_selected).rev().find(|&i| slot_selectable(&state.world, i)) {
+                state.equipment_selected = prev;
+            }
+            RunState::BrowsingEquipment
+        }
+        VirtualKeyCode::Down | VirtualKeyCode::Numpad2 => {
+            if let Some(next) = ((state.equipment_selected + 1)..slots_len).find(|&i| slot_selectable(&state.world, i)) {
+                state.equipment_selected = next;
+            }
+            RunState::BrowsingEquipment
+        }
+        VirtualKeyCode::Escape => RunState::AwaitingInput,
+        VirtualKeyCode::Return | VirtualKeyCode::Space => {
+            // Scope the borrow so the menu build + stack push below can reborrow state.
+            let slot_type = {
+                let player = state.world.get_player().unwrap();
+                let slot = &player.body.item_slots[state.equipment_selected];
+                match &slot.item {
+                    Some(item) if !item.proxy && !item.locked => Some(slot.slot_type),
+                    _ => None,
+                }
+            };
+            let Some(slot_type) = slot_type else {
+                return RunState::BrowsingEquipment;
+            };
+            let menu = equipment_action_menu(slot_type, state);
+            state.menu_return_state = RunState::BrowsingEquipment;
+            state.menu_stack.push(Box::new(menu));
+            RunState::AwaitingMenuInput
+        }
+        _ => RunState::BrowsingEquipment,
     }
 }
 
