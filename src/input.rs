@@ -44,7 +44,6 @@ pub fn player_input(game_state: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Escape => {
                 game_state.menu_stack.clear();
                 game_state.menu_stack.push(Menu::new_main());
-
                 return RunState::MenuInput;
             }
 
@@ -107,13 +106,50 @@ pub fn targeting_input(game_state: &mut State, context: &mut Rltk) -> RunState {
                 cursor_pos.y = min(cursor_pos.y + 1, map.height - 1);
                 cursor_pos.x = max(cursor_pos.x - 1, 0);
             },
+            VirtualKeyCode::Space |
+            VirtualKeyCode::Return |
             VirtualKeyCode::T => {
-                return RunState::AwaitingInput;
+                let cursor_pos = game_state.ecs.fetch::<Point>();
+                let map = game_state.ecs.fetch::<Map>();
+                let index = map.xy_idx(cursor_pos.x, cursor_pos.y);
+                let actor = map.tile_blockers[index];
+                // TODO: Iterate over all entities with this position and, in case of >1 hit, create menu
+                // to choose which to focus on
+                match actor {
+                    Some(entity) => {
+                        game_state.menu_stack.clear();
+
+                        fn shoot(ecs: &mut World) -> RunState {
+                            return RunState::AwaitingInput;
+                        }
+
+                        let shoot_row = MenuRow {
+                            hotkey: VirtualKeyCode::S,
+                            text: "(S) Shoot".to_string(),
+                            action: shoot
+                        };
+
+                        let action_menu = Menu {
+                            x: cursor_pos.x + 1,
+                            y: cursor_pos.y,
+                            rows: vec![shoot_row],
+                            selected_row: 0,
+                            target: actor
+                        };
+
+                        game_state.menu_stack.push(action_menu);
+                        return RunState::MenuInput;
+                    }
+                    None => {
+                        return RunState::AwaitingInput;
+                    }
+                }
             }
             _ => {
             }
         }
         None => {
+            return RunState::TargetingInput;
         }
     }
     RunState::TargetingInput
