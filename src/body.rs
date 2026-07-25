@@ -291,7 +291,7 @@ impl Body {
     pub fn update_abilities(&mut self) {
         self.abilities.clear();
         for part in &self.parts {
-            if part.damage < part.max_damage {
+            if part.damage <= part.max_damage {
                 for ability in &part.abilities {
                     self.abilities.insert(ability.clone());
                 }
