@@ -18,6 +18,7 @@ pub struct State {
     pub world: World,
 
     pub menu_stack: Vec<Box<dyn Menu>>,
+    pub item_being_used: Option<Item>,
 
     last_tick: Instant,
 }
@@ -30,6 +31,7 @@ impl State {
             log: GameLog {entries: vec![]},
             world: World::new(),
             menu_stack: vec![],
+            item_being_used: None,
             last_tick: Instant::now(),
         }
     }

@@ -146,8 +146,18 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                 return RunState::AwaitingInput;
             },
             VirtualKeyCode::Return => {
+                let player = state.world.get_player().unwrap();
+                let item_in_use = state.item_being_used.take().unwrap();
+                let mut item_index = 0;
+                for (index, item) in player.inventory.iter().enumerate() {
+                    if item == &item_in_use {
+                        item_index = index;
+                        break;
+                    }
+                }
                 state.world.entities[state.world.player_id.unwrap()].intent =
-                    Intent { action: Action::Throw(0, state.cursor_pos) };
+                    Intent { action: Action::Throw(item_index, state.cursor_pos) };
+
                 return RunState::Resolve;
             },
             _ => {
