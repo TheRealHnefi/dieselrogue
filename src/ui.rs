@@ -72,13 +72,6 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
 
     draw_panel_geometry(context);
     draw_panel_contents(state, context);
-
-    let mut y = SCREEN_HEIGHT - 10;
-    let length = max(state.log.entries.len() as i32 - 5, 0) as usize;
-    for message in &state.log.entries[length..] {
-        context.print(2, y, message);
-        y += 1;
-    }
 }
 
 fn draw_panel_geometry(context: &mut Rltk) {
@@ -153,132 +146,141 @@ fn draw_panel_geometry(context: &mut Rltk) {
 }
 
 fn draw_panel_contents(state: &State, context: &mut Rltk) {
-    let mut offset = UI_Y_OFFSET + 2;
+    let mut offset_y = UI_Y_OFFSET + 2;
     let player = match state.world.get_player() {
         Ok(player) => player,
         Err(_) => return
     };
 
     // Location panel
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "Location: Unknown");
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
-    offset += 1;
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "Location: Unknown");
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset_y, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
+    offset_y += 1;
     let pos = player.center();
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
 
     // Health panel
-    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 1;
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 1;
     const HEALTH_X_OFFSET: usize = UI_X_OFFSET + LABEL_OFFSET + 9;
     const PHYS_X_OFFSET: usize = HEALTH_X_OFFSET + 9;
     const ELEC_X_OFFSET: usize = PHYS_X_OFFSET + 9;
     const FIRE_X_OFFSET: usize = ELEC_X_OFFSET + 9;
 
-    context.print_color(HEALTH_X_OFFSET, offset, LABEL_COLOR, BG_COLOR, "Damage");
-    context.print_color(PHYS_X_OFFSET, offset, PHYS_COLOR, BG_COLOR, "Physical");
-    context.print_color(ELEC_X_OFFSET, offset, ELEC_COLOR, BG_COLOR, "Electric");
-    context.print_color(FIRE_X_OFFSET, offset, FIRE_COLOR, BG_COLOR, "Fire");
+    context.print_color(HEALTH_X_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "Damage");
+    context.print_color(PHYS_X_OFFSET, offset_y, PHYS_COLOR, BG_COLOR, "Physical");
+    context.print_color(ELEC_X_OFFSET, offset_y, ELEC_COLOR, BG_COLOR, "Electric");
+    context.print_color(FIRE_X_OFFSET, offset_y, FIRE_COLOR, BG_COLOR, "Fire");
 
     // Status effect panel
-    offset += 1;
+    offset_y += 1;
     for bodypart in &player.body.parts {
-        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, &bodypart.name);
-        context.print_color(HEALTH_X_OFFSET, offset, LABEL_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.damage, &bodypart.max_damage));
-        context.print_color(PHYS_X_OFFSET, offset, PHYS_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.phys_absorption, &bodypart.armor.phys_resistance * 100.0));
-        context.print_color(ELEC_X_OFFSET, offset, ELEC_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.elec_absorption, &bodypart.armor.elec_resistance * 100.0));
-        context.print_color(FIRE_X_OFFSET, offset, FIRE_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.fire_absorption, &bodypart.armor.fire_resistance * 100.0));
-        offset += 1;
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, &bodypart.name);
+        context.print_color(HEALTH_X_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.damage, &bodypart.max_damage));
+        context.print_color(PHYS_X_OFFSET, offset_y, PHYS_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.phys_absorption, &bodypart.armor.phys_resistance * 100.0));
+        context.print_color(ELEC_X_OFFSET, offset_y, ELEC_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.elec_absorption, &bodypart.armor.elec_resistance * 100.0));
+        context.print_color(FIRE_X_OFFSET, offset_y, FIRE_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.fire_absorption, &bodypart.armor.fire_resistance * 100.0));
+        offset_y += 1;
     }
 
-    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 2;
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 2;
     const STATUS_COLUMN_WIDTH: usize = 12;
     const STATUS_COLUMN_HEIGHT: usize = HEALTH_AND_STATUS_PANEL_HEIGHT - 2;
     for (i, status) in player.body.status_effects.iter().enumerate() {
         if i < STATUS_COLUMN_HEIGHT {
-            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH, offset + i, LABEL_COLOR, BG_COLOR, status.to_string());
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, status.to_string());
         } else {
-            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH + STATUS_COLUMN_WIDTH, offset + i - STATUS_COLUMN_HEIGHT, LABEL_COLOR, BG_COLOR, status.to_string());
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH + STATUS_COLUMN_WIDTH, offset_y + i - STATUS_COLUMN_HEIGHT, LABEL_COLOR, BG_COLOR, status.to_string());
         }
     }
 
     // Inventory panel
-    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + 2;
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + 2;
     const INVENTORY_NAME_COLUMN_WIDTH: usize = 25;
     for (i, item) in player.body.inventory.iter().enumerate() {
         assert!(i < 20);
-        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset + i, LABEL_COLOR, BG_COLOR, format!("{}: {}", i, &item.name));
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y + i, LABEL_COLOR, BG_COLOR, format!("{}: {}", i, &item.name));
         match &item.kind {
             ItemKind::Firearm{ammo, max_ammo, damage} => {
-                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset + i, LABEL_COLOR, BG_COLOR, format!("Ammo: {}\\{}", ammo, max_ammo));
+                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Ammo: {}\\{}", ammo, max_ammo));
 
                 let label = String::from("Dmg: ");
                 let phys = format!("{}", damage.physical);
                 let elec = format!("{}", damage.electrical);
                 let fire = format!("{}", damage.fire);
-                let mut offset_y = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH + 15;
-                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, &label);
-                offset_y += label.len();
+                let mut offset_x = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH + 15;
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &label);
+                offset_x += label.len();
 
-                context.print_color(offset_y, offset + i, PHYS_COLOR, BG_COLOR, &phys);
-                offset_y += phys.len();
+                context.print_color(offset_x, offset_y + i, PHYS_COLOR, BG_COLOR, &phys);
+                offset_x += phys.len();
 
-                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_y += 1;
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_x += 1;
 
-                context.print_color(offset_y, offset + i, ELEC_COLOR, BG_COLOR, &elec);
-                offset_y += elec.len();
+                context.print_color(offset_x, offset_y + i, ELEC_COLOR, BG_COLOR, &elec);
+                offset_x += elec.len();
 
-                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_y += 1;
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
+                offset_x += 1;
 
-                context.print_color(offset_y, offset + i, FIRE_COLOR, BG_COLOR, &fire);
+                context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
             },
             ItemKind::Wearable{armor} => {
                 let label = String::from("Armor: ");
                 let phys = format!("{}\\{} ", armor.phys_absorption, armor.phys_resistance * 100.0);
                 let elec = format!("{}\\{} ", armor.elec_absorption, armor.elec_resistance * 100.0);
                 let fire = format!("{}\\{} ", armor.fire_absorption, armor.fire_resistance * 100.0);
-                let mut offset_y = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH;
-                context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, &label);
-                offset_y += label.len();
+                let mut offset_x = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH;
+                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &label);
+                offset_x += label.len();
 
-                context.print_color(offset_y, offset + i, PHYS_COLOR, BG_COLOR, &phys);
-                offset_y += phys.len();
+                context.print_color(offset_x, offset_y + i, PHYS_COLOR, BG_COLOR, &phys);
+                offset_x += phys.len();
 
-                context.print_color(offset_y, offset + i, ELEC_COLOR, BG_COLOR, &elec);
-                offset_y += elec.len();
+                context.print_color(offset_x, offset_y + i, ELEC_COLOR, BG_COLOR, &elec);
+                offset_x += elec.len();
 
-                context.print_color(offset_y, offset + i, FIRE_COLOR, BG_COLOR, &fire);
+                context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
             },
             ItemKind::Misc => {
-                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset + i, LABEL_COLOR, BG_COLOR, format!("?"));
+                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("?"));
             }
         }
     }
 
     // Equipment panel
-    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
     for (i, slot) in player.body.item_slots.iter().enumerate() {
         let mut slot_label = slot.slot_type.to_string();
-        let mut offset_y = UI_X_OFFSET + LABEL_OFFSET;
+        let mut offset_x = UI_X_OFFSET + LABEL_OFFSET;
         slot_label.push(':');
-        context.print_color(offset_y, offset + i, LABEL_COLOR, BG_COLOR, slot_label);
-        offset_y += 15;
+        context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, slot_label);
+        offset_x += 15;
 
         match &slot.item {
             Some(item) => {
                 let color = if item.proxy { INACTIVE_COLOR } else { LABEL_COLOR };
-                context.print_color(offset_y, offset + i, color, BG_COLOR, &item.name);
-                offset_y += item.name.len();
+                context.print_color(offset_x, offset_y + i, color, BG_COLOR, &item.name);
+                offset_x += item.name.len();
 
                 match item.kind {
                     ItemKind::Firearm{ammo, max_ammo, damage: _} => {
-                        context.print_color(offset_y, offset + i, color, BG_COLOR, format!("  Ammo: {}\\{}", ammo, max_ammo));
+                        context.print_color(offset_x, offset_y + i, color, BG_COLOR, format!("  Ammo: {}\\{}", ammo, max_ammo));
                     },
                     _ => ()
                 }
             },
-            None => context.print_color(offset_y, offset + i, INACTIVE_COLOR, BG_COLOR, "---".to_string())
+            None => context.print_color(offset_x, offset_y + i, INACTIVE_COLOR, BG_COLOR, "---".to_string())
         }
+    }
+
+    // Log
+    offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + ABILITIES_PANEL_HEIGHT + 2;
+    let max_logs = LOG_NOISE_PANEL_HEIGHT - 2;
+    let length = max(state.log.entries.len() as i32 - max_logs as i32, 0) as usize;
+    for message in &state.log.entries[length..] {
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, message);
+        offset_y += 1;
     }
 }
 
