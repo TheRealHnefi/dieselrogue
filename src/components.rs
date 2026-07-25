@@ -109,6 +109,22 @@ pub enum Effect {
     ApplyStatus{target_id: usize, status: StatusEffect},
     BurnTick{entity_id: usize, bodypart_index: usize},
     SyncActiveItem{item_id: usize, location: ItemLocation},
+    Sound(SoundEvent),
+}
+
+#[derive(Clone)]
+pub enum SoundKind {
+    Gunshot,
+    Burst,
+    Explosion,
+    Footstep,
+}
+
+#[derive(Clone)]
+pub struct SoundEvent {
+    pub kind: SoundKind,
+    pub pos: Point,
+    pub volume: u32,
 }
 
 // Status Effects are considered Eq if they have the same enum type, even if the value is

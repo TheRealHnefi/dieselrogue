@@ -366,6 +366,76 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, message);
         offset_y += 1;
     }
+
+    // Noise panel
+    draw_noise_panel(state, context);
+}
+
+fn sound_direction_label(player_pos: rltk::Point, sound_pos: rltk::Point) -> &'static str {
+    let dx = sound_pos.x - player_pos.x;
+    let dy = sound_pos.y - player_pos.y;
+    if dx == 0 && dy == 0 {
+        return "here";
+    }
+    let angle = (dy as f32).atan2(dx as f32).to_degrees();
+    match angle as i32 {
+        -180..=-158 | 158..=180 => "W",
+        -157..=-113              => "NW",
+        -112..=-68               => "N",
+        -67..=-23                => "NE",
+        -22..=22                 => "E",
+        23..=67                  => "SE",
+        68..=112                 => "S",
+        _                        => "SW",
+    }
+}
+
+fn sound_color(kind: &SoundKind, dist: f32) -> rltk::RGB {
+    let base = match kind {
+        SoundKind::Gunshot   => RGB { r: 0.8, g: 0.8, b: 0.8 },
+        SoundKind::Burst     => RGB { r: 1.0, g: 1.0, b: 0.6 },
+        SoundKind::Explosion => RGB { r: 1.0, g: 0.4, b: 0.1 },
+        SoundKind::Footstep  => RGB { r: 0.5, g: 0.5, b: 0.5 },
+    };
+    let fade = if dist <= 3.0 { 1.0 } else if dist <= 8.0 { 0.75 } else if dist <= 15.0 { 0.5 } else { 0.3 };
+    RGB { r: base.r * fade, g: base.g * fade, b: base.b * fade }
+}
+
+fn draw_noise_panel(state: &State, context: &mut Rltk) {
+    let player_pos = match state.world.get_player() {
+        Ok(p) => p.center(),
+        Err(_) => return,
+    };
+
+    let panel_x = UI_X_OFFSET + LOG_PANEL_WIDTH + LABEL_OFFSET;
+    let panel_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT
+        + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + ABILITIES_PANEL_HEIGHT + 2;
+    let max_rows = LOG_NOISE_PANEL_HEIGHT - 2;
+    let inner_width = NOISE_PANEL_WIDTH - LABEL_OFFSET - 1;
+
+    let mut row = 0;
+    for sound in &state.world.sounds_last_turn {
+        if row >= max_rows {
+            break;
+        }
+        let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_pos, sound.pos);
+        if dist > sound.volume as f32 {
+            continue;
+        }
+        let dir = sound_direction_label(player_pos, sound.pos);
+        let label = match sound.kind {
+            SoundKind::Gunshot   => "Gunshot",
+            SoundKind::Burst     => "Burst",
+            SoundKind::Explosion => "Explosion",
+            SoundKind::Footstep  => "Footstep",
+        };
+        let color = sound_color(&sound.kind, dist);
+        // "Explosion NW" = 12 chars — fits inner_width exactly
+        let text = format!("{:<9} {:<2}", label, dir);
+        let text = if text.len() > inner_width { text[..inner_width].to_string() } else { text };
+        context.print_color(panel_x, panel_y + row, color, BG_COLOR, &text);
+        row += 1;
+    }
 }
 
 fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
