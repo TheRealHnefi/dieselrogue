@@ -6,7 +6,7 @@ pub const SCREEN_WIDTH: usize = 80;
 pub const SCREEN_HEIGHT: usize = 50;
 
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
-    // draw_map(&state.ecs, context);
+    draw_map(&state.world.map, context);
 
     // {
     //     let positions = state.ecs.read_storage::<Position>();
@@ -152,7 +152,7 @@ pub fn draw_inventory_screen(_state: &mut State, context: &mut Rltk) {
     // }
 }
 
-pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
+fn draw_main_ui(state: &mut State, context: &mut Rltk) {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
     let new_mouse_pos = context.mouse_pos();
@@ -242,37 +242,35 @@ pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
 //     }
 // }
 
-// pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
-//     let map = ecs.fetch::<Map>();
-
-//     let mut y = 0;
-//     let mut x = 0;
-//     for (idx, tile) in map.tiles.iter().enumerate() {
-//         if map.revealed_tiles[idx] {
-//             let glyph;
-//             let mut foreground;
-//             match tile {
-//                 TileType::Floor => {
-//                     glyph = rltk::to_cp437('.');
-//                     foreground = RGB::from_f32(0.5, 1.0, 0.5);
-//                 }
-//                 TileType::Wall => {
-//                     glyph = rltk::to_cp437('█');
-//                     foreground = RGB::from_f32(0.0, 1.0, 0.0);
-//                 }
-//             }
-//             if !map.visible_tiles[idx] {
-//                 foreground = foreground.to_greyscale();
-//             }
-//             ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
-//         }
-//         x += 1;
-//         if x >= map.width {
-//             x = 0;
-//             y += 1;
-//         }
-//     }
-// }
+fn draw_map(map: &Map, ctx: &mut Rltk) {
+    let mut y = 0;
+    let mut x = 0;
+    for (idx, tile) in map.tiles.iter().enumerate() {
+        if true || map.revealed_tiles[idx] {
+            let glyph;
+            let mut foreground;
+            match tile {
+                TileType::Floor => {
+                    glyph = rltk::to_cp437('.');
+                    foreground = RGB::from_f32(0.5, 1.0, 0.5);
+                }
+                TileType::Wall => {
+                    glyph = rltk::to_cp437('█');
+                    foreground = RGB::from_f32(0.0, 1.0, 0.0);
+                }
+            }
+            if !map.visible_tiles[idx] {
+                foreground = foreground.to_greyscale();
+            }
+            ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
+        }
+        x += 1;
+        if x >= map.width {
+            x = 0;
+            y += 1;
+        }
+    }
+}
 
 // pub fn draw_menu(state: &State, context: &mut Rltk) {
 //     for menu in &state.menu_stack {
