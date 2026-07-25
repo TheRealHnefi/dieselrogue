@@ -678,6 +678,21 @@ impl Entity {
         result
     }
 
+    pub fn resolve_aim(&mut self, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+        match self.intent.data {
+            IntentData::TargetWithEquipment{slot: _, target} => {
+                return vec!(Effect::ApplyStatus {
+                    target_id: self.id,
+                    status: StatusEffect::AimingAtGround(target)
+                });
+            },
+            _ => {
+                debug_assert!(false);
+                return vec!();
+            }
+        }
+    }
+
     pub fn update_abilities(&mut self) {
         self.body.update_abilities();
     }
@@ -712,6 +727,20 @@ impl Entity {
 
     pub fn kill(&mut self, map: &mut Map) {
         self.clear_pawns(map);
+    }
+
+    pub fn apply_status_effect(&mut self, status: &StatusEffect) {
+        self.body.apply_status_effect(status);
+    }
+
+    pub fn resolve_status_effects(&mut self) {
+        for effect in &self.body.status_effects {
+            match effect {
+                StatusEffect::AimingAtGround(pos) => {
+                    println!("{} is aiming at pos {},{}", self.name, pos.x, pos.y);
+                }
+            }
+        }
     }
 }
 

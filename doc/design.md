@@ -195,7 +195,8 @@ All actions are one of the following categories:
  * Resolve attacks (including throwing items)
  * Resolve movement
  * Resolve other actions (are there any?)
- * Cleanup
+ * Resolve status effects
+ * Cleanup?
 
 ## Misc:
 * Multi-tile actors, like mechs and tanks - pilotable!
