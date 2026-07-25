@@ -11,7 +11,9 @@ pub struct Body {
     pub parts: Vec<BodyPart>,
     pub item_slots: Vec<ItemSlot>,
     pub abilities: HashSet<Ability>,
-    pub status_effects: HashSet<StatusEffect>
+    pub status_effects: HashSet<StatusEffect>,
+    pub energy: u32,
+    pub max_energy: u32,
 }
 
 #[derive(Clone)]
@@ -44,6 +46,8 @@ impl Body {
             item_slots: vec!(),
             abilities: HashSet::new(),
             status_effects: HashSet::new(),
+            energy: 100,
+            max_energy: 100,
         };
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
@@ -130,6 +134,8 @@ impl Body {
             item_slots: vec!(),
             abilities: HashSet::new(),
             status_effects: HashSet::new(),
+            energy: 0,
+            max_energy: 0,
         };
 
         body.parts.push(BodyPart {
@@ -178,6 +184,8 @@ impl Body {
             item_slots: vec!(),
             abilities: HashSet::new(),
             status_effects: HashSet::new(),
+            energy: 0,
+            max_energy: 0,
         };
 
         body.parts.push(BodyPart {

@@ -21,7 +21,7 @@ pub const MAIN_CONSOLE_INDEX: usize = 0;
 pub const UI_CONSOLE_INDEX: usize = 1;
 
 const LOCATION_PANEL_HEIGHT: usize = 5;
-const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 8;
+const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 9;
 const HEALTH_PANEL_WIDTH: usize = 45;
 const STATUS_PANEL_WIDTH: usize = UI_WIDTH - HEALTH_PANEL_WIDTH;
 const INVENTORY_PANEL_HEIGHT: usize = 23;
@@ -45,6 +45,7 @@ const INACTIVE_COLOR: rltk::RGB = RGB {r: 0.4, g: 0.4, b: 0.4};
 const PHYS_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
 const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
+const ENERGY_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
 
 pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
     context.set_active_console(UI_CONSOLE_INDEX);
@@ -182,6 +183,22 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         context.print_color(FIRE_X_OFFSET, offset_y, FIRE_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.fire_absorption, &bodypart.armor.fire_resistance * 100.0));
         offset_y += 1;
     }
+
+    // Energy bar
+    const ENERGY_BAR_WIDTH: usize = 20;
+    let filled = if player.body.max_energy > 0 {
+        (player.body.energy as f32 / player.body.max_energy as f32 * ENERGY_BAR_WIDTH as f32) as usize
+    } else {
+        0
+    };
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "Energy ");
+    let bar_x = UI_X_OFFSET + LABEL_OFFSET + 7;
+    for i in 0..ENERGY_BAR_WIDTH {
+        let (ch, color) = if i < filled { ('█', ENERGY_COLOR) } else { ('░', INACTIVE_COLOR) };
+        context.set(bar_x + i, offset_y, color, BG_COLOR, rltk::to_cp437(ch));
+    }
+    context.print_color(bar_x + ENERGY_BAR_WIDTH + 1, offset_y, LABEL_COLOR, BG_COLOR,
+        format!("{}/{}", player.body.energy, player.body.max_energy));
 
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 2;
     const STATUS_COLUMN_WIDTH: usize = 12;
