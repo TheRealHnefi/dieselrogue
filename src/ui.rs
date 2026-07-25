@@ -41,40 +41,29 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
 }
 
 fn draw_map(map: &Map, viewport: Rect, ctx: &mut Rltk, blink: bool) {
-    let mut x = 0;
-    let mut y = 0;
-    for (idx, tile) in map.tiles.iter().enumerate() {
-        let tile_pos = map.idx_pos(idx);
-        if tile_pos.x < viewport.x1
-            || tile_pos.x >= viewport.x2
-            || tile_pos.y < viewport.y1
-            || tile_pos.y >= viewport.y2 {
-            continue;
-        }
-        if map.revealed_tiles[idx] {
-            let mut renderable = match tile {
-                TileType::Floor => render_floor_tile(map, idx, blink),
-                TileType::OpenDoor => render_open_door_tile(map, idx, blink),
-                TileType::Wall => Renderable {
-                    glyph: rltk::to_cp437('█'),
-                    color: RGB::from_f32(0.0, 1.0, 0.0),
-                    background: RGB::from_f32(0.0, 0.0, 0.0)
-                },
-                TileType::ClosedDoor => Renderable {
-                    glyph: rltk::to_cp437('■'),
-                    color: RGB::from_f32(0.0, 1.0, 0.0),
-                    background: RGB::from_f32(0.0, 0.0, 0.0)
+    for x in viewport.x1..viewport.x2 {
+        for y in viewport.y1..viewport.y2 {
+            let index = map.xy_idx(x, y);
+            if map.revealed_tiles[index] {
+                let mut renderable = match map.tiles[index] {
+                    TileType::Floor => render_floor_tile(map, index, blink),
+                    TileType::OpenDoor => render_open_door_tile(map, index, blink),
+                    TileType::Wall => Renderable {
+                        glyph: rltk::to_cp437('█'),
+                        color: RGB::from_f32(0.0, 1.0, 0.0),
+                        background: RGB::from_f32(0.0, 0.0, 0.0)
+                    },
+                    TileType::ClosedDoor => Renderable {
+                        glyph: rltk::to_cp437('■'),
+                        color: RGB::from_f32(0.0, 1.0, 0.0),
+                        background: RGB::from_f32(0.0, 0.0, 0.0)
+                    }
+                };
+                if !map.visible_tiles[index] {
+                    renderable.color = renderable.color.to_greyscale();
                 }
-            };
-            if !map.visible_tiles[idx] {
-                renderable.color = renderable.color.to_greyscale();
+                ctx.set(x - viewport.x1, y - viewport.y1, renderable.color, renderable.background, renderable.glyph);
             }
-            ctx.set(x, y, renderable.color, renderable.background, renderable.glyph);
-        }
-        x += 1;
-        if x >= viewport.x2 - viewport.x1 {
-            x = 0;
-            y += 1;
         }
     }
 }
