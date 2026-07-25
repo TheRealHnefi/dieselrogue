@@ -46,7 +46,16 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, position: Point) {
 
     let positions = ecs.read_storage::<Position>();
     let bodies = ecs.read_storage::<HumanoidBody>();
+    let names = ecs.read_storage::<Name>();
     let mut tooltip: Vec<String> = Vec::new();
+
+    // TODO: Switch to get single instance instead, joining seems superfluous
+    for (name, pos) in (&names, &positions).join() {
+        let index = map.xy_idx(pos.x, pos.y);
+        if pos.x == position.x && pos.y == position.y && map.visible_tiles[index] {
+            tooltip.push(format!("=== {} ===", name.value));
+        }
+    }
     for (body, pos) in (&bodies, &positions).join() {
         let index = map.xy_idx(pos.x, pos.y);
         if pos.x == position.x && pos.y == position.y && map.visible_tiles[index] {
