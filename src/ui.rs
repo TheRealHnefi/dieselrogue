@@ -67,32 +67,49 @@ pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
 
     let show_cursor = (monotime / 250) % 2 == 0;
     for menu in &state.menu_stack {
-        menu.draw(context, show_cursor);
         if menu.shows_paper_doll() {
-            draw_paper_doll(context, &state.rex_assets.player_doll);
+            if let Some((mx, my, mw, mh)) = menu.bounds() {
+                draw_equipment_panel(context, &state.rex_assets.player_doll, mx, my, mw, mh);
+            }
         }
+        menu.draw(context, show_cursor);
     }
 }
 
-fn draw_paper_doll(ctx: &mut Rltk, xp: &rltk::rex::XpFile) {
-    if xp.layers.is_empty() { return; }
-    let layer = &xp.layers[0];
-    let doll_w = layer.width as i32;
-    let doll_h = layer.height as i32;
-    // Place the doll to the left of the equipment list (which sits at x=35),
-    // with a two-column gap. Clamp so it never goes off-screen left.
-    let x = (35 - doll_w - 2).max(1);
-    let y = 20;
-    for cy in 0..doll_h {
-        for cx in 0..doll_w {
-            if let Some(cell) = layer.get(cx as usize, cy as usize) {
-                ctx.set(
-                    x + cx,
-                    y + cy,
-                    RGB::from_u8(cell.fg.r, cell.fg.g, cell.fg.b),
-                    RGB::from_u8(cell.bg.r, cell.bg.g, cell.bg.b),
-                    cell.ch as u8,
-                );
+/// Draws the outer panel (background fill + border) and the paper doll.
+/// Must be called before menu.draw() so the inner menu box renders on top.
+fn draw_equipment_panel(ctx: &mut Rltk, xp: &rltk::rex::XpFile, menu_x: i32, menu_y: i32, menu_w: i32, menu_h: i32) {
+    let (doll_w, doll_h) = if xp.layers.is_empty() {
+        (0, 0)
+    } else {
+        (xp.layers[0].width as i32, xp.layers[0].height as i32)
+    };
+
+    let doll_x = (menu_x - doll_w - 2).max(1);
+    let doll_y = menu_y;
+
+    // Outer panel bounds: 1-cell padding around the combined doll + menu area.
+    let panel_x = doll_x - 1;
+    let panel_y = menu_y - 1;
+    let panel_w = (menu_x + menu_w + 1) - panel_x;
+    let panel_h = (doll_y + doll_h).max(menu_y + menu_h) + 1 - panel_y;
+
+    ctx.draw_box(panel_x, panel_y, panel_w, panel_h, LINE_COLOR, BG_COLOR);
+
+    // Draw the paper doll inside the panel, to the left of the menu box.
+    if !xp.layers.is_empty() {
+        let layer = &xp.layers[0];
+        for cy in 0..doll_h {
+            for cx in 0..doll_w {
+                if let Some(cell) = layer.get(cx as usize, cy as usize) {
+                    ctx.set(
+                        doll_x + cx,
+                        doll_y + cy,
+                        RGB::from_u8(cell.fg.r, cell.fg.g, cell.fg.b),
+                        RGB::from_u8(cell.bg.r, cell.bg.g, cell.bg.b),
+                        cell.ch as u8,
+                    );
+                }
             }
         }
     }
