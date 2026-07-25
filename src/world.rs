@@ -83,7 +83,7 @@ impl World {
             position: pos,
             renderable: Renderable::new_glyph('8'),
             name: name,
-            intent: Intent { action: Action::Idle},
+            intent: Intent::Idle,
             facing: facing,
             inventory: vec!()
         };
@@ -109,7 +109,7 @@ impl World {
             position: pos,
             renderable: Renderable::new_glyph('5'),
             name: name,
-            intent: Intent { action: Action::Idle},
+            intent: Intent::Idle,
             facing: facing,
             inventory: vec!()
         };

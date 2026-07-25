@@ -43,13 +43,8 @@ impl Renderable {
     }
 }
 
-#[derive (Copy, Clone)]
-pub struct Intent {
-    pub action: Action
-}
-
 #[derive (PartialEq, Eq, Copy, Clone)]
-pub enum Action {
+pub enum Intent {
     Idle,
     Move(Point),
     Turn(Direction),

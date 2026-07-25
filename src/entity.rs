@@ -30,16 +30,16 @@ impl Entity {
         let old_index = map.xy_idx(self.position.x, self.position.y);
         let mut new_index = old_index;
 
-        match self.intent.action {
-            Action::Move(pos) => {
+        match self.intent {
+            Intent::Move(pos) => {
                 if !map.blocked(pos.x, pos.y) {
                     new_index = map.xy_idx(pos.x, pos.y);
                     self.position = pos;
                 }
 
-                self.intent = Intent {action: Action::Idle};
+                self.intent = Intent::Idle;
             },
-            Action::Turn(direction) => {
+            Intent::Turn(direction) => {
                 self.facing.direction = direction;
 
                 match direction {
@@ -53,7 +53,7 @@ impl Entity {
                     Direction::UpLeft => {self.renderable.glyph = rltk::to_cp437('7')},
                 }
 
-                self.intent = Intent {action: Action::Idle};
+                self.intent = Intent::Idle;
             },
             _ => {}
         }
@@ -65,9 +65,9 @@ impl Entity {
     }
 
     pub fn resolve_melee(&mut self, map: &mut Map) -> Option<Effect> {
-        match self.intent.action {
-            Action::Melee(pos) => {
-                self.intent = Intent {action: Action::Idle};
+        match self.intent {
+            Intent::Melee(pos) => {
+                self.intent = Intent::Idle;
 
                 let index = map.xy_idx(pos.x, pos.y);
                 // TODO: check existence
@@ -79,9 +79,9 @@ impl Entity {
     }
 
     pub fn resolve_inventory(&mut self, map: &mut Map) -> Option<Effect> {
-        match self.intent.action {
-            Action::GetItem => {
-                self.intent = Intent {action: Action::Idle};
+        match self.intent {
+            Intent::GetItem => {
+                self.intent = Intent::Idle;
 
                 let index = map.xy_idx(self.position.x, self.position.y);
                 if map.items[index].is_some() {
@@ -89,8 +89,8 @@ impl Entity {
                 }
                 return None;
             },
-            Action::Drop(item_index) => {
-                self.intent = Intent {action: Action::Idle};
+            Intent::Drop(item_index) => {
+                self.intent = Intent::Idle;
                 
                 let target_pos = map.nearest_free_item_position(self.position).unwrap();
                 let map_index = map.pos_idx(target_pos);
@@ -105,10 +105,10 @@ impl Entity {
     }
 
     pub fn resolve_throw(&mut self, map: &mut Map) -> Option<Effect> {
-        match self.intent.action {
-            Action::Throw(item_index, position) => {
+        match self.intent {
+            Intent::Throw(item_index, position) => {
                 assert!(item_index < self.inventory.len());
-                self.intent = Intent {action: Action::Idle};
+                self.intent = Intent::Idle;
 
                 let item = self.inventory.swap_remove(item_index);
 

@@ -98,7 +98,7 @@ fn drop_action(item: Item, state: &mut State) -> RunState {
                     break;
                 }
             }
-            player.intent.action = Action::Drop(item_index);
+            player.intent = Intent::Drop(item_index);
         },
         Err(_) => ()
     }

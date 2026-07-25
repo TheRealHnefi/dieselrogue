@@ -51,7 +51,7 @@ fn main() -> rltk::BError {
     let _result = state.world.create_entity(Point {x: pos.x + 1, y: pos.y+1},
         Facing { direction: Direction::Up},
         String::from("Goon"));
-    state.world.entities[1].intent = Intent {action: Action::Turn(Direction::DownLeft)};
+    state.world.entities[1].intent = Intent::Turn(Direction::DownLeft);
     
     let item = Item::grenade();
     let _ = state.world.add_item(pos, item);
