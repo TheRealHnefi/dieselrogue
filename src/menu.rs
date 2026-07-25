@@ -428,13 +428,31 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
 }
 
 pub fn equipment_action_menu(slot: SlotType, state: &State) -> MenuPanel<EquippedActionRow> {
-    // Unequip is the only equipment action today; kept in a menu (rather than acting
-    // immediately) to mirror the inventory flow and stay extensible.
-    let action_rows = vec![EquippedActionRow {
+    let mut action_rows = vec![];
+
+    // Offer Reload for an equipped firearm that can be reloaded, gated by the same
+    // precondition the ability menu uses.
+    if let Ok(player) = state.world.get_player() {
+        if let Some(item) = player.get_equipped_item_ref(slot) {
+            for action in &item.equip_actions {
+                if action.id == ActionId::Reload
+                    && (action.precondition)(player, &state.world.map, Some(item)) {
+                    action_rows.push(EquippedActionRow {
+                        text: action.name.clone(),
+                        slot,
+                        action: action.clone(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Unequip is always available.
+    action_rows.push(EquippedActionRow {
         text: unequip_action_def().name.clone(),
         slot,
         action: unequip_action_def(),
-    }];
+    });
 
     // Anchor just left of the side-panel equipment list, aligned with the highlighted row.
     let (row_x, row_y) = crate::equipment_row_pos(state.equipment_selected);

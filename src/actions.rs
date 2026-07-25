@@ -349,6 +349,32 @@ pub fn throw_grenade_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -
     ]
 }
 
+/// Reload initiated from a firearm — equipped (EquippedItem) or carried (InventoryItem).
+/// Resolves the firearm's id and hands off to the ReloadWeapon effect.
+pub fn reload_weapon_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let weapon_id = match &entity.intent.data {
+        IntentData::InventoryItem(item) => item.id,
+        IntentData::EquippedItem(slot)  => match entity.get_equipped_item_ref(*slot) {
+            Some(item) => item.id,
+            None => return vec![],
+        },
+        _ => unreachable!("reload_weapon_action called with non-item intent"),
+    };
+    vec![Effect::ReloadWeapon { entity_id: entity.index, weapon_id }]
+}
+
+/// Reload initiated from an ammo box — finds a matching firearm to fill.
+pub fn reload_from_ammo_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let IntentData::InventoryItem(ref ammo) = entity.intent.data else {
+        unreachable!("reload_from_ammo_action called with non-inventory intent")
+    };
+    let ItemKind::Ammo { kind, .. } = ammo.kind else { return vec![] };
+    match crate::item::find_reloadable_weapon_id(entity, kind) {
+        Some(weapon_id) => vec![Effect::ReloadWeapon { entity_id: entity.index, weapon_id }],
+        None => vec![],
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Abilities
 // ---------------------------------------------------------------------------

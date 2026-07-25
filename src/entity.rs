@@ -307,6 +307,24 @@ impl Entity {
         }
     }
 
+    /// Find an item by id in the inventory or any equipped slot.
+    pub fn find_item_by_id(&self, item_id: usize) -> Option<&Item> {
+        self.body.inventory.iter().find(|i| i.id == item_id)
+            .or_else(|| self.body.item_slots.iter()
+                .filter_map(|s| s.item.as_ref())
+                .find(|i| i.id == item_id))
+    }
+
+    /// Mutable lookup by id across the inventory and equipped slots.
+    pub fn find_item_by_id_mut(&mut self, item_id: usize) -> Option<&mut Item> {
+        if let Some(pos) = self.body.inventory.iter().position(|i| i.id == item_id) {
+            return self.body.inventory.get_mut(pos);
+        }
+        self.body.item_slots.iter_mut()
+            .filter_map(|s| s.item.as_mut())
+            .find(|i| i.id == item_id)
+    }
+
     /// Returns all actions currently available to `entity`: equipped-item actions
     /// whose preconditions pass, followed by innate actions whose preconditions pass.
     /// `Option<SlotType>` is `Some(slot)` for equipped actions, `None` for innate ones.

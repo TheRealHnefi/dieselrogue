@@ -40,6 +40,7 @@ struct FirearmDef {
     fire_mode: FireMode,
     two_handed: bool,
     ammo: u32,
+    ammo_kind: AmmoKind,
     damage: Damage,
     range: u32,
     rarity: u8,
@@ -49,49 +50,64 @@ struct FirearmDef {
 
 impl Item {
     pub fn revolver() -> Self {
-        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   damage: Damage::new(15,  0,  0, 0), range: 5,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 0 })
+        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 0 })
     }
     pub fn flare_gun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'F', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   damage: Damage::new( 0,  0, 10, 0), range: 5,  rarity: 0 })
+        Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'F', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   ammo_kind: AmmoKind::Fuel,      damage: Damage::new( 0,  0, 10, 0), range: 5,  rarity: 0 })
     }
     pub fn shock_pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'S', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   damage: Damage::new( 0,  3,  0, 0), range: 3,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'S', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  3,  0, 0), range: 3,  rarity: 1 })
     }
     pub fn submachine_gun() -> Self {
-        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn bolt_action_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'B', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   damage: Damage::new(25,  0,  0, 0), range: 15, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'B', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(25,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn semi_auto_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'R', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  damage: Damage::new(20,  0,  0, 0), range: 15, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'R', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(20,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn assault_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  damage: Damage::new(15,  0,  0, 0), range: 12, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 12, rarity: 2 })
     }
     pub fn machinegun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
     }
     pub fn rotary_machinegun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, damage: Damage::new(12,  0,  0, 0), range: 10, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, ammo_kind: AmmoKind::Bullets,   damage: Damage::new(12,  0,  0, 0), range: 10, rarity: 3 })
     }
     pub fn shock_carbine() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  damage: Damage::new( 0,  3,  0, 0), range: 6,  rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  3,  0, 0), range: 6,  rarity: 2 })
     }
     pub fn shock_cannon() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   damage: Damage::new( 0, 25,  0, 0), range: 8,  rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0, 25,  0, 0), range: 8,  rarity: 3 })
     }
     pub fn flamethrower() -> Self {
-        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  damage: Damage::new( 0,  0,  3, 0), range: 10, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  ammo_kind: AmmoKind::Fuel,      damage: Damage::new( 0,  0,  3, 0), range: 10, rarity: 2 })
     }
     pub fn rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'R', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   damage: Damage::new(500, 0,  0, 0), range: 15, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'R', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(500, 0,  0, 0), range: 15, rarity: 3 })
     }
     pub fn multi_rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'M', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'M', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(100, 0,  0, 0), range: 12, rarity: 3 })
+    }
+
+    // ---- Ammunition -------------------------------------------------------
+
+    pub fn ammo_bullets() -> Self {
+        Item::make_ammo(AmmoKind::Bullets,   "Bullets",   rltk::RGB::from_f32(0.85, 0.70, 0.20), 30)
+    }
+    pub fn ammo_rockets() -> Self {
+        Item::make_ammo(AmmoKind::Rockets,   "Rockets",   rltk::RGB::from_f32(0.80, 0.20, 0.10),  3)
+    }
+    pub fn ammo_batteries() -> Self {
+        Item::make_ammo(AmmoKind::Batteries, "Batteries", rltk::RGB::from_f32(0.20, 0.80, 0.90), 12)
+    }
+    pub fn ammo_fuel() -> Self {
+        Item::make_ammo(AmmoKind::Fuel,      "Fuel",      rltk::RGB::from_f32(0.90, 0.50, 0.10), 20)
     }
 
     // ---- Grenades ---------------------------------------------------------
@@ -209,7 +225,7 @@ impl Item {
             inventory_actions: vec![],
             equip_actions: vec![Item::aim_action(range), Item::aim_at_entity_action(range), Item::fire_action()],
             equip_slots: vec![SlotType::TurretMount],
-            kind: ItemKind::Firearm { ammo: ammo, max_ammo: ammo, damage: Damage::new(500, 0, 0, 0), range: range },
+            kind: ItemKind::Firearm { ammo: ammo, max_ammo: ammo, ammo_kind: AmmoKind::Rockets, damage: Damage::new(500, 0, 0, 0), range: range },
             proxy: false,
             locked: true,
             active: false,
@@ -298,28 +314,46 @@ impl Item {
 
 impl Item {
     fn make_firearm(def: FirearmDef) -> Item {
-        let equip_actions = match def.fire_mode {
+        // Reload appears first so the equipped-weapon action menu lists it ahead of fire actions.
+        let mut equip_actions = vec![Item::reload_action()];
+        equip_actions.extend(match def.fire_mode {
             FireMode::Single         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action()],
             FireMode::Burst          => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_burst_action()],
             FireMode::SingleAndBurst => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action(), Item::fire_burst_action()],
             FireMode::Rocket         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_rocket_action()],
             FireMode::Fan            => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fan_fire_action()],
-        };
+        });
         let equip_slots = if def.two_handed {
             vec![SlotType::PrimaryHand, SlotType::SecondaryHand]
         } else {
             vec![SlotType::PrimaryHand]
         };
-        
+
         Item {
             id: 0,
             rarity: def.rarity,
             renderable: Renderable::new_colored_char(def.glyph, Item::rarity_to_color(def.rarity)),
             name: def.name.to_string(),
-            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            inventory_actions: vec![Item::equip_action(), Item::reload_action(), Item::drop_action()],
             equip_actions,
             equip_slots,
-            kind: ItemKind::Firearm { ammo: def.ammo, max_ammo: def.ammo, damage: def.damage, range: def.range },
+            kind: ItemKind::Firearm { ammo: def.ammo, max_ammo: def.ammo, ammo_kind: def.ammo_kind, damage: def.damage, range: def.range },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
+    fn make_ammo(kind: AmmoKind, name: &str, color: rltk::RGB, charges: u32) -> Item {
+        Item {
+            id: 0,
+            rarity: 0,
+            renderable: Renderable::new_colored_char('=', color),
+            name: name.to_string(),
+            inventory_actions: vec![Item::reload_from_ammo_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::Ammo { kind, charges },
             proxy: false,
             locked: false,
             active: false,
@@ -353,6 +387,14 @@ impl Item {
     fn prime_action() -> EntityAction {
         EntityAction { id: ActionId::Prime,         name: "Prime".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::prime_grenade_action }
     }
+    /// Reload initiated from the firearm itself (equipped or in inventory).
+    fn reload_action() -> EntityAction {
+        EntityAction { id: ActionId::Reload,        name: "Reload".to_string(),           targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_can_reload, action: actions::reload_weapon_action }
+    }
+    /// Reload initiated from an ammo box, targeting a matching firearm.
+    fn reload_from_ammo_action() -> EntityAction {
+        EntityAction { id: ActionId::Reload,        name: "Reload weapon".to_string(),    targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ammo_has_target, action: actions::reload_from_ammo_action }
+    }
     fn throw_action() -> EntityAction {
         EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
     }
@@ -372,6 +414,56 @@ impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
+}
+
+/// True if `item` is a firearm below capacity.
+fn firearm_needs_ammo(item: &Item) -> bool {
+    matches!(&item.kind, ItemKind::Firearm { ammo, max_ammo, .. } if ammo < max_ammo)
+}
+
+/// True if `item` is a firearm of `kind` below capacity (a valid reload target).
+fn is_reloadable_firearm(item: &Item, kind: AmmoKind) -> bool {
+    matches!(&item.kind, ItemKind::Firearm { ammo, max_ammo, ammo_kind, .. } if *ammo_kind == kind && ammo < max_ammo)
+}
+
+/// True if the entity carries at least one ammo box of `kind` with charges left.
+fn has_ammo_of_kind(entity: &Entity, kind: AmmoKind) -> bool {
+    entity.body.inventory.iter().any(|i| matches!(&i.kind, ItemKind::Ammo { kind: k, charges } if *k == kind && *charges > 0))
+}
+
+/// Reload precondition for a firearm: it must be below capacity and the entity must
+/// carry matching ammo. `item` is the firearm the action belongs to.
+pub fn precondition_can_reload(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
+    match item {
+        Some(i) => match &i.kind {
+            ItemKind::Firearm { ammo_kind, .. } => firearm_needs_ammo(i) && has_ammo_of_kind(self_ref, *ammo_kind),
+            _ => false,
+        },
+        None => false,
+    }
+}
+
+/// Reload precondition for an ammo box: some carried or equipped firearm of the box's
+/// kind must be below capacity. `item` is the ammo box the action belongs to.
+pub fn precondition_ammo_has_target(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
+    let kind = match item {
+        Some(i) => match &i.kind {
+            ItemKind::Ammo { kind, charges } if *charges > 0 => *kind,
+            _ => return false,
+        },
+        None => return false,
+    };
+    find_reloadable_weapon_id(self_ref, kind).is_some()
+}
+
+/// Pick a firearm for an ammo box of `kind` to reload: prefer an equipped weapon,
+/// then fall back to one in the inventory. Returns its item id.
+pub fn find_reloadable_weapon_id(entity: &Entity, kind: AmmoKind) -> Option<usize> {
+    entity.body.item_slots.iter()
+        .filter_map(|s| s.item.as_ref())
+        .find(|i| is_reloadable_firearm(i, kind))
+        .or_else(|| entity.body.inventory.iter().find(|i| is_reloadable_firearm(i, kind)))
+        .map(|i| i.id)
 }
 
 pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
