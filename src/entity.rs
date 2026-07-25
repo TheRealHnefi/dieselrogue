@@ -351,7 +351,6 @@ impl Entity {
         vec!()
     }
 
-
     pub fn resolve_single_fire(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let mut result = vec!();
     
@@ -561,7 +560,7 @@ impl Entity {
     }
 
     pub fn resolve_move(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-        if !self.has_ability(Ability::Move) {
+        if !self.has_ability(Ability::HumanMove) && !self.has_ability(Ability::VehicleMove) {
             log.log(format!("{} tried to move, but couldn't", self.name));
             return vec!();
         }
@@ -582,11 +581,19 @@ impl Entity {
     }
 
     pub fn resolve_turn(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
-        if !self.has_ability(Ability::Move) {
+        if self.has_ability(Ability::HumanMove) {
+            return self.resolve_fast_turn(map);
+        }
+        else if self.has_ability(Ability::VehicleMove) {
+            return self.resolve_slow_turn(map, log);
+        }
+        else {
             log.log(format!("{} tried to turn, but couldn't", self.name));
             return vec!();
         }
+    }
 
+    fn resolve_fast_turn(&mut self, map: &mut Map) -> Vec<Effect> {
         match self.intent.data {
             IntentData::Direction(direction) => {
                 self.body.facing = direction;
@@ -597,8 +604,27 @@ impl Entity {
                 return vec!();
             }
         }
+        return vec!();
+    }
 
-        vec!()
+    fn resolve_slow_turn(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+        match self.intent.data {
+            IntentData::Direction(direction) => {
+                if self.body.facing.clockwise() == direction
+                    || self.body.facing.counter_clockwise() == direction {
+                    self.body.facing = direction;
+                    self.set_position(self.position, map);
+                } else {
+                    log.log(format!("{} tried to turn, but couldn't", self.name));
+                    return vec!();
+                }
+            },
+            _ => {
+                debug_assert!(false);
+                return vec!();
+            }
+        }
+        return vec!();
     }
 
     pub fn resolve_embark(&mut self, map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
