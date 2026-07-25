@@ -80,6 +80,7 @@ pub enum ExecutionPhase {
     Inventory,
     Attack,
     Movement,
+    ActiveItems,
     Misc
 }
 
@@ -90,7 +91,8 @@ impl ExecutionPhase {
             ExecutionPhase::Instant => Some(ExecutionPhase::Inventory),
             ExecutionPhase::Inventory => Some(ExecutionPhase::Attack),
             ExecutionPhase::Attack => Some(ExecutionPhase::Movement),
-            ExecutionPhase::Movement => Some(ExecutionPhase::Misc),
+            ExecutionPhase::Movement => Some(ExecutionPhase::ActiveItems),
+            ExecutionPhase::ActiveItems => Some(ExecutionPhase::Misc),
             ExecutionPhase::Misc => None
         }
     }

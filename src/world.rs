@@ -2,6 +2,7 @@ use super::*;
 use rltk::Point;
 use strum::IntoEnumIterator;
 use std::collections::HashMap;
+use crate::animation::explosion_animation;
 
 pub struct ActiveItem {
     pub item_id: usize,
@@ -15,6 +16,7 @@ pub struct World {
     pub map: Map,
     pub pending_levelup: bool,
     pub active_items: Vec<ActiveItem>,
+    active_items_ticked: bool,
     next_item_id: usize
 }
 
@@ -73,6 +75,7 @@ impl World {
             next_item_id: 0,
             pending_levelup: false,
             active_items: vec![],
+            active_items_ticked: false,
             map: Map::new_game_map(size)
         };
 
@@ -133,6 +136,7 @@ impl World {
             next_item_id: 0,
             pending_levelup: false,
             active_items: vec![],
+            active_items_ticked: false,
             map: Map::new_game_map(10)
         };
 
@@ -164,6 +168,7 @@ impl World {
             next_item_id: 0,
             pending_levelup: false,
             active_items: vec![],
+            active_items_ticked: false,
             map: Map::new_empty_map(100, 100)
         }
     }
@@ -338,6 +343,10 @@ impl World {
             self.cancel_contested_moves();
         }
 
+        if phase == ExecutionPhase::ActiveItems {
+            return self.resolve_active_items(log);
+        }
+
         let mut effects: Vec<Effect> = vec!();
         for entity in self.entities.iter_mut() {
             if entity.intent.phase == phase {
@@ -348,6 +357,123 @@ impl World {
         }
 
         return self.resolve_effects(&effects, log);
+    }
+
+    fn resolve_active_items(&mut self, log: &mut GameLog) -> Vec<Animation> {
+        if self.active_items_ticked {
+            return vec![];
+        }
+        self.active_items_ticked = true;
+
+        struct Tick {
+            item_id: usize,
+            location: ItemLocation,
+            damage: Damage,
+            timeout: u32,
+        }
+
+        let mut ticks: Vec<Tick> = vec!();
+        for active in &self.active_items {
+            let found = match &active.location {
+                ItemLocation::OnMap(pos) => {
+                    let idx = self.map.pos_idx(*pos);
+                    self.map.items[idx].as_ref()
+                        .filter(|i| i.id == active.item_id)
+                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout } = i.kind {
+                            Some((damage, timeout))
+                        } else { None })
+                        .map(|(d, t)| (active.location.clone(), d, t))
+                },
+                ItemLocation::InInventory(eid) => {
+                    self.entities.get(*eid)
+                        .and_then(|e| e.body.inventory.iter().find(|i| i.id == active.item_id))
+                        .and_then(|i| if let ItemKind::FusedExplosive { damage, timeout } = i.kind {
+                            Some((damage, timeout))
+                        } else { None })
+                        .map(|(d, t)| (active.location.clone(), d, t))
+                },
+            };
+            if let Some((location, damage, timeout)) = found {
+                ticks.push(Tick { item_id: active.item_id, location, damage, timeout });
+            }
+        }
+
+        let mut effects: Vec<Effect> = vec!();
+        let mut exploded: Vec<usize> = vec!();
+
+        for tick in &ticks {
+            let new_timeout = tick.timeout - 1;
+            if new_timeout == 0 {
+                log.log(String::from("A grenade explodes!"));
+                let pos = match &tick.location {
+                    ItemLocation::OnMap(p) => *p,
+                    ItemLocation::InInventory(eid) => self.entities[*eid].position,
+                };
+                const RADIUS: i32 = 3;
+                for entity in &self.entities {
+                    let dx = entity.position.x - pos.x;
+                    let dy = entity.position.y - pos.y;
+                    if dx * dx + dy * dy <= RADIUS * RADIUS {
+                        for part in 0..entity.body.parts.len() {
+                            effects.push(Effect::Damage {
+                                entity_id: entity.id,
+                                bodypart_index: part,
+                                raw_damage: tick.damage,
+                            });
+                        }
+                    }
+                }
+                effects.push(Effect::Animation(explosion_animation(pos)));
+                self.remove_item_from_location(tick.item_id, &tick.location);
+                exploded.push(tick.item_id);
+            } else {
+                self.set_fuse_timeout(tick.item_id, &tick.location, new_timeout);
+            }
+        }
+
+        self.active_items.retain(|a| !exploded.contains(&a.item_id));
+
+        self.resolve_effects(&effects, log)
+    }
+
+    fn set_fuse_timeout(&mut self, item_id: usize, location: &ItemLocation, timeout: u32) {
+        match location {
+            ItemLocation::OnMap(pos) => {
+                let idx = self.map.pos_idx(*pos);
+                if let Some(item) = &mut self.map.items[idx] {
+                    if item.id == item_id {
+                        if let ItemKind::FusedExplosive { timeout: ref mut t, .. } = item.kind {
+                            *t = timeout;
+                        }
+                    }
+                }
+            },
+            ItemLocation::InInventory(eid) => {
+                if let Some(entity) = self.entities.get_mut(*eid) {
+                    if let Some(item) = entity.body.inventory.iter_mut().find(|i| i.id == item_id) {
+                        if let ItemKind::FusedExplosive { timeout: ref mut t, .. } = item.kind {
+                            *t = timeout;
+                        }
+                    }
+                }
+            },
+        }
+    }
+
+    fn remove_item_from_location(&mut self, item_id: usize, location: &ItemLocation) {
+        match location {
+            ItemLocation::OnMap(pos) => {
+                let idx = self.map.pos_idx(*pos);
+                if self.map.items[idx].as_ref().map_or(false, |i| i.id == item_id) {
+                    self.map.items[idx] = None;
+                }
+            },
+            ItemLocation::InInventory(eid) => {
+                if let Some(entity) = self.entities.get_mut(*eid) {
+                    entity.body.inventory.retain(|i| i.id != item_id);
+                }
+            },
+        }
     }
 
     fn cancel_contested_moves(&mut self) {
@@ -482,6 +608,7 @@ impl World {
     }
 
     pub fn resolve_status_effects(&mut self) {
+        self.active_items_ticked = false;
         for entity in &mut self.entities {
             entity.resolve_status_effects();
         }

@@ -77,7 +77,7 @@ impl Map {
     pub fn nearest_free_item_position(&self, pos: Point) -> Result<Point, GameError> {
 
         fn is_free(map: &Map, idx: usize) -> bool {
-            return (map.tiles[idx] == TileType::Floor || map.tiles[idx] == TileType::Ground)
+            return matches!(map.tiles[idx], TileType::Floor | TileType::Ground | TileType::Road)
             && map.items[idx].is_none();
         }
 
