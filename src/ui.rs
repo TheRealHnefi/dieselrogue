@@ -39,7 +39,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk) {
     draw_main_ui(state, context);
 }
 
-pub fn draw_inventory_screen(state: &mut State, context: &mut Rltk) {
+pub fn draw_inventory_screen(_state: &mut State, context: &mut Rltk) {
     // const LEFT_DIVIDER_X: i32 = 20;
     // const RIGHT_DIVIDER_X: i32 = 60;
     // const BOT_DIVIDER_Y: i32 = 40;
@@ -216,31 +216,31 @@ pub fn draw_main_ui(state: &mut State, context: &mut Rltk) {
 //     draw_infobox(context, cursor_position, tooltip)
 // }
 
-fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
-    if contents.is_empty() {
-        return;
-    }
+// fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
+//     if contents.is_empty() {
+//         return;
+//     }
 
-    let width = (contents.iter().max_by_key(|x| x.len()).unwrap_or(&"".to_string()).len() + 3) as i32;
-    let height = contents.len() as i32 + 1;
+//     let width = (contents.iter().max_by_key(|x| x.len()).unwrap_or(&"".to_string()).len() + 3) as i32;
+//     let height = contents.len() as i32 + 1;
     
-    let left = if position.x < 40 {
-        position.x + 1
-    } else {
-        position.x - width - 1 as i32
-    };
-    let top = if position.y < 25 {
-        position.y
-    } else {
-        position.y - height
-    };
+//     let left = if position.x < 40 {
+//         position.x + 1
+//     } else {
+//         position.x - width - 1 as i32
+//     };
+//     let top = if position.y < 25 {
+//         position.y
+//     } else {
+//         position.y - height
+//     };
 
-    context.draw_box(left, top, width, height, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+//     context.draw_box(left, top, width, height, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
-    for (i, line) in contents.iter().enumerate() {
-        context.print(left + 2, top + 1 + i as i32, line.to_string());
-    }
-}
+//     for (i, line) in contents.iter().enumerate() {
+//         context.print(left + 2, top + 1 + i as i32, line.to_string());
+//     }
+// }
 
 // pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
 //     let map = ecs.fetch::<Map>();

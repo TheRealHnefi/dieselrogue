@@ -1,4 +1,4 @@
-use rltk::FontCharType;
+//use rltk::FontCharType;
 //use std::ops::{Add, Sub};
 
 #[derive (PartialEq, Eq, Clone, Copy)]
