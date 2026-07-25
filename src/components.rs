@@ -72,8 +72,8 @@ pub enum SlotType {
     PrimaryHand,
     SecondaryHand,
     Headwear,
-    LeftLegwear,
-    RightLegwear,
+    Legwear,
+    Footwear,
     Bodywear,
     LeftArmwear,
     RightArmwear
