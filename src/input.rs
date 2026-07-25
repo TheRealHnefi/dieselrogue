@@ -68,6 +68,8 @@ pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState 
 fn move_in_direction(state: &mut State, dir: Direction) -> RunState {
     if state.freelook {
         freelook_move(state, dir)
+    } else if state.strafe_held {
+        handle_strafe_input(&mut state.world, dir, &mut state.log)
     } else {
         handle_move_input(&mut state.world, dir, &mut state.log)
     }
@@ -418,6 +420,7 @@ pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
         RebindTarget::MoveUpRight =>     state.bindings.move_up_right = key,
         RebindTarget::MoveDownRight =>   state.bindings.move_down_right = key,
         RebindTarget::MoveDownLeft =>    state.bindings.move_down_left = key,
+        RebindTarget::Strafe =>          state.bindings.strafe = key,
     }
 
     let mut settings = Settings::load();
@@ -431,7 +434,7 @@ pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
 }
 
 fn find_conflicting_action(bindings: &Bindings, key: VirtualKeyCode, excluding: RebindTarget) -> Option<&'static str> {
-    let checks: [(RebindTarget, VirtualKeyCode, &'static str); 18] = [
+    let checks: [(RebindTarget, VirtualKeyCode, &'static str); 19] = [
         (RebindTarget::Wait,          bindings.wait,           "Wait"),
         (RebindTarget::GetItem,       bindings.get_item,       "Get item"),
         (RebindTarget::Disembark,     bindings.disembark,      "Disembark"),
@@ -450,6 +453,7 @@ fn find_conflicting_action(bindings: &Bindings, key: VirtualKeyCode, excluding: 
         (RebindTarget::MoveUpRight,   bindings.move_up_right,  "Move up-right"),
         (RebindTarget::MoveDownRight, bindings.move_down_right,"Move down-right"),
         (RebindTarget::MoveDownLeft,  bindings.move_down_left, "Move down-left"),
+        (RebindTarget::Strafe,        bindings.strafe,         "Strafe"),
     ];
     for (t, bound_key, name) in &checks {
         if *t != excluding && *bound_key == key {
@@ -773,6 +777,17 @@ fn add_levelup_ability(world: &mut World, ability: Ability) {
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {
     match move_player_intent(direction, world) {
+        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
+        Err(error) if matches!(error.error, Error::MapExit) => RunState::Victory,
+        Err(error) => {
+            log.log(error.message);
+            RunState::AwaitingInput
+        }
+    }
+}
+
+fn handle_strafe_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {
+    match strafe_player_intent(direction, world) {
         Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
         Err(error) if matches!(error.error, Error::MapExit) => RunState::Victory,
         Err(error) => {
