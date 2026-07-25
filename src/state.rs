@@ -5,6 +5,7 @@ use std::time::{Instant};
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
     AwaitingInput,
+    AwaitingMenuInput,
 }
 
 pub struct State {
@@ -13,6 +14,8 @@ pub struct State {
     pub log: GameLog,
 
     pub world: World,
+
+    pub menu_stack: Vec<Menu>,
 
     last_tick: Instant,
 }
@@ -24,12 +27,9 @@ impl State {
             mouse_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(),
+            menu_stack: vec![],
             last_tick: Instant::now(),
         }
-    }
-
-    /// Moves the state machine forward.
-    fn execute(&mut self) {
     }
 }
 
@@ -42,12 +42,17 @@ impl GameState for State {
 
         match self.run_state {
             RunState::AwaitingInput => {
-                self.execute();
-                self.run_state = RunState::AwaitingInput;
+                self.run_state = main_screen_input(self, context);
+            }
+            RunState::AwaitingMenuInput => {
+                self.run_state = menu_input(self, context);
             }
         }
 
         draw_main_screen(self, context);
+        if self.run_state == RunState::AwaitingMenuInput {
+            draw_menu(self, context);
+        }
  
         let tick_time = begin.elapsed().as_micros();
         if tick_time > 6000 {
