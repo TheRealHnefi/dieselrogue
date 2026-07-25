@@ -5,6 +5,7 @@ use crate::Item;
 use crate::Body;
 use crate::ai::*;
 use crate::Viewshed;
+use crate::Ability;
 
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
@@ -245,7 +246,7 @@ impl Entity {
         match &map.pawns[target_map_index] {
             Some(pawn) => result.push(Effect::Damage {
                 entity_id: pawn.entity_id,
-                bodypart_index: 1,
+                bodypart_index: 4,
                 raw_damage: shot_damage
             }),
             _ => return result
@@ -304,6 +305,10 @@ impl Entity {
     }
 
     pub fn resolve_move(&mut self, map: &mut Map) -> Vec<Effect> {
+        if !self.has_ability(Ability::Move) {
+            return vec!();
+        }
+
         match self.intent.data {
             IntentData::Target(pos) => {
                 if !map.blocked(pos.x, pos.y) {
@@ -324,6 +329,10 @@ impl Entity {
     }
 
     pub fn resolve_turn(&mut self, map: &mut Map) -> Vec<Effect> {
+        if !self.has_ability(Ability::Move) {
+            return vec!();
+        }
+        
         match self.intent.data {
             IntentData::Direction(direction) => {
                 self.body.facing = direction;
@@ -371,17 +380,34 @@ impl Entity {
         result
     }
 
-    pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: u32) -> bool {
-        self.body.parts[bodypart_index].damage += raw_damage;
+    pub fn update_abilities(&mut self) {
+        self.body.update_abilities();
+    }
+
+    pub fn has_ability(&self, ability: Ability) -> bool {
+        self.body.has_ability(ability)
+    }
+
+    pub fn apply_damage(&mut self, bodypart_index: usize, raw_damage: u32) {
+        let mut bodypart = &mut self.body.parts[bodypart_index];
+        bodypart.damage += raw_damage;
+
+        if bodypart.damage >= bodypart.max_damage {
+            self.update_abilities();
+        }
 
         println!("{} was hit in {} for {} damage, now has {} damage",
             self.name,
             self.body.parts[bodypart_index].name,
             raw_damage,
             self.body.parts[bodypart_index].damage);
+    }
 
-        if bodypart_index < 2 && self.body.parts[bodypart_index].damage >= self.body.parts[bodypart_index].max_damage {
-            return true;
+    pub fn mortally_wounded(&self) -> bool {
+        for bodypart in &self.body.parts {
+            if bodypart.damage > bodypart.max_damage && bodypart.vital {
+                return true;
+            }
         }
         return false;
     }

@@ -7,84 +7,43 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 => {
-                if move_player_intent(Direction::Left, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::Left, &mut state.log);
             },
             VirtualKeyCode::Right |
             VirtualKeyCode::Numpad6 => {
-                if move_player_intent(Direction::Right, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::Right, &mut state.log);
             },
             VirtualKeyCode::Up |
             VirtualKeyCode::Numpad8 => {
-                if move_player_intent(Direction::Up, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::Up, &mut state.log);
             },
             VirtualKeyCode::Down |
             VirtualKeyCode::Numpad2 => {
-                if move_player_intent(Direction::Down, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::Down, &mut state.log);
             },
             VirtualKeyCode::Numpad7 => {
-                if move_player_intent(Direction::UpLeft, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::UpLeft, &mut state.log);
             },
             VirtualKeyCode::Numpad9 => {
-                if move_player_intent(Direction::UpRight, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::UpRight, &mut state.log);
             },
             VirtualKeyCode::Numpad3 => {
-                if move_player_intent(Direction::DownRight, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::DownRight, &mut state.log);
             },
             VirtualKeyCode::Numpad1 => {
-                if move_player_intent(Direction::DownLeft, &mut state.world).is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    return RunState::AwaitingInput;
-                }
+                return handle_move_input(&mut state.world, Direction::DownLeft, &mut state.log);
             },
             VirtualKeyCode::Numpad5 => {
                 return RunState::Resolve;
             },
 
             VirtualKeyCode::G => {
-                let result = getitem_player_intent(&mut state.world); 
-                if result.is_ok() {
-                    return RunState::Resolve;
-                }
-                else {
-                    state.log.entries.push(result.err().unwrap().message);
-                    return RunState::AwaitingInput;
+                match getitem_player_intent(&mut state.world) {
+                    Ok(_) => return RunState::Resolve,
+                    Err(error) => {
+                        state.log(error.message);
+                        return RunState::AwaitingInput;
+                    }
                 }
             },
 
@@ -97,7 +56,7 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                         return RunState::AwaitingMenuInput;
                     }
                     None => {
-                        state.log.entries.push("No usable items".to_string());
+                        state.log("No usable items".to_string());
                         return RunState::AwaitingInput;
                     }
                 }
@@ -258,4 +217,14 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
             return RunState::AwaitingMenuInput;
         }
     }
+}
+
+fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {
+    match move_player_intent(direction, world) {
+        Ok(_) => return RunState::Resolve,
+        Err(error) => {
+            log.log(error.message);
+            return RunState::AwaitingInput;    
+        }
+    }    
 }

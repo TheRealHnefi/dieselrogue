@@ -40,6 +40,10 @@ impl State {
             last_tick: Instant::now(),
         }
     }
+
+    pub fn log(&mut self, message: String) {
+        self.log.log(message);
+    }
 }
 
 const PROFILING: bool = true;

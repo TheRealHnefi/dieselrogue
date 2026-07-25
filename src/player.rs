@@ -5,6 +5,9 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
     let mut player = &mut world.entities[world.player_id.unwrap()];
+    if !player.has_ability(Ability::Move) {
+        return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not move")});
+    }
 
     let (delta_x, delta_y);
     match direction {
@@ -50,8 +53,11 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
-
     let mut player = &mut world.entities[world.player_id.unwrap()];
+    if !player.has_ability(Ability::PickUp) {
+        return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not pick up items")});
+    }
+
     let index = world.map.xy_idx(player.body.position.x, player.body.position.y);
 
     if world.map.items[index].is_some() {
