@@ -101,6 +101,28 @@ impl Direction {
             Direction::UpLeft    => (-1, -1),
         }
     }
+
+    pub const ALL: [Direction; 8] = [
+        Direction::Up, Direction::UpRight, Direction::Right, Direction::DownRight,
+        Direction::Down, Direction::DownLeft, Direction::Left, Direction::UpLeft,
+    ];
+
+    /// The compass direction whose heading best matches the vector `(dx, dy)`.
+    /// Returns `None` for the zero vector.
+    pub fn nearest(dx: i32, dy: i32) -> Option<Direction> {
+        if dx == 0 && dy == 0 { return None; }
+        let len = ((dx * dx + dy * dy) as f32).sqrt();
+        let (nx, ny) = (dx as f32 / len, dy as f32 / len);
+        let mut best = Direction::Up;
+        let mut best_dot = f32::MIN;
+        for d in Direction::ALL {
+            let (ex, ey) = d.delta_pos();
+            let el = ((ex * ex + ey * ey) as f32).sqrt();
+            let dot = (nx * ex as f32 + ny * ey as f32) / el;
+            if dot > best_dot { best_dot = dot; best = d; }
+        }
+        Some(best)
+    }
 }
 
 #[derive (Copy, Clone)]
@@ -179,6 +201,8 @@ pub enum Effect {
     /// Apply Regenerating for `turns` turns. `bodypart_index` = `Some(i)` targets one
     /// part; `None` targets every part. Merges with any existing regeneration.
     ApplyRegeneration { entity_id: usize, bodypart_index: Option<usize>, turns: u32 },
+    /// Set (or replace) the recon Scanning status aimed at `target`.
+    ApplyScan { entity_id: usize, target: Point },
     /// Heal one HP on the given body part (drives the Regenerating tick).
     RegenTick { entity_id: usize, bodypart_index: usize },
     /// Remove and discard the inventory item with the given id (consumables).
@@ -237,6 +261,9 @@ pub enum StatusEffect {
     /// Heals one HP per turn on each body part with turns remaining.
     /// Indexed by bodypart index; each entry is that part's remaining regen turns.
     Regenerating(Vec<u32>),
+    /// Recon vision: a long-range cone aimed at the stored tile replaces normal sight.
+    /// Persists until the wearer moves or turns.
+    Scanning(Point),
 }
 
 impl StatusEffect {
@@ -250,6 +277,7 @@ impl StatusEffect {
             StatusEffect::Deaf(_)    => 4,
             StatusEffect::IronBody(_) => 5,
             StatusEffect::Regenerating(_) => 6,
+            StatusEffect::Scanning(_) => 7,
         }
     }
 
@@ -263,6 +291,7 @@ impl StatusEffect {
             StatusEffect::Deaf(_)    => "Deaf",
             StatusEffect::IronBody(_) => "Iron Body",
             StatusEffect::Regenerating(_) => "Regenerating",
+            StatusEffect::Scanning(_) => "Recon",
         }.to_string()
     }
 }
@@ -293,6 +322,7 @@ impl StatusEffect {
             StatusEffect::IronBody(n) => Some(*n),
             // Show the longest-running part's countdown.
             StatusEffect::Regenerating(v) => Some(v.iter().copied().max().unwrap_or(0)),
+            StatusEffect::Scanning(_) => None,
         }
     }
 
@@ -310,6 +340,8 @@ impl StatusEffect {
                 let next: Vec<u32> = v.iter().map(|n| n.saturating_sub(1)).collect();
                 if next.iter().any(|&n| n > 0) { Some(StatusEffect::Regenerating(next)) } else { None }
             },
+            // Persistent; cleared explicitly on move/turn, not by ticking.
+            StatusEffect::Scanning(_) => Some(self.clone()),
         }
     }
 }

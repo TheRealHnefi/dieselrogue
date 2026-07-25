@@ -747,12 +747,14 @@ impl World {
                 Effect::Move { entity_id, pos } => {
                     self.entities[*entity_id].set_position(*pos, &mut self.map);
                     self.entities[*entity_id].clear_aiming();
+                    self.entities[*entity_id].clear_scanning();
                 },
                 Effect::SetFacing { entity_id, direction } => {
                     self.entities[*entity_id].body.facing = *direction;
                     let pos = self.entities[*entity_id].position;
                     self.entities[*entity_id].set_position(pos, &mut self.map);
                     self.entities[*entity_id].clear_aiming();
+                    self.entities[*entity_id].clear_scanning();
                 },
                 Effect::ConsumeAmmo { entity_id, slot, shots } => {
                     if let Some(item) = self.entities[*entity_id].get_equipped_item(*slot) {
@@ -817,6 +819,12 @@ impl World {
                 },
                 Effect::ConsumeItem { entity_id, item_id } => {
                     self.entities[*entity_id].take_item_by_id(*item_id);
+                },
+                Effect::ApplyScan { entity_id, target } => {
+                    // Replace any prior scan so re-aiming updates the cone direction.
+                    let body = &mut self.entities[*entity_id].body;
+                    body.remove_status_effect(&StatusEffect::Scanning(Point { x: 0, y: 0 }));
+                    body.apply_status_effect(&StatusEffect::Scanning(*target));
                 },
                 Effect::SpendEnergy { entity_id, amount } => {
                     self.entities[*entity_id].body.energy =
@@ -900,6 +908,10 @@ impl World {
                                 });
                             if was_aiming_at == Some(item.id) {
                                 self.entities[*entity_id].clear_aiming();
+                            }
+                            // Removing the recon helmet ends its vision cone.
+                            if slot == SlotType::Headwear {
+                                self.entities[*entity_id].clear_scanning();
                             }
                             log.log(format!("{} unequipped {}", self.entities[*entity_id].name, item.name));
                             self.entities[*entity_id].body.inventory.push(item);

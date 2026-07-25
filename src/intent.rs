@@ -57,6 +57,7 @@ pub enum ActionId {
     Heal,
     Stim,
     RocketRush,
+    Recon,
     GetItem,
     Unequip,
     Juke,

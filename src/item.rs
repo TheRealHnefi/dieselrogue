@@ -273,6 +273,24 @@ impl Item {
             Armor::new(1, 0.15, 0, 0.0, 0, 0.0), 0)
     }
 
+    /// Active headwear: light head protection plus the Recon action (a long-range
+    /// directional vision cone that replaces normal sight while stationary).
+    pub fn tactical_helmet() -> Self {
+        let rarity = 2;
+        Item {
+            id: 0, rarity,
+            renderable: Renderable::new_colored_char('^', Item::rarity_to_color(rarity)),
+            name: String::from("Tactical helmet"),
+            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            equip_actions: vec![Item::recon_action()],
+            equip_slots: vec![SlotType::Headwear],
+            kind: ItemKind::Wearable { armor: Armor::new(2, 0.15, 0, 0.0, 0, 0.0) },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
     /// Active footwear: grants the Rocket Rush action (a loud 8-tile teleport).
     pub fn rocket_boots() -> Self {
         let rarity = 2;
@@ -526,6 +544,10 @@ impl Item {
     /// Rocket boots: a loud instant teleport onto a visible tile up to 8 away.
     fn rocket_rush_action() -> EntityAction {
         EntityAction { id: ActionId::RocketRush,    name: "Rocket Rush".to_string(),      targeting: Targeting::Positional { max_range: Some(8) }, phase: ExecutionPhase::Instant, precondition: precondition_ok, action: actions::rocket_boots_action }
+    }
+    /// Tactical helmet: aim a long-range recon vision cone at a visible tile.
+    fn recon_action() -> EntityAction {
+        EntityAction { id: ActionId::Recon,         name: "Recon".to_string(),            targeting: Targeting::Positional { max_range: None }, phase: ExecutionPhase::Instant, precondition: precondition_ok, action: actions::recon_action }
     }
     fn throw_action() -> EntityAction {
         EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
