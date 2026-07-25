@@ -84,6 +84,13 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 return RunState::AwaitingMenuInput;
             },
 
+            VirtualKeyCode::L => {
+                if let Ok(player) = state.world.get_player() {
+                    state.cursor_pos = player.position;
+                }
+                return RunState::Looking;
+            },
+
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Box::new(main_menu()));
@@ -285,6 +292,46 @@ fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) 
         Err(_) => return RunState::AwaitingInput,
     }
     RunState::Resolve(ExecutionPhase::Instant)
+}
+
+pub fn looking_input(state: &mut State, context: &mut Rltk) -> RunState {
+    if let Some(key) = context.key {
+        match key {
+            VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 => {
+                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+            },
+            VirtualKeyCode::Right | VirtualKeyCode::Numpad6 => {
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
+            },
+            VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 => {
+                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
+            },
+            VirtualKeyCode::Down  | VirtualKeyCode::Numpad2 => {
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
+            },
+            VirtualKeyCode::Numpad9 => {
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
+                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
+            },
+            VirtualKeyCode::Numpad7 => {
+                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
+            },
+            VirtualKeyCode::Numpad3 => {
+                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
+            },
+            VirtualKeyCode::Numpad1 => {
+                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
+            },
+            VirtualKeyCode::Escape | VirtualKeyCode::Return | VirtualKeyCode::L => {
+                return RunState::AwaitingInput;
+            },
+            _ => {}
+        }
+    }
+    RunState::Looking
 }
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {

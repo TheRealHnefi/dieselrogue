@@ -69,8 +69,13 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
     context.set_active_console(UI_CONSOLE_INDEX);
     context.cls();
 
-    if blink && state.run_state == RunState::AwaitingPositionalTargetingInput {
+    let in_cursor_mode = state.run_state == RunState::AwaitingPositionalTargetingInput
+        || state.run_state == RunState::Looking;
+    if in_cursor_mode && blink {
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, RGB::named(rltk::PINK), RGB::named(rltk::BLACK), rltk::to_cp437('█'));
+    }
+    if state.run_state == RunState::Looking {
+        draw_look_tooltip(state, viewport, context);
     }
 
     draw_panel_geometry(context);
@@ -327,6 +332,39 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, message);
         offset_y += 1;
     }
+}
+
+fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
+    let pos = state.cursor_pos;
+    if pos.x < viewport.x1 || pos.x >= viewport.x2 || pos.y < viewport.y1 || pos.y >= viewport.y2 {
+        return;
+    }
+
+    let idx = state.world.map.pos_idx(pos);
+    let label = if let Some(pawn) = &state.world.map.pawns[idx] {
+        pawn.name.clone()
+    } else if let Some(item) = &state.world.map.items[idx] {
+        item.name.clone()
+    } else {
+        return;
+    };
+
+    let cx = pos.x - viewport.x1;
+    let cy = pos.y - viewport.y1;
+    let label_len = label.len() as i32;
+
+    // Prefer drawing to the right; fall back to the left near the viewport edge.
+    let label_x = if cx + 2 + label_len < VIEWPORT_WIDTH as i32 {
+        cx + 2
+    } else {
+        cx - 1 - label_len
+    };
+
+    // Same framing as menu panels: draw_box places the border at (box_x, box_y),
+    // text lands at (box_x+2, box_y+1), so box origin is (label_x-2, cy-1).
+    context.draw_box(label_x - 2, cy - 1, label_len + 3, 2,
+        RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    context.print_color(label_x, cy, LABEL_COLOR, BG_COLOR, &label);
 }
 
 fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {
