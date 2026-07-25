@@ -12,7 +12,7 @@ pub enum RunState {
 
 pub struct State {
     pub run_state: RunState,
-    pub mouse_pos: Point,
+    pub cursor_pos: Point,
     pub log: GameLog,
 
     pub world: World,
@@ -27,7 +27,7 @@ impl State {
     pub fn new() -> Self {
         Self {
             run_state: RunState::AwaitingInput,
-            mouse_pos: Point {x: 0, y:0},
+            cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(),
             system_menu_stack: vec![],
@@ -52,7 +52,7 @@ impl GameState for State {
                 self.run_state = menu_input(self, context);
             },
             RunState::AwaitingPositionalTargetingInput => {
-                self.run_state = RunState::AwaitingInput;
+                self.run_state = positional_targeting_input(self, context);
             },
             RunState::Resolve => {
                 debug_assert!(self.world.resolve_movement().is_ok());

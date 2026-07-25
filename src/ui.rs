@@ -126,13 +126,10 @@ pub fn draw_inventory_screen(_state: &mut State, _context: &mut Rltk) {
 fn draw_main_ui(state: &mut State, context: &mut Rltk) {
     context.draw_box(0, 43, 79, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
-    let new_mouse_pos = context.mouse_pos();
-    if state.mouse_pos.x != new_mouse_pos.0 || state.mouse_pos.y != new_mouse_pos.1 {
-        state.mouse_pos.x = new_mouse_pos.0;
-        state.mouse_pos.y = new_mouse_pos.1;
+    if state.run_state == RunState::AwaitingPositionalTargetingInput {
+        context.set_bg(state.cursor_pos.x, state.cursor_pos.y, RGB::named(rltk::PINK));
+        //    draw_tooltip(&state.ecs, context, *cursor_pos);
     }
-    context.set_bg(state.mouse_pos.x, state.mouse_pos.y, RGB::named(rltk::PINK));
-//    draw_tooltip(&state.ecs, context, *cursor_pos);
 
     let mut y = 44;
     let length = max(state.log.entries.len() as i32 - 5, 0) as usize;
