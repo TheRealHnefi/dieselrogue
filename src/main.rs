@@ -83,7 +83,7 @@ fn main() -> rltk::BError {
             .without_time()
             .with_filter(tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive("dieselrogue=debug".parse().unwrap())))
-        .with(SlowSpanLayer { threshold_ms: 20 })
+        .with(SlowSpanLayer { threshold_ms: 5 })
         .init();
     let context = rltk::RltkBuilder::new()
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, "rexpaint_cp437_10x10.png")

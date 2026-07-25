@@ -61,7 +61,6 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
   for path in paths {
     let filename = path.as_ref().unwrap().file_name().into_string().unwrap();
     if filename.contains(filter) {
-      println!("Parsing {}", filename);
       let mut block = Block {
         tiles: vec![TileType::Ground; BLOCK_SIZE * BLOCK_SIZE]
       };

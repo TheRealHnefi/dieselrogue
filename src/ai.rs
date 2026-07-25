@@ -24,8 +24,10 @@ impl AI {
         entity: &Entity,
         map: &Map,
         entities: &[Entity],
+        sounds: &[SoundEvent],
     ) -> Option<Intent> {
         let _ = entities; // not yet used; available for future AI variants
+        let _ = sounds;   // not yet used; available for future AI variants
         match self {
             AI::None => None,
             AI::Rotator => Some(Intent {
