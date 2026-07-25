@@ -5,6 +5,7 @@ use specs::saveload::{Marker, ConvertSaveload};
 use specs::error::NoError;
 use super::serde_collections::*;
 use super::Map;
+use std::ops::{Add, Sub};
 
 pub struct SerializeMarker;
 
@@ -122,8 +123,54 @@ pub struct Inventory {
     pub items: EntityVec<Entity>
 }
 
-#[derive (ConvertSaveload, Clone)]
+#[derive (Component, ConvertSaveload, Clone, PartialEq)]
+pub struct Protection {
+    pub phys_abs: i32,
+    pub phys_res: i32,
+    pub heat_abs: i32,
+    pub heat_res: i32,
+    pub elec_abs: i32,
+    pub elec_res: i32
+}
+impl Add for Protection {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self {
+            phys_abs: self.phys_abs + other.phys_abs,
+            phys_res: self.phys_res + other.phys_res,
+            heat_abs: self.heat_abs + other.heat_abs,
+            heat_res: self.heat_res + other.heat_res,
+            elec_abs: self.elec_abs + other.elec_abs,
+            elec_res: self.elec_res + other.elec_res
+        }
+    }
+}
+impl Sub for Protection {
+    type Output = Self;
+    fn sub(self, other: Self) -> Self {
+        Self {
+            phys_abs: self.phys_abs - other.phys_abs,
+            phys_res: self.phys_res - other.phys_res,
+            heat_abs: self.heat_abs - other.heat_abs,
+            heat_res: self.heat_res - other.heat_res,
+            elec_abs: self.elec_abs - other.elec_abs,
+            elec_res: self.elec_res - other.elec_res
+        }
+    }
+}
+
+#[derive (Component, ConvertSaveload, Clone)]
+pub struct Damage {
+    pub phys: i32,
+    pub heat: i32,
+    pub elec: i32,
+
+    pub localized_target: Option<String>
+}
+
+#[derive (Component, ConvertSaveload, Clone)]
 pub struct BodyPart {
+    pub name: String,
     pub item_slot: ItemSlot,
     pub max_hitpoints: i32,
     pub hitpoints: i32,
@@ -134,6 +181,7 @@ pub struct BodyPart {
 pub struct HumanoidBody {
     pub max_hitpoints: i32,
     pub hitpoints: i32,
+    pub protection: Protection,
 
     pub head: BodyPart,
     pub torso: BodyPart,
@@ -146,31 +194,44 @@ impl HumanoidBody {
         HumanoidBody {
             max_hitpoints: max_hp,
             hitpoints: max_hp,
+            protection: Protection {
+                phys_abs: 0,
+                phys_res: 0,
+                heat_abs: 0,
+                heat_res: 0,
+                elec_abs: 0,
+                elec_res: 0
+            },
             head: BodyPart {
+                name: "Head".to_string(),
                 item_slot: ItemSlot::Head,
                 max_hitpoints: max_hp / 4,
                 hitpoints: max_hp / 4,
                 equipped_item: EntityOption::from(None)
             },
             torso: BodyPart {
+                name: "Torso".to_string(),
                 item_slot: ItemSlot::Torso,
                 max_hitpoints: max_hp / 2,
                 hitpoints: max_hp / 2,
                 equipped_item: EntityOption::from(None)
             },
             left_arm: BodyPart {
+                name: "Left Arm".to_string(),
                 item_slot: ItemSlot::OffhandWeapon,
                 max_hitpoints: max_hp / 5,
                 hitpoints: max_hp / 5,
                 equipped_item: EntityOption::from(None)
             },
             right_arm: BodyPart {
+                name: "Right Arm".to_string(),
                 item_slot: ItemSlot::MainWeapon,
                 max_hitpoints: max_hp / 5,
                 hitpoints: max_hp / 5,
                 equipped_item: EntityOption::from(None)
             },
             legs: BodyPart {
+                name: "Legs".to_string(),
                 item_slot: ItemSlot::Legs,
                 max_hitpoints: max_hp / 3,
                 hitpoints: max_hp / 3,

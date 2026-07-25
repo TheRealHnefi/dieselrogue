@@ -20,6 +20,8 @@ mod enemy_ai_system;
 pub use enemy_ai_system::*;
 mod tank_ai_system;
 pub use tank_ai_system::*;
+mod damage_system;
+pub use damage_system::*;
 mod ui;
 pub use ui::*;
 mod game_log;
@@ -91,6 +93,8 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<DroppingItem>();
     game_state.ecs.register::<EquippingItem>();
     game_state.ecs.register::<Inventory>();
+    game_state.ecs.register::<Protection>();
+    game_state.ecs.register::<Damage>();
     game_state.ecs.register::<HumanoidBody>();
 
     game_state.ecs.insert(SimpleMarkerAllocator::<SerializeMarker>::new());

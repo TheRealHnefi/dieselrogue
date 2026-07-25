@@ -83,6 +83,9 @@ Or perhaps no classes at all? Just perks?
 * Precision throwing
 
 #### Launchers
+* Safe shot (only fire if explosion does not harm user)
+* Shaped charge (explode in area shaped away from user)
+* Rapid reload
 
 #### Melee
 
@@ -201,16 +204,23 @@ Or perhaps no classes at all? Just perks?
 * Submachine gun
  * Tommy gun
  * 'KSP'
+ * Unique: Kummerlauf
 * Shotgun
  * Pump action
  * Double barrel
  * Sawed off
  * Combat shotgun
+ * Unique: Flamebelcher
 * Machine gun
 * Rifle
-* Rocket launcher
-* Grenade launcher
+* Launcher
+ * Grenade launcher
+ * Rocket launcher
+ * Minilauncher
 * Flamethrower
+ * Flamethrower
+ * Napalm thrower
+ * Acid thrower
 * Tesla
 
 ### Modifiers:
