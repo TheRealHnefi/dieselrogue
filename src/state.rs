@@ -29,7 +29,7 @@ pub struct State {
     pub log: GameLog,
 
     pub world: World,
-    pub animations: AnimationSystem,
+    pub animation_system: AnimationSystem,
 
     pub menu_stack: Vec<Box<dyn Menu>>,
     pub action_being_used: Option<ItemAction>,
@@ -47,7 +47,7 @@ impl State {
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
             world: World::new(),
-            animations: AnimationSystem::new(),
+            animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             action_being_used: None,
             action_item: None,
@@ -76,6 +76,7 @@ impl GameState for State {
 
         match self.run_state {
             RunState::DeclareIntent => {
+                self.world.update_views();
                 self.world.resolve_intent_declaration();
                 self.run_state = RunState::AwaitingInput;
             }
@@ -90,12 +91,16 @@ impl GameState for State {
                 self.run_state = positional_targeting_input(self, context);
             },
             RunState::Resolve(phase) => {
-                self.animations.animations = self.world.resolve_phase(phase, &mut self.log);
+                let mut animations = vec!();
+                let mut maybe_next_phase = phase.next();
+                while animations.len() == 0 && maybe_next_phase.is_some() {
+                    let next_phase = maybe_next_phase.unwrap();
+                    animations = self.world.resolve_phase(next_phase, &mut self.log);
+                    maybe_next_phase = next_phase.next();
+                }
 
-                self.world.update_views();
-
-                if self.animations.animations.len() > 0 {
-                    self.animations.init_render(monotime);
+                if animations.len() > 0 {
+                    self.animation_system.init(animations, monotime);
                     self.run_state = RunState::RenderAnimations(phase);
                 } else {
                     match phase.next() {
@@ -105,7 +110,7 @@ impl GameState for State {
                 }
             },
             RunState::RenderAnimations(phase) => {
-                let animation_done = self.animations.render(self.get_viewport(), monotime, context);
+                let animation_done = self.animation_system.render(self.get_viewport(), monotime, context);
                 if animation_done {
                     match phase.next() {
                         Some(next_phase) => self.run_state = RunState::Resolve(next_phase),

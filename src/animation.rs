@@ -102,8 +102,8 @@ pub struct Animation {
 }
 
 pub struct AnimationSystem {
-    pub animations: Vec<Animation>,
-    pub start_time: u128
+    animations: Vec<Animation>,
+    start_time: u128
 }
 
 impl AnimationSystem {
@@ -114,7 +114,8 @@ impl AnimationSystem {
         }
     }
 
-    pub fn init_render(&mut self, monotime: u128) {
+    pub fn init(&mut self, animations: Vec<Animation>, monotime: u128) {
+        self.animations = animations;
         self.start_time = monotime;
         for animation in &mut self.animations {
             animation.current_frame = 0;
