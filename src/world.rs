@@ -74,13 +74,6 @@ impl World {
             world.place_zone_keys(&spawn_map, &boundary_colors, start_region, &mut rng);
             spawn_loot(&mut world, &spawn_map, &mut rng);
             spawn_enemies(&mut world, &spawn_map, &mut rng);
-
-            // let mut placed: Vec<Point> = Vec::new();
-            // let mut guard_n = 0usize;
-            // println!("Spawning guards:");
-            // world.spawn_sentinels(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-            // world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
-            // println!("Spawned {} guards total.", guard_n);
         } else {
             #[cfg(debug_assertions)]
             world.spawn_debug(&spawn_map);

@@ -231,6 +231,7 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         }
 
         total_items_placed += items_placed;
+        #[cfg(debug_assertions)]
         println!("Placed {} starting items", items_placed);
     }
 
@@ -238,14 +239,16 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
     let equipment_placed = place_items_in_rooms(world, equipment_pool, &boring_rooms, EQUIPMENT_ITEM_SPARSITY, rng);
     let consumables_placed = place_items_in_rooms(world, consumables_pool, &boring_rooms, CONSUMABLE_ITEM_SPARSITY, rng);
 
-    total_items_placed += exceptional_placed;
-    total_items_placed += equipment_placed;
-    total_items_placed += consumables_placed;
-    println!("Placed {} exceptional items", exceptional_placed);
-    println!("Placed {} equipment items", equipment_placed);
-    println!("Placed {} consumable items", consumables_placed);
-
-    println!("Placed {} total items", total_items_placed);
+    #[cfg(debug_assertions)]
+    {
+        total_items_placed += exceptional_placed;
+        total_items_placed += equipment_placed;
+        total_items_placed += consumables_placed;
+        println!("Placed {} exceptional items", exceptional_placed);
+        println!("Placed {} equipment items", equipment_placed);
+        println!("Placed {} consumable items", consumables_placed);
+        println!("Placed {} total items", total_items_placed);
+    }
 }
 
 pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
@@ -270,22 +273,25 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     let middle_area = middle_zone_radius * middle_zone_radius - inner_zone_radius * inner_zone_radius;
     let outer_area = outer_zone_radius * outer_zone_radius - middle_zone_radius * middle_zone_radius;
 
-    println!("Map radii: center: {} inner: {} middle: {} outer: {}",
-        center_zone_radius,
-        inner_zone_radius,
-        middle_zone_radius,
-        outer_zone_radius);
-    println!("Map areas: center: {} inner: {} middle: {} outer: {}",
-        center_zone_radius*center_zone_radius,
-        inner_area,
-        middle_area,
-        outer_area);
+    #[cfg(debug_assertions)]
+    {
+        println!("Map radii: center: {} inner: {} middle: {} outer: {}",
+            center_zone_radius,
+            inner_zone_radius,
+            middle_zone_radius,
+            outer_zone_radius);
+        println!("Map areas: center: {} inner: {} middle: {} outer: {}",
+            center_zone_radius*center_zone_radius,
+            inner_area,
+            middle_area,
+            outer_area);
+    }
 
     let mut enemy_count = 0;
     // Naive guard placement for testing
     if false {
         for _ in 0..(inner_area / ENEMY_SPARSITY) {
-            let pos = find_enemy_placement(world, spawn_map, center_zone_radius, inner_zone_radius, rng);
+            let pos = naive_enemy_placement(world, spawn_map, center_zone_radius, inner_zone_radius, rng);
             let result = world.create_light_guard(center + pos, Direction::Up);
             match result {
                 Ok(_) => enemy_count += 1,
@@ -293,7 +299,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
             }
         }
         for _ in 0..(middle_area / ENEMY_SPARSITY) {
-            let pos = find_enemy_placement(world, spawn_map, inner_zone_radius, middle_zone_radius, rng);
+            let pos = naive_enemy_placement(world, spawn_map, inner_zone_radius, middle_zone_radius, rng);
             let result = world.create_medium_guard(center + pos, Direction::Up);
             match result {
                 Ok(_) => enemy_count += 1,
@@ -301,7 +307,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
             }
         }
         for _ in 0..(outer_area / ENEMY_SPARSITY) {
-            let pos = find_enemy_placement(world, spawn_map, middle_zone_radius, outer_zone_radius, rng);
+            let pos = naive_enemy_placement(world, spawn_map, middle_zone_radius, outer_zone_radius, rng);
             let result = world.create_heavy_guard(center + pos, Direction::Up);
             match result {
                 Ok(_) => enemy_count += 1,
@@ -311,7 +317,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     }
 
     // Place guards near interesting doors
-    {
+    if false {
         let placement = find_interesting_guard_positions(world, spawn_map, rng);
         for (pos, facing) in placement {
             let distance_to_center = chebyshev(pos, center);
@@ -352,22 +358,82 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
             };
             
             match result {
-                Ok(_) => {
+                Ok(idx) => {
                     let profile = Profile::Guard { anchor: pos, combat_tactic: CombatTactic::Hold };
                     let ai = AI::Actor(ActorAI::new(profile));
+                    world.entities[idx].ai = ai;
                     enemy_count += 1;
                 },
-                Err(e) => print!("{}", e.message)
+                Err(e) => println!("{}", e.message)
             }
         }
     }
 
+    create_patrol_routes(world, spawn_map, rng);
+    enemy_count += place_patrolling_enemies(world, spawn_map, rng);
+
+    #[cfg(debug_assertions)]
     println!("Placed {} enemies", enemy_count);
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+fn place_patrolling_enemies(
+    world: &mut World,
+    spawn_map: &SpawnMap,
+    rng: &mut RandomNumberGenerator
+) -> usize {
+    let mut enemies = 0;
+    for i in 0..world.map.patrol_routes.len() {
+        let ai_profile = Profile::Patrol { route_id: i, waypoint_index: 0, combat_tactic: CombatTactic::Pursue };
+        match world.create_flamer_guard(world.map.patrol_routes[i][0], Direction::Down) {
+            Ok(idx) => {
+                world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
+                enemies += 1;
+            },
+            Err(e) => println!("{}", e.message)
+        }
+    }
+    #[cfg(debug_assertions)]
+    println!("Placed {} patrolling enemies", enemies);
+
+    enemies
+}
+
+// TODO: These are just random routes. Address the following concerns:
+// * Several routes in seriously humongous regions
+// * Follow roads if outside
+// * Follow approximate edges of region if inside, alternatively patrol between doors
+fn create_patrol_routes(
+    world: &mut World,
+    spawn_map: &SpawnMap,
+    rng: &mut RandomNumberGenerator
+) {
+    let big_regions: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.tiles.len() > 1024).collect();
+
+    #[cfg(debug_assertions)]
+    println!("Found {} big regions", big_regions.len());
+
+    for region in big_regions {
+        let waypoint_amount = rng.range(3, 8);
+        let start_tile = region.tiles[rng.range(0, region.tiles.len())];
+        let start_point = world.map.idx_pos(start_tile);
+        let mut waypoints: Vec<Point> = vec!(start_point);
+        for i in 1..waypoint_amount {
+            let mut done = false;
+            while !done {
+                let tile = region.tiles[rng.range(0, region.tiles.len())];
+                let point = world.map.idx_pos(tile);
+                if chebyshev(point, waypoints[i - 1]) > 1 {
+                    waypoints.push(point);
+                    done = true;
+                }
+            }
+        }
+        world.map.register_patrol_route(waypoints);
+    }
+}
 
 /// Places where guards should stand to guard interesting doorways
 fn find_interesting_guard_positions(
@@ -404,7 +470,7 @@ fn find_interesting_guard_positions(
     result
 }
 
-fn find_enemy_placement(
+fn naive_enemy_placement(
     world: &mut World,
     spawn_map: &SpawnMap,
     inner_radius: i32,
@@ -853,149 +919,6 @@ impl World {
                 let _ = self.add_item(pos, Item::knife());
             }
         }
-    }
-
-    /// Stationary guards adjacent to doorways.
-    pub(crate) fn spawn_sentinels(
-        &mut self,
-        spawn_map: &SpawnMap,
-        placed: &mut Vec<Point>,
-        n: &mut usize,
-        rng: &mut RandomNumberGenerator,
-    ) {
-        const RATE: f32 = 0.30;
-        const MIN_DIST: i32 = 5;
-
-        let cardinals = [(0i32, -1i32), (1, 0), (0, 1), (-1, 0)];
-
-        let mut candidates: Vec<(Point, Point, bool)> = Vec::new();
-        for idx in 0..self.map.width * self.map.height {
-            if self.map.tiles[idx] != TileType::Doorway {
-                continue;
-            }
-            let door_pos = self.map.idx_pos(idx);
-
-            let guards_interesting = cardinals.iter().any(|&(dx, dy)| {
-                let nx = door_pos.x + dx;
-                let ny = door_pos.y + dy;
-                if nx < 0 || ny < 0 || nx >= self.map.width as i32 || ny >= self.map.height as i32 {
-                    return false;
-                }
-                let ni = self.map.xy_idx(nx, ny);
-                let region_index = spawn_map.tile_region[ni];
-                match region_index {
-                    Some(idx) => spawn_map.regions[idx].is_interesting,
-                    None => false
-                }
-                
-            });
-
-            // Place guard 3 tiles away from door.
-            for &(dx, dy) in &[(0i32, -3i32), (3, 0), (0, 3), (-3, 0)] {
-                let nx = door_pos.x + dx;
-                let ny = door_pos.y + dy;
-                if nx < 0 || ny < 0 || nx >= self.map.width as i32 || ny >= self.map.height as i32 {
-                    continue;
-                }
-                let nidx = self.map.xy_idx(nx, ny);
-                if is_spawnable(self.map.tiles[nidx]) {
-                    candidates.push((Point::new(nx, ny), door_pos, guards_interesting));
-                    break;
-                }
-            }
-        }
-
-        // Shuffle for randomness within each tier, then stable-sort interesting doors first.
-        fy_shuffle(&mut candidates, rng);
-        candidates.sort_by_key(|&(_, _, gi)| if gi { 0usize } else { 1 });
-
-        let target = ((candidates.len() as f32) * RATE * GUARD_DENSITY) as usize;
-        let mut count = 0;
-        for (guard_pos, door_pos, _) in candidates {
-            if count >= target { break; }
-            if guard_too_close(guard_pos, placed, MIN_DIST) { continue; }
-
-            let facing = if self.map.get_tile(guard_pos.x, guard_pos.y) == TileType::Floor {
-                dir_toward(guard_pos, door_pos)
-            } else {
-                dir_toward(door_pos, guard_pos)
-            };
-            *n += 1;
-            if self.create_guard_actor(guard_pos, facing, format!("Sentinel {}", n), CombatTactic::Hold).is_ok() {
-                placed.push(guard_pos);
-                count += 1;
-            }
-        }
-        println!("  Sentinels: {}", count);
-    }
-
-    /// Patrol guards following pathfinder-computed road routes.
-    pub(crate) fn spawn_patrollers(
-        &mut self,
-        spawn_map: &SpawnMap,
-        placed: &mut Vec<Point>,
-        n: &mut usize,
-        rng: &mut RandomNumberGenerator,
-    ) {
-        const RATE: f32 = 0.005;
-        const MIN_DIST: i32 = 15;
-        const MIN_PATROL_DIST: i32 = 20;
-        const MAX_PATROL_DIST: i32 = 80;
-
-        let junctions: Vec<usize> = spawn_map.spawn_points.iter()
-            .enumerate()
-            .filter(|(_, sp)| {
-                matches!(sp.category, SpawnCategory::Junction) &&
-                matches!(self.map.tiles[sp.idx], TileType::Road)
-            })
-            .map(|(i, _)| i)
-            .collect();
-
-        let mut order: Vec<usize> = (0..junctions.len()).collect();
-        fy_shuffle(&mut order, rng);
-
-        let target = ((junctions.len() as f32) * RATE * GUARD_DENSITY) as usize;
-        let mut used: Vec<usize> = Vec::new();
-        let mut count = 0;
-
-        for &oi in &order {
-            if count >= target { break; }
-            let ai = junctions[oi];
-            if used.contains(&ai) { continue; }
-            let a_pos = {
-                let sp = &spawn_map.spawn_points[ai];
-                if guard_too_close(sp.pos, placed, MIN_DIST) { continue; }
-                sp.pos
-            };
-
-            // Keep the existing junction-pair gate for placement/spacing parity:
-            // only spawn where a suitably distant second junction exists.
-            let bi = order.iter()
-                .map(|&oi2| junctions[oi2])
-                .find(|&bi| {
-                    if bi == ai || used.contains(&bi) { return false; }
-                    let d = chebyshev(spawn_map.spawn_points[bi].pos, a_pos);
-                    d >= MIN_PATROL_DIST && d <= MAX_PATROL_DIST
-                });
-            let bi = match bi { Some(b) => b, None => continue };
-            let b_pos = spawn_map.spawn_points[bi].pos;
-
-            // Assign to the shared concentric ring nearest this spawn, starting at
-            // the closest waypoint on it. Patrollers thus share a handful of routes
-            // (and their flow fields) rather than each carrying a bespoke path.
-            let route_id = self.map.nearest_patrol_route(a_pos);
-            let waypoint_index = self.map.nearest_waypoint_index(route_id, a_pos);
-
-            let facing = dir_toward(a_pos, b_pos);
-            *n += 1;
-            if self.create_patrol_actor(a_pos, facing, format!("Patroller {}", n), route_id, waypoint_index, CombatTactic::Pursue).is_ok() {
-                placed.push(a_pos);
-                used.push(ai);
-                used.push(bi);
-                count += 1;
-            }
-        }
-        println!("  Patrollers: {}", count);
     }
 
     /// First pass: assign lock colors to door entities.
