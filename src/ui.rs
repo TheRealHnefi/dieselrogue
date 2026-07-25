@@ -115,6 +115,69 @@ fn draw_equipment_panel(ctx: &mut Rltk, xp: &rltk::rex::XpFile, menu_x: i32, men
     }
 }
 
+pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
+    context.set_active_console(MAIN_CONSOLE_INDEX);
+    context.cls();
+    context.set_active_console(UI_CONSOLE_INDEX);
+    context.cls();
+
+    context.print_color_centered(30, LINE_COLOR, BG_COLOR, "DIESELROGUE");
+    context.print_color_centered(31, INACTIVE_COLOR, BG_COLOR, "a diesel-punk roguelike");
+
+    let box_w = 18i32;
+    let box_x = SCREEN_WIDTH as i32 / 2 - box_w / 2;
+    let box_y = 40i32;
+
+    context.draw_box(box_x, box_y, box_w, 3, LINE_COLOR, BG_COLOR);
+
+    let items = ["New Game", "Quit"];
+    for (i, &item) in items.iter().enumerate() {
+        let row_y = box_y + 1 + i as i32;
+        let (fg, bg) = if i == state.welcome_selected {
+            (BG_COLOR, LINE_COLOR)
+        } else {
+            (LINE_COLOR, BG_COLOR)
+        };
+        let fill = " ".repeat((box_w - 1) as usize);
+        context.print_color(box_x + 1, row_y, fg, bg, fill);
+        context.print_color(box_x + 2, row_y, fg, bg, item);
+    }
+
+    context.print_color_centered(
+        SCREEN_HEIGHT as i32 - 3,
+        INACTIVE_COLOR,
+        BG_COLOR,
+        "Arrow keys to navigate, Enter to select",
+    );
+}
+
+pub fn draw_welcome_splash(context: &mut Rltk) {
+    context.set_active_console(MAIN_CONSOLE_INDEX);
+    context.cls();
+    context.set_active_console(UI_CONSOLE_INDEX);
+    context.cls();
+
+    let lines = [
+        "You are a freelance operative working the fringe.",
+        "The job: retrieve a prototype from the Armek compound.",
+        "The pay: enough to disappear.",
+        "",
+        "Good luck. You'll need it.",
+    ];
+
+    let start_y = SCREEN_HEIGHT as i32 / 2 - lines.len() as i32 / 2;
+    for (i, &line) in lines.iter().enumerate() {
+        context.print_color_centered(start_y + i as i32, LINE_COLOR, BG_COLOR, line);
+    }
+
+    context.print_color_centered(
+        SCREEN_HEIGHT as i32 - 5,
+        INACTIVE_COLOR,
+        BG_COLOR,
+        "Press any key to continue...",
+    );
+}
+
 #[tracing::instrument(skip_all)]
 pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     let blink = (monotime / 250) % 2 == 0;

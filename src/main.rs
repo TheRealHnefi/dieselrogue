@@ -81,28 +81,37 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for SlowSpanLayer {
     }
 }
 
-fn seed_from_args() -> u64 {
+fn parse_args() -> (u64, bool) {
     let args: Vec<String> = std::env::args().collect();
+    let mut seed: Option<u64> = None;
+    let mut skip_intro = false;
     let mut i = 1;
     while i < args.len() {
-        if args[i] == "--seed" {
-            if let Some(val) = args.get(i + 1) {
-                if let Ok(n) = val.parse::<u64>() {
-                    return n;
+        match args[i].as_str() {
+            "--seed" => {
+                if let Some(val) = args.get(i + 1) {
+                    if let Ok(n) = val.parse::<u64>() {
+                        seed = Some(n);
+                        i += 1;
+                    } else {
+                        eprintln!("Warning: '--seed {}' is not a valid u64; using random seed.", val);
+                    }
                 } else {
-                    eprintln!("Warning: '--seed {}' is not a valid u64; using random seed.", val);
+                    eprintln!("Warning: '--seed' requires a value; using random seed.");
                 }
-            } else {
-                eprintln!("Warning: '--seed' requires a value; using random seed.");
-            }
+            },
+            "--skip-intro" => skip_intro = true,
+            _ => {}
         }
         i += 1;
     }
-    // No --seed supplied: derive one from the system clock.
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(1)
+    let resolved_seed = seed.unwrap_or_else(|| {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(1)
+    });
+    (resolved_seed, skip_intro)
 }
 
 fn main() -> rltk::BError {
@@ -134,10 +143,10 @@ fn main() -> rltk::BError {
 
     let context = builder.build()?;
 
-    let seed = seed_from_args();
+    let (seed, skip_intro) = parse_args();
     println!("RNG seed: {}", seed);
 
-    let mut state = State::new_game_state(25, seed);
+    let mut state = State::new_game_state(25, seed, skip_intro);
 
     state.log.entries.push("Welcome!".to_string());
 
