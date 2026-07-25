@@ -106,11 +106,11 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 return RunState::AwaitingMenuInput;
             },
 
-            // VirtualKeyCode::A => {
-            //     state.menu_stack.clear();
-            //     state.menu_stack.push(Box::new(ability_menu(&state.world)));
-            //     return RunState::AwaitingMenuInput;
-            // },
+            VirtualKeyCode::A => {
+                state.menu_stack.clear();
+                state.menu_stack.push(Box::new(ability_menu(&state.world)));
+                return RunState::AwaitingMenuInput;
+            },
 
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
@@ -256,59 +256,3 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
         }
     }
 }
-
-
-
-// pub fn inventory_screen_input(state: &mut State, ctx: &mut Rltk) -> RunState {
-//     match ctx.key {
-//         Some(key) => {
-//             let player = state.ecs.fetch::<Entity>();
-//             let inventories = state.ecs.read_storage::<Inventory>();
-//             let inventory = inventories.get(*player).unwrap();
-//             let mut game_log = state.ecs.fetch_mut::<GameLog>();
-            
-//             match key {
-//                 VirtualKeyCode::Escape |
-//                 VirtualKeyCode::I => {
-//                     return RunState::AwaitingInput;
-//                 },
-//                 VirtualKeyCode::Down |
-//                 VirtualKeyCode::Numpad2 => {
-//                     state.inventory_screen_selection = min(state.inventory_screen_selection + 1,
-//                                                                 inventory.items.len() as i32 - 1);           
-//                     return RunState::InventoryScreen;
-//                 },
-//                 VirtualKeyCode::Up |
-//                 VirtualKeyCode::Numpad8 => {
-//                     state.inventory_screen_selection = max(state.inventory_screen_selection - 1, 0);
-//                     return RunState::InventoryScreen;
-//                 },
-//                 VirtualKeyCode::D => {
-//                     match drop_item(&state.ecs, inventory.items[state.inventory_screen_selection as usize]) {
-//                         Ok(_) => return RunState::PlayerTurn,
-//                         Err(_) => {
-//                             game_log.entries.push("Can't drop item. Is something in the way?".to_string());
-//                             return RunState::AwaitingInput;
-//                         }
-//                     }
-//                 },
-//                 VirtualKeyCode::Space |
-//                 VirtualKeyCode::Return => {
-//                     match equip_item(&state.ecs, inventory.items[state.inventory_screen_selection as usize]) {
-//                         Ok(_) => return RunState::PlayerTurn,
-//                         Err(_) => {
-//                             game_log.entries.push("Can't equip item".to_string());
-//                             return RunState::AwaitingInput;
-//                         }
-//                     }
-//                 },
-//                 _ => {
-//                     return RunState::InventoryScreen;
-//                 }
-//             }
-//         }
-//         None => {
-//             return RunState::InventoryScreen;
-//         }
-//     }
-// }
