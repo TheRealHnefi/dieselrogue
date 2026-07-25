@@ -98,6 +98,7 @@ impl World {
         let _ = world.add_item(pos, Item::flamethrower());
         let _ = world.add_item(pos, Item::grenade());
         let _ = world.add_item(pos, Item::flashbang());
+        let _ = world.add_item(pos, Item::fire_grenade());
 
         // Enemies spread in front of the player to test fan fire arc
         let _ = world.create_zombie_goon(Point {x: pos.x,     y: pos.y - 3}, Direction::Down, String::from("Goon A"));
@@ -526,8 +527,12 @@ impl World {
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {
             match effect {
-                Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} =>
-                    self.handle_damage(*id, *part_index, *damage, &mut deathlist, log),
+                Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} => {
+                    self.handle_damage(*id, *part_index, *damage, &mut deathlist, log);
+                    if damage.fire > 0 {
+                        self.entities[*id].apply_status_effect(&StatusEffect::Burning(5));
+                    }
+                }
                 Effect::OpenDoor(pos) =>
                     self.handle_open_door(*pos),
                 Effect::DestroyWall(pos) =>
@@ -540,6 +545,8 @@ impl World {
                     animations.push(animation.clone()),
                 Effect::ApplyStatus{target_id, status} =>
                     self.entities[*target_id].apply_status_effect(status),
+                Effect::BurnTick{entity_id: id, bodypart_index: part_index} =>
+                    self.handle_damage(*id, *part_index, Damage::new(0, 0, 1, 0), &mut deathlist, log),
                 Effect::SyncActiveItem{item_id, location} =>
                     self.sync_active_item(*item_id, location.clone()),
             }

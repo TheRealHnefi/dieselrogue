@@ -107,6 +107,7 @@ pub enum Effect {
     Embark{pilot_id: usize, vehicle_id: usize},
     Disembark{pilot_id: usize, vehicle_id: usize},
     ApplyStatus{target_id: usize, status: StatusEffect},
+    BurnTick{entity_id: usize, bodypart_index: usize},
     SyncActiveItem{item_id: usize, location: ItemLocation},
 }
 

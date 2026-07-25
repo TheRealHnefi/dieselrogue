@@ -89,8 +89,6 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'r', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12 })
     }
 
-    // TODO: shock_grenade, fire_grenade, flashbang
-
     pub fn grenade() -> Self {
         Item {
             id: 0,
@@ -100,6 +98,20 @@ impl Item {
             equip_actions: vec![],
             equip_slots: vec![],
             kind: ItemKind::FusedExplosive { damage: Damage::new(10, 0, 0, 0), timeout: 4, flash: false },
+            proxy: false,
+            active: false,
+        }
+    }
+
+    pub fn fire_grenade() -> Self {
+        Item {
+            id: 0,
+            renderable: Renderable::new_char('g'),
+            name: String::from("Fire grenade"),
+            inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 3, 0), timeout: 4, flash: false },
             proxy: false,
             active: false,
         }
