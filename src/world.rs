@@ -170,7 +170,7 @@ impl World {
         let mut placed: Vec<Point> = Vec::new();
         let mut guard_n = 0usize;
         println!("Spawning guards:");
-        world.spawn_sentinels(&mut placed, &mut guard_n, &mut rng);
+        world.spawn_sentinels(&zone_map, &interesting, &mut placed, &mut guard_n, &mut rng);
         world.spawn_patrollers(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         // world.spawn_squads(&spawn_map, &mut placed, &mut guard_n, &mut rng);
         // world.spawn_idle_guards(&spawn_map, &mut placed, &mut guard_n, &mut rng);
@@ -330,6 +330,8 @@ impl World {
     /// Stationary guards adjacent to doorways
     fn spawn_sentinels(
         &mut self,
+        zone_map: &ZoneMap,
+        interesting: &[bool],
         placed: &mut Vec<Point>,
         n: &mut usize,
         rng: &mut RandomNumberGenerator,
@@ -337,12 +339,26 @@ impl World {
         const RATE: f32 = 0.30;
         const MIN_DIST: i32 = 5;
 
-        let mut candidates: Vec<(Point, Point)> = Vec::new();
+        let cardinals = [(0i32, -1i32), (1, 0), (0, 1), (-1, 0)];
+
+        // (guard_pos, door_pos, guards_interesting_zone)
+        let mut candidates: Vec<(Point, Point, bool)> = Vec::new();
         for idx in 0..self.map.width * self.map.height {
             if self.map.tiles[idx] != TileType::Doorway {
                 continue;
             }
             let door_pos = self.map.idx_pos(idx);
+
+            let guards_interesting = cardinals.iter().any(|&(dx, dy)| {
+                let nx = door_pos.x + dx;
+                let ny = door_pos.y + dy;
+                if nx < 0 || ny < 0 || nx >= self.map.width as i32 || ny >= self.map.height as i32 {
+                    return false;
+                }
+                let ni = self.map.xy_idx(nx, ny);
+                zone_map.tile_zone[ni].map_or(false, |zi| interesting.get(zi).copied().unwrap_or(false))
+            });
+
             // Place guard 3 tiles away from door
             for &(dx, dy) in &[(0i32, -3i32), (3, 0), (0, 3), (-3, 0)] {
                 let nx = door_pos.x + dx;
@@ -352,16 +368,19 @@ impl World {
                 }
                 let nidx = self.map.xy_idx(nx, ny);
                 if is_spawnable(self.map.tiles[nidx]) {
-                    candidates.push((Point::new(nx, ny), door_pos));
+                    candidates.push((Point::new(nx, ny), door_pos, guards_interesting));
                     break;
                 }
             }
         }
 
+        // Shuffle for randomness within each tier, then stable-sort interesting doors first.
         fy_shuffle(&mut candidates, rng);
+        candidates.sort_by_key(|&(_, _, gi)| if gi { 0usize } else { 1 });
+
         let target = ((candidates.len() as f32) * RATE * GUARD_DENSITY) as usize;
         let mut count = 0;
-        for (guard_pos, door_pos) in candidates {
+        for (guard_pos, door_pos, _) in candidates {
             if count >= target {
                 break;
             }
@@ -371,14 +390,11 @@ impl World {
 
             let facing;
             if self.map.get_tile(guard_pos.x, guard_pos.y) == TileType::Floor {
-                // Face the door if placed inside
                 facing = dir_toward(guard_pos, door_pos);
             }
             else {
-                // Face away from the door if placed outside
                 facing = dir_toward(door_pos, guard_pos);
             }
-            
             *n += 1;
             if self.create_guard_actor(guard_pos, facing, format!("Sentinel {}", n), CombatTactic::Hold).is_ok() {
                 placed.push(guard_pos);
