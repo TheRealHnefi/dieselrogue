@@ -460,13 +460,15 @@ pub fn juke_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
     result
 }
 
-pub fn aim_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+pub fn aim_action(entity: &mut Entity, map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::TargetWithEquipment{slot, target} => {
-            vec!(Effect::ApplyStatus {
-                target_id: entity.id,
-                status: StatusEffect::AimingAtGround(target, entity.get_equipped_item(slot).unwrap().clone())
-            })
+            let item = entity.get_equipped_item(slot).unwrap().clone();
+            let status = match &map.pawns[map.pos_idx(target)] {
+                Some(pawn) => StatusEffect::AimingAtEntity(pawn.entity_id, item),
+                None       => StatusEffect::AimingAtGround(target, item),
+            };
+            vec!(Effect::ApplyStatus { target_id: entity.id, status })
         },
         _ => unreachable!("aim_action called with non-equipment-target intent"),
     }

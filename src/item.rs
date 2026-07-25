@@ -295,19 +295,14 @@ impl PartialEq for Item {
 }
 
 pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
-    let aiming = self_ref.body.get_status_effect(&StatusEffect::AimingAtGround(Point {x: 0, y: 0}, Item::pistol()));
-    match aiming {
-        Some(aim) => {
-            match &aim {
-                StatusEffect::AimingAtGround(_p, i) => {
-                    match item {
-                        Some(i2) => i.id == i2.id,
-                        _ => false
-                    }
-                }
-                _ => false
-            }
-        }
-        None => false
+    let key = StatusEffect::AimingAtGround(Point { x: 0, y: 0 }, Item::pistol());
+    let aimed_item_id = match self_ref.body.get_status_effect(&key) {
+        Some(StatusEffect::AimingAtGround(_, i)) => i.id,
+        Some(StatusEffect::AimingAtEntity(_, i)) => i.id,
+        _ => return false,
+    };
+    match item {
+        Some(i2) => aimed_item_id == i2.id,
+        _ => false,
     }
 }
