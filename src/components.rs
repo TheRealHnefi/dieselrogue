@@ -4,7 +4,7 @@ use crate::{Animation, Item};
 
 pub const INVENTORY_MAX: usize = 20;
 
-pub const KEY_COLORS: [(u8, u8, u8); 16] = [
+pub const COLORS: [(u8, u8, u8); 16] = [
     (220,  50,  50),  // 0  Red
     (230, 140,  30),  // 1  Orange
     (220, 220,  50),  // 2  Yellow
@@ -23,7 +23,7 @@ pub const KEY_COLORS: [(u8, u8, u8); 16] = [
     (230, 190,  40),  // 15 Gold
 ];
 
-pub const KEY_COLOR_NAMES: [&str; 16] = [
+pub const COLOR_NAMES: [&str; 16] = [
     "Red", "Orange", "Yellow", "Lime", "Green", "Teal", "Sky", "Blue",
     "Purple", "Magenta", "Pink", "Brown", "White", "Silver", "Gray", "Gold",
 ];

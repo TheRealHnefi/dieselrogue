@@ -841,7 +841,7 @@ impl World {
 
         let mut boundary_colors = vec![None; spawn_map.boundaries.len()];
 
-        let regular_colors: Vec<usize> = (0..crate::components::KEY_COLORS.len())
+        let regular_colors: Vec<usize> = (0..crate::components::COLORS.len())
             .filter(|&c| c != OUTER_WALL_COLOR && c != INNER_WALL_COLOR)
             .collect();
 

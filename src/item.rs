@@ -1,4 +1,5 @@
 use rltk::Point;
+use rltk::RGB;
 use crate::components::*;
 use crate::entity::Entity;
 use crate::Map;
@@ -388,11 +389,11 @@ impl Item {
     }
 
     pub fn key(color: usize) -> Self {
-        let (r, g, b) = crate::components::KEY_COLORS[color];
+        let (r, g, b) = crate::components::COLORS[color];
         Item {
             id: 0, rarity: 0,
             renderable: Renderable::new_colored_char('k', rltk::RGB::from_u8(r, g, b)),
-            name: format!("{} key", crate::components::KEY_COLOR_NAMES[color]),
+            name: format!("{} key", crate::components::COLOR_NAMES[color]),
             inventory_actions: vec![Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
@@ -579,13 +580,15 @@ impl Item {
     }
 
     fn rarity_to_color(rarity: u8) -> rltk::RGB {
-        match rarity {
-            0 => rltk::RGB::named(rltk::GRAY),
-            1 => rltk::RGB::named(rltk::GREEN),
-            2 => rltk::RGB::named(rltk::BLUE),
-            3 => rltk::RGB::named(rltk::PURPLE),
-            _ => rltk::RGB::named(rltk::WHITE)
-        }
+        let (r, g, b) = match rarity {
+            0 => COLORS[14], // Gray
+            1 => COLORS[4], // Green
+            2 => COLORS[7], // Blue
+            3 => COLORS[8], // Purple
+            4 => COLORS[15], // Gold
+            _ => COLORS[12] // White
+        };
+        RGB::from_u8(r, g, b)
     }
 }
 
