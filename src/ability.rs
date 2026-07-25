@@ -7,6 +7,7 @@ pub enum Ability {
     WideVision,
     Precognition,
     IronEars,
+    EagleEyes,
     // Active abilities
     Embark,
     Disembark,
@@ -23,6 +24,7 @@ impl Ability {
             Ability::WideVision   => "Wide Vision",
             Ability::Precognition => "Precognition",
             Ability::IronEars     => "Iron Ears",
+            Ability::EagleEyes    => "Eagle Eyes",
             Ability::Embark       => "Embark",
             Ability::Disembark    => "Disembark",
             Ability::Throw        => "Throw",
@@ -49,6 +51,7 @@ impl Ability {
             Ability::WideVision   => true,
             Ability::Precognition => true,
             Ability::IronEars     => true,
+            Ability::EagleEyes    => true,
             Ability::Embark       => false,
             Ability::Disembark    => false,
             Ability::Throw        => false,
@@ -70,6 +73,8 @@ impl Ability {
                 "When examining an entity with the look command, you can see what action they are planning to take this turn.",
             Ability::IronEars =>
                 "You are able to distinguish individual sounds even in a very noisy environment, greatly increasing your noise tolerance.",
+            Ability::EagleEyes =>
+                "Your viewing range is increased by 50%.",
             Ability::Embark =>
                 "Allows entering a vehicle. Move into a drivable vehicle to take the controls.",
             Ability::Disembark =>
@@ -87,6 +92,7 @@ impl Ability {
             Ability::WideVision   => 0, // Head
             Ability::Precognition => 0, // Head
             Ability::IronEars     => 0, // Head
+            Ability::EagleEyes    => 0, // Head
             Ability::VehicleMove  => 1, // Torso
             Ability::Disembark    => 1, // Torso
             Ability::PickUp       => 2, // R. Arm

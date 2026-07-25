@@ -290,9 +290,13 @@ impl Entity {
 
     fn effective_range(&self) -> i32 {
         if self.body.get_status_effect(&StatusEffect::Blind(0)).is_some() {
-            1
+            return 1;
+        }
+        let base = self.viewshed.range;
+        if self.body.has_ability(Ability::EagleEyes) {
+            base * 3 / 2
         } else {
-            self.viewshed.range
+            base
         }
     }
 
