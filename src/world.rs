@@ -21,6 +21,7 @@ pub struct World {
     active_items_ticked: bool,
     next_item_id: usize,
     pub debug_mode: bool,
+    pub parallel_ai: bool,
 }
 
 
@@ -83,6 +84,7 @@ impl World {
             active_items_ticked: false,
             map: Map::new_game_map(size),
             debug_mode: false,
+            parallel_ai: false,
         };
 
         let pos = Point {x: (world.map.width / 2) as i32, y: (world.map.height / 2) as i32};
@@ -170,6 +172,7 @@ impl World {
             active_items_ticked: false,
             map: Map::new_game_map(10),
             debug_mode: false,
+            parallel_ai: false,
         };
 
         let pos = Point {x: 0, y: 0};
@@ -205,6 +208,7 @@ impl World {
             active_items_ticked: false,
             map: Map::new_empty_map(100, 100),
             debug_mode: false,
+            parallel_ai: false,
         }
     }
 
@@ -335,31 +339,59 @@ impl World {
 
     #[tracing::instrument(skip_all)]
     pub fn resolve_intent_declaration(&mut self) {
-        for i in 0..self.entities.len() {
-            match self.entities[i].driving {
-                DrivingState::Driving(_vehicle_id) => (),
-                DrivingState::DrivenBy(pilot_id) => {
-                    // TODO: This could be made simpler if I split at the higher ID instead...
-                    if i < pilot_id {
-                        let split_index = i + 1;
-                        let (e1, e2) = self.entities.split_at_mut(split_index);
-                        let pilot_ai = &mut e2[pilot_id - split_index].ai;
-                        e1[i].declare_intent_by_pilot(&self.map, pilot_ai);
-                    } else if i > pilot_id {
-                        let split_index = pilot_id + 1;
-                        let (e1, e2) = self.entities.split_at_mut(split_index);
-                        let pilot_ai = &mut e1[pilot_id].ai;
-                        e2[i - split_index].declare_intent_by_pilot(&self.map, pilot_ai);
-                    } else {
-                        assert!(false);
-                    }
-                },
-                DrivingState::Drivable => {
-                    self.entities[i].declare_intent(&self.map);
-                },
-                DrivingState::None => {
-                    self.entities[i].declare_intent(&self.map);
-                }
+        // Step 1: Extract all AI states so we can hold &self.entities (immutable)
+        // while mutating AI state (path cache etc.) during computation.
+        let mut ai_states: Vec<AI> = self.entities.iter_mut()
+            .map(|e| std::mem::replace(&mut e.ai, AI::None))
+            .collect();
+
+        // Step 2: Compute intents. Each closure only reads map and entities,
+        // so it is safe to run across a thread pool.
+        let map = &self.map;
+        let entities = &self.entities;
+
+        let compute = |(ai, entity): (&mut AI, &Entity)| -> Option<Intent> {
+            match entity.driving {
+                // Pilots produce no intent of their own while driving.
+                DrivingState::Driving(_) => None,
+                // Vehicles are handled separately in step 3 (cross-entity dependency).
+                DrivingState::DrivenBy(_) => None,
+                _ => ai.compute_intent(entity, map, entities),
+            }
+        };
+
+        let mut intents: Vec<Option<Intent>> = if self.parallel_ai {
+            use rayon::prelude::*;
+            ai_states.par_iter_mut()
+                .zip(entities.par_iter())
+                .map(compute)
+                .collect()
+        } else {
+            ai_states.iter_mut()
+                .zip(entities.iter())
+                .map(compute)
+                .collect()
+        };
+
+        // Step 3: Resolve vehicle-pilot pairs sequentially.
+        // The vehicle's intent is computed using the pilot's AI (already extracted
+        // into ai_states), with the vehicle entity as the positional reference.
+        for i in 0..entities.len() {
+            if let DrivingState::DrivenBy(pilot_id) = entities[i].driving {
+                intents[i] = ai_states[pilot_id].compute_intent(
+                    &entities[i], map, entities,
+                );
+            }
+        }
+
+        // Step 4: Restore AI states and apply computed intents.
+        for ((entity, ai), maybe_intent) in self.entities.iter_mut()
+            .zip(ai_states)
+            .zip(intents)
+        {
+            entity.ai = ai;
+            if let Some(intent) = maybe_intent {
+                entity.intent = intent;
             }
         }
     }
