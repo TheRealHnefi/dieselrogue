@@ -395,6 +395,19 @@ pub fn use_healing_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]
     ]
 }
 
+/// Use a stimpack to instantly restore energy.
+pub fn use_stimpack_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let IntentData::InventoryItem(ref item) = entity.intent.data else {
+        unreachable!("use_stimpack_action called with non-inventory intent")
+    };
+    let ItemKind::Stimpack { energy } = item.kind else { return vec![] };
+    vec![
+        Effect::Log(format!("{} used {}", entity.name, item.name)),
+        Effect::RestoreEnergy { entity_id: entity.index, amount: energy },
+        Effect::ConsumeItem { entity_id: entity.index, item_id: item.id },
+    ]
+}
+
 // ---------------------------------------------------------------------------
 // Abilities
 // ---------------------------------------------------------------------------

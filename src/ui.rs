@@ -678,6 +678,9 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
         ItemKind::Healing { turns } => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("Regen: {} turns", turns));
         },
+        ItemKind::Stimpack { energy } => {
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("Energy: +{}", energy));
+        },
         ItemKind::Corpse => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("?"));
         },

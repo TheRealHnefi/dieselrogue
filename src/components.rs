@@ -185,6 +185,8 @@ pub enum Effect {
     ConsumeItem { entity_id: usize, item_id: usize },
     /// Subtract energy from entity (ability cost).
     SpendEnergy { entity_id: usize, amount: u32 },
+    /// Restore energy to entity, clamped to its maximum (stimpack).
+    RestoreEnergy { entity_id: usize, amount: u32 },
     /// Pick up the item at entity's current map tile.
     PickUpItem  { entity_id: usize },
     /// Drop the inventory item with the given id to the nearest free tile.
@@ -378,6 +380,8 @@ pub enum ItemKind {
     /// A consumable that applies Regenerating for `turns` turns (to one body part
     /// or all, depending on the item's targeting).
     Healing {turns: u32},
+    /// A consumable that instantly restores `energy` points (clamped to the max).
+    Stimpack {energy: u32},
     Corpse,
     Misc
 }
