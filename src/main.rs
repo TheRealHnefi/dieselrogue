@@ -57,6 +57,11 @@ fn main() -> rltk::BError {
     let _result = state.world.create_patrolling_goon(Point {x: pos.x + 1, y: pos.y+1},
         Facing { direction: Direction::Up},
         String::from("Goon"),
+        (0..state.world.map.rooms.len()).collect());
+
+    let _result = state.world.create_patrolling_goon(Point {x: state.world.map.rooms[2].center().0, y: state.world.map.rooms[2].center().1},
+        Facing { direction: Direction::Up},
+        String::from("Goon"),
         (0..max_room_index).collect());
     
     let _ = state.world.add_item(pos, Item::grenade());

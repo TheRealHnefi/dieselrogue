@@ -7,7 +7,6 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});
     }
-
     let mut player = &mut world.entities[world.player_id.unwrap()];
 
     let (delta_x, delta_y);
