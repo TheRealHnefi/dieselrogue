@@ -171,6 +171,12 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
                 match state.pending_action.take() {
                     Some(pending) => {
                         if matches!(pending.item_action.targeting, Targeting::Positional { .. }) {
+                            // Reject if cursor is on a non-visible tile.
+                            let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
+                            if !state.world.map.visible_tiles[cursor_idx] {
+                                state.pending_action = Some(pending);
+                                return RunState::AwaitingPositionalTargetingInput;
+                            }
                             // Reject if cursor is beyond the action's max range.
                             if let Targeting::Positional { max_range: Some(range) } = pending.item_action.targeting {
                                 if let Ok(player) = state.world.get_player() {
