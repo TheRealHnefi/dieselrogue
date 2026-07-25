@@ -74,7 +74,7 @@ fn main() -> rltk::BError {
         String::from("Goon"),
         (0..max_room_index).collect());
 
-    let _result = state.world.create_tank(Point {x: state.world.map.rooms[3].center().0, y: state.world.map.rooms[3].center().1},
+    let _result = state.world.create_tank(Point {x: state.world.map.rooms[3].x1 + 1, y: state.world.map.rooms[3].y1 + 1},
         Direction::Up,
         String::from("Tank"));
     

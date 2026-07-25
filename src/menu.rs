@@ -19,7 +19,7 @@ pub trait Menu {
     fn select_previous(&mut self);
     fn no_selectable_exists(&self) -> bool;
     fn get_action(&self) -> MenuAction;
-    fn draw(&self, context: &mut Rltk);
+    fn draw(&self, context: &mut Rltk, show_cursor: bool);
 }
 
 pub trait MenuRow {
@@ -421,7 +421,7 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
         return self.rows[self.selected_row].get_action();
     }
 
-    fn draw(&self, context: &mut Rltk) {
+    fn draw(&self, context: &mut Rltk, show_cursor: bool) {
         let mut width = 0;
         for row in &self.rows {
             if row.get_text().len() > width {
@@ -435,7 +435,7 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
             } else {
                 RGB::named(rltk::DARKGRAY)
             };
-            if self.selected_row == i && !self.no_selectable_exists() {
+            if show_cursor && self.selected_row == i && !self.no_selectable_exists() {
                 context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(rltk::MAGENTA), row.get_text());
             } else {
                 context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(rltk::BLACK), row.get_text());
