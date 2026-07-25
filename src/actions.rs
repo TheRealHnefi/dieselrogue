@@ -37,6 +37,26 @@ pub fn throw_grenade_action(entity: &mut Entity, map: &mut Map, log: &mut GameLo
     effects
 }
 
+pub fn prime_grenade_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+    let inventory_item;
+    match entity.intent.data.clone() {
+        IntentData::InventoryItem(item) => inventory_item = item,
+        _ => unreachable!("prime_grenade_action called with non-inventory intent"),
+    }
+
+    if let Some(item) = entity.body.inventory.iter_mut().find(|i| **i == inventory_item) {
+        log.log(format!("{} primed the {}", entity.name, item.name));
+        item.active = true;
+        item.inventory_actions.retain(|a| a.name != "Prime");
+        return vec![Effect::SyncActiveItem {
+            item_id: item.id,
+            location: ItemLocation::InInventory(entity.id),
+        }];
+    }
+
+    vec!()
+}
+
 pub fn drop_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
     let inventory_item;
     match entity.intent.data.clone() {

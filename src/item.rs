@@ -96,10 +96,10 @@ impl Item {
             id: 0,
             renderable: Renderable::new_char('g'),
             name: String::from("Grenade"),
-            inventory_actions: vec![Item::throw_action(), Item::drop_action()],
+            inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::Misc,
+            kind: ItemKind::FusedExplosive { damage: Damage::new(10, 0, 0, 0), timeout: 3 },
             proxy: false,
             active: false,
         }
@@ -183,6 +183,9 @@ impl Item {
     }
     fn fan_fire_action() -> ItemAction {
         ItemAction { name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::fan_fire_action      }
+    }
+    fn prime_action() -> ItemAction {
+        ItemAction { name: "Prime".to_string(),            targeting: Targeting::None,       phase: ExecutionPhase::Inventory, precondition: precondition_ok,        action: actions::prime_grenade_action }
     }
     fn throw_action() -> ItemAction {
         ItemAction { name: "Throw".to_string(),            targeting: Targeting::Positional, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
