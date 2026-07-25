@@ -263,7 +263,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     let blink = (monotime / 250) % 2 == 0;
     let viewport = state.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);
 
-    draw_map(&state.world.map, &state.world.entities, viewport, context, blink, monotime, state.world.debug_mode);
+    draw_map(&state.world.map, &state.world.entities, viewport, context, monotime, state.world.debug_mode);
     draw_main_ui(state, viewport, context, blink);
 }
 
@@ -292,6 +292,8 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
         let cursor_color = if invalid_target { RGB::named(rltk::RED) } else { RGB::named(rltk::PINK) };
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(rltk::BLACK), rltk::to_cp437('█'));
     }
+    draw_direction_overlay(&state.world.map, &state.world.entities, viewport, context, state.world.debug_mode);
+
     if state.run_state == RunState::Looking {
         draw_look_tooltip(state, viewport, context);
     }
@@ -827,7 +829,7 @@ fn flame_background(monotime: u128) -> RGB {
     }
 }
 
-fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, blink: bool, monotime: u128, debug_mode: bool) {
+fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, monotime: u128, debug_mode: bool) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
 
@@ -836,10 +838,10 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
             let index = map.xy_idx(x, y);
             if debug_mode || map.revealed_tiles[index] {
                 let mut renderable = match map.tiles[index] {
-                    TileType::Floor => render_open_tile(map, entities, index, blink, monotime, '-', FLOOR_COLOR, debug_mode),
-                    TileType::Ground => render_open_tile(map, entities, index, blink, monotime, '.', GROUND_COLOR, debug_mode),
-                    TileType::Road => render_open_tile(map, entities, index, blink, monotime, '_', ROAD_COLOR, debug_mode),
-                    TileType::Doorway => render_open_tile(map, entities, index, blink, monotime, ' ', FLOOR_COLOR, debug_mode),
+                    TileType::Floor => render_open_tile(map, entities, index, monotime, '-', FLOOR_COLOR, debug_mode),
+                    TileType::Ground => render_open_tile(map, entities, index, monotime, '.', GROUND_COLOR, debug_mode),
+                    TileType::Road => render_open_tile(map, entities, index, monotime, '_', ROAD_COLOR, debug_mode),
+                    TileType::Doorway => render_open_tile(map, entities, index, monotime, ' ', FLOOR_COLOR, debug_mode),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),
                         color: WALL_COLOR,
@@ -865,7 +867,52 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
     }
 }
 
-fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bool, monotime: u128, empty_character: char, empty_color: rltk::RGB, debug_mode: bool) -> Renderable {
+/// Draws each directional actor's facing arrow one tile ahead of it, in the direction
+/// it faces. Runs on the UI console (above the map), so the arrow alpha-blends over
+/// whatever tile it lands on. This is the shared translucent overlay layer that enemy
+/// viewsheds and precognition ghosts will also draw into.
+fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, debug_mode: bool) {
+    const ARROW_ALPHA: f32 = 0.85;
+    for x in viewport.x1..viewport.x2 {
+        for y in viewport.y1..viewport.y2 {
+            let index = map.xy_idx(x, y);
+            if !debug_mode && !map.visible_tiles[index] {
+                continue;
+            }
+            let Some(pawn) = &map.pawns[index] else { continue };
+            let entity = &entities[pawn.entity_id];
+            let Some(arrow) = entity.sprite.direction_glyph(entity.body.facing) else { continue };
+
+            // Place the arrow on the tile the actor faces; skip if it falls outside the viewport.
+            let (dx, dy) = entity.body.facing.delta_pos();
+            let (ax, ay) = (x + dx, y + dy);
+            if ax < viewport.x1 || ax >= viewport.x2 || ay < viewport.y1 || ay >= viewport.y2 {
+                continue;
+            }
+
+            let color = match entity.color {
+                Some(c) => {
+                    let (r, g, b) = crate::components::KEY_COLORS[c];
+                    rltk::RGBA::from_u8(r, g, b, (ARROW_ALPHA * 255.0) as u8)
+                }
+                None => rltk::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, ARROW_ALPHA),
+            };
+            // set_fancy inverts y as (height - y), one row higher than set's (height - 1 - y),
+            // so shift down by one tile to align the overlay with the map cell.
+            context.set_fancy(
+                rltk::PointF::new((ax - viewport.x1) as f32, (ay - viewport.y1 + 1) as f32),
+                0,
+                rltk::Radians(0.0),
+                rltk::PointF::new(1.0, 1.0),
+                color,
+                rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0),
+                arrow,
+            );
+        }
+    }
+}
+
+fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, monotime: u128, empty_character: char, empty_color: rltk::RGB, debug_mode: bool) -> Renderable {
     let empty = Renderable {
         glyph: rltk::to_cp437(empty_character),
         color: empty_color,
@@ -885,7 +932,7 @@ fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bo
                 WALL_COLOR
             };
             Renderable {
-                glyph: entity.sprite.glyph(entity.body.facing, pawn.sprite_index, blink),
+                glyph: entity.sprite.glyph(entity.body.facing, pawn.sprite_index),
                 color,
                 background: if burning { flame_background(monotime) } else { rltk::RGB::named(rltk::BLACK) },
             }

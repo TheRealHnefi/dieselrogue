@@ -8,20 +8,20 @@ pub enum Sprite {
 }
 
 impl Sprite {
-    pub fn glyph(&self, facing: Direction, index: u32, blink: bool) -> rltk::FontCharType {
+    /// The solid base glyph for the sprite, drawn at full opacity on the map layer.
+    pub fn glyph(&self, facing: Direction, index: u32) -> rltk::FontCharType {
         match self {
-            Sprite::Human => self.human_sprite(facing, blink),
+            Sprite::Human => rltk::to_cp437('☺'),
             Sprite::Tank => self.tank_sprite(index, facing),
             Sprite::Door => self.door_sprite(facing),
         }
     }
 
-    fn human_sprite(&self, facing: Direction, blink: bool) -> rltk::FontCharType {
-        if blink {
-            rltk::to_cp437('☺')
-        }
-        else {
-            match facing {
+    /// The facing arrow to overlay translucently on top of the base glyph, if any.
+    /// Sprites that already encode direction in their base glyph return None.
+    pub fn direction_glyph(&self, facing: Direction) -> Option<rltk::FontCharType> {
+        match self {
+            Sprite::Human => Some(match facing {
                 Direction::Up => rltk::to_cp437('▲'),
                 Direction::UpRight => rltk::to_cp437('┐'),
                 Direction::Right => rltk::to_cp437('►'),
@@ -30,7 +30,8 @@ impl Sprite {
                 Direction::DownLeft => rltk::to_cp437('└'),
                 Direction::Left => rltk::to_cp437('◄'),
                 Direction::UpLeft => rltk::to_cp437('┌'),
-            }
+            }),
+            Sprite::Tank | Sprite::Door => None,
         }
     }
 
