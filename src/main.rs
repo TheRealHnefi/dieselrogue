@@ -38,7 +38,8 @@ pub use serde_collections::*;
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
 
-    let mut context = RltkBuilder::simple80x50()
+    // Set size to 80x50 for now and design UI for that. Allow for upscaled UIs later.
+    let mut context = RltkBuilder::simple(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT)?
         .with_title("Diesel Rogue")
         .with_resource_path("resources")
         .with_font("rexpaint_cp437_10x10.png", 10, 10)
@@ -140,7 +141,7 @@ fn main() -> rltk::BError {
         })
         .with(GettableItem {})
         .with(Name {value: "Gun".to_string()})
-        .with(Firearm {range: 5})
+        .with(Firearm {range: 52})
         .marked::<SimpleMarker<SerializeMarker>>()
         .build();
 
