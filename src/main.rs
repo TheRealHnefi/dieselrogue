@@ -44,6 +44,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Size>();
     game_state.ecs.register::<Direction>();
     game_state.ecs.register::<Facing>();
+    game_state.ecs.register::<Vehicle>();
     game_state.ecs.register::<Renderable>();
     game_state.ecs.register::<LargeRenderable>();
     game_state.ecs.register::<Viewshed>();
@@ -153,6 +154,7 @@ fn main() -> rltk::BError {
         })
         .with(BlocksTile {})
         .with(Facing {direction: Direction::UP})
+        .with(Vehicle {pilot: None})
         .with(Name {value: "Tank".to_string()})
         .build();
 

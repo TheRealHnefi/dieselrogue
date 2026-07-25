@@ -19,7 +19,7 @@ pub struct Size {
     pub y: i32
 }
 
-#[derive (Component, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive (Component, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     UP,
     UPRIGHT,
@@ -31,9 +31,14 @@ pub enum Direction {
     UPLEFT
 }
 
-#[derive (Component, Debug)]
+#[derive (Component)]
 pub struct Facing {
     pub direction: Direction
+}
+
+#[derive (Component)]
+pub struct Vehicle {
+    pub pilot: Option<Entity>
 }
 
 #[derive (Component)]

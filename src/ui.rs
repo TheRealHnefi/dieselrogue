@@ -1,6 +1,6 @@
 use rltk::{RGB, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State};
+use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size};
 use std::cmp::max;
 
 pub fn draw_ui(state: &mut State, context: &mut Rltk) {
@@ -45,28 +45,40 @@ pub fn draw_ui(state: &mut State, context: &mut Rltk) {
     }
 }
 
-fn draw_tooltip(ecs: &World, context: &mut Rltk, position: Point) {
+fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
     let map = ecs.fetch::<Map>();
 
-    if position.x >= map.width || position.y >= map.height {
+    if cursor_position.x >= map.width || cursor_position.y >= map.height {
         return;
     }
 
     let positions = ecs.read_storage::<Position>();
     let bodies = ecs.read_storage::<HumanoidBody>();
     let names = ecs.read_storage::<Name>();
+    let sizes = ecs.read_storage::<Size>();
     let mut tooltip: Vec<String> = Vec::new();
 
-    // TODO: Switch to get single instance instead, joining seems superfluous
-    for (name, pos) in (&names, &positions).join() {
-        let index = map.xy_idx(pos.x, pos.y);
-        if pos.x == position.x && pos.y == position.y && map.visible_tiles[index] {
+    for (name, pos, size_option) in (&names, &positions, (&sizes).maybe()).join() {
+        let index = map.xy_idx(cursor_position.x, cursor_position.y);
+        let size = match size_option {
+            None => {
+                Point::new(1, 1)
+            },
+            Some(s) => {
+                Point::new(s.x, s.y)
+            }
+        };
+        if cursor_position.x >= pos.x
+            && cursor_position.x < pos.x + size.x
+            && cursor_position.y >= pos.y
+            && cursor_position.y < pos.y + size.y
+            && map.visible_tiles[index] {
             tooltip.push(format!("=== {} ===", name.value));
         }
     }
     for (body, pos) in (&bodies, &positions).join() {
         let index = map.xy_idx(pos.x, pos.y);
-        if pos.x == position.x && pos.y == position.y && map.visible_tiles[index] {
+        if pos.x == cursor_position.x && pos.y == cursor_position.y && map.visible_tiles[index] {
             tooltip.push(format!("Hitpoints: {}/{}", body.hitpoints, body.max_hitpoints));
             tooltip.push(format!("Head:      {}/{}", body.head.hitpoints, body.head.max_hitpoints));
             tooltip.push(format!("Torso:     {}/{}", body.torso.hitpoints, body.torso.max_hitpoints));
@@ -85,10 +97,10 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, position: Point) {
         }
         width += 3;
 
-        if position.x > 40 {
-            let arrow_pos = Point::new(position.x - 1, position.y);
-            let left_x = position.x - width;
-            let mut y = position.y + 1;
+        if cursor_position.x > 40 {
+            let arrow_pos = Point::new(cursor_position.x - 1, cursor_position.y);
+            let left_x = cursor_position.x - width;
+            let mut y = cursor_position.y + 1;
 
             context.draw_box(left_x - 1, y - 1, width -1, tooltip.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
@@ -98,9 +110,9 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, position: Point) {
             }
             context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &">".to_string());
         } else {
-            let arrow_pos = Point::new(position.x + 1, position.y);
-            let left_x = position.x + 3;
-            let mut y = position.y;
+            let arrow_pos = Point::new(cursor_position.x + 1, cursor_position.y);
+            let left_x = cursor_position.x + 3;
+            let mut y = cursor_position.y;
 
             context.draw_box(left_x - 1, y - 1, width -1, tooltip.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
