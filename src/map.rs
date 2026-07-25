@@ -126,6 +126,11 @@ impl Map {
             Right
         }
 
+        enum Dirs {
+            Vertical,
+            Horizontal
+        }
+
         fn create_room(map: &mut Map, room: Rect) -> Rect {
             for x in room.x1..=room.x2 {
                 for y in room.y1..=room.y2 {
@@ -171,10 +176,7 @@ impl Map {
 
         fn split_room(map: &mut Map, room: Rect, min_size: i32, rng: &mut rltk::RandomNumberGenerator) -> Vec<Rect> {
             let mut result = vec!();
-            enum Dirs {
-                Vertical,
-                Horizontal
-            }
+
             let mut allowed_dirs = vec!();
             if room.x2 - room.x1 > 2 * min_size {
                 allowed_dirs.push(Dirs::Horizontal);
@@ -186,7 +188,6 @@ impl Map {
             let chosen_dir = rng.range(0, allowed_dirs.len() + 1);
             if chosen_dir == allowed_dirs.len() {
                 result.push(create_room(map, room));
-                //create_door(map, room, rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
                 return result;
             }
             match allowed_dirs[chosen_dir] {
@@ -219,36 +220,43 @@ impl Map {
 
         let mut rng = RandomNumberGenerator::new();
 
+        let max_buildings = 10;
         let room_min_size = 4;
-        let building_max_size = 40;
+        let building_max_size = 30;
 
-        let building_width = rng.range(building_max_size - room_min_size, building_max_size);
-        let building_height = rng.range(building_max_size - room_min_size, building_max_size);
-        let building_left = rng.range(10, map_width as i32 - building_max_size - 10);
-        let building_top = rng.range(10, map_height as i32 - building_max_size - 10);
+        let mut buildings = vec!();
 
-        let building = Rect::new(building_left, building_top, building_width, building_height);
+        for i in 0 .. max_buildings {
+            let building_width = rng.range(building_max_size - room_min_size, building_max_size);
+            let building_height = rng.range(building_max_size - room_min_size, building_max_size);
+            let building_left = rng.range(1, map_width as i32 - building_max_size - 1);
+            let building_top = rng.range(1, map_height as i32 - building_max_size - 1);
 
-        let mut rooms = split_room(&mut map, building, room_min_size, &mut rng);
+            let building = Rect::new(building_left, building_top, building_width, building_height);
+            let mut ok = true;
+            {
+                for j in 0..buildings.len() {
+                    if building.intersect(&buildings[j]) {
+                        ok = false;
+                    }
+                }
+                if ok {
+                    buildings.push(building);
+                }
+                else {
+                    continue;
+                }
+            }
 
-        if rooms.len() == 1 {
-            create_door(&mut map, rooms[0], &mut rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+            let mut rooms = split_room(&mut map, building, room_min_size, &mut rng);
+
+            if rooms.len() == 1 {
+                create_door(&mut map, rooms[0], &mut rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+            }
+
+            map.rooms.append(&mut rooms);
         }
 
-        map.rooms.append(&mut rooms);
-
-        // for i in 0..max_rooms_per_building {
-        //     if i == 0 {
-        //         let room_width = rng.range(room_min_size, room_max_size);
-        //         let room_height = rng.range(room_min_size, room_max_size);
-        //         let room_left = rng.range(10, map_width as i32 - 20);
-        //         let room_top = rng.range(10, map_height as i32 - 20);
-
-        //         let room = Rect::new(room_left, room_top, room_width, room_height);
-
-        //         create_room(&mut map, room);
-        //     }
-        // }
         map
     }
 
