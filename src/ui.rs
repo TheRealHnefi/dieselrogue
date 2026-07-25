@@ -8,6 +8,7 @@ use crate::Ability;
 use crate::Rect;
 use crate::entity::Entity;
 use crate::RebindTarget;
+use crate::Item;
 
 const LEVELUP_SELECT_COLOR: rltk::RGB = RGB { r: 0.9, g: 0.7, b: 0.0 };
 const LEVELUP_LIST_X: i32 = 4;
@@ -46,6 +47,7 @@ const LOG_NOISE_PANEL_HEIGHT: usize = UI_HEIGHT
     - LOCATION_PANEL_HEIGHT
     - 1;
 const NOISE_PANEL_WIDTH: usize = 22;
+const INVENTORY_NAME_COLUMN_WIDTH: usize = 15;
 const ABILITIES_PANEL_WIDTH: usize = UI_WIDTH - NOISE_PANEL_WIDTH;
 const LABEL_OFFSET: usize = 2;
 
@@ -470,124 +472,33 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
     // Inventory panel
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + 2;
-    const INVENTORY_NAME_COLUMN_WIDTH: usize = 20;
     for (i, item) in player.body.inventory.iter().enumerate() {
         debug_assert!(i < crate::components::INVENTORY_MAX);
-        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y + i, LABEL_COLOR, BG_COLOR, format!("{}: {}", i, &item.name));
-        match &item.kind {
-            ItemKind::Firearm{ammo, max_ammo, damage, range} => {
-                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Ammo: {}\\{}", ammo, max_ammo));
-
-                let label = String::from("Dmg: ");
-                let phys = format!("{}", damage.physical);
-                let elec = format!("{}", damage.electrical);
-                let fire = format!("{}", damage.fire);
-                let pierce = format!("{}", damage.piercing);
-                let mut offset_x = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH + 15;
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &label);
-                offset_x += label.len();
-
-                context.print_color(offset_x, offset_y + i, PHYS_COLOR, BG_COLOR, &phys);
-                offset_x += phys.len();
-
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_x += 1;
-
-                context.print_color(offset_x, offset_y + i, ELEC_COLOR, BG_COLOR, &elec);
-                offset_x += elec.len();
-
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_x += 1;
-
-                context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
-                offset_x += fire.len();
-
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_x += 1;
-
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &pierce);
-                offset_x += pierce.len();
-
-                context.print_color(offset_x + 3, offset_y + i, LABEL_COLOR, BG_COLOR, format!("Range: {}", range));
-            },
-            ItemKind::MeleeWeapon{damage} => {
-                let label = String::from("Dmg: ");
-                let phys = format!("{}", damage.physical);
-                let elec = format!("{}", damage.electrical);
-                let fire = format!("{}", damage.fire);
-                let pierce = format!("{}", damage.piercing);
-                let mut offset_x = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH + 15;
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &label);
-                offset_x += label.len();
-                context.print_color(offset_x, offset_y + i, PHYS_COLOR, BG_COLOR, &phys);
-                offset_x += phys.len();
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_x += 1;
-                context.print_color(offset_x, offset_y + i, ELEC_COLOR, BG_COLOR, &elec);
-                offset_x += elec.len();
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_x += 1;
-                context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
-                offset_x += fire.len();
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, "\\");
-                offset_x += 1;
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &pierce);
-            },
-            ItemKind::Wearable{armor} => {
-                let label = String::from("Armor: ");
-                let phys = format!("{}\\{} ", armor.phys_absorption, armor.phys_resistance * 100.0);
-                let elec = format!("{}\\{} ", armor.elec_absorption, armor.elec_resistance * 100.0);
-                let fire = format!("{}\\{} ", armor.fire_absorption, armor.fire_resistance * 100.0);
-                let mut offset_x = UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH;
-                context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, &label);
-                offset_x += label.len();
-
-                context.print_color(offset_x, offset_y + i, PHYS_COLOR, BG_COLOR, &phys);
-                offset_x += phys.len();
-
-                context.print_color(offset_x, offset_y + i, ELEC_COLOR, BG_COLOR, &elec);
-                offset_x += elec.len();
-
-                context.print_color(offset_x, offset_y + i, FIRE_COLOR, BG_COLOR, &fire);
-            },
-            ItemKind::FusedExplosive{timeout, ..} => {
-                let label = if item.active { format!("Fuse: {}", timeout) } else { String::from("Inert") };
-                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, label);
-            },
-            ItemKind::Key { color } => {
-                let (r, g, b) = crate::components::KEY_COLORS[*color];
-                let key_color = rltk::RGB::from_u8(r, g, b);
-                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, key_color, BG_COLOR, crate::components::KEY_COLOR_NAMES[*color]);
-            },
-            ItemKind::Misc => {
-                context.print_color(UI_X_OFFSET + LABEL_OFFSET + INVENTORY_NAME_COLUMN_WIDTH, offset_y + i, LABEL_COLOR, BG_COLOR, format!("?"));
-            }
-        }
+        print_item_info(context, item, UI_X_OFFSET + LABEL_OFFSET, offset_y + i);
     }
 
     // Equipment panel
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
     for (i, slot) in player.body.item_slots.iter().enumerate() {
         let mut slot_label = slot.slot_type.to_string();
-        let mut offset_x = UI_X_OFFSET + LABEL_OFFSET;
         slot_label.push(':');
-        context.print_color(offset_x, offset_y + i, LABEL_COLOR, BG_COLOR, slot_label);
-        offset_x += 15;
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y + i, LABEL_COLOR, BG_COLOR, slot_label);
 
         match &slot.item {
             Some(item) => {
-                let color = if item.proxy { INACTIVE_COLOR } else { LABEL_COLOR };
-                context.print_color(offset_x, offset_y + i, color, BG_COLOR, &item.name);
-                offset_x += item.name.len();
+                print_item_info(context, item, UI_X_OFFSET + LABEL_OFFSET + 15, offset_y + i);
+                // let color = if item.proxy { INACTIVE_COLOR } else { LABEL_COLOR };
+                // context.print_color(offset_x, offset_y + i, color, BG_COLOR, &item.name);
+                // offset_x += item.name.len();
 
-                match item.kind {
-                    ItemKind::Firearm{ammo, max_ammo, damage: _, range} => {
-                        context.print_color(offset_x, offset_y + i, color, BG_COLOR, format!("  Ammo: {}\\{}  Range: {}", ammo, max_ammo, range));
-                    },
-                    _ => ()
-                }
+                // match item.kind {
+                //     ItemKind::Firearm{ammo, max_ammo, damage: _, range} => {
+                //         context.print_color(offset_x, offset_y + i, color, BG_COLOR, format!("  Ammo: {}\\{}  Range: {}", ammo, max_ammo, range));
+                //     },
+                //     _ => ()
+                // }
             },
-            None => context.print_color(offset_x, offset_y + i, INACTIVE_COLOR, BG_COLOR, "---".to_string())
+            None => context.print_color(UI_X_OFFSET + LABEL_OFFSET + 15, offset_y + i, INACTIVE_COLOR, BG_COLOR, "---".to_string())
         }
     }
 
@@ -618,6 +529,101 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
     // Noise panel
     draw_noise_panel(state, context);
+}
+
+fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: usize) {
+    let mut x = offset_x;
+    context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("{}", &item.name));
+    x += INVENTORY_NAME_COLUMN_WIDTH;
+    match &item.kind {
+        ItemKind::Firearm{ammo, max_ammo, damage, range} => {
+            
+            let ammo_label = format!("Ammo: {}\\{}", ammo, max_ammo);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &ammo_label);
+            x += ammo_label.len() + 1;
+
+            let label = String::from("Dmg: ");
+            let phys = format!("{}", damage.physical);
+            let elec = format!("{}", damage.electrical);
+            let fire = format!("{}", damage.fire);
+            let pierce = format!("{}", damage.piercing);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &label);
+            x += label.len();
+
+            context.print_color(x, offset_y, PHYS_COLOR, BG_COLOR, &phys);
+            x += phys.len();
+
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
+            x += 1;
+
+            context.print_color(x, offset_y, ELEC_COLOR, BG_COLOR, &elec);
+            x += elec.len();
+
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
+            x += 1;
+
+            context.print_color(x, offset_y, FIRE_COLOR, BG_COLOR, &fire);
+            x += fire.len();
+
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
+            x += 1;
+
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &pierce);
+            x += pierce.len();
+
+            context.print_color(x + 2, offset_y, LABEL_COLOR, BG_COLOR, format!("Rng: {}", range));
+        },
+        ItemKind::MeleeWeapon{damage} => {
+            let label = String::from("Dmg: ");
+            let phys = format!("{}", damage.physical);
+            let elec = format!("{}", damage.electrical);
+            let fire = format!("{}", damage.fire);
+            let pierce = format!("{}", damage.piercing);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &label);
+            x += label.len();
+            context.print_color(x, offset_y, PHYS_COLOR, BG_COLOR, &phys);
+            x += phys.len();
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
+            x += 1;
+            context.print_color(x, offset_y, ELEC_COLOR, BG_COLOR, &elec);
+            x += elec.len();
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
+            x += 1;
+            context.print_color(x, offset_y, FIRE_COLOR, BG_COLOR, &fire);
+            x += fire.len();
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
+            x += 1;
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &pierce);
+        },
+        ItemKind::Wearable{armor} => {
+            let label = String::from("Armor: ");
+            let phys = format!("{}\\{} ", armor.phys_absorption, armor.phys_resistance * 100.0);
+            let elec = format!("{}\\{} ", armor.elec_absorption, armor.elec_resistance * 100.0);
+            let fire = format!("{}\\{} ", armor.fire_absorption, armor.fire_resistance * 100.0);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &label);
+            x += label.len();
+
+            context.print_color(x, offset_y, PHYS_COLOR, BG_COLOR, &phys);
+            x += phys.len();
+
+            context.print_color(x, offset_y, ELEC_COLOR, BG_COLOR, &elec);
+            x += elec.len();
+
+            context.print_color(x, offset_y, FIRE_COLOR, BG_COLOR, &fire);
+        },
+        ItemKind::FusedExplosive{timeout, ..} => {
+            let label = if item.active { format!("Fuse: {}", timeout) } else { String::from("Inert") };
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, label);
+        },
+        ItemKind::Key { color } => {
+            let (r, g, b) = crate::components::KEY_COLORS[*color];
+            let key_color = rltk::RGB::from_u8(r, g, b);
+            context.print_color(x, offset_y, key_color, BG_COLOR, crate::components::KEY_COLOR_NAMES[*color]);
+        },
+        ItemKind::Misc => {
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("?"));
+        }
+    }
 }
 
 fn sound_direction_glyph(player_pos: rltk::Point, sound_pos: rltk::Point) -> rltk::FontCharType {
