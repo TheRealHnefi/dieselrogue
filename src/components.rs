@@ -7,8 +7,14 @@ pub struct Player {}
 #[derive (Component)]
 pub struct Enemy {}
 
-#[derive (Component, Debug)]
+#[derive (Component)]
 pub struct Position {
+    pub x: i32,
+    pub y: i32
+}
+
+#[derive (Component)]
+pub struct Size {
     pub x: i32,
     pub y: i32
 }
@@ -33,6 +39,13 @@ pub struct Facing {
 #[derive (Component)]
 pub struct Renderable {
     pub glyph: rltk::FontCharType,
+    pub color: rltk::RGB,
+    pub background: rltk::RGB
+}
+
+#[derive (Component)]
+pub struct LargeRenderable {
+    pub glyphs: Vec<rltk::FontCharType>,
     pub color: rltk::RGB,
     pub background: rltk::RGB
 }

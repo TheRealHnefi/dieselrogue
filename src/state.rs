@@ -80,12 +80,27 @@ impl GameState for State {
         {
             let positions = self.ecs.read_storage::<Position>();
             let renderables = self.ecs.read_storage::<Renderable>();
+            let large_renderables = self.ecs.read_storage::<LargeRenderable>();
+            let sizes = self.ecs.read_storage::<Size>();
             let map = self.ecs.fetch::<Map>();
 
+            // TODO: Unify these, for efficiency?
             for (pos, render) in (&positions, &renderables).join() {
                 let idx = map.xy_idx(pos.x, pos.y);
                 if map.visible_tiles[idx] {
                     context.set(pos.x, pos.y, render.color, render.background, render.glyph);
+                }
+            }
+
+            for (pos, render, size) in (&positions, &large_renderables, &sizes).join() {
+                assert!(size.x * size.y == render.glyphs.len() as i32, "Size and glyphmap size differ for object");
+                for x in 0..size.x {
+                    for y in 0..size.y {
+                        let idx = map.xy_idx(pos.x + x, pos.y + y);
+                        if map.visible_tiles[idx] {
+                            context.set(pos.x + x, pos.y + y, render.color, render.background, render.glyphs[(x + size.x * y) as usize]);
+                        }
+                    }
                 }
             }
         }
