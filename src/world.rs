@@ -172,7 +172,6 @@ impl World {
         }
 
         for entity in self.entities.iter_mut() {
-            entity.viewshed.dirty = true;
             entity.update_view(&self.map);
         }
 
