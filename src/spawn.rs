@@ -1,4 +1,4 @@
-use rltk::{Point, Tile};
+use rltk::{Point, RandomNumberGenerator, Tile};
 use std::collections::HashMap;
 use crate::{Map, TileType};
 
@@ -292,6 +292,26 @@ pub fn zone_depths(zone_map: &ZoneMap, start_zone: usize) -> Vec<usize> {
         }
     }
     depth
+}
+
+/// Randomly marks zones as interesting based on whether they contain rooms.
+/// Each room in a zone has a 1-in-2 chance to flag the zone as interesting;
+/// a zone is interesting if any of its rooms passes the check.
+pub fn mark_interesting_zones(
+    zone_map: &ZoneMap,
+    spawn_map: &SpawnMap,
+    rng: &mut RandomNumberGenerator,
+) -> Vec<bool> {
+    let mut interesting = vec![false; zone_map.zones.len()];
+    for region in &spawn_map.regions {
+        if !region.is_room { continue; }
+        if let Some(zi) = zone_map.tile_zone[region.center_idx] {
+            if rng.range(0, 2) == 0 {
+                interesting[zi] = true;
+            }
+        }
+    }
+    interesting
 }
 
 // ---------------------------------------------------------------------------
