@@ -10,6 +10,34 @@ pub enum Direction {
     UpLeft
 }
 
+impl Direction {
+    pub fn counter_clockwise(&self) -> Direction {
+        match self {
+            Direction::Up => Direction::UpLeft,
+            Direction::UpRight => Direction::Up,
+            Direction::Right => Direction::UpRight,
+            Direction::DownRight => Direction::Right,
+            Direction::Down => Direction::DownRight,
+            Direction::DownLeft => Direction::Down,
+            Direction::Left => Direction::DownLeft,
+            Direction::UpLeft => Direction::Left,
+        }
+    }
+
+    pub fn clockwise(&self) -> Direction {
+        match self {
+            Direction::Up => Direction::UpRight,
+            Direction::UpRight => Direction::Right,
+            Direction::Right => Direction::DownRight,
+            Direction::DownRight => Direction::Down,
+            Direction::Down => Direction::DownLeft,
+            Direction::DownLeft => Direction::Left,
+            Direction::Left => Direction::UpLeft,
+            Direction::UpLeft => Direction::Up,
+        }
+    }
+}
+
 #[derive (Copy, Clone)]
 pub struct Renderable {
     pub glyph: rltk::FontCharType,
@@ -18,15 +46,15 @@ pub struct Renderable {
 }
 
 impl Renderable {
-    pub fn new() -> Self {
+    pub fn new_glyph(character: rltk::FontCharType) -> Self {
         Self {
-            glyph: rltk::to_cp437('?'),
+            glyph: character,
             color: rltk::RGB::named(rltk::YELLOW),
             background: rltk::RGB::named(rltk::BLACK)
         }
     }
 
-    pub fn new_glyph(character: char) -> Self {
+    pub fn new_char(character: char) -> Self {
         Self {
             glyph: rltk::to_cp437(character),
             color: rltk::RGB::named(rltk::YELLOW),
@@ -57,3 +85,4 @@ pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, damage: u32},
     Misc
 }
+

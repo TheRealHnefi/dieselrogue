@@ -1,20 +1,22 @@
-use crate::components::*;
 use rltk::Point;
+use crate::components::*;
+use crate::ai::*;
+use crate::intent::*;
+use crate::sprite::*;
+use crate::GameLog;
+use crate::Viewshed;
+use crate::Ability;
 use crate::Map;
 use crate::Item;
 use crate::Body;
-use crate::ai::*;
-use crate::Viewshed;
-use crate::Ability;
-use crate::intent::*;
-use crate::GameLog;
+
 
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
     pub id: usize,
+    pub sprite: Sprite,
     pub size: u32,
     pub position: Point,
-    pub renderables: Vec<Renderable>,
     pub name: String,
     pub intent: Intent,
     pub body: Body,
@@ -26,9 +28,9 @@ impl Entity {
     pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
+            sprite: Sprite::Human,
             size: 1,
             position: pos,
-            renderables: vec!(Renderable::new_glyph('5')),
             name: name,
             intent: idle_intent(),
             body: Body::human_body(facing),
@@ -40,14 +42,28 @@ impl Entity {
     pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Self {
         Self {
             id: id,
+            sprite: Sprite::Human,
             size: 1,
             position: pos,
-            renderables: vec!(Renderable::new_glyph('5')),
             name: name,
             intent: idle_intent(),
             body: Body::human_body(facing),
             viewshed: Viewshed::new(),
             ai: AI::Patrolling(PatrollingAI::new(waypoints))
+        }
+    }
+
+    pub fn new_tank(id: usize, pos: Point, facing: Direction, name: String) -> Self {
+        Self {
+            id: id,
+            sprite: Sprite::Tank,
+            size: 3,
+            position: pos,
+            name: name,
+            intent: idle_intent(),
+            body: Body::tank_body(facing),
+            viewshed: Viewshed::new(),
+            ai: AI::Rotator
         }
     }
 
@@ -70,7 +86,7 @@ impl Entity {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = Some(Pawn {
                     entity_id: self.id,
-                    renderable: self.renderables[(x + y*x) as usize],
+                    renderable: Renderable::new_glyph(self.sprite.get(self.body.facing, x, y)),
                     name: self.name.clone(),
                     intent: self.intent.clone(),
                     body: self.body.clone()
@@ -116,7 +132,14 @@ impl Entity {
         match &mut self.ai {
             AI::Patrolling(ai) => {
                 self.intent = ai.declare_intent(self.position, &self.body, map);
-            }
+            },
+            AI::Rotator => {
+                self.intent = Intent {
+                    phase: IntentPhase::Movement,
+                    data: IntentData::Direction(self.body.facing.clockwise()),
+                    action: Entity::resolve_turn
+                };
+            },
             AI::None => ()
         }
     }
@@ -407,16 +430,6 @@ impl Entity {
         match self.intent.data {
             IntentData::Direction(direction) => {
                 self.body.facing = direction;
-                match direction {
-                    Direction::Up => {self.renderables[0].glyph = rltk::to_cp437('8')},
-                    Direction::UpRight => {self.renderables[0].glyph = rltk::to_cp437('9')},
-                    Direction::Right => {self.renderables[0].glyph = rltk::to_cp437('6')},
-                    Direction::DownRight => {self.renderables[0].glyph = rltk::to_cp437('3')},
-                    Direction::Down => {self.renderables[0].glyph = rltk::to_cp437('2')},
-                    Direction::DownLeft => {self.renderables[0].glyph = rltk::to_cp437('1')},
-                    Direction::Left => {self.renderables[0].glyph = rltk::to_cp437('4')},
-                    Direction::UpLeft => {self.renderables[0].glyph = rltk::to_cp437('7')},
-                }
                 self.create_pawns(map);
             },
             _ => {
@@ -484,8 +497,7 @@ impl Entity {
     }
 
     pub fn kill(&mut self, map: &mut Map) {
-        let index = map.xy_idx(self.position.x, self.position.y);
-        map.pawns[index] = None;
+        self.clear_pawns(map);
     }
 }
 

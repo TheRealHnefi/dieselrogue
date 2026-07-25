@@ -119,7 +119,26 @@ impl World {
 
         let entity = Entity::new_patrolling_goon(self.entities.len(), pos, facing, name, waypoints);
         entity.create_pawns(&mut self.map);
-        self.entities.push(entity);
+            self.entities.push(entity);
+
+        Ok(())
+    }
+
+    pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
+        for x in 0..3 {
+            for y in 0..3 {
+                if self.map.blocked(pos.x + x, pos.y + y) {
+                    return Err(GameError {
+                        error: Error::BadPrecondition,
+                        message: format!("Tried to create entity at {},{}, but position is occupied", pos.x, pos.y)
+                    });     
+                }
+            }
+        }
+
+        let tank = Entity::new_tank(self.entities.len(), pos, facing, name);
+        tank.create_pawns(&mut self.map);
+        self.entities.push(tank);
 
         Ok(())
     }

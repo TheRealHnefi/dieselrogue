@@ -45,7 +45,7 @@ impl Item {
             effects: Entity::resolve_drop_item
         };
         Item {
-            renderable: Renderable::new_glyph('g'),
+            renderable: Renderable::new_char('g'),
             name: String::from("Grenade"),
             inventory_actions: vec![throw_action, drop_action],
             equip_actions: vec!(),
@@ -75,7 +75,7 @@ impl Item {
             effects: Entity::resolve_single_fire
         };
         Item {
-            renderable: Renderable::new_glyph('p'),
+            renderable: Renderable::new_char('p'),
             name: String::from("Pistol"),
             inventory_actions: vec![equip_action, drop_action],
             equip_actions: vec!(fire_action),
@@ -111,7 +111,7 @@ impl Item {
             effects: Entity::resolve_burst_fire
         };
         Item {
-            renderable: Renderable::new_glyph('m'),
+            renderable: Renderable::new_char('m'),
             name: String::from("Machinegun"),
             inventory_actions: vec![equip_action, drop_action],
             equip_actions: vec!(fire_action, fire_burst_action),

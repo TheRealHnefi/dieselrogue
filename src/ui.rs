@@ -1,6 +1,7 @@
 use rltk::{RGB, Rltk, Point};
-use super::*;
 use std::cmp::max;
+use crate::state::*;
+use crate::map::*;
 
 pub const SCREEN_WIDTH: usize = 80;
 pub const SCREEN_HEIGHT: usize = 50;

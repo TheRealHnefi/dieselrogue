@@ -118,10 +118,28 @@ impl Body {
         body.parts.push(BodyPart {
             name: "Treads".to_string(),
             vital: false,
-            slot_index: vec!(body.item_slots.len() - 2, body.item_slots.len() - 1),
+            slot_index: vec!(),
             max_damage: 12,
             damage: 0,
             abilities: vec!(Ability::Move)
+        });
+
+        body.parts.push(BodyPart {
+            name: "Chassis".to_string(),
+            vital: true,
+            slot_index: vec!(),
+            max_damage: 12,
+            damage: 0,
+            abilities: vec!()
+        });
+
+        body.parts.push(BodyPart {
+            name: "Turret".to_string(),
+            vital: false,
+            slot_index: vec!(),
+            max_damage: 12,
+            damage: 0,
+            abilities: vec!()
         });
 
         body.update_abilities();
