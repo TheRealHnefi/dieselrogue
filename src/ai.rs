@@ -90,7 +90,7 @@ pub enum AlertLevel {
     Suspicious { origin: Point, turns_remaining: u32 },
     /// Has detected something confirmed dangerous, but does not see it. Does not decay.
     Alert      { last_known: Point, search: SearchBehavior },
-    /// Has detected something confirmed dangerous and has recently seen it or is seeing it now.
+    /// Has detected something confirmed dangerous and has recently seen it or is seeing it now. 
     Combat     { target_id: usize, last_seen: Point },
 }
 
@@ -175,10 +175,8 @@ impl ActorAI {
     /// The goal this actor wants a shared flow field for, if any, and whether a
     /// radius-bounded field suffices (`true` for dynamic goals whose interested
     /// agents cluster nearby; `false` for static patrol/guard goals wanting
-    /// full-map coverage). Read by the field pre-pass *before* this turn's
-    /// stimulus is processed, so it reflects last turn's belief — a just-changed
-    /// belief simply misses its field for one turn and falls back to A*.
-    ///
+    /// full-map coverage).
+    /// 
     /// Combat is intentionally excluded: a combat target is currently visible
     /// (else the actor would have decayed to Alert), so `navigate_to` reaches it
     /// via the greedy line-of-sight step, not a field.
@@ -226,6 +224,7 @@ impl ActorAI {
         // nav_field_goal is a hand-kept parallel copy of decide's nav goals; the
         // pre-pass builds a shared field for its cell, so decide must actually
         // head there. Assert they agree (same self state, post-advance_waypoint).
+        // TODO: Unify this with decision.
         #[cfg(debug_assertions)]
         if let Some((goal, _)) = self.nav_field_goal(map) {
             debug_assert!(
