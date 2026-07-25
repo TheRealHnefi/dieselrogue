@@ -47,7 +47,7 @@ const LOG_NOISE_PANEL_HEIGHT: usize = UI_HEIGHT
     - LOCATION_PANEL_HEIGHT
     - 1;
 const NOISE_PANEL_WIDTH: usize = 22;
-const INVENTORY_NAME_COLUMN_WIDTH: usize = 15;
+const INVENTORY_NAME_COLUMN_WIDTH: usize = 22;
 const ABILITIES_PANEL_WIDTH: usize = UI_WIDTH - NOISE_PANEL_WIDTH;
 const LABEL_OFFSET: usize = 2;
 
@@ -583,85 +583,69 @@ pub fn equipment_row_pos(index: usize) -> (i32, i32) {
     (x, y)
 }
 
+/// Prints a colored number at (x, y) and returns the x just past it.
+fn print_num(context: &mut Rltk, x: usize, y: usize, color: RGB, n: u32) -> usize {
+    let s = n.to_string();
+    context.print_color(x, y, color, BG_COLOR, &s);
+    x + s.len()
+}
+
+/// Prints a "\" separator and returns the x just past it.
+fn print_sep(context: &mut Rltk, x: usize, y: usize) -> usize {
+    context.print_color(x, y, LABEL_COLOR, BG_COLOR, "\\");
+    x + 1
+}
+
+/// Prints "phys\elec\fire\pierce" with per-type colors; returns the x just past it.
+fn print_damage(context: &mut Rltk, mut x: usize, y: usize, d: &Damage) -> usize {
+    x = print_num(context, x, y, PHYS_COLOR, d.physical);
+    x = print_sep(context, x, y);
+    x = print_num(context, x, y, ELEC_COLOR, d.electrical);
+    x = print_sep(context, x, y);
+    x = print_num(context, x, y, FIRE_COLOR, d.fire);
+    x = print_sep(context, x, y);
+    print_num(context, x, y, LABEL_COLOR, d.piercing)
+}
+
+/// Prints "phys\elec\fire" with per-type colors; returns the x just past it.
+fn print_triple(context: &mut Rltk, mut x: usize, y: usize, p: u32, e: u32, f: u32) -> usize {
+    x = print_num(context, x, y, PHYS_COLOR, p);
+    x = print_sep(context, x, y);
+    x = print_num(context, x, y, ELEC_COLOR, e);
+    x = print_sep(context, x, y);
+    print_num(context, x, y, FIRE_COLOR, f)
+}
+
 fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: usize) {
     let mut x = offset_x;
-    context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("{}", &item.name));
+    // Truncate the name so it can never run into the stats column.
+    let name: String = item.name.chars().take(INVENTORY_NAME_COLUMN_WIDTH - 1).collect();
+    context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &name);
     x += INVENTORY_NAME_COLUMN_WIDTH;
     match &item.kind {
-        ItemKind::Firearm{ammo, max_ammo, ammo_kind, damage, range} => {
-
-            let ammo_label = format!("Ammo: {}\\{} ({})", ammo, max_ammo, ammo_kind.name());
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &ammo_label);
-            x += ammo_label.len() + 1;
-
-            let label = String::from("Dmg: ");
-            let phys = format!("{}", damage.physical);
-            let elec = format!("{}", damage.electrical);
-            let fire = format!("{}", damage.fire);
-            let pierce = format!("{}", damage.piercing);
+        ItemKind::Firearm{ammo, max_ammo, damage, range, ..} => {
+            let label = format!("A:{}\\{} D:", ammo, max_ammo);
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &label);
             x += label.len();
-
-            context.print_color(x, offset_y, PHYS_COLOR, BG_COLOR, &phys);
-            x += phys.len();
-
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
-            x += 1;
-
-            context.print_color(x, offset_y, ELEC_COLOR, BG_COLOR, &elec);
-            x += elec.len();
-
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
-            x += 1;
-
-            context.print_color(x, offset_y, FIRE_COLOR, BG_COLOR, &fire);
-            x += fire.len();
-
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
-            x += 1;
-
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &pierce);
-            x += pierce.len();
-
-            context.print_color(x + 2, offset_y, LABEL_COLOR, BG_COLOR, format!("Rng: {}", range));
+            x = print_damage(context, x, offset_y, damage);
+            context.print_color(x + 1, offset_y, LABEL_COLOR, BG_COLOR, format!("R:{}", range));
         },
         ItemKind::MeleeWeapon{damage} => {
-            let label = String::from("Dmg: ");
-            let phys = format!("{}", damage.physical);
-            let elec = format!("{}", damage.electrical);
-            let fire = format!("{}", damage.fire);
-            let pierce = format!("{}", damage.piercing);
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &label);
-            x += label.len();
-            context.print_color(x, offset_y, PHYS_COLOR, BG_COLOR, &phys);
-            x += phys.len();
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
-            x += 1;
-            context.print_color(x, offset_y, ELEC_COLOR, BG_COLOR, &elec);
-            x += elec.len();
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
-            x += 1;
-            context.print_color(x, offset_y, FIRE_COLOR, BG_COLOR, &fire);
-            x += fire.len();
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "\\");
-            x += 1;
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &pierce);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "D:");
+            x += 2;
+            print_damage(context, x, offset_y, damage);
         },
         ItemKind::Wearable{armor} => {
-            let label = String::from("Armor: ");
-            let phys = format!("{}\\{} ", armor.phys_absorption, armor.phys_resistance * 100.0);
-            let elec = format!("{}\\{} ", armor.elec_absorption, armor.elec_resistance * 100.0);
-            let fire = format!("{}\\{} ", armor.fire_absorption, armor.fire_resistance * 100.0);
-            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &label);
-            x += label.len();
-
-            context.print_color(x, offset_y, PHYS_COLOR, BG_COLOR, &phys);
-            x += phys.len();
-
-            context.print_color(x, offset_y, ELEC_COLOR, BG_COLOR, &elec);
-            x += elec.len();
-
-            context.print_color(x, offset_y, FIRE_COLOR, BG_COLOR, &fire);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "Abs:");
+            x += 4;
+            x = print_triple(context, x, offset_y, armor.phys_absorption, armor.elec_absorption, armor.fire_absorption);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, " Res:");
+            x += 5;
+            x = print_triple(context, x, offset_y,
+                (armor.phys_resistance * 100.0).round() as u32,
+                (armor.elec_resistance * 100.0).round() as u32,
+                (armor.fire_resistance * 100.0).round() as u32);
+            context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, "%");
         },
         ItemKind::FusedExplosive{timeout, ..} => {
             let label = if item.active { format!("Fuse: {}", timeout) } else { String::from("Inert") };
