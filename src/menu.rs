@@ -3,7 +3,7 @@ use crate::ability::Ability;
 use crate::entity::Entity;
 use crate::item::*;
 use crate::intent::*;
-use crate::player::{disembark_player_intent, iron_body_player_intent, shout_player_intent};
+use crate::player::disembark_player_intent;
 use crate::state::*;
 use crate::World;
 use crate::actions;
@@ -58,7 +58,7 @@ pub enum ActionSource {
 ///              positional_targeting_input opens the targeting_menu; the player picks a
 ///              bodypart; action_apply_intent_to_target_bodypart assembles the final Intent.
 pub struct PendingAction {
-    pub item_action: ItemAction,
+    pub entity_action: EntityAction,
     pub source: Option<ActionSource>,
 }
 
@@ -95,7 +95,7 @@ pub struct ItemRow {
 pub struct ItemActionRow {
     pub text: String,
     pub item: Item,
-    pub action: ItemAction
+    pub action: EntityAction
 }
 
 pub struct ItemSlotRow {
@@ -108,15 +108,16 @@ pub struct AbilityRow {
     pub activation: fn(&mut State) -> RunState,
 }
 
-pub struct AbilityEntityTargetRow {
+/// A row for an action from `entity.innate_actions` — no equipment slot needed.
+pub struct InnateActionRow {
     pub text: String,
-    pub action: ItemAction,
+    pub action: EntityAction,
 }
 
 pub struct EquippedActionRow {
     pub text: String,
     pub slot: SlotType,
-    pub action: ItemAction,
+    pub action: EntityAction,
 }
 
 pub struct TargetingRow {
@@ -191,12 +192,25 @@ impl MenuRow for AbilityRow {
     }
 }
 
-impl MenuRow for AbilityEntityTargetRow {
+impl MenuRow for InnateActionRow {
     fn get_action(&self) -> MenuAction {
-        MenuAction::WithPendingAction(PendingAction {
-            item_action: self.action.clone(),
-            source: None,
-        })
+        match self.action.targeting {
+            Targeting::None => MenuAction::WithIntent(
+                Intent {
+                    phase: self.action.phase,
+                    data:  IntentData::Void,
+                    action: self.action.action,
+                },
+                action_apply_intent_to_player,
+            ),
+            Targeting::Positional { .. } | Targeting::Detailed
+            | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } => {
+                MenuAction::WithPendingAction(PendingAction {
+                    entity_action: self.action.clone(),
+                    source: None,
+                })
+            }
+        }
     }
 
     fn get_text(&self) -> String {
@@ -220,7 +234,7 @@ impl MenuRow for EquippedActionRow {
             },
             Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } => {
                 MenuAction::WithPendingAction(PendingAction {
-                    item_action: self.action.clone(),
+                    entity_action: self.action.clone(),
                     source: Some(ActionSource::EquippedSlot(self.slot)),
                 })
             }
@@ -260,7 +274,7 @@ impl MenuRow for ItemActionRow {
             },
             Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } => {
                 MenuAction::WithPendingAction(PendingAction {
-                    item_action: self.action.clone(),
+                    entity_action: self.action.clone(),
                     source: Some(ActionSource::InventoryItem(self.item.clone())),
                 })
             }
@@ -534,31 +548,12 @@ fn action_use_disembark(state: &mut State) -> RunState {
     }
 }
 
-fn action_use_shout(state: &mut State) -> RunState {
-    match shout_player_intent(&mut state.world) {
-        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
-        Err(e) => {
-            state.log(e.message);
-            RunState::AwaitingInput
-        }
-    }
-}
-
-fn action_use_iron_body(state: &mut State) -> RunState {
-    match iron_body_player_intent(&mut state.world) {
-        Ok(_) => RunState::Resolve(ExecutionPhase::Instant),
-        Err(e) => {
-            state.log(e.message);
-            RunState::AwaitingInput
-        }
-    }
-}
-
 pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
     let mut rows: Vec<Box<dyn MenuRow>> = vec![];
     let mut no_selectable_rows = true;
 
     if let Ok(player) = world.get_player() {
+        // Equipped item actions (aim, fire, etc.).
         for slot in &player.body.item_slots {
             if let Some(item) = &slot.item {
                 if item.proxy { continue; }
@@ -575,6 +570,20 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
             }
         }
 
+        // Innate actions (Shout, IronBody, Rush, Twist, Distract, …) — same
+        // precondition filter used by the AI, so what the player sees matches
+        // what the AI is allowed to do.
+        for action in &player.innate_actions {
+            if (action.precondition)(player, &world.map, None) {
+                rows.push(Box::new(InnateActionRow {
+                    text: action.name.clone(),
+                    action: action.clone(),
+                }));
+                no_selectable_rows = false;
+            }
+        }
+
+        // Abilities that need special menu handling not expressible as EntityAction.
         for ability in &player.body.abilities {
             let maybe_row: Option<Box<dyn MenuRow>> = match ability {
                 Ability::Juke => Some(Box::new(AbilityRow {
@@ -584,44 +593,6 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
                 Ability::Disembark => Some(Box::new(AbilityRow {
                     text: ability.to_string(),
                     activation: action_use_disembark,
-                })),
-                Ability::Shout => Some(Box::new(AbilityRow {
-                    text: ability.to_string(),
-                    activation: action_use_shout,
-                })),
-                Ability::IronBody => Some(Box::new(AbilityRow {
-                    text: ability.to_string(),
-                    activation: action_use_iron_body,
-                })),
-                Ability::Rush => Some(Box::new(AbilityEntityTargetRow {
-                    text: ability.to_string(),
-                    action: ItemAction {
-                        name: ability.to_string(),
-                        targeting: Targeting::EntityAim { max_range: Some(3) },
-                        phase: ExecutionPhase::Inventory,
-                        precondition: precondition_ok,
-                        action: actions::rush_action,
-                    },
-                })),
-                Ability::Twist => Some(Box::new(AbilityEntityTargetRow {
-                    text: ability.to_string(),
-                    action: ItemAction {
-                        name: ability.to_string(),
-                        targeting: Targeting::EntityAim { max_range: Some(1) },
-                        phase: ExecutionPhase::Inventory,
-                        precondition: precondition_ok,
-                        action: actions::twist_action,
-                    },
-                })),
-                Ability::Distract => Some(Box::new(AbilityEntityTargetRow {
-                    text: ability.to_string(),
-                    action: ItemAction {
-                        name: ability.to_string(),
-                        targeting: Targeting::EntityAim { max_range: Some(10) },
-                        phase: ExecutionPhase::Inventory,
-                        precondition: precondition_ok,
-                        action: actions::distract_action,
-                    },
                 })),
                 _ => None,
             };
@@ -852,9 +823,9 @@ fn action_apply_intent_to_target_bodypart(bodypart_index: usize, state: &mut Sta
     };
 
     state.world.get_player_mut().unwrap().intent = Intent {
-        phase: pending.item_action.phase,
+        phase: pending.entity_action.phase,
         data,
-        action: pending.item_action.action,
+        action: pending.entity_action.action,
     };
 
     RunState::Resolve(ExecutionPhase::Instant)

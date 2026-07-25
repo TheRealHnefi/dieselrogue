@@ -173,24 +173,30 @@ pub fn iron_body_player_intent(world: &mut World) -> Result<(), GameError> {
     Ok(())
 }
 
-/// Returns all equipped-item actions whose preconditions pass for `entity`.
-/// This is the authoritative source for what an entity can currently do with
-/// its equipped items — used by both the player menu and the AI.
-pub fn get_entity_equipped_actions<'a>(entity: &'a Entity, map: &Map) -> Vec<(&'a ItemAction, SlotType)> {
+/// Returns all actions currently available to `entity`: equipped-item actions
+/// whose preconditions pass, followed by innate actions whose preconditions pass.
+/// `Option<SlotType>` is `Some(slot)` for equipped actions, `None` for innate ones.
+/// This is the authoritative source used by both the player menu and the AI.
+pub fn get_entity_available_actions<'a>(entity: &'a Entity, map: &Map) -> Vec<(&'a EntityAction, Option<SlotType>)> {
     let mut result = Vec::new();
     for slot in &entity.body.item_slots {
         let Some(item) = &slot.item else { continue };
         if item.proxy { continue; }
         for action in &item.equip_actions {
             if (action.precondition)(entity, map, Some(item)) {
-                result.push((action, slot.slot_type));
+                result.push((action, Some(slot.slot_type)));
             }
+        }
+    }
+    for action in &entity.innate_actions {
+        if (action.precondition)(entity, map, None) {
+            result.push((action, None));
         }
     }
     result
 }
 
-pub fn get_item_actions(world: &World) -> Vec<ItemAction>{
+pub fn get_item_actions(world: &World) -> Vec<EntityAction>{
     if world.player_id.is_none() {
         return vec!();
     }
