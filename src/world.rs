@@ -380,15 +380,15 @@ impl World {
         let entities = &self.entities;
         let sounds = &self.sounds_last_turn[..];
 
-        let compute = |(ai, entity): (&mut AI, &Entity)| -> (Option<Intent>, Vec<SoundEvent>) {
+        let compute = |(ai, entity): (&mut AI, &Entity)| -> Option<Intent> {
             match entity.driving {
-                DrivingState::Driving(_)  => (None, vec![]),
-                DrivingState::DrivenBy(_) => (None, vec![]),
+                DrivingState::Driving(_)  => None,
+                DrivingState::DrivenBy(_) => None,
                 _ => ai.compute_intent(entity, map, entities, sounds),
             }
         };
 
-        let results: Vec<(Option<Intent>, Vec<SoundEvent>)> = if self.parallel_ai {
+        let mut intents: Vec<Option<Intent>> = if self.parallel_ai {
             use rayon::prelude::*;
             ai_states.par_iter_mut()
                 .zip(entities.par_iter())
@@ -401,24 +401,15 @@ impl World {
                 .collect()
         };
 
-        // Separate intents and emitted sounds; extend sounds after the map/entities borrows end.
-        let mut ai_sounds: Vec<SoundEvent> = vec![];
-        let mut intents: Vec<Option<Intent>> = results.into_iter()
-            .map(|(intent, emitted)| { ai_sounds.extend(emitted); intent })
-            .collect();
-
         // Step 3: Resolve vehicle-pilot pairs sequentially.
         for i in 0..entities.len() {
             if let DrivingState::DrivenBy(pilot_id) = entities[i].driving {
-                let (intent, emitted) = ai_states[pilot_id].compute_intent(
+                let intent = ai_states[pilot_id].compute_intent(
                     &entities[i], map, entities, sounds,
                 );
                 intents[i] = intent;
-                ai_sounds.extend(emitted);
             }
         }
-        // map/entities borrows end here; now safe to borrow self.sounds.
-        self.sounds.extend(ai_sounds);
 
         // Step 4: Restore AI states and apply computed intents.
         for ((entity, ai), maybe_intent) in self.entities.iter_mut()

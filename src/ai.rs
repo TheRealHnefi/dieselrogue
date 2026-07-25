@@ -12,7 +12,6 @@ use crate::Ability;
 
 const SUSPICIOUS_TURNS: u32 = 15;
 const ALERT_TURNS:      u32 = 30;
-const SHOUT_VOLUME:     u32 = 15;
 
 // ---------------------------------------------------------------------------
 // AlertLevel
@@ -167,7 +166,7 @@ impl ActorAI {
         map:      &Map,
         entities: &[Entity],
         sounds:   &[SoundEvent],
-    ) -> (Option<Intent>, Vec<SoundEvent>) {
+    ) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
 
@@ -178,14 +177,19 @@ impl ActorAI {
         self.check_follow_target(entities);
         self.tick_alert(entity, entities);
 
-        // Emit shout when first reaching Alert or Combat.
-        let mut emitted = vec![];
+        let intent;
         if self.alert.priority() >= 2 && prev_priority < 2 {
-            emitted.push(SoundEvent { kind: SoundKind::Shout, pos: entity.center(), volume: SHOUT_VOLUME });
+            intent = Some(Intent {
+                phase: ExecutionPhase::Inventory,
+                data: IntentData::Void,
+                action: actions::shout_action,
+            });
+        }
+        else {
+            intent = self.dispatch_intent(entity, map, entities);
         }
 
-        let intent = self.dispatch_intent(entity, map, entities);
-        (intent, emitted)
+        intent
     }
 
     // --- Stimulus processing ---
@@ -619,15 +623,15 @@ impl AI {
         map:      &Map,
         entities: &[Entity],
         sounds:   &[SoundEvent],
-    ) -> (Option<Intent>, Vec<SoundEvent>) {
+    ) -> Option<Intent> {
         match self {
-            AI::None => (None, vec![]),
-            AI::Rotator => (Some(Intent {
+            AI::None => None,
+            AI::Rotator => Some(Intent {
                 phase:  ExecutionPhase::Movement,
                 data:   IntentData::Direction(entity.body.facing.clockwise()),
                 action: actions::turn_action,
-            }), vec![]),
-            AI::Forward => (Some(forward_intent(entity.position, entity.body.facing)), vec![]),
+            }),
+            AI::Forward => Some(forward_intent(entity.position, entity.body.facing)),
             AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds),
         }
     }
