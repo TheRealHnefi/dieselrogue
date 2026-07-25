@@ -55,7 +55,8 @@ pub enum Action {
     Turn(Direction),
     Melee(Point),
     GetItem,
-    Throw(usize, Point) // (inventory index, map position)
+    Throw(usize, Point), // (inventory index, map position)
+    Drop(usize) // (inventory index)
 }
 
 pub enum Effect {
@@ -64,5 +65,6 @@ pub enum Effect {
 
 #[derive(Clone)]
 pub enum ItemAction {
-    Throw(fn (source_position: Point, target_position: Point, map: &Map) -> Option<Effect>)
+    Throw(fn (source_position: Point, target_position: Point, map: &Map) -> Option<Effect>),
+    Drop
 }

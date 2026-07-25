@@ -88,11 +88,31 @@ fn throw_action(item: Item, state: &mut State) -> RunState {
     RunState::AwaitingPositionalTargetingInput
 }
 
+fn drop_action(item: Item, state: &mut State) -> RunState {
+    match state.world.get_player_mut() {
+        Ok(player) => {
+            let mut item_index = 0;
+            for (index, inventory_item) in player.inventory.iter().enumerate() {
+                if inventory_item == &item {
+                    item_index = index;
+                    break;
+                }
+            }
+            player.intent.action = Action::Drop(item_index);
+        },
+        Err(_) => ()
+    }
+    RunState::Resolve
+}
+
 impl MenuRow for ItemActionRow {
     fn get_action(&self) -> MenuAction {
         match self.action {
             ItemAction::Throw(_) => {
                 MenuAction::Item(self.item.clone(), throw_action)
+            },
+            ItemAction::Drop => {
+                MenuAction::Item(self.item.clone(), drop_action)
             }
         }
     }
@@ -155,10 +175,14 @@ pub fn item_menu(world: &World) -> MenuPanel<ItemRow> {
 pub fn inventory_action_menu(item: Item) -> MenuPanel<ItemActionRow> {
     let mut action_rows = vec!();
     for inventory_action in &item.inventory_actions {
+        let description = match inventory_action {
+            ItemAction::Throw(_) => "Throw".to_string(),
+            ItemAction::Drop => "Drop".to_string()
+        };
         action_rows.push(ItemActionRow {
             action: inventory_action.clone(),
             item: item.clone(),
-            text: "Throw for now".to_string()
+            text: description
         });
     }
 
