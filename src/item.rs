@@ -80,7 +80,7 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   damage: Damage::new( 0, 25,  0, 0), range: 8  })
     }
     pub fn flamethrower() -> Self {
-        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'r', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  damage: Damage::new( 0,  0, 10, 0), range: 5  })
+        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  damage: Damage::new( 0,  0,  3, 0), range: 5  })
     }
     pub fn rocket_launcher() -> Self {
         Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'r', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   damage: Damage::new(500, 0,  0, 0), range: 15 })

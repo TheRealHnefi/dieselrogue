@@ -195,7 +195,7 @@ impl State {
     }
 
     fn resolve_status_effects(&mut self) {
-        self.world.resolve_status_effects();
+        self.world.resolve_status_effects(&mut self.log);
 
         if self.world.pending_levelup {
             self.world.pending_levelup = false;
