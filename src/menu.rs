@@ -64,9 +64,14 @@ impl ActionMenu {
         let item_actions = get_item_actions(world);
         let mut item_action_rows = vec!();
         for item_action in &item_actions {
+            let label = match item_action {
+                ItemAction::Throw(_) => {
+                    "Throw"
+                }
+            };
             item_action_rows.push(ItemActionMenuRow {
                 hotkey: VirtualKeyCode::Space,
-                text: item_action.label.clone(),
+                text: label.to_string(),
                 action: item_action.clone()
             })
         }

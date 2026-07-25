@@ -93,6 +93,28 @@ impl Entity {
         }
     }
 
+    pub fn resolve_throw(&mut self, map: &mut Map) -> Option<Effect> {
+        match self.intent.action {
+            Action::Throw(item_index, position) => {
+                assert!(item_index < self.inventory.len());
+                self.intent = Intent {action: Action::Idle};
+
+                let item = self.inventory.swap_remove(item_index);
+
+                for item_action in item.inventory_actions {
+                    match item_action {
+                        ItemAction::Throw(effect_fn) => {
+                            return effect_fn(self.position, position, map);
+                        }
+                    };
+                }
+                
+                return None;
+            },
+            _ => None
+        }
+    }
+
 
     pub fn kill(&mut self, map: &mut Map) {
         let index = map.xy_idx(self.position.x, self.position.y);

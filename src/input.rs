@@ -147,6 +147,11 @@ pub fn positional_targeting_input(state: &mut State, context: &mut Rltk) -> RunS
             VirtualKeyCode::Escape => {
                 return RunState::AwaitingInput;
             },
+            VirtualKeyCode::Return => {
+                state.world.entities[state.world.player_id.unwrap()].intent =
+                    Intent { action: Action::Throw(0, state.cursor_pos) };
+                return RunState::Resolve;
+            },
             _ => {
             }
         }
@@ -258,6 +263,7 @@ fn action_menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
                 return use_item(action, state);
             },
             _ => {
+                // Keyboard shortcuts
                 // let rows = &state.action_menu_stack.last().unwrap().item_rows;
                 // for row in rows {
                 //     if row.hotkey == key {
@@ -274,8 +280,8 @@ fn action_menu_input(state: &mut State, ctx: &mut Rltk) -> RunState {
 }
 
 fn use_item(action: &ItemAction, state: &mut State) -> RunState {
-    match action.targeting {
-        TargetingType::Position => {
+    match action {
+        ItemAction::Throw(_) => {
             state.cursor_pos = state.world.entities[state.world.player_id.unwrap()].position;
             return RunState::AwaitingPositionalTargetingInput;
         }
