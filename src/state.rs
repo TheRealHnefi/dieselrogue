@@ -218,7 +218,6 @@ impl State {
         }
     }
 
-    #[tracing::instrument(skip_all)]
     fn resolve_status_effects(&mut self) {
         self.world.sounds_last_turn = std::mem::take(&mut self.world.sounds);
         self.world.resolve_status_effects(&mut self.log);
