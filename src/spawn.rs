@@ -2,10 +2,6 @@ use rltk::{Point, RandomNumberGenerator};
 use std::collections::HashMap;
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE};
 
-/// Minimum number of tiles for a connected region to be treated as a room rather
-/// than a corridor or stub.
-const MIN_ROOM_SIZE: usize = 16;
-
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -14,13 +10,10 @@ const MIN_ROOM_SIZE: usize = 16;
 #[derive(Clone, Copy, PartialEq)]
 pub enum SpawnCategory {
     /// Exactly one passable cardinal neighbour — the end of a passage.
-    /// Good for item placement and ambush positions.
     DeadEnd,
-    /// Three or more passable cardinal neighbours — a corridor crossing or T-junction.
-    /// Good for stationary guards.
+    /// Three or more passable cardinal neighbours.
     Junction,
     /// All four cardinal neighbours are passable and the tile is inside a large region.
-    /// Good for roaming AI or scattered items.
     RoomInterior,
 }
 
@@ -85,6 +78,24 @@ pub fn analyze(map: &Map) -> SpawnMap {
         if let Some(category) = category {
             spawn_points.push(SpawnPoint { idx, pos: map.idx_pos(idx), category });
         }
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let mut junctions = 0;
+        let mut deadends = 0;
+        let mut interiors = 0;
+        for p in &spawn_points {
+            match p.category {
+                SpawnCategory::DeadEnd => deadends += 1,
+                SpawnCategory::Junction => junctions += 1,
+                SpawnCategory::RoomInterior => interiors += 1
+            }
+        }
+        println!("== Spawn analysis ==");
+        println!("   Found {} dead ends, {} junctions, {} room interiors, {} total", deadends, junctions, interiors, spawn_points.len());
+        println!("   Found {} regions", regions.len());
+        println!("== End spawn analysis ==");
     }
 
     SpawnMap { spawn_points, regions }
@@ -162,7 +173,7 @@ fn find_regions(map: &Map) -> Vec<Region> {
             (p.x - cx).abs() + (p.y - cy).abs()
         }).unwrap();
 
-        let is_room = tiles.len() >= MIN_ROOM_SIZE && map.tiles[tiles[0]] == TileType::Floor;
+        let is_room = map.tiles[tiles[0]] == TileType::Floor;
         regions.push(Region { tiles, center_idx, is_room });
     }
 
