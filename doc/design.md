@@ -1,4 +1,4 @@
-# DieselRogue design document
+# DieselRogue (partially outdated) design document
 
 ## Name ideas:
 DieselRogue

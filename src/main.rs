@@ -136,7 +136,7 @@ fn main() -> rltk::BError {
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
         .with_dimensions(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT)
-        .with_title("Diesel Rogue")
+        .with_title("DieselRogue")
         .with_resource_path("resources")
         .with_font(font_file, font_native_px, font_native_px)
         .with_tile_dimensions(tile_px, tile_px);
@@ -156,7 +156,8 @@ fn main() -> rltk::BError {
         State::new_welcome_state(seed, settings.bindings)
     };
 
-    state.log.entries.push("Welcome!".to_string());
+    state.log.entries.push("Welcome! Reach the edge of the map to win.".to_string());
+    state.log.entries.push("Press F1 for help.".to_string());
 
     rltk::main_loop(context, state)
 }

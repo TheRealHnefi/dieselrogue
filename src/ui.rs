@@ -940,3 +940,111 @@ pub fn draw_level_up_screen(state: &State, context: &mut Rltk) {
         );
     }
 }
+
+fn draw_help_column(context: &mut Rltk, x: i32, start_y: i32, sections: &[(&str, Vec<String>)]) {
+    let mut y = start_y;
+    for (title, lines) in sections {
+        context.print_color(x, y, LABEL_COLOR, BG_COLOR, *title);
+        y += 2;
+        for line in lines {
+            context.print_color(x, y, INACTIVE_COLOR, BG_COLOR, line.as_str());
+            y += 1;
+        }
+        y += 2;
+    }
+}
+
+pub fn draw_help_screen(state: &State, context: &mut Rltk) {
+    context.set_active_console(MAIN_CONSOLE_INDEX);
+    context.cls();
+    context.set_active_console(UI_CONSOLE_INDEX);
+    context.cls();
+
+    let b = &state.bindings;
+    let w = SCREEN_WIDTH as i32;
+    let h = SCREEN_HEIGHT as i32;
+
+    // Outer double-line box
+    context.draw_hollow_box_double(0, 0, w - 1, h - 1, LINE_COLOR, BG_COLOR);
+
+    // Title and close hint
+    context.print_color_centered(2, LINE_COLOR,     BG_COLOR, "HELP");
+    context.print_color_centered(3, INACTIVE_COLOR, BG_COLOR, "Esc to close");
+
+    // Horizontal separator at y=5
+    for x in 1..w - 1 {
+        context.set(x, 5, LINE_COLOR, BG_COLOR, rltk::to_cp437('═'));
+    }
+    context.set(0,     5, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
+    context.set(w - 1, 5, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+
+    // Vertical mid-column divider — starts at the separator, not the top border.
+    let mid = w / 2;
+    for y in 6..h - 1 {
+        context.set(mid, y, LINE_COLOR, BG_COLOR, rltk::to_cp437('║'));
+    }
+    context.set(mid, 5,     LINE_COLOR, BG_COLOR, rltk::to_cp437('╦'));
+    context.set(mid, h - 1, LINE_COLOR, BG_COLOR, rltk::to_cp437('╩'));
+
+    let lx    = 2i32;
+    let rx    = mid + 2;
+    let top_y = 7i32;
+
+    let k = |key: rltk::VirtualKeyCode| -> String { crate::key_to_str(key).to_string() };
+
+    let left: Vec<(&str, Vec<String>)> = vec![
+        ("OBJECTIVE", vec![
+            "Reach the edge of the map to escape.".into(),
+            "Enemies will try to stop you.".into(),
+        ]),
+        ("TURNS", vec![
+            "Each action advances time.".into(),
+            "After you act, all enemies act simultaneously.".into(),
+            format!("Press [{}] to skip a turn.", k(b.wait)),
+        ]),
+        ("FIRING A WEAPON", vec![
+            format!("Press [{}] to open Equipment.", k(b.equipment)),
+            "Select a weapon to see its actions.".into(),
+            "Choose Aim, move the cursor to a target,".into(),
+            "then confirm. Choose Fire to shoot.".into(),
+            "You need ammo to shoot.".into(),
+        ]),
+        ("DAMAGE", vec![
+            "Four types: physical, fire, electrical, piercing.".into(),
+            "Armor absorbs, then reduces what remains.".into(),
+            "Fire causes burning (damage over time).".into(),
+            "Electrical can stun — you skip your next turn.".into(),
+            "Head and torso are vital. Losing either is lethal.".into(),
+        ]),
+    ];
+
+    let right: Vec<(&str, Vec<String>)> = vec![
+        ("MOVEMENT", vec![
+            "8 directions: arrow keys, numpad 1-4/6-9,".into(),
+            "or rebindable keys (Settings).".into(),
+            "Moving or acting always costs a turn.".into(),
+        ]),
+        ("LOOKING & FREELOOK", vec![
+            format!("Press [{}] to enter look mode.", k(b.look)),
+            "Move a cursor to inspect tiles and entities.".into(),
+            format!("Press [{}] to toggle freelook.", k(b.freelook)),
+            "In freelook, movement keys scroll the camera".into(),
+            "without moving your character.".into(),
+        ]),
+        ("SOUND", vec![
+            "Most actions produce sound enemies can hear.".into(),
+            "Gunshots are loud; careful movement less so.".into(),
+            "Enemies will investigate nearby sounds.".into(),
+            "The noise panel shows nearby sound events.".into(),
+        ]),
+        ("ENERGY", vec![
+            "Shown in the status panel.".into(),
+            format!("Used by combat abilities (press [{}]).", k(b.ability)),
+            "Regenerates gradually each turn.".into(),
+            "Save it for when you need it most.".into(),
+        ]),
+    ];
+
+    draw_help_column(context, lx, top_y, &left);
+    draw_help_column(context, rx, top_y, &right);
+}
