@@ -24,17 +24,7 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player can not move")});
     }
 
-    let (delta_x, delta_y);
-    match direction {
-        Direction::Up => {delta_x = 0; delta_y = -1},
-        Direction::UpRight => {delta_x = 1; delta_y = -1},
-        Direction::Right => {delta_x = 1; delta_y = 0},
-        Direction::DownRight => {delta_x = 1; delta_y = 1},
-        Direction::Down => {delta_x = 0; delta_y = 1},
-        Direction::DownLeft => {delta_x = -1; delta_y = 1},
-        Direction::Left => {delta_x = -1; delta_y = 0},
-        Direction::UpLeft => {delta_x = -1; delta_y = -1},
-    }
+    let (delta_x, delta_y) = direction.delta_pos();
 
     if player.body.facing != direction {
         player.intent = Intent {
