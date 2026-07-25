@@ -93,6 +93,12 @@ impl Renderable {
     }
 }
 
+#[derive(Clone)]
+pub enum ItemLocation {
+    OnMap(Point),
+    InInventory(usize),
+}
+
 pub enum Effect {
     Damage {entity_id: usize, bodypart_index: usize, raw_damage: Damage},
     OpenDoor(Point),
@@ -100,7 +106,8 @@ pub enum Effect {
     Animation(Animation),
     Embark{pilot_id: usize, vehicle_id: usize},
     Disembark{pilot_id: usize, vehicle_id: usize},
-    ApplyStatus{target_id: usize, status: StatusEffect}
+    ApplyStatus{target_id: usize, status: StatusEffect},
+    SyncActiveItem{item_id: usize, location: ItemLocation},
 }
 
 // Status Effects are considered Eq if they have the same enum type, even if the value is

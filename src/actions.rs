@@ -20,15 +20,21 @@ pub fn throw_grenade_action(entity: &mut Entity, map: &mut Map, log: &mut GameLo
         _ => unreachable!("throw_grenade_action called with non-inventory-target intent"),
     }
 
+    let mut effects = vec!();
     if let Some(item) = entity.take_item(used_item) {
         log.log(format!("{} threw a {}", entity.name, item.name));
         if let Ok(drop_pos) = map.nearest_free_item_position(target_pos) {
+            if item.active {
+                effects.push(Effect::SyncActiveItem {
+                    item_id: item.id,
+                    location: ItemLocation::OnMap(drop_pos),
+                });
+            }
             let idx = map.pos_idx(drop_pos);
             map.items[idx] = Some(item);
         }
     }
-
-    vec!()
+    effects
 }
 
 pub fn drop_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
@@ -45,21 +51,35 @@ pub fn drop_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -
     let target_pos = map.nearest_free_item_position(entity.position).unwrap();
     let map_index = map.pos_idx(target_pos);
 
-    map.items[map_index] = entity.take_item(inventory_item);
-
-    vec!()
+    let mut effects = vec!();
+    if let Some(item) = entity.take_item(inventory_item) {
+        if item.active {
+            effects.push(Effect::SyncActiveItem {
+                item_id: item.id,
+                location: ItemLocation::OnMap(target_pos),
+            });
+        }
+        map.items[map_index] = Some(item);
+    }
+    effects
 }
 
 pub fn get_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
     let index = map.xy_idx(entity.position.x, entity.position.y);
-    if map.items[index].is_some() {
-        let item = map.items[index].take().unwrap();
-
-        log.log(format!("{} picked up {}", entity.name, item.name));
-        entity.body.inventory.push(item);
+    if map.items[index].is_none() {
+        return vec!();
     }
-
-    vec!()
+    let item = map.items[index].take().unwrap();
+    log.log(format!("{} picked up {}", entity.name, item.name));
+    let mut effects = vec!();
+    if item.active {
+        effects.push(Effect::SyncActiveItem {
+            item_id: item.id,
+            location: ItemLocation::InInventory(entity.id),
+        });
+    }
+    entity.body.inventory.push(item);
+    effects
 }
 
 pub fn equip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
