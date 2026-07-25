@@ -19,6 +19,24 @@ impl Item {
             inventory_actions: vec![throw_action, drop_action]
         }
     }
+
+    pub fn pistol() -> Self {
+        let drop_action = ItemAction::Drop;
+        Item {
+            renderable: Renderable::new_glyph('p'),
+            name: String::from("Pistol"),
+            inventory_actions: vec![drop_action]
+        }
+    }
+
+    pub fn rifle() -> Self {
+        let drop_action = ItemAction::Drop;
+        Item {
+            renderable: Renderable::new_glyph('r'),
+            name: String::from("Rifle"),
+            inventory_actions: vec![drop_action]
+        }
+    }
 }
 
 impl PartialEq for Item {

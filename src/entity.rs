@@ -2,6 +2,7 @@ use crate::components::*;
 use rltk::Point;
 use crate::Map;
 use crate::Item;
+use crate::Body;
 
 /// Concrete type containing all data of something that acts and moves.
 #[derive(Clone)]
@@ -12,7 +13,8 @@ pub struct Entity {
     pub name: String,
     pub intent: Intent,
     pub facing: Facing,
-    pub inventory: Vec<Item>
+    pub inventory: Vec<Item>,
+    pub body: Body
 }
 
 impl Entity {

@@ -85,7 +85,8 @@ impl World {
             name: name,
             intent: Intent::Idle,
             facing: facing,
-            inventory: vec!()
+            inventory: vec!(),
+            body: human_body()
         };
 
         let index = self.map.xy_idx(pos.x, pos.y);
@@ -111,7 +112,8 @@ impl World {
             name: name,
             intent: Intent::Idle,
             facing: facing,
-            inventory: vec!()
+            inventory: vec!(),
+            body: human_body()
         };
 
         let index = self.map.xy_idx(pos.x, pos.y);
