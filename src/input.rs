@@ -87,8 +87,17 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
 
             VirtualKeyCode::Space => {
                 state.menu_stack.clear();
-                state.menu_stack.push(Box::new(item_menu(&state.world)));
-                return RunState::AwaitingMenuInput;
+                let maybe_menu = item_menu(&state.world);
+                match maybe_menu {
+                    Some(menu) => {
+                        state.menu_stack.push(Box::new(menu));
+                        return RunState::AwaitingMenuInput;
+                    }
+                    None => {
+                        state.log.entries.push("No usable items".to_string());
+                        return RunState::AwaitingInput;
+                    }
+                }
             },
 
             VirtualKeyCode::Escape => {
