@@ -431,7 +431,7 @@ impl World {
                     for entity in &self.entities {
                         let dx = entity.position.x - pos.x;
                         let dy = entity.position.y - pos.y;
-                        if dx * dx + dy * dy <= FLASH_RADIUS * FLASH_RADIUS {
+                        if dx * dx + dy * dy <= FLASH_RADIUS * FLASH_RADIUS && entity.can_see(pos) {
                             effects.push(Effect::ApplyStatus {
                                 target_id: entity.id,
                                 status: StatusEffect::Blind(5),
