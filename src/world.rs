@@ -66,7 +66,6 @@ impl World {
             .map(|p| world.map.pos_idx(p.position))
             .unwrap_or_else(|_| world.map.xy_idx(
                 (world.map.width / 2) as i32, (world.map.height / 2) as i32));
-        // Topology analysis was computed alongside the map (shared by all passes).
 
         if true {
             let boundary_colors = world.assign_door_colors(&spawn_map);

@@ -226,6 +226,11 @@ impl ActorAI {
         let mut retval: Option<Perception> = None;
 
         for s in sounds {
+            // TODO: Remove footsteps while debugging AI behavior to prevent them from getting confused from their friends
+            match s.kind {
+                SoundKind::Footstep => continue,
+                _ => ()
+            } 
             let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
             if dist > s.volume as f32 || entity.center() == s.pos {
                 continue;

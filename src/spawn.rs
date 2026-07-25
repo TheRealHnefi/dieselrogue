@@ -331,14 +331,16 @@ fn place_patrolling_enemies(
     rng: &mut RandomNumberGenerator
 ) -> usize {
     let mut enemies = 0;
-    for i in 0..world.map.patrol_routes.len() {
-        let ai_profile = Profile::Patrol { route_id: i, waypoint_index: 0, combat_tactic: CombatTactic::Pursue };
-        match world.create_flamer_guard(world.map.patrol_routes[i][0], Direction::Down) {
-            Ok(idx) => {
-                world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
-                enemies += 1;
-            },
-            Err(e) => println!("{}", e.message)
+    for route_idx in 0..world.map.patrol_routes.len() {
+        for wp_idx in 0..world.map.patrol_routes[route_idx].len() {
+            let ai_profile = Profile::Patrol { route_id: route_idx, waypoint_index: wp_idx, combat_tactic: CombatTactic::Pursue };
+            match world.create_flamer_guard(world.map.patrol_routes[route_idx][wp_idx], Direction::Down) {
+                Ok(idx) => {
+                    world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
+                    enemies += 1;
+                },
+                Err(e) => println!("{}", e.message)
+            }
         }
     }
     #[cfg(debug_assertions)]
@@ -807,6 +809,7 @@ impl World {
     #[allow(unused)]
     fn spawn_waypoint_markers(&mut self) {
         let waypoints: Vec<Point> = self.map.patrol_routes.iter().flatten().copied().collect();
+        println!("Spawning {} waypoint markers", waypoints.len());
         for wp in waypoints {
             let _ = self.add_item(wp, Item::medkit());
         }
@@ -818,13 +821,16 @@ impl World {
     #[cfg(debug_assertions)]
     #[allow(unused)]
     fn spawn_route_path_markers(&mut self) {
+        if !self.map.use_flow_fields {
+            return;
+        }
         let limit = self.map.width * self.map.height;
         let mut path: Vec<Point> = Vec::new();
         let mut seen: HashSet<usize> = HashSet::new();
         for route in &self.map.patrol_routes {
             for i in 0..route.len() {
                 let goal = self.map.pos_idx(route[(i + 1) % route.len()]);
-                let field = crate::build_field(goal, &self.map);
+                let field = &self.map.field_for(goal).unwrap();
                 let mut cur = self.map.pos_idx(route[i]);
                 let mut guard = 0;
                 while cur != goal {

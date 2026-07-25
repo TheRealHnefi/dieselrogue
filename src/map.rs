@@ -338,7 +338,7 @@ impl Map {
           fov_blocked: vec![false; tile_count],
           nav_fields: NavFieldCache::new(),
           patrol_routes: Vec::new(),
-          use_flow_fields: true,
+          use_flow_fields: false,
         };
 
         let mut generated_blocks = generate_block_grid(size_in_blocks, rng);
@@ -405,6 +405,10 @@ impl Map {
             .collect();
         goals.sort_unstable();
         goals.dedup();
+
+        #[cfg(debug_assertions)]
+        println!("Building {} navfields", goals.len());
+
         for goal in goals {
             if !self.nav_fields.contains(goal) {
                 let field = crate::build_field(goal, self);
@@ -465,7 +469,8 @@ impl Map {
             if waypoints.len() < 2 { continue; }
 
             let route_count = (region.tiles.len() / TILES_PER_ROUTE).clamp(1, MAX_ROUTES);
-            cap_waypoints(&mut waypoints, route_count * MAX_WAYPOINTS);
+            // TODO: Could be useful to reduce number of waypoints
+            //cap_waypoints(&mut waypoints, route_count * MAX_WAYPOINTS);
             order_nearest_neighbour(&mut waypoints);
 
             for chunk in split_routes(&waypoints, route_count) {
@@ -513,11 +518,25 @@ impl Map {
 
     /// Waypoints for an indoor region: the middle doorway tile of each boundary.
     fn door_waypoints(&self, region_idx: usize, spawn_map: &SpawnMap) -> Vec<Point> {
-        spawn_map.boundaries.iter()
+        let door_positions: Vec<usize> = spawn_map.boundaries.iter()
             .filter(|b| b.region_a == region_idx || b.region_b == region_idx)
             .filter(|b| !b.door_tiles.is_empty())
-            .map(|b| self.idx_pos(b.door_tiles[b.door_tiles.len() / 2]))
-            .collect()
+            //.map(|b| self.idx_pos(b.door_tiles[b.door_tiles.len() / 2]))
+            .map(|b| b.door_tiles[b.door_tiles.len() / 2])
+            .collect();
+
+        let mut waypoints: Vec<Point> = vec!();
+
+        for door in door_positions {
+            let exits = self.get_available_exits(door);
+            let waypoint = exits.iter().find(|exit| spawn_map.tile_region[exit.0] == Some(region_idx));
+            match waypoint {
+                Some((wp, _)) => waypoints.push(self.idx_pos(*wp)),
+                None => ()
+            }
+        }
+
+        waypoints
     }
 
     /// Bounds-checked tile lookup; `None` when off-map.
