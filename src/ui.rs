@@ -7,6 +7,12 @@ use crate::tile::*;
 use crate::Ability;
 use crate::Rect;
 
+const LEVELUP_SELECT_COLOR: rltk::RGB = RGB { r: 0.9, g: 0.7, b: 0.0 };
+const LEVELUP_LIST_X: i32 = 4;
+const LEVELUP_DESC_X: i32 = 28;
+const LEVELUP_DESC_INNER_WIDTH: usize = 54;
+const LEVELUP_TOP_Y: i32 = 9;
+
 pub const SCREEN_WIDTH: usize = 160;
 pub const SCREEN_HEIGHT: usize = 90;
 
@@ -429,5 +435,87 @@ fn render_open_tile(map: &Map, tile_index: usize, blink: bool, empty_character: 
                 }
             }
         }
+    }
+}
+
+fn wrap_text(text: &str, width: usize) -> Vec<String> {
+    let mut lines = vec![];
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        if current.is_empty() {
+            current.push_str(word);
+        } else if current.len() + 1 + word.len() <= width {
+            current.push(' ');
+            current.push_str(word);
+        } else {
+            lines.push(current);
+            current = word.to_string();
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    lines
+}
+
+pub fn draw_level_up_screen(state: &State, context: &mut Rltk) {
+    context.set_active_console(MAIN_CONSOLE_INDEX);
+
+    let options = &state.level_up_options;
+    if options.is_empty() {
+        return;
+    }
+
+    let selected = state.level_up_selected;
+    let desc_lines = wrap_text(options[selected].description(), LEVELUP_DESC_INNER_WIDTH);
+
+    // Left panel needs one row per option plus padding.
+    // Right panel needs: name row + blank row + desc lines + padding.
+    let panel_height = max(options.len() + 2, desc_lines.len() + 4) as i32;
+
+    // Title
+    context.print_color(
+        LEVELUP_LIST_X,
+        LEVELUP_TOP_Y - 2,
+        LEVELUP_SELECT_COLOR,
+        BG_COLOR,
+        "CHOOSE AN ABILITY",
+    );
+
+    // Left panel — ability list
+    context.draw_box(LEVELUP_LIST_X, LEVELUP_TOP_Y, 22, panel_height, LINE_COLOR, BG_COLOR);
+    for (i, ability) in options.iter().enumerate() {
+        let (fg, prefix) = if i == selected {
+            (LEVELUP_SELECT_COLOR, ">")
+        } else {
+            (LABEL_COLOR, " ")
+        };
+        context.print_color(
+            LEVELUP_LIST_X + 2,
+            LEVELUP_TOP_Y + 1 + i as i32,
+            fg,
+            BG_COLOR,
+            format!("{} {}", prefix, ability.to_string()),
+        );
+    }
+
+    // Right panel — description
+    let desc_box_width = LEVELUP_DESC_INNER_WIDTH as i32 + 3;
+    context.draw_box(LEVELUP_DESC_X, LEVELUP_TOP_Y, desc_box_width, panel_height, LINE_COLOR, BG_COLOR);
+    context.print_color(
+        LEVELUP_DESC_X + 2,
+        LEVELUP_TOP_Y + 1,
+        LEVELUP_SELECT_COLOR,
+        BG_COLOR,
+        options[selected].to_string(),
+    );
+    for (i, line) in desc_lines.iter().enumerate() {
+        context.print_color(
+            LEVELUP_DESC_X + 2,
+            LEVELUP_TOP_Y + 3 + i as i32,
+            LABEL_COLOR,
+            BG_COLOR,
+            line,
+        );
     }
 }

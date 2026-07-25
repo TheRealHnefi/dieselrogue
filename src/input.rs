@@ -102,6 +102,16 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 return RunState::Looking;
             },
 
+            VirtualKeyCode::Key1 => {
+                let options = state.world.compute_levelup_options();
+                if !options.is_empty() {
+                    state.level_up_options = options;
+                    state.level_up_selected = 0;
+                    return RunState::AwaitingLevelUpInput;
+                }
+                return RunState::AwaitingInput;
+            },
+
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Box::new(main_menu()));
@@ -400,6 +410,48 @@ pub fn juke_direction_input(state: &mut State, context: &mut Rltk) -> RunState {
     }
 
     RunState::AwaitingJukeInput
+}
+
+pub fn level_up_input(state: &mut State, context: &mut Rltk) -> RunState {
+    let key = match context.key {
+        Some(k) => k,
+        None => return RunState::AwaitingLevelUpInput,
+    };
+
+    let count = state.level_up_options.len();
+    if count == 0 {
+        return RunState::AwaitingInput;
+    }
+
+    match key {
+        VirtualKeyCode::Up | VirtualKeyCode::Numpad8 => {
+            if state.level_up_selected == 0 {
+                state.level_up_selected = count - 1;
+            } else {
+                state.level_up_selected -= 1;
+            }
+            RunState::AwaitingLevelUpInput
+        },
+        VirtualKeyCode::Down | VirtualKeyCode::Numpad2 => {
+            state.level_up_selected = (state.level_up_selected + 1) % count;
+            RunState::AwaitingLevelUpInput
+        },
+        VirtualKeyCode::Return | VirtualKeyCode::Space => {
+            let ability = state.level_up_options[state.level_up_selected].clone();
+            add_levelup_ability(&mut state.world, ability);
+            RunState::DeclareIntent
+        },
+        VirtualKeyCode::Escape => RunState::AwaitingInput,
+        _ => RunState::AwaitingLevelUpInput,
+    }
+}
+
+fn add_levelup_ability(world: &mut World, ability: Ability) {
+    if let Ok(player) = world.get_player_mut() {
+        let part_idx = ability.default_body_part();
+        player.body.parts[part_idx].abilities.push(ability);
+        player.body.update_abilities();
+    }
 }
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {

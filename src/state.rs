@@ -1,6 +1,7 @@
 use rltk::{Rltk, GameState, Point};
 use std::cmp::max;
 use std::time::Instant;
+use crate::Ability;
 use crate::AnimationSystem;
 use crate::World;
 use crate::GameLog;
@@ -19,6 +20,7 @@ pub enum RunState {
     AwaitingPositionalTargetingInput,
     Looking,
     AwaitingJukeInput,
+    AwaitingLevelUpInput,
     Resolve(ExecutionPhase),
     RenderAnimations(ExecutionPhase),
     ResolveStatusEffects
@@ -34,6 +36,9 @@ pub struct State {
 
     pub menu_stack: Vec<Box<dyn Menu>>,
     pub pending_action: Option<PendingAction>,
+
+    pub level_up_options: Vec<Ability>,
+    pub level_up_selected: usize,
 
     pub turn: u32,
 
@@ -53,6 +58,8 @@ impl State {
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             pending_action: None,
+            level_up_options: vec![],
+            level_up_selected: 0,
             turn: 0,
             start_tick: Instant::now()
         }
@@ -68,6 +75,8 @@ impl State {
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             pending_action: None,
+            level_up_options: vec![],
+            level_up_selected: 0,
             turn: 0,
             start_tick: Instant::now()
         }
@@ -105,6 +114,10 @@ impl GameState for State {
             },
             RunState::AwaitingJukeInput => {
                 self.run_state = juke_direction_input(self, context);
+            },
+            RunState::AwaitingLevelUpInput => {
+                draw_level_up_screen(self, context);
+                self.run_state = level_up_input(self, context);
             },
             RunState::Resolve(phase) => {
                 self.resolve(phase, monotime);
@@ -183,6 +196,17 @@ impl State {
 
     fn resolve_status_effects(&mut self) {
         self.world.resolve_status_effects();
+
+        if self.world.pending_levelup {
+            self.world.pending_levelup = false;
+            let options = self.world.compute_levelup_options();
+            if !options.is_empty() {
+                self.level_up_options = options;
+                self.level_up_selected = 0;
+                self.run_state = RunState::AwaitingLevelUpInput;
+                return;
+            }
+        }
 
         self.run_state = RunState::DeclareIntent;
         self.turn += 1;

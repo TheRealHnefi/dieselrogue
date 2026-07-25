@@ -7,6 +7,7 @@ pub struct World {
     pub player_id: Option<usize>,
     pub entities: Vec<Entity>,
     pub map: Map,
+    pub pending_levelup: bool,
     item_count: usize
 }
 
@@ -63,6 +64,7 @@ impl World {
             player_id: Option::None,
             entities: vec![],
             item_count: 0,
+            pending_levelup: false,
             map: Map::new_game_map(size)
         };
 
@@ -120,6 +122,7 @@ impl World {
             player_id: Option::None,
             entities: vec![],
             item_count: 0,
+            pending_levelup: false,
             map: Map::new_game_map(10)
         };
 
@@ -149,6 +152,7 @@ impl World {
             player_id: Option::None,
             entities: vec![],
             item_count: 0,
+            pending_levelup: false,
             map: Map::new_empty_map(100, 100)
         }
     }
@@ -268,6 +272,18 @@ impl World {
                 error: Error::BadPrecondition,
                 message: format!("No player exists")
             })
+        }
+    }
+
+    pub fn compute_levelup_options(&self) -> Vec<Ability> {
+        let all = [
+            Ability::HumanMove, Ability::VehicleMove, Ability::PickUp,
+            Ability::WideVision, Ability::Precognition,
+            Ability::Embark, Ability::Disembark, Ability::Juke,
+        ];
+        match self.get_player() {
+            Ok(player) => all.iter().cloned().filter(|a| !player.has_ability(a.clone())).collect(),
+            Err(_) => vec![],
         }
     }
 
