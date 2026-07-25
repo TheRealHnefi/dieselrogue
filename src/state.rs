@@ -80,10 +80,21 @@ impl GameState for State {
                 new_run_state = RunState::AwaitingInput;
             },
             RunState::Saving => {
-                //saveload_system::save_game(&mut self.ecs);
+                let result = saveload_system::save_game(&mut self.ecs);
+                let mut game_log = self.ecs.fetch_mut::<GameLog>();
+                match result {
+                    Ok(_) => game_log.entries.push("Game saved.".to_string()),
+                    Err(_) => game_log.entries.push("Game could not be saved.".to_string())
+                }
                 new_run_state = RunState::AwaitingInput;
             }
             RunState::Loading => {
+                let result = saveload_system::load_game(&mut self.ecs);
+                let mut game_log = self.ecs.fetch_mut::<GameLog>();
+                match result {
+                    Ok(_) => game_log.entries.push("Game loaded.".to_string()),
+                    Err(_) => game_log.entries.push("Game could not be loaded.".to_string())
+                }
                 new_run_state = RunState::AwaitingInput;
             }
         }
