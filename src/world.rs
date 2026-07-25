@@ -118,7 +118,7 @@ impl World {
 
     pub fn resolve(&mut self) -> Result<(), GameError> {
         match &mut self.player {
-            Some(player) => player.resolve(&self.map),
+            Some(player) => player.resolve(&mut self.map),
             None => {
                 return Err(GameError {
                    error: Error::BadPrecondition,
@@ -128,7 +128,7 @@ impl World {
         }
 
         for entity in self.entities.iter_mut() {
-            entity.resolve(&self.map);
+            entity.resolve(&mut self.map);
         }
         Ok(())
     }

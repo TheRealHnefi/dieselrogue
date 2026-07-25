@@ -22,11 +22,15 @@ impl Entity {
         }
     }
 
-    pub fn resolve(&mut self, map: &Map) {
+    pub fn resolve(&mut self, map: &mut Map) {
+        let old_index = map.xy_idx(self.position.x, self.position.y);
+        let mut new_index = old_index;
+
         match self.intent.action {
             Action::Idle => {},
             Action::Move(pos) => {
                 if !map.blocked(pos.x, pos.y) {
+                    new_index = map.xy_idx(pos.x, pos.y);
                     self.position = pos;
                 }
             },
@@ -46,6 +50,8 @@ impl Entity {
             }
         }
 
+        map.pawns[old_index] = None;
+        map.pawns[new_index] = Some(self.create_pawn());
         self.intent = Intent {action: Action::Idle};
     }
 }
