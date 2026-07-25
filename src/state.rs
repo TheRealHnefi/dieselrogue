@@ -4,7 +4,7 @@ use std::time::Instant;
 use crate::AnimationSystem;
 use crate::World;
 use crate::GameLog;
-use crate::ItemAction;
+use crate::IntentAction;
 use crate::Item;
 use crate::Menu;
 use crate::IntentPhase;
@@ -32,7 +32,7 @@ pub struct State {
     pub animation_system: AnimationSystem,
 
     pub menu_stack: Vec<Box<dyn Menu>>,
-    pub action_being_used: Option<ItemAction>,
+    pub action_being_used: Option<IntentAction>,
     pub action_item: Option<Item>,
     pub action_slot: Option<SlotType>,
 

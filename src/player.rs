@@ -4,7 +4,6 @@ use crate::error::*;
 use crate::entity::*;
 use crate::ability::*;
 use crate::intent::*;
-use crate::item::*;
 use crate::World;
 use crate::TileType;
 
@@ -119,7 +118,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
     Err(GameError{error: Error::BadPrecondition, message: String::from("There is no item here")})
 }
 
-pub fn get_item_actions(world: &World) -> Vec<ItemAction>{
+pub fn get_item_actions(world: &World) -> Vec<IntentAction>{
     if world.player_id.is_none() {
         return vec!();
     }

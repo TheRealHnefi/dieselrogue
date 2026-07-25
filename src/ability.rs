@@ -1,7 +1,18 @@
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum Ability {
-    // Innate abilities
+    // Passive abilities
     Move,
-    PickUp
-    // Item abilities
+    PickUp,
+    // Active abilities
+    Disembark
+}
+
+impl Ability {
+    pub fn to_string(&self) -> String {
+        match self {
+            Ability::Move => "Move",
+            Ability::PickUp => "Pick Up",
+            Ability::Disembark => "Disembark"
+        }.to_string()
+    }
 }

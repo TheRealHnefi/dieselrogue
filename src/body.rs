@@ -130,7 +130,7 @@ impl Body {
             slot_index: vec!(),
             max_damage: 12,
             damage: 0,
-            abilities: vec!()
+            abilities: vec!(Ability::Disembark)
         });
 
         body.parts.push(BodyPart {
@@ -144,7 +144,7 @@ impl Body {
 
         body.update_abilities();
 
-        body
+        return body;
     }
 
     pub fn can_equip(&self, item: Item) -> bool {
