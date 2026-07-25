@@ -35,6 +35,7 @@ pub struct Region {
     /// True when the region is large enough to be treated as a room and is indoors.
     pub is_room: bool,
     /// True if the region is likely to contain interesting things
+    /// TODO: Currently always false. Fix!
     pub interesting: bool,
     /// Degrees of separation from player start position
     pub depth: usize
@@ -98,7 +99,7 @@ pub fn analyze(map: &Map, start_pos: usize) -> SpawnMap {
         }
     }
 
-    // Every Doorway tile that touches exactly two distinct zones is a boundary tile.
+    // Every Doorway tile that touches exactly two distinct regions is a boundary tile.
     let mut boundary_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
     for idx in 0..map.width * map.height {
         if map.tiles[idx] != TileType::Doorway {
@@ -129,7 +130,8 @@ pub fn analyze(map: &Map, start_pos: usize) -> SpawnMap {
         .map(|((a, b), door_tiles)| RegionBoundary { region_a: a, region_b: b, door_tiles })
         .collect();
 
-    set_region_depth(&mut regions, start_pos, &boundaries);
+    let start_region = tile_region[start_pos].unwrap_or(0);
+    set_region_depth(&mut regions, start_region, &boundaries);
 
     #[cfg(debug_assertions)]
     {
@@ -266,152 +268,6 @@ fn set_region_depth(regions: &mut Vec<Region>, start_region_idx: usize, region_b
 }
 
 // ---------------------------------------------------------------------------
-// Zone detection
-// ---------------------------------------------------------------------------
-
-/// A set of doorway tiles that fully separates two structural zones.
-pub struct ZoneBoundary {
-    pub zone_a: usize,
-    pub zone_b: usize,
-    /// Tile indices of every Doorway tile on this boundary.
-    pub door_tiles: Vec<usize>,
-}
-
-/// Output of zone analysis.
-pub struct ZoneMap {
-    /// tile index → zone index.  None for walls, fences, and doorway tiles.
-    pub tile_zone: Vec<Option<usize>>,
-    /// zone index → all tile indices in that zone.
-    pub zones: Vec<Vec<usize>>,
-    /// Every boundary between a pair of zones.
-    pub boundaries: Vec<ZoneBoundary>,
-}
-
-/// Flood-fill the map treating Doorway tiles as walls to find structural zones,
-/// then identify the doorway tiles that separate each pair of adjacent zones.
-pub fn find_zones(map: &Map) -> ZoneMap {
-    let n = map.width * map.height;
-    let mut tile_zone: Vec<Option<usize>> = vec![None; n];
-    let mut zones: Vec<Vec<usize>> = Vec::new();
-
-    for start in 0..n {
-        if tile_zone[start].is_some() || !zone_passable(map.tiles[start]) {
-            continue;
-        }
-        let zone_idx = zones.len();
-        let mut tiles = Vec::new();
-        let mut queue = vec![start];
-        tile_zone[start] = Some(zone_idx);
-        let mut qi = 0;
-        while qi < queue.len() {
-            let current = queue[qi];
-            qi += 1;
-            tiles.push(current);
-            let p = map.idx_pos(current);
-            for (dx, dy) in [(0i32, -1i32), (0, 1), (-1, 0), (1, 0)] {
-                let nx = p.x + dx;
-                let ny = p.y + dy;
-                if nx >= 0 && ny >= 0 && nx < map.width as i32 && ny < map.height as i32 {
-                    let ni = map.xy_idx(nx, ny);
-                    if tile_zone[ni].is_none() && zone_passable(map.tiles[ni]) {
-                        tile_zone[ni] = Some(zone_idx);
-                        queue.push(ni);
-                    }
-                }
-            }
-        }
-        zones.push(tiles);
-    }
-
-    // Every Doorway tile that touches exactly two distinct zones is a boundary tile.
-    let mut boundary_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
-    for idx in 0..n {
-        if map.tiles[idx] != TileType::Doorway {
-            continue;
-        }
-        let p = map.idx_pos(idx);
-        let mut adjacent_zones: Vec<usize> = Vec::new();
-        for (dx, dy) in [(0i32, -1i32), (0, 1), (-1, 0), (1, 0)] {
-            let nx = p.x + dx;
-            let ny = p.y + dy;
-            if nx >= 0 && ny >= 0 && nx < map.width as i32 && ny < map.height as i32 {
-                let ni = map.xy_idx(nx, ny);
-                if let Some(z) = tile_zone[ni] {
-                    if !adjacent_zones.contains(&z) {
-                        adjacent_zones.push(z);
-                    }
-                }
-            }
-        }
-        if adjacent_zones.len() == 2 {
-            let key = (adjacent_zones[0].min(adjacent_zones[1]),
-                       adjacent_zones[0].max(adjacent_zones[1]));
-            boundary_map.entry(key).or_default().push(idx);
-        }
-    }
-
-    let boundaries = boundary_map.into_iter()
-        .map(|((a, b), door_tiles)| ZoneBoundary { zone_a: a, zone_b: b, door_tiles })
-        .collect();
-
-    ZoneMap { tile_zone, zones, boundaries }
-}
-
-/// Passable for zone analysis: Doorway counts as a wall so it forms zone boundaries.
-fn zone_passable(tile: TileType) -> bool {
-    matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
-}
-
-/// BFS over the zone graph to compute how many boundaries separate each zone from
-/// `start_zone`.  Unreachable zones get `usize::MAX`.
-pub fn zone_depths(zone_map: &ZoneMap, start_zone: usize) -> Vec<usize> {
-    println!("JTLDEBUG: start zone index: {}", start_zone);
-    let n = zone_map.zones.len();
-    let mut depth = vec![usize::MAX; n];
-    if start_zone >= n { return depth; }
-
-    let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
-    for b in &zone_map.boundaries {
-        adj[b.zone_a].push(b.zone_b);
-        adj[b.zone_b].push(b.zone_a);
-    }
-
-    depth[start_zone] = 0;
-    let mut queue = vec![start_zone];
-    let mut qi = 0;
-    while qi < queue.len() {
-        let cur = queue[qi]; qi += 1;
-        for &nb in &adj[cur] {
-            if depth[nb] == usize::MAX {
-                depth[nb] = depth[cur] + 1;
-                queue.push(nb);
-            }
-        }
-    }
-    depth
-}
-
-/// Randomly marks zones as interesting based on whether they contain rooms.
-/// Each room in a zone has a 1-in-2 chance to flag the zone as interesting;
-/// a zone is interesting if any of its rooms passes the check.
-pub fn mark_interesting_zones(
-    zone_map: &ZoneMap,
-    spawn_map: &SpawnMap,
-    rng: &mut RandomNumberGenerator,
-) -> Vec<bool> {
-    let mut interesting = vec![false; zone_map.zones.len()];
-    for region in &spawn_map.regions {
-        if !region.is_room { continue; }
-        if let Some(zi) = zone_map.tile_zone[region.center_idx] {
-            if rng.range(0, 2) == 0 {
-                interesting[zi] = true;
-            }
-        }
-    }
-    interesting
-}
-
-// ---------------------------------------------------------------------------
 // Tank spawn analysis
 // ---------------------------------------------------------------------------
 
@@ -535,22 +391,22 @@ fn is_spawnable(tile: TileType) -> bool {
     matches!(tile, TileType::Floor | TileType::Ground | TileType::Road)
 }
 
-/// BFS over the zone graph treating locked doors (whose color is not in `unlocked`) as
-/// impassable walls.  Returns a bitmask of which zones the player can reach.
-fn reachable_zones(
-    adj: &[Vec<(usize, Option<usize>)>],
-    start_zone: usize,
-    n_zones: usize,
+/// BFS over the region graph treating locked doors (whose color is not in `unlocked`) as
+/// impassable walls.  Returns a bitmask of which regions the player can reach.
+fn reachable_regions(
+    adjacent: &[Vec<(usize, Option<usize>)>],
+    start_region: usize,
+    total_regions: usize,
     unlocked: &std::collections::HashSet<usize>,
 ) -> Vec<bool> {
-    let mut reachable = vec![false; n_zones];
-    if start_zone >= n_zones { return reachable; }
-    reachable[start_zone] = true;
-    let mut queue = vec![start_zone];
+    let mut reachable = vec![false; total_regions];
+    if start_region >= total_regions { return reachable; }
+    reachable[start_region] = true;
+    let mut queue = vec![start_region];
     let mut qi = 0;
     while qi < queue.len() {
         let cur = queue[qi]; qi += 1;
-        for &(nb, color_opt) in &adj[cur] {
+        for &(nb, color_opt) in &adjacent[cur] {
             if reachable[nb] { continue; }
             if color_opt.map_or(true, |c| unlocked.contains(&c)) {
                 reachable[nb] = true;
@@ -563,7 +419,7 @@ fn reachable_zones(
 
 enum BoundaryKind { OuterWall, InnerWall, Regular }
 
-fn classify_boundary(map: &Map, boundary: &ZoneBoundary) -> BoundaryKind {
+fn classify_boundary(map: &Map, boundary: &RegionBoundary) -> BoundaryKind {
     let size = map.width / BLOCK_SIZE;
     let inner_margin = size / 4;
     let inner_min = inner_margin;
@@ -599,34 +455,16 @@ impl World {
     #[cfg(debug_assertions)]
     pub(crate) fn spawn_debug(
         &mut self,
-        zone_map: &ZoneMap,
-        spawn_map: &SpawnMap,
-        depths: &[usize],
-        interesting: &[bool]
+        spawn_map: &SpawnMap
     ) {
         println!("== Debugging spawns ==");
-        println!("   Zone map size: {}, boundaries: {}", zone_map.zones.len(), zone_map.boundaries.len());
         println!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
-        println!("   Depths size: {}", depths.len());
-        println!("   Interesting size: {}", interesting.len());
-
-        let mut matches = 0;
-        let mut mismatches = 0;
-        for i in 0..depths.len() {
-            if spawn_map.regions[i].depth != depths[i] {
-                mismatches += 1;
-            }
-            else {
-                matches += 1;
-            }
-        }
-        println!(   "Depth matches: {}, mismatches: {}", matches, mismatches);
     }
 
     /// Stationary guards adjacent to doorways.
     pub(crate) fn spawn_sentinels(
         &mut self,
-        zone_map: &ZoneMap,
+        spawn_map: &SpawnMap,
         interesting: &[bool],
         placed: &mut Vec<Point>,
         n: &mut usize,
@@ -651,7 +489,7 @@ impl World {
                     return false;
                 }
                 let ni = self.map.xy_idx(nx, ny);
-                zone_map.tile_zone[ni].map_or(false, |zi| interesting.get(zi).copied().unwrap_or(false))
+                spawn_map.tile_region[ni].map_or(false, |zi| interesting.get(zi).copied().unwrap_or(false))
             });
 
             // Place guard 3 tiles away from door.
@@ -764,9 +602,7 @@ impl World {
 
     pub(crate) fn spawn_loot(
         &mut self,
-        zone_map: &ZoneMap,
         spawn_map: &SpawnMap,
-        depths: &[usize],
         rng: &mut RandomNumberGenerator,
     ) {
         const TOTAL_LOOT: usize = 400;
@@ -803,26 +639,26 @@ impl World {
             .collect();
         if weighted_pool.is_empty() { return; }
 
-        let nz = zone_map.zones.len();
+        let nz = spawn_map.regions.len();
 
         let mut indoor_spawns: Vec<Vec<Point>> = vec![vec![]; nz];
         for sp in &spawn_map.spawn_points {
-            let Some(zi) = zone_map.tile_zone[sp.idx] else { continue };
-            if depths[zi] == usize::MAX { continue; }
+            let Some(zi) = spawn_map.tile_region[sp.idx] else { continue };
+            if spawn_map.regions[zi].depth == usize::MAX { continue; }
             if self.map.tiles[sp.idx] == TileType::Floor {
                 indoor_spawns[zi].push(sp.pos);
             }
         }
 
         let max_depth = (0..nz)
-            .filter(|&zi| depths[zi] != usize::MAX && !indoor_spawns[zi].is_empty())
-            .map(|zi| depths[zi])
+            .filter(|&zi| spawn_map.regions[zi].depth != usize::MAX && !indoor_spawns[zi].is_empty())
+            .map(|zi| spawn_map.regions[zi].depth)
             .max()
             .unwrap_or(0);
 
         let mut zones_by_depth: Vec<Vec<usize>> = vec![vec![]; max_depth + 1];
         for zi in 0..nz {
-            let d = depths[zi];
+            let d = spawn_map.regions[zi].depth;
             if d != usize::MAX && d <= max_depth && !indoor_spawns[zi].is_empty() {
                 zones_by_depth[d].push(zi);
             }
@@ -871,38 +707,36 @@ impl World {
     /// or `None` if that boundary stays unlocked.
     pub(crate) fn assign_door_colors(
         &mut self,
-        zone_map: &ZoneMap,
-        depths: &[usize],
-        interesting: &[bool],
+        spawn_map: &SpawnMap
     ) -> Vec<Option<usize>> {
         const OUTER_WALL_COLOR: usize = 15; // Gold
         const INNER_WALL_COLOR: usize = 13; // Silver
 
-        let mut boundary_colors = vec![None; zone_map.boundaries.len()];
+        let mut boundary_colors = vec![None; spawn_map.boundaries.len()];
 
         let regular_colors: Vec<usize> = (0..crate::components::KEY_COLORS.len())
             .filter(|&c| c != OUTER_WALL_COLOR && c != INNER_WALL_COLOR)
             .collect();
 
-        let mut order: Vec<usize> = (0..zone_map.boundaries.len()).collect();
+        let mut order: Vec<usize> = (0..spawn_map.boundaries.len()).collect();
         order.sort_by_key(|&bi| {
-            let b = &zone_map.boundaries[bi];
-            depths[b.zone_a].min(depths[b.zone_b])
+            let b = &spawn_map.boundaries[bi];
+            spawn_map.regions[b.region_a].depth.min(spawn_map.regions[b.region_b].depth)
         });
 
         let mut regular_color_idx = 0usize;
         let mut locked_count = 0usize;
 
         for &bi in &order {
-            let b = &zone_map.boundaries[bi];
+            let b = &spawn_map.boundaries[bi];
             let kind = classify_boundary(&self.map, b);
-            let deep = if depths[b.zone_a] <= depths[b.zone_b] { b.zone_b } else { b.zone_a };
+            let deep = if spawn_map.regions[b.region_a].depth <= spawn_map.regions[b.region_b].depth { b.region_b } else { b.region_a };
 
             let color_opt: Option<usize> = match kind {
                 BoundaryKind::OuterWall => Some(OUTER_WALL_COLOR),
                 BoundaryKind::InnerWall => Some(INNER_WALL_COLOR),
                 BoundaryKind::Regular => {
-                    if interesting.get(deep).copied().unwrap_or(false) {
+                    if spawn_map.regions[deep].interesting {
                         let c = regular_colors[regular_color_idx % regular_colors.len()];
                         regular_color_idx += 1;
                         Some(c)
@@ -936,35 +770,35 @@ impl World {
     /// needing that color, guaranteeing solvability.  At most one key per zone.
     pub(crate) fn place_zone_keys(
         &mut self,
-        zone_map: &ZoneMap,
         spawn_map: &SpawnMap,
-        depths: &[usize],
         boundary_colors: &[Option<usize>],
-        start_zone: usize,
+        start_region: usize,
         rng: &mut RandomNumberGenerator,
     ) {
-        let n_zones = zone_map.zones.len();
+        let total_regions = spawn_map.regions.len();
 
-        let mut adj: Vec<Vec<(usize, Option<usize>)>> = vec![vec![]; n_zones];
-        for (bi, b) in zone_map.boundaries.iter().enumerate() {
-            let color = boundary_colors[bi];
-            adj[b.zone_a].push((b.zone_b, color));
-            adj[b.zone_b].push((b.zone_a, color));
+        let mut adjacent: Vec<Vec<(usize, Option<usize>)>> = vec![vec![]; total_regions];
+        for (b_idx, b) in spawn_map.boundaries.iter().enumerate() {
+            let color = boundary_colors[b_idx];
+            adjacent[b.region_a].push((b.region_b, color));
+            adjacent[b.region_b].push((b.region_a, color));
         }
 
-        let zone_dead_ends: Vec<Vec<Point>> = (0..n_zones).map(|zi| {
-            let zone_set: std::collections::HashSet<usize> =
-                zone_map.zones[zi].iter().copied().collect();
-            spawn_map.spawn_points.iter()
-                .filter(|sp| sp.category == SpawnCategory::DeadEnd && zone_set.contains(&sp.idx))
-                .map(|sp| sp.pos)
-                .collect()
-        }).collect();
+        // TODO: Revisit this logic after the refactor
+        // let region_dead_ends: Vec<Vec<Point>> = (0..total_regions).map(|region_idx| {
+        //     let region_set: std::collections::HashSet<usize> =
+        //         spawn_map.regions[region_idx].iter().copied().collect();
+        //     spawn_map.spawn_points.iter()
+        //         .filter(|sp| sp.category == SpawnCategory::DeadEnd && region_set.contains(&sp.idx))
+        //         .map(|sp| sp.pos)
+        //         .collect()
+        // }).collect();
+        let region_dead_ends: Vec<Vec<Point>> = vec!();
 
         let mut color_first_depth: HashMap<usize, usize> = HashMap::new();
-        for (bi, b) in zone_map.boundaries.iter().enumerate() {
-            if let Some(color) = boundary_colors[bi] {
-                let d = depths[b.zone_a].min(depths[b.zone_b]);
+        for (b_idx, b) in spawn_map.boundaries.iter().enumerate() {
+            if let Some(color) = boundary_colors[b_idx] {
+                let d = spawn_map.regions[b.region_a].depth.min(spawn_map.regions[b.region_b].depth);
                 color_first_depth.entry(color)
                     .and_modify(|e| *e = (*e).min(d))
                     .or_insert(d);
@@ -973,14 +807,14 @@ impl World {
         let mut color_order: Vec<usize> = color_first_depth.keys().copied().collect();
         color_order.sort_by_key(|&c| color_first_depth[&c]);
 
-        let mut zone_has_key = vec![false; n_zones];
+        let mut zone_has_key = vec![false; total_regions];
         let mut unlocked: std::collections::HashSet<usize> = std::collections::HashSet::new();
         let mut total_placed = 0usize;
 
         for color in color_order {
-            let reachable = reachable_zones(&adj, start_zone, n_zones, &unlocked);
+            let reachable = reachable_regions(&adjacent, start_region, total_regions, &unlocked);
 
-            let mut candidates: Vec<usize> = (0..n_zones)
+            let mut candidates: Vec<usize> = (0..total_regions)
                 .filter(|&zi| reachable[zi] && !zone_has_key[zi])
                 .collect();
 
@@ -990,16 +824,16 @@ impl World {
             }
             candidates.truncate(KEY_COPIES_PER_COLOR);
 
-            for zi in candidates {
-                let key_pos = if !zone_dead_ends[zi].is_empty() {
-                    let picks = &zone_dead_ends[zi];
+            for ri in candidates {
+                let key_pos = if !region_dead_ends[ri].is_empty() {
+                    let picks = &region_dead_ends[ri];
                     picks[rng.range(0, picks.len() as i32) as usize]
                 } else {
-                    let tiles = &zone_map.zones[zi];
+                    let tiles = &spawn_map.regions[ri].tiles;
                     self.map.idx_pos(tiles[rng.range(0, tiles.len() as i32) as usize])
                 };
                 let _ = self.add_item(key_pos, Item::key(color));
-                zone_has_key[zi] = true;
+                zone_has_key[ri] = true;
                 total_placed += 1;
             }
 
