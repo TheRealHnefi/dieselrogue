@@ -91,32 +91,10 @@ impl GameState for State {
                 self.run_state = positional_targeting_input(self, context);
             },
             RunState::Resolve(phase) => {
-                let mut animations = vec!();
-                let mut maybe_next_phase = phase.next();
-                while animations.len() == 0 && maybe_next_phase.is_some() {
-                    let next_phase = maybe_next_phase.unwrap();
-                    animations = self.world.resolve_phase(next_phase, &mut self.log);
-                    maybe_next_phase = next_phase.next();
-                }
-
-                if animations.len() > 0 {
-                    self.animation_system.init(animations, monotime);
-                    self.run_state = RunState::RenderAnimations(phase);
-                } else {
-                    match phase.next() {
-                        Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
-                        None => self.run_state = RunState::DeclareIntent
-                    }
-                }
+                self.resolve(phase, monotime);
             },
             RunState::RenderAnimations(phase) => {
-                let animation_done = self.animation_system.render(self.get_viewport(), monotime, context);
-                if animation_done {
-                    match phase.next() {
-                        Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
-                        None => self.run_state = RunState::DeclareIntent
-                    }
-                }
+                self.animate(phase, monotime, context);
             }
         }
  
@@ -156,6 +134,36 @@ impl State {
             x2: right,
             y1: top,
             y2: bottom
+        }
+    }
+
+    fn resolve(&mut self, phase: IntentPhase, monotime: u128) {
+        let mut animations = vec!();
+        let mut maybe_next_phase = phase.next();
+        while animations.len() == 0 && maybe_next_phase.is_some() {
+            let next_phase = maybe_next_phase.unwrap();
+            animations = self.world.resolve_phase(next_phase, &mut self.log);
+            maybe_next_phase = next_phase.next();
+        }
+
+        if animations.len() > 0 {
+            self.animation_system.init(animations, monotime);
+            self.run_state = RunState::RenderAnimations(phase);
+        } else {
+            match phase.next() {
+                Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
+                None => self.run_state = RunState::DeclareIntent
+            }
+        }
+    }
+
+    fn animate(&mut self, phase: IntentPhase, monotime: u128, context: &mut Rltk) {
+        let animation_done = self.animation_system.render(self.get_viewport(), monotime, context);
+        if animation_done {
+            match phase.next() {
+                Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
+                None => self.run_state = RunState::DeclareIntent
+            }
         }
     }
 }
