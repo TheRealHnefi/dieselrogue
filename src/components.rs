@@ -1,3 +1,5 @@
+use crate::Animation;
+
 #[derive (PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Up,
@@ -65,6 +67,7 @@ impl Renderable {
 
 pub enum Effect {
     Damage {entity_id: usize, bodypart_index: usize, raw_damage: u32},
+    Animation(Animation)
 }
 
 #[derive (PartialEq, Eq, Copy, Clone)]

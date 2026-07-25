@@ -90,15 +90,21 @@ impl GameState for State {
                 self.run_state = positional_targeting_input(self, context);
             },
             RunState::Resolve => {
-                self.world.resolve_phase(IntentPhase::Instant, &mut self.log);
-                self.world.resolve_phase(IntentPhase::Inventory, &mut self.log);
-                self.world.resolve_phase(IntentPhase::Attack, &mut self.log);
-                self.world.resolve_phase(IntentPhase::Movement, &mut self.log);
-                self.world.resolve_phase(IntentPhase::Misc, &mut self.log);
+                let mut animations = self.world.resolve_phase(IntentPhase::Instant, &mut self.log);
+                animations.append(&mut self.world.resolve_phase(IntentPhase::Inventory, &mut self.log));
+                animations.append(&mut self.world.resolve_phase(IntentPhase::Attack, &mut self.log));
+                animations.append(&mut self.world.resolve_phase(IntentPhase::Movement, &mut self.log));
+                animations.append(&mut self.world.resolve_phase(IntentPhase::Misc, &mut self.log));
                 
                 self.world.update_views();
 
-                self.run_state = RunState::DeclareIntent;
+                if animations.len() > 0 {
+                    self.animations.animations = animations;
+                    self.animations.init_render(monotime);
+                    self.run_state = RunState::RenderAnimations;
+                } else {
+                    self.run_state = RunState::DeclareIntent;
+                }
             },
             RunState::RenderAnimations => {
                 self.run_state = self.animations.render(self.get_viewport(), monotime, context);

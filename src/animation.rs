@@ -1,15 +1,79 @@
-use rltk::Point;
-use rltk::Rltk;
+use rltk::{RGB, Rltk, Point};
 use crate::Renderable;
 use crate::RunState;
 use crate::Rect;
 
+pub fn explosion_animation(pos: Point) -> Animation {
+    let particle = Renderable {
+        glyph: rltk::to_cp437('*'),
+        color: RGB::named(rltk::RED),
+        background: RGB::named(rltk::YELLOW)
+    };
+
+    let frame_1 = Frame {
+        renderables: vec!(particle.clone()),
+        positions: vec!(pos),
+        duration_ms: 250
+    };
+
+    let frame_2 = Frame {
+        renderables: vec!(
+            particle.clone(),
+            particle.clone(),
+            particle.clone(),
+            particle.clone(),
+            particle.clone()
+        ),
+        positions: vec!(
+            pos,
+            Point {x: pos.x + 1, y: pos.y},
+            Point {x: pos.x - 1, y: pos.y},
+            Point {x: pos.x, y: pos.y + 1},
+            Point {x: pos.x, y: pos.y - 1},
+        ),
+        duration_ms: 250
+    };
+
+    let frame_3 = Frame {
+        renderables: vec!(
+            particle.clone(),
+            particle.clone(),
+            particle.clone(),
+            particle.clone(),
+            particle.clone(),
+            particle.clone(),
+            particle.clone(),
+            particle.clone()
+        ),
+        positions: vec!(
+            Point {x: pos.x + 1, y: pos.y},
+            Point {x: pos.x + 1, y: pos.y + 1},
+            Point {x: pos.x, y: pos.y + 1},
+            Point {x: pos.x - 1, y: pos.y + 1},
+            Point {x: pos.x - 1, y: pos.y},
+            Point {x: pos.x - 1, y: pos.y - 1},
+            Point {x: pos.x, y: pos.y - 1},
+            Point {x: pos.x + 1, y: pos.y - 1},
+        ),
+        duration_ms: 250
+    };
+
+    Animation {
+        frames: vec!(frame_1, frame_2, frame_3),
+        current_frame: 0,
+        time_spent_in_current_frame: 0,
+        done: false
+    }
+}
+
+#[derive(Clone)]
 pub struct Frame {
     pub renderables: Vec<Renderable>,
     pub positions: Vec<Point>,
     pub duration_ms: u32
 }
 
+#[derive(Clone)]
 pub struct Animation {
     pub frames: Vec<Frame>,
     pub current_frame: usize,
