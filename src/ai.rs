@@ -54,10 +54,29 @@ fn most_urgent(left: Option<Perception>, right: Option<Perception>) -> Option<Pe
 #[derive(Clone, Copy, Debug)]
 enum Decision {
     Idle,
-    GoTo   { dest: Point, tolerance: u32 },
+    GoTo   { dest: Point, tolerance: u32, field: FieldPref },
     Face   { toward: Point },
     Flee   { threat: Point },
     Engage { target_id: usize, last_seen: Point },
+}
+
+/// Whether a GoTo destination is worth a shared flow field, and its extent.
+/// FullMap = static goal (patrol/guard); Bounded = dynamic goal (investigation /
+/// last-known) whose interested agents cluster nearby; None = per-agent goal not
+/// worth sharing (flank offset).
+#[derive(Clone, Copy, Debug)]
+enum FieldPref { None, FullMap, Bounded }
+
+impl Decision {
+    /// The shared flow-field goal this decision heads to (if any) and whether a
+    /// bounded field suffices. Single source of truth for World's field pre-pass.
+    fn nav_goal(&self) -> Option<(Point, bool)> {
+        match self {
+            Decision::GoTo { dest, field: FieldPref::FullMap, .. } => Some((*dest, false)),
+            Decision::GoTo { dest, field: FieldPref::Bounded, .. } => Some((*dest, true)),
+            _ => None,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -146,39 +165,20 @@ pub struct ActorAI {
     // Shared path cache — destination tracked to avoid redundant A* calls.
     current_path: Vec<usize>,    // reversed; .last() = next step index
     path_target:  Option<usize>, // map idx of current destination
+    /// Last decided shared-field goal (tile + bounded), read by World's pre-pass.
+    nav_goal:     Option<(Point, bool)>,
 }
 
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
-        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None }
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None }
     }
 
-    /// The goal this actor wants a shared flow field for, if any, and whether a
-    /// radius-bounded field suffices (`true` for dynamic goals whose interested
-    /// agents cluster nearby; `false` for static patrol/guard goals wanting
-    /// full-map coverage).
-    /// 
-    /// Combat is intentionally excluded: a combat target is currently visible
-    /// (else the actor would have decayed to Alert), so `navigate_to` reaches it
-    /// via the greedy line-of-sight step, not a field.
-    pub fn nav_field_goal(&self, map: &Map) -> Option<(Point, bool)> {
-        match &self.alert {
-            AlertLevel::Unaware => match &self.profile {
-                Profile::Patrol { route_id, waypoint_index, .. } =>
-                    map.patrol_routes.get(*route_id)
-                        .and_then(|r| r.get(*waypoint_index).copied())
-                        .map(|p| (p, false)),
-                Profile::Guard { anchor, .. } => Some((*anchor, false)),
-            },
-            AlertLevel::Suspicious { origin, .. } => Some((*origin, true)),
-            AlertLevel::Alert { last_known, search, .. } => match search {
-                // Flank targets a per-agent offset (not shared); HoldAndWatch
-                // doesn't move — neither benefits from a shared field.
-                SearchBehavior::MoveToLastKnown => Some((*last_known, true)),
-                _ => None,
-            },
-            AlertLevel::Combat { .. } => None,
-        }
+    /// The shared flow-field goal this actor is heading to (tile + whether a
+    /// bounded field suffices), decided last turn. Read by World's field pre-pass
+    /// to count shared-goal demand. `None` for combat/flank/idle (no shared field).
+    pub fn nav_field_goal(&self) -> Option<(Point, bool)> {
+        self.nav_goal
     }
 
     /// Follows a perceive → update → decide → execute logic for easier overview.
@@ -202,17 +202,8 @@ impl ActorAI {
         self.advance_waypoint(entity, map); // Move this later
         let decision = self.decide(entity, map);
 
-        // nav_field_goal is a hand-kept parallel copy of decide's nav goals; the
-        // pre-pass builds a shared field for its cell, so decide must actually
-        // head there. Assert they agree (same self state, post-advance_waypoint).
-        // TODO: Unify this with decision.
-        #[cfg(debug_assertions)]
-        if let Some((goal, _)) = self.nav_field_goal(map) {
-            debug_assert!(
-                matches!(decision, Decision::GoTo { dest, .. } if dest == goal),
-                "nav_field_goal cell {:?} disagrees with decide {:?}", goal, decision,
-            );
-        }
+        // Record its shared-field goal for World's pre-pass to read next turn.
+        self.nav_goal = decision.nav_goal();
 
         // Execute the decision
         self.execute(entity, map, entities, decision)
@@ -389,17 +380,20 @@ impl ActorAI {
             AlertLevel::Unaware => match &self.profile {
                 Profile::Patrol { route_id, waypoint_index, .. } =>
                     match map.patrol_routes.get(*route_id).and_then(|r| r.get(*waypoint_index)) {
-                        Some(&dest) => Decision::GoTo { dest, tolerance: 0 },
+                        Some(&dest) => Decision::GoTo { dest, tolerance: 0, field: FieldPref::FullMap },
                         None        => Decision::Idle,
                     },
-                Profile::Guard { anchor, .. } => Decision::GoTo { dest: *anchor, tolerance: 0 },
+                Profile::Guard { anchor, .. } =>
+                    Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap },
             },
-            AlertLevel::Suspicious { origin, .. } => Decision::GoTo { dest: *origin, tolerance: 0 },
+            AlertLevel::Suspicious { origin, .. } =>
+                Decision::GoTo { dest: *origin, tolerance: 0, field: FieldPref::Bounded },
             AlertLevel::Alert { last_known, search } => match search {
                 SearchBehavior::HoldAndWatch    => Decision::Face { toward: *last_known },
-                SearchBehavior::MoveToLastKnown => Decision::GoTo { dest: *last_known, tolerance: 0 },
+                SearchBehavior::MoveToLastKnown =>
+                    Decision::GoTo { dest: *last_known, tolerance: 0, field: FieldPref::Bounded },
                 SearchBehavior::Flank           =>
-                    Decision::GoTo { dest: self.flank_destination(entity.position, *last_known, map), tolerance: 0 },
+                    Decision::GoTo { dest: self.flank_destination(entity.position, *last_known, map), tolerance: 0, field: FieldPref::None },
             },
             AlertLevel::Combat { target_id, last_seen } => match self.profile.combat_tactic() {
                 CombatTactic::Flee => Decision::Flee { threat: *last_seen },
@@ -412,7 +406,7 @@ impl ActorAI {
     fn execute(&mut self, entity: &Entity, map: &Map, entities: &[Entity], decision: Decision) -> Option<Intent> {
         match decision {
             Decision::Idle => None,
-            Decision::GoTo { dest, tolerance } => self.navigate_to(entity, dest, map, entities, tolerance),
+            Decision::GoTo { dest, tolerance, .. } => self.navigate_to(entity, dest, map, entities, tolerance),
             Decision::Face { toward } => face_intent(entity, toward),
             Decision::Flee { threat } => {
                 let dest = self.flee_pos(entity, threat, map);
