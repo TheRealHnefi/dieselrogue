@@ -118,7 +118,7 @@ pub fn targeting_input(game_state: &mut State, context: &mut Rltk) -> RunState {
                 match maybe_actor {
                     Some(entity) => {
                         game_state.menu_stack.clear();
-                        game_state.menu_stack.push(Menu::new_target_menu(cursor_pos.x, cursor_pos.y, entity));
+                        game_state.menu_stack.push(Menu::new_target_menu(&game_state.ecs, cursor_pos.x, cursor_pos.y, entity));
                         return RunState::MenuInput;
                     }
                     None => {

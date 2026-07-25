@@ -52,6 +52,7 @@ Or perhaps no classes at all? Just perks?
 ## Stealth:
 * All actors have a viewing direction. Turning takes an action. 180 degree FOV for most.
 * Listening can give approximate location of enemies.
+* Backstabbing unaware opponent is guaranteed success. The risk is getting to that point.
 
 ## Magic:
 * Glyph-based. Finding a glyph lets player name it - they don't know what it actually does.
@@ -81,9 +82,44 @@ Or perhaps no classes at all? Just perks?
  * Resolve other actions
  * Monster decides next action
 
- ## Misc:
- * Multi-tile actors, like mechs and tanks - pilotable!
- * Fluid mechanics. Possible to have fuel leak and ignite. Precursor to fortress mode?
+## Misc:
+* Multi-tile actors, like mechs and tanks - pilotable!
+* Fluid mechanics. Possible to have fuel leak and ignite. Precursor to fortress mode?
+
+## Projectile Weapons:
+### Examples:
+* Pistol
+ * Dart gun
+ * 9mm sidearm
+ * Army .45
+ * Hand cannon
+* Submachine gun
+ * Tommy gun
+ * 'KSP'
+* Shotgun
+ * Pump action
+ * Double barrel
+ * Sawed off
+ * Combat shotgun
+* Machine gun
+* Rifle
+* Rocket launcher
+* Grenade launcher
+* Flamethrower
+* Tesla
+
+### Modifiers:
+* Drum magazine (triple ammo count)
+* Long range optics (inverse range penalty)
+* Good sights (+25% chance to hit)
+* Silent
+* Efficient construction (half weight)
+* Long barrel (+25% damage)
+* Recoil compensator (allow burst fire on bodypart)
+* Heatseeker (+50% chance to hit)
+* Bayonet (allows melee attacks)
+* Gasoline injector (blinds opponents when firing, +25% damage, extremely loud)
+* Bipod (+25% chance to hit when taking single shot)
 
 ## Scenario:
 World is 1950's, parallel earth.

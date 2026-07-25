@@ -1,6 +1,6 @@
 use rltk::{VirtualKeyCode};
 use specs::prelude::*;
-use super::{RunState, GameLog, Name};
+use super::{RunState, GameLog, Name, player};
 
 pub struct Menu {
     pub x: i32,
@@ -50,17 +50,35 @@ impl Menu {
         }
     }
 
-    pub fn new_target_menu(x: i32, y: i32, target: Entity) -> Self {
-        let examine_row = MenuRow {
-            hotkey: VirtualKeyCode::E,
-            text: "(E) Examine".to_string(),
-            action: Menu::action_examine
-        };
+    pub fn new_target_menu(ecs: &World, x: i32, y: i32, target: Entity) -> Self {
+        let actions = player::valid_actions(ecs, target).expect("Error when finding valid actions");
+
+        let mut rows = vec![];
+
+        for action in actions {
+            match action {
+                player::Action::Examine => rows.push(MenuRow {
+                    hotkey: VirtualKeyCode::E,
+                    text: "(E) Examine".to_string(),
+                    action: Menu::action_examine
+                }),
+                player::Action::Throw => rows.push(MenuRow {
+                    hotkey: VirtualKeyCode::T,
+                    text: "(T) Throw".to_string(),
+                    action: Menu::action_throw
+                }),
+                player::Action::Shoot => rows.push(MenuRow {
+                    hotkey: VirtualKeyCode::S,
+                    text: "(S) Shoot".to_string(),
+                    action: Menu::action_shoot
+                }),
+            }
+        }
 
         Menu {
             x: x + 1,
             y: y,
-            rows: vec![examine_row],
+            rows: rows,
             selected_row: 0,
             target: Some(target)
         }
@@ -100,6 +118,18 @@ impl Menu {
                 game_log.entries.push("Empty space".to_string());
             }
         }
+        return RunState::AwaitingInput;
+    }
+
+    pub fn action_throw(&self, ecs: &mut World) -> RunState {
+        let mut game_log = ecs.fetch_mut::<GameLog>();
+        game_log.entries.push("Oomph".to_string());
+        return RunState::AwaitingInput;
+    }
+
+    pub fn action_shoot(&self, ecs: &mut World) -> RunState {
+        let mut game_log = ecs.fetch_mut::<GameLog>();
+        game_log.entries.push("Bang!".to_string());
         return RunState::AwaitingInput;
     }
 }

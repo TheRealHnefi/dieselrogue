@@ -3,7 +3,6 @@ use specs::saveload::{SimpleMarker, SerializeComponents, DeserializeComponents, 
 use specs::error::NoError;
 use super::*;
 use std::fs::File;
-use std::path::Path;
 use std::fs;
 
 const SAVEGAME_PATH: &str = "./savegame.json";
