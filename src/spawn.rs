@@ -315,7 +315,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
         }
     }
 
-    create_patrol_routes(world, spawn_map, rng);
+    // Patrol routes are built during map generation (see Map::create_patrol_routes).
     enemy_count += place_patrolling_enemies(world, spawn_map, rng);
 
     #[cfg(debug_assertions)]
@@ -345,40 +345,6 @@ fn place_patrolling_enemies(
     println!("Placed {} patrolling enemies", enemies);
 
     enemies
-}
-
-// TODO: These are just random routes. Address the following concerns:
-// * Several routes in seriously humongous regions
-// * Follow roads if outside
-// * Follow approximate edges of region if inside, alternatively patrol between doors
-fn create_patrol_routes(
-    world: &mut World,
-    spawn_map: &SpawnMap,
-    rng: &mut RandomNumberGenerator
-) {
-    let big_regions: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.tiles.len() > 1024).collect();
-
-    #[cfg(debug_assertions)]
-    println!("Found {} big regions", big_regions.len());
-
-    for region in big_regions {
-        let waypoint_amount = rng.range(3, 8);
-        let start_tile = region.tiles[rng.range(0, region.tiles.len())];
-        let start_point = world.map.idx_pos(start_tile);
-        let mut waypoints: Vec<Point> = vec!(start_point);
-        for i in 1..waypoint_amount {
-            let mut done = false;
-            while !done {
-                let tile = region.tiles[rng.range(0, region.tiles.len())];
-                let point = world.map.idx_pos(tile);
-                if chebyshev(point, waypoints[i - 1]) > 1 {
-                    waypoints.push(point);
-                    done = true;
-                }
-            }
-        }
-        world.map.register_patrol_route(waypoints);
-    }
 }
 
 /// Places where guards should stand to guard interesting doorways

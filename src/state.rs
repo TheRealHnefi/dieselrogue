@@ -138,7 +138,7 @@ impl State {
             help_return_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![]},
-            world: World::new(size, seed),
+            world: World::new(size, seed, crate::PatrolStyle::Roads),
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],
             pending_action: None,
