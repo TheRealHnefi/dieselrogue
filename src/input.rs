@@ -216,9 +216,13 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
             VirtualKeyCode::Return => {
                 match menu.get_action() {
                     MenuAction::Simple(action) => return action(state),
-                    // Phase 1 of targeting: store the pending action and enter cursor mode.
-                    // The flow continues in positional_targeting_input.
                     MenuAction::WithPendingAction(pending) => {
+                        if let Targeting::UseExistingAim { ask_bodypart } = pending.item_action.targeting {
+                            // Fire using the current aim status — no cursor step needed.
+                            return fire_from_aim(pending, ask_bodypart, state);
+                        }
+                        // Phase 1 of positional/detailed targeting: enter cursor mode.
+                        // The flow continues in positional_targeting_input.
                         if let Ok(player) = state.world.get_player() {
                             state.cursor_pos = player.position;
                         }
@@ -236,6 +240,51 @@ pub fn menu_input(state: &mut State, context: &mut Rltk) -> RunState {
             return RunState::AwaitingMenuInput;
         }
     }
+}
+
+/// Resolve a fire action using the player's current `AimingAtGround` status.
+/// Called instead of entering cursor mode when the action has `Targeting::UseExistingAim`.
+///
+/// If `ask_bodypart` is true and an entity occupies the aimed tile, opens the bodypart
+/// selection menu (Phase 2b of the targeting flow) before resolving.
+/// Otherwise fires directly at the aimed position.
+fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) -> RunState {
+    let aim_pos = match state.world.get_player() {
+        Ok(player) => match player.get_aiming_position() {
+            Some(pos) => pos,
+            None => {
+                state.log("Not aiming at anything.".to_string());
+                return RunState::AwaitingMenuInput;
+            }
+        },
+        Err(_) => return RunState::AwaitingInput,
+    };
+
+    state.cursor_pos = aim_pos;
+
+    if ask_bodypart {
+        if let Some(menu) = targeting_menu(&state.world, aim_pos) {
+            state.menu_stack.clear();
+            state.pending_action = Some(pending);
+            state.menu_stack.push(Box::new(menu));
+            return RunState::AwaitingMenuInput;
+        }
+    }
+
+    // No bodypart menu needed (area weapon or empty tile): fire directly at aim position.
+    let slot = match pending.source {
+        Some(ActionSource::EquippedSlot(s)) => s,
+        _ => unreachable!("fire_from_aim requires an equipped slot source"),
+    };
+    match state.world.get_player_mut() {
+        Ok(player) => player.intent = Intent {
+            phase: pending.item_action.phase,
+            data: IntentData::TargetWithEquipment { slot, target: aim_pos },
+            action: pending.item_action.action,
+        },
+        Err(_) => return RunState::AwaitingInput,
+    }
+    RunState::Resolve(ExecutionPhase::Instant)
 }
 
 fn handle_move_input(world: &mut World, direction: Direction, log: &mut GameLog) -> RunState {

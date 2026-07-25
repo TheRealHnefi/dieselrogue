@@ -17,7 +17,12 @@ pub struct Intent {
 pub enum Targeting {
     None,
     Positional,
-    Detailed
+    Detailed,
+    /// Fire at the player's current aim position (set by a prior `aim_action`).
+    /// If `ask_bodypart` is true and an entity occupies the aimed tile, opens
+    /// the bodypart menu before resolving (used by single/burst fire).
+    /// If false, fires directly at the position (used by rockets, fan fire).
+    UseExistingAim { ask_bodypart: bool },
 }
 
 #[derive(Clone)]
