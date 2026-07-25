@@ -80,16 +80,18 @@ impl Body {
             return Err(GameError{error: Error::UnsolvableSituation, message: String::from("Cannot equip item")});
         }
         let mut removed_items = vec!();
+
+        for slot in &item.equip_slots {
+            match self.unequip(*slot) {
+                Some(removed) => removed_items.push(removed),
+                None => ()
+            }
+        }
+
         for (slot_number, item_slot) in item.clone().equip_slots.iter().enumerate() {
             for body_part in &mut self.parts {
                 for part_slot in &mut body_part.slots {
                     if part_slot.slot_type == *item_slot {
-                        if part_slot.item.is_some() {
-                            let taken = part_slot.item.take().unwrap();
-                            if !taken.proxy {
-                                removed_items.push(taken);
-                            }
-                        }
                         if slot_number == 0 {
                             part_slot.item = Some(item.clone());
                         }
@@ -112,7 +114,7 @@ impl Body {
                     match &removed_item {
                         Some(item) => {
                             for proxy_slot in &item.equip_slots {
-                                self.clear_proxy(*proxy_slot);
+                                self.clear_slot(*proxy_slot);
                             }
                         },
                         None => ()
@@ -124,7 +126,7 @@ impl Body {
         None
     }
 
-    fn clear_proxy(&mut self, slot: SlotType) {
+    fn clear_slot(&mut self, slot: SlotType) {
         for bodypart in &mut self.parts {
             for part_slot in &mut bodypart.slots {
                 if part_slot.slot_type == slot {
