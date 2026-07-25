@@ -136,7 +136,7 @@ impl World {
 
         let interesting = mark_interesting_zones(&zone_map, &spawn_map, &mut rng);
         world.assign_zone_keys(&zone_map, &spawn_map, &depths, &interesting, &mut rng);
-        world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
+        //world.spawn_loot(&zone_map, &spawn_map, &depths, &mut rng);
 
         let mut placed: Vec<Point> = Vec::new();
         let mut guard_n = 0usize;
