@@ -430,13 +430,12 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
 pub fn equipment_action_menu(slot: SlotType, state: &State) -> MenuPanel<EquippedActionRow> {
     let mut action_rows = vec![];
 
-    // Offer Reload for an equipped firearm that can be reloaded, gated by the same
-    // precondition the ability menu uses.
+    // Expose every action the equipped item allows (aim/fire, reload, recon, …) whose
+    // precondition currently holds — the same filter the ability menu uses.
     if let Ok(player) = state.world.get_player() {
         if let Some(item) = player.get_equipped_item_ref(slot) {
             for action in &item.equip_actions {
-                if action.id == ActionId::Reload
-                    && (action.precondition)(player, &state.world.map, Some(item)) {
+                if (action.precondition)(player, &state.world.map, Some(item)) {
                     action_rows.push(EquippedActionRow {
                         text: action.name.clone(),
                         slot,
