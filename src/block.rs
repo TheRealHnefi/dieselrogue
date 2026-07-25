@@ -10,48 +10,51 @@ pub struct Block {
   pub tiles: Vec<TileType>
 }
 
-pub fn generate_blocks() -> Vec<Block> {
+fn generate_blocks(filter: &str) -> Vec<Block> {
   let mut blocks = vec!();
 
   let paths = fs::read_dir("resources/blocks").unwrap();
   for path in paths {
-    let mut block = Block {
-      tiles: vec![TileType::Ground; BLOCK_SIZE * BLOCK_SIZE]
-    };
+    let filename = path.as_ref().unwrap().file_name().into_string().unwrap();
+    if filename.contains(filter) {
+      let mut block = Block {
+        tiles: vec![TileType::Ground; BLOCK_SIZE * BLOCK_SIZE]
+      };
 
-    let block_data = fs::read(path.unwrap().path()).unwrap();
+      let block_data = fs::read(path.unwrap().path()).unwrap();
 
-    let mut index = 0;
-    for character in block_data {
-      match character as char {
-        '.' => {
-          block.tiles[index] = TileType::Ground;
-          index += 1;
-        },
-        '_' => {
-          block.tiles[index] = TileType::Road;
-          index += 1;
-        },
-        '-' => {
-          block.tiles[index] = TileType::Floor;
-          index += 1;
-        },
-        'W' => {
-          block.tiles[index] = TileType::Wall;
-          index += 1;
-        },
-        'D' => {
-          block.tiles[index] = TileType::Doorway;
-          index += 1;
-        },
-        ' ' => {
-          block.tiles[index] = TileType::Doorway;
-          index += 1;
-        },
-        _ => ()
+      let mut index = 0;
+      for character in block_data {
+        match character as char {
+          '.' => {
+            block.tiles[index] = TileType::Ground;
+            index += 1;
+          },
+          '_' => {
+            block.tiles[index] = TileType::Road;
+            index += 1;
+          },
+          '-' => {
+            block.tiles[index] = TileType::Floor;
+            index += 1;
+          },
+          'W' => {
+            block.tiles[index] = TileType::Wall;
+            index += 1;
+          },
+          'D' => {
+            block.tiles[index] = TileType::Doorway;
+            index += 1;
+          },
+          ' ' => {
+            block.tiles[index] = TileType::Doorway;
+            index += 1;
+          },
+          _ => ()
+        }
       }
+      blocks.push(block);
     }
-    blocks.push(block);
   }
 
   blocks
@@ -60,7 +63,9 @@ pub fn generate_blocks() -> Vec<Block> {
 pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
   println!("Generating blocks");
   let mut rng = RandomNumberGenerator::new();
-  let base_blocks = generate_blocks();
+  let base_blocks = generate_blocks("road");
+  let edge_blocks = generate_blocks("edge");
+  let corner_blocks = generate_blocks("corner");
   let mut grid: Vec<Option<Block>> = vec![None; size * size];
 
   for y in 0 .. size {
@@ -80,8 +85,22 @@ pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
         None => None
       };
 
+      let active_blocks;
+      if (x == 0 && y == 0)
+        || (x == size - 1 && y == 0)
+        || (x == size - 1 && y == size - 1)
+        || (x == 0 && y == size - 1) {
+          active_blocks = &corner_blocks;
+        }
+      else if x == 0 || x == size - 1 || y == 0 || y == size - 1 {
+        active_blocks = &edge_blocks;
+      }
+      else {
+        active_blocks = &base_blocks;
+      }
+
       let mut valid_blocks = vec!();
-      for block in &base_blocks {
+      for block in active_blocks {
         if is_block_valid(block_left, Direction::Left, Some(&block))
           && is_block_valid(block_above, Direction::Up, Some(&block)) {
             let mut valid = true;
