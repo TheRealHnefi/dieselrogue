@@ -43,7 +43,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<BlocksTile>();
     game_state.ecs.register::<GettableItem>();
     game_state.ecs.register::<GettingItem>();
-    game_state.ecs.register::<InInventory>();
+    game_state.ecs.register::<Inventory>();
     game_state.ecs.register::<HumanoidBody>();
 
     let map = Map::new_map_rooms_and_corridors();
@@ -68,6 +68,7 @@ fn main() -> rltk::BError {
         })
         .with(Facing {direction: Direction::UP})
         .with(HumanoidBody::new(20))
+        .with(Inventory {items: Vec::new()})
         .with(Name {value: "Player".to_string()})
         .build();
     game_state.ecs.insert(player_entity);
@@ -92,6 +93,7 @@ fn main() -> rltk::BError {
         })
         .with(Facing {direction: Direction::UP})
         .with(HumanoidBody::new(20))
+        .with(Inventory {items: Vec::new()})
         .with(Name {value: "Goon".to_string()})
         .build();
 
