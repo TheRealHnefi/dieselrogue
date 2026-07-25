@@ -6,7 +6,7 @@ use crate::sprite::*;
 use crate::viewshed::*;
 use crate::Ability;
 use crate::Map;
-use crate::TileType;
+use crate::tile::TileType;
 use crate::Item;
 use crate::Body;
 use crate::actions;
