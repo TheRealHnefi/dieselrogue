@@ -164,8 +164,8 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     let pos = player.center();
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
 
-    offset += 3;
-    const HEALTH_X_OFFSET: usize = UI_X_OFFSET + LABEL_OFFSET + 8;
+    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 1;
+    const HEALTH_X_OFFSET: usize = UI_X_OFFSET + LABEL_OFFSET + 9;
     const PHYS_X_OFFSET: usize = HEALTH_X_OFFSET + 9;
     const ELEC_X_OFFSET: usize = PHYS_X_OFFSET + 9;
     const FIRE_X_OFFSET: usize = ELEC_X_OFFSET + 9;
@@ -183,6 +183,17 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         context.print_color(ELEC_X_OFFSET, offset, ELEC_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.elec_absorption, &bodypart.armor.elec_resistance * 100.0));
         context.print_color(FIRE_X_OFFSET, offset, FIRE_COLOR, BG_COLOR, format!("{}\\{}", &bodypart.armor.fire_absorption, &bodypart.armor.fire_resistance * 100.0));
         offset += 1;
+    }
+
+    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 2;
+    const STATUS_COLUMN_WIDTH: usize = 12;
+    const STATUS_COLUMN_HEIGHT: usize = HEALTH_AND_STATUS_PANEL_HEIGHT - 2;
+    for (i, status) in player.body.status_effects.iter().enumerate() {
+        if i < STATUS_COLUMN_HEIGHT {
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH, offset + i, LABEL_COLOR, BG_COLOR, status.to_string());
+        } else {
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH + STATUS_COLUMN_WIDTH, offset + i - STATUS_COLUMN_HEIGHT, LABEL_COLOR, BG_COLOR, status.to_string());
+        }
     }
 }
 

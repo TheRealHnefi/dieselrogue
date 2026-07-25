@@ -137,6 +137,14 @@ impl World {
         let mut player = Entity::new_human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
 
+        // player.apply_status_effect(&StatusEffect::Blind(0));
+        // player.apply_status_effect(&StatusEffect::AimingAtEntity(0));
+        // player.apply_status_effect(&StatusEffect::Dazed(0));
+        // player.apply_status_effect(&StatusEffect::Deaf(0));
+        // player.apply_status_effect(&StatusEffect::Stuck(0));
+        // player.apply_status_effect(&StatusEffect::Stunned(0));
+        // player.apply_status_effect(&StatusEffect::Burning(0));
+
         player.create_pawns(&mut self.map);
         self.entities.push(player);
         self.player_id = Some(0);

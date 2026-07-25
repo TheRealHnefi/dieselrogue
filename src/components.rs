@@ -84,13 +84,40 @@ pub enum Effect {
 // function. Equivalence testing uses the same function, ensuring coherence between Hash and Eq.
 #[derive(Clone)]
 pub enum StatusEffect {
-    AimingAtGround(Point)
+    AimingAtGround(Point),
+    AimingAtEntity(usize),
+    Blind(u32),
+    Burning(u32),
+    Dazed(u32),
+    Deaf(u32),
+    Stuck(u32),
+    Stunned(u32),
 }
 
 impl StatusEffect {
     fn to_index(&self) -> usize {
         match self {
-            StatusEffect::AimingAtGround(_) => 0
+            StatusEffect::AimingAtGround(_) => 0,
+            StatusEffect::AimingAtEntity(_) => 0,
+            StatusEffect::Blind(_) => 1,
+            StatusEffect::Burning(_) => 2,
+            StatusEffect::Dazed(_) => 3,
+            StatusEffect::Deaf(_) => 4,
+            StatusEffect::Stuck(_) => 5,
+            StatusEffect::Stunned(_) => 6
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            StatusEffect::AimingAtGround(_) => "Aiming".to_string(),
+            StatusEffect::AimingAtEntity(_) => "Aiming".to_string(),
+            StatusEffect::Blind(_) => "Blind".to_string(),
+            StatusEffect::Burning(_) => "Burning".to_string(),
+            StatusEffect::Dazed(_) => "Dazed".to_string(),
+            StatusEffect::Deaf(_) => "Deaf".to_string(),
+            StatusEffect::Stuck(_) => "Stuck".to_string(),
+            StatusEffect::Stunned(_) => "Stunned".to_string() 
         }
     }
 }

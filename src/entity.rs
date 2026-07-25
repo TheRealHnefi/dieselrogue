@@ -791,13 +791,14 @@ impl Entity {
     }
 
     pub fn resolve_status_effects(&mut self) {
-        for effect in &self.body.status_effects {
-            match effect {
-                StatusEffect::AimingAtGround(pos) => {
-                    println!("{} is aiming at pos {},{}", self.name, pos.x, pos.y);
-                }
-            }
-        }
+        // TODO
+        // for effect in &self.body.status_effects {
+        //     match effect {
+        //         StatusEffect::AimingAtGround(pos) => {
+        //             println!("{} is aiming at pos {},{}", self.name, pos.x, pos.y);
+        //         }
+        //     }
+        // }
     }
 }
 
