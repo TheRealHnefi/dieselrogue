@@ -208,27 +208,22 @@ impl Map {
     }
 
     fn create_block(&mut self, index_x: usize, index_y: usize) {
+        let mut rng = RandomNumberGenerator::new();
+
         let x1 = index_x * BLOCK_SIZE;
         let x2 = (index_x + 1) * BLOCK_SIZE - 1;
         let y1 = index_y * BLOCK_SIZE;
         let y2 = (index_y + 1) * BLOCK_SIZE - 1;
 
-        for x in x1..=x2 {
-            for y in y1..=y2 {
-                let idx = self.xy_idx(x as i32, y as i32);
-                if x == x1
-                    || x == x2
-                    || y == y1
-                    || y == y2 {
-                        self.tiles[idx] = TileType::Wall;
-                } else {
-                    self.tiles[idx] = TileType::Floor;
-                }
-            }
+        let block_type = rng.range(0, 2);
+        if block_type == 0 {
+            self.create_block_outside_with_buildings(x1, x2, y1, y2, &mut rng);
+        } else {
+            self.create_block_large_building(x1, x2, y1, y2, &mut rng);
         }
+    }
 
-        let mut rng = RandomNumberGenerator::new();
-
+    fn create_block_outside_with_buildings(&mut self,  x1: usize, x2: usize, y1: usize, y2: usize, rng: &mut rltk::RandomNumberGenerator) {
         let max_buildings = 10;
         let room_min_size = 4;
         let building_max_size = 30;
@@ -257,14 +252,38 @@ impl Map {
                 }
             }
 
-            let mut rooms = self.split_room(building, room_min_size as i32, &mut rng);
+            let mut rooms = self.split_room(building, room_min_size as i32, rng);
 
             if rooms.len() == 1 {
-                self.create_random_door(rooms[0], &mut rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
+                self.create_random_door(rooms[0], rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
             }
 
             self.rooms.append(&mut rooms);
         }
+    }
+
+    fn create_block_large_building(&mut self, x1: usize, x2: usize, y1: usize, y2: usize, rng: &mut rltk::RandomNumberGenerator) {
+        // TODO: Not needed?
+        for x in x1..=x2 {
+            for y in y1..=y2 {
+                let idx = self.xy_idx(x as i32, y as i32);
+                if x == x1
+                    || x == x2
+                    || y == y1
+                    || y == y2 {
+                        self.tiles[idx] = TileType::Wall;
+                } else {
+                    self.tiles[idx] = TileType::Floor;
+                }
+            }
+        }
+
+        let building = Rect::new(x1 as i32, y1 as i32, (x2 - x1) as i32, (y2 - y1) as i32);
+        
+        let mut rooms = self.split_room(building, 4, rng);
+        self.rooms.append(&mut rooms);
+
+        self.create_random_door(building, rng, vec!(Side::Top, Side::Bottom, Side::Left, Side::Right));
     }
 
     fn create_room_walls(&mut self, room: Rect) {
@@ -282,7 +301,7 @@ impl Map {
             }
         }
     }
-    
+
     fn create_random_door(&mut self, room: Rect, rng: &mut rltk::RandomNumberGenerator, allowed_dirs: Vec<Side>) {
         let chosen_dir = rng.range(0, allowed_dirs.len());
         match allowed_dirs[chosen_dir] {
