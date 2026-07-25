@@ -287,16 +287,19 @@ impl Entity {
         let mut result = vec!();
     
         let target_map_index;
+        let target_pos;
         let item_slot;
         let bodypart;
         match self.intent.data {
             IntentData::TargetWithEquipment{slot, target} => {
                 item_slot = slot;
+                target_pos = target;
                 target_map_index = map.pos_idx(target);
                 bodypart = 0;
             },
             IntentData::TargetBodypartWithEquipment{slot, target, bodypart_index} => {
                 item_slot = slot;
+                target_pos = target;
                 target_map_index = map.pos_idx(target);
                 bodypart = bodypart_index;
             },
@@ -339,8 +342,11 @@ impl Entity {
                 });
                 log.log(format!("{} fired at {}", self.name, pawn.name));
             },
-            _ => return result
+            _ => ()
         }
+
+        result.push(Effect::Animation(shoot_animation(self.position, target_pos)));
+
         result
     }
     
