@@ -914,9 +914,13 @@ impl World {
     }
 
     pub fn check_levelup(&mut self) {
+        if self.player_level >= 10 {
+            return;
+        }
         if self.player_xp >= self.player_xp_to_next_level {
             self.player_xp -= self.player_xp_to_next_level;
             self.player_xp_to_next_level += 1000;
+            self.player_level += 1;
             self.pending_levelup = true;
         }
     }
