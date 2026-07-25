@@ -379,15 +379,14 @@ impl Entity {
         if self.body.get_status_effect(&StatusEffect::Blind(0)).is_some() {
             return 1;
         }
+        let mut range = self.viewshed.range;
         if self.scan_target().is_some() {
-            return 40; // recon reaches much farther than normal sight
+            range = range * 2;
         }
-        let base = self.viewshed.range;
         if self.body.has_ability(Ability::EagleEyes) {
-            base * 3 / 2
-        } else {
-            base
+            range = range * 3 / 2;
         }
+        range
     }
 
     pub fn set_visible_tiles(&self, map: &mut Map, visibility: bool) {
