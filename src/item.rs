@@ -22,6 +22,8 @@ pub struct Item {
     pub rarity: u8,
 }
 
+pub type MakeItem = fn() -> Item;
+
 // ---- Firearm definition types -----------------------------------------------
 
 /// Which fire actions a firearm exposes in the equip menu.

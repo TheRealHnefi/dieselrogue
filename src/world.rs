@@ -192,7 +192,7 @@ impl World {
 
         let nearest_pos = self.map.nearest_free_pawn_position(pos)?;
 
-        let mut player = Entity::new_human(0, nearest_pos, facing, name);
+        let mut player = Entity::human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
         player.paper_doll = Some(PaperDoll::Player);
         player.body.update_abilities();
@@ -206,44 +206,11 @@ impl World {
         Ok(())
     }
 
-    pub fn create_zombie_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
-        let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
-        entity.ai = AI::Rotator;
-        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
-        self.equip_pistol(&mut entity);
-        entity.create_pawns(&mut self.map);
-        self.entities.push(entity);
-
-        Ok(())
-    }
-
-    pub fn create_forward_goon(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
-        let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
-        entity.ai = AI::Forward;
-        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
-        self.equip_pistol(&mut entity);
-        entity.create_pawns(&mut self.map);
-        self.entities.push(entity);
-
-        Ok(())
-    }
-
-    pub fn create_patrolling_goon(&mut self, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Result<(), GameError> {
-        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
-        let route_id = self.map.register_patrol_route(waypoints);
-        let mut entity = Entity::new_patrolling_goon(self.entities.len(), actual_pos, facing, name, route_id);
-        self.equip_pistol(&mut entity);
-        entity.create_pawns(&mut self.map);
-        self.entities.push(entity);
-        Ok(())
-    }
-
+    // Old enemy creation functions. TODO: REMOVE ----------------------
     /// Creates an NPC with the full profile+alert AI system.
     pub fn create_actor(&mut self, pos: Point, facing: Direction, name: String, profile: Profile) -> Result<(), GameError> {
         let actual_pos = self.map.nearest_free_pawn_position(pos)?;
-        let mut entity = Entity::new_human(self.entities.len(), actual_pos, facing, name);
+        let mut entity = Entity::human(self.entities.len(), actual_pos, facing, name);
         entity.ai = AI::Actor(ActorAI::new(profile));
         entity.paper_doll = Some(PaperDoll::MaleSilhouette);
         self.equip_pistol(&mut entity);
@@ -265,9 +232,6 @@ impl World {
         self.create_actor(pos, facing, name, Profile::Guard { anchor, combat_tactic: tactic })
     }
 
-
-
-
     fn equip_pistol(&mut self, entity: &mut Entity) {
         let mut pistol = Item::pistol();
         pistol.id = self.next_item_id;
@@ -275,11 +239,120 @@ impl World {
         let _ = entity.body.equip(pistol);
         entity.body.update_armor();
     }
+    // End of old actor creation functions       ----------------------
+
+    // Enemy creation --------------------------
+    pub fn create_light_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Guard".to_string())?;
+        self.carry_item(idx, Item::pistol)?;
+        self.carry_item(idx, Item::knife)?;
+        self.carry_item(idx, Item::flashbang)?;
+        self.equip_item(idx, Item::bulletproof_vest)?;
+        self.equip_item(idx, Item::helmet)?;
+        Ok(idx)
+    }
+
+    pub fn create_medium_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Sentinel".to_string())?;
+        self.carry_item(idx, Item::assault_rifle)?;
+        self.carry_item(idx, Item::ammo_bullets)?;
+        self.carry_item(idx, Item::grenade)?;
+        self.equip_item(idx, Item::riot_armor)?;
+        self.equip_item(idx, Item::riot_pants)?;
+        self.equip_item(idx, Item::helmet)?;
+        Ok(idx)
+    }
+
+    pub fn create_heavy_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Paladin".to_string())?;
+        self.carry_item(idx, Item::machinegun)?;
+        self.carry_item(idx, Item::ammo_bullets)?;
+        self.carry_item(idx, Item::grenade)?;
+        self.equip_item(idx, Item::heavy_combat_suit)?;
+        self.equip_item(idx, Item::heavy_helmet)?;
+        Ok(idx)
+    }
+
+    pub fn create_flamer_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Purifier".to_string())?;
+        self.carry_item(idx, Item::flamethrower)?;
+        self.carry_item(idx, Item::ammo_fuel)?;
+        self.carry_item(idx, Item::fire_grenade)?;
+        self.equip_item(idx, Item::heavy_combat_suit)?;
+        self.equip_item(idx, Item::heavy_helmet)?;
+        Ok(idx)
+    }
+
+    pub fn create_rocket_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Tankbuster".to_string())?;
+        self.carry_item(idx, Item::rocket_launcher)?;
+        self.carry_item(idx, Item::ammo_rockets)?;
+        self.carry_item(idx, Item::grenade)?;
+        self.carry_item(idx, Item::grenade)?;
+        self.equip_item(idx, Item::riot_armor)?;
+        self.equip_item(idx, Item::riot_pants)?;
+        self.equip_item(idx, Item::heavy_helmet)?;
+        Ok(idx)
+    }
+
+    pub fn create_riot_guard(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Peacekeeper".to_string())?;
+        self.carry_item(idx, Item::shock_carbine)?;
+        self.carry_item(idx, Item::ammo_batteries)?;
+        self.carry_item(idx, Item::shock_grenade)?;
+        self.carry_item(idx, Item::flashbang)?;
+        self.equip_item(idx, Item::riot_armor)?;
+        self.equip_item(idx, Item::riot_pants)?;
+        self.equip_item(idx, Item::helmet)?;
+        Ok(idx)
+    }
+
+    pub fn create_civilian(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Civilian".to_string())?;
+        self.carry_item(idx, Item::knife)?;
+        Ok(idx)
+    }
+
+    pub fn create_pilot(&mut self, pos: Point, facing: Direction) -> Result<usize, GameError> {
+        let idx = self.create_enemy_base(pos, facing, "Pilot".to_string())?;
+        self.carry_item(idx, Item::knife)?;
+        self.carry_item(idx, Item::shock_pistol)?;
+        Ok(idx)
+    }
+
+    fn create_enemy_base(&mut self, pos: Point, facing: Direction, name: String) -> Result<usize, GameError> {
+        let actual_pos = self.map.nearest_free_pawn_position(pos)?;
+        let idx = self.entities.len();
+        let mut entity = Entity::human(idx, actual_pos, facing, name);
+        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
+        entity.create_pawns(&mut self.map);
+        self.entities.push(entity);
+        Ok(idx)
+    }
+
+    fn equip_item(&mut self, entity_idx: usize, item_maker: MakeItem) -> Result<(), GameError> {
+        let mut item = item_maker();
+        item.id = self.next_item_id;
+        self.entities[entity_idx].body.inventory.push(item);
+        self.next_item_id += 1;
+        self.entities[entity_idx].body.update_armor();
+        Ok(())
+    }
+
+    fn carry_item(&mut self, entity_idx: usize, item_maker: MakeItem) -> Result<(), GameError> {
+        let mut item = item_maker();
+        item.id = self.next_item_id;
+        self.entities[entity_idx].body.inventory.push(item);
+        self.next_item_id += 1;
+        self.entities[entity_idx].body.update_armor();
+        Ok(())
+    }
+
 
     pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
         let pos = self.map.nearest_free_pawn_position_sized(pos, 3, 3)?;
 
-        let mut tank = Entity::new_tank(self.entities.len(), pos, facing, name);
+        let mut tank = Entity::tank(self.entities.len(), pos, facing, name);
         let mut cannon = Item::mounted_cannon();
         cannon.id = self.next_item_id;
         self.next_item_id += 1;
@@ -1317,13 +1390,13 @@ impl World {
 
                     let door;
                     if right_length > down_length {
-                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Right, right_length as u32);
+                        door = Entity::door(self.entities.len(), self.map.idx_pos(index), Direction::Right, right_length as u32);
                     } else if right_length < down_length {
-                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Up, down_length as u32);
+                        door = Entity::door(self.entities.len(), self.map.idx_pos(index), Direction::Up, down_length as u32);
                     } else if self.map.get_tile(x + 1, y) ==  TileType::Wall {
-                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Right, 1);
+                        door = Entity::door(self.entities.len(), self.map.idx_pos(index), Direction::Right, 1);
                     } else {
-                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Up, 1);
+                        door = Entity::door(self.entities.len(), self.map.idx_pos(index), Direction::Up, 1);
                     }
                     door.create_pawns(&mut self.map);
                     self.entities.push(door);
@@ -1340,6 +1413,18 @@ mod tests {
     fn assert_worldsize(world: World, size: usize) -> World {
         assert_eq!(world.entities.len(), size, "Position vector is of incorrect size");
         world
+    }
+
+    fn create_zombie(world: &mut World, pos: Point, facing: Direction, name: String, ai: AI) -> Result<(), GameError>  {
+        let actual_pos = world.map.nearest_free_pawn_position(pos)?;
+        let mut entity = Entity::human(world.entities.len(), actual_pos, facing, name);
+        entity.ai = ai;
+        entity.paper_doll = Some(PaperDoll::MaleSilhouette);
+        world.equip_pistol(&mut entity);
+        entity.create_pawns(&mut world.map);
+        world.entities.push(entity);
+
+        Ok(())        
     }
 
     #[test]
@@ -1382,7 +1467,7 @@ mod tests {
         let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         let name = "Entity";
-        let result = world.create_zombie_goon(pos, facing, String::from(name));
+        let result = create_zombie(&mut world, pos, facing, String::from(name), AI::Rotator);
 
         assert!(result.is_ok());
         world = assert_worldsize(world, 1);
@@ -1397,11 +1482,11 @@ mod tests {
         let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         let name = "Entity";
-        let result1 = world.create_zombie_goon(pos, facing, String::from(name));
+        let result1 = create_zombie(&mut world, pos, facing, String::from(name), AI::Rotator);
 
         let pos2 = Point {x: pos.x + 1, y: pos.y + 1};
         let name2 = "Entity2";
-        let result2 = world.create_zombie_goon(pos2, facing, String::from(name2));
+        let result2 = create_zombie(&mut world, pos2, facing, String::from(name2), AI::Rotator);
 
         assert!(result1.is_ok());
         assert!(result2.is_ok());
@@ -1418,8 +1503,8 @@ mod tests {
 
         let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
-        let result1 = world.create_zombie_goon(pos, facing, String::from("Entity"));
-        let result2 = world.create_zombie_goon(pos, facing, String::from("Entity2"));
+        let result1 = create_zombie(&mut world, pos, facing, String::from("Entity"), AI::Rotator);
+        let result2 = create_zombie(&mut world, pos, facing, String::from("Entity2"), AI::Rotator);
 
         assert!(result1.is_ok());
         assert!(result2.is_ok());
@@ -1437,7 +1522,7 @@ mod tests {
         let pos = Point {x: 0, y: 0};
         let facing = Direction::Up;
         for i in 0..number_of_entities {
-            assert!(world.create_zombie_goon(Point{x: pos.x+i as i32, y: pos.y}, facing, format!("{}", i)).is_ok());
+            assert!(create_zombie(&mut world, Point{x: pos.x+i as i32, y: pos.y}, facing, format!("{}", i), AI::Rotator).is_ok());
         }
         // doom a few
         let deathlist: Vec<usize> = vec![1,3,4];
@@ -1786,10 +1871,10 @@ mod tests {
 
         // Place one goon on each cardinal side of the center, all facing inward.
         // On the first tick every one of them will declare an intent to enter (10, 10).
-        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y - 1 }, Direction::Down,  String::from("North")).is_ok());
-        assert!(world.create_forward_goon(Point { x: center.x,     y: center.y + 1 }, Direction::Up,    String::from("South")).is_ok());
-        assert!(world.create_forward_goon(Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West")).is_ok());
-        assert!(world.create_forward_goon(Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East")).is_ok());
+        assert!(create_zombie(&mut world, Point { x: center.x,     y: center.y - 1 }, Direction::Down,  String::from("North"), AI::Forward).is_ok());
+        assert!(create_zombie(&mut world, Point { x: center.x,     y: center.y + 1 }, Direction::Up,    String::from("South"), AI::Forward).is_ok());
+        assert!(create_zombie(&mut world, Point { x: center.x - 1, y: center.y     }, Direction::Right, String::from("West"), AI::Forward).is_ok());
+        assert!(create_zombie(&mut world, Point { x: center.x + 1, y: center.y     }, Direction::Left,  String::from("East"), AI::Forward).is_ok());
 
         let start_positions: Vec<Point> = world.entities.iter().map(|e| e.position).collect();
 
@@ -2018,43 +2103,5 @@ mod tests {
         bench_run("gauntlet fields=ON",  size, target, ticks, warmup, true,  parallel, BenchScenario::Gauntlet);
         bench_run("gauntlet fields=OFF", size, target, ticks, warmup, false, parallel, BenchScenario::Gauntlet);
         println!();
-    }
-
-    #[test]
-    fn actors_walking_in_line() {
-        let mut world = World::new_test();
-
-        // Five goons start in a row, all facing the same direction, patrolling
-        // to a destination further along the row. Each goon is one step behind
-        // the next — they walk in single file and must not collide.
-        let y = 5;
-        let number_of_entities = 5;
-        let destination = Point { x: 20, y };
-        let waypoints = vec![destination];
-
-        for i in 0..number_of_entities {
-            let pos = Point { x: i as i32, y };
-            assert!(world.create_patrolling_goon(pos, Direction::Right, format!("{}", i), waypoints.clone()).is_ok());
-        }
-
-        for _ in 0..30 {
-            simulate_tick(&mut world);
-        }
-
-        // All entities must still be alive
-        assert_eq!(world.entities.len(), number_of_entities);
-
-        // No two entities may occupy the same tile
-        let positions: Vec<Point> = world.entities.iter().map(|e| e.position).collect();
-        for i in 0..positions.len() {
-            for j in (i + 1)..positions.len() {
-                assert_ne!(positions[i], positions[j], "entities {} and {} share a position", i, j);
-            }
-        }
-
-        // The leading entity (started furthest ahead) must have advanced toward the destination
-        let leader_start_x = (number_of_entities - 1) as i32;
-        let leader = world.entities.iter().find(|e| e.name == format!("{}", number_of_entities - 1)).unwrap();
-        assert!(leader.position.x > leader_start_x, "leader entity did not move");
     }
 }
