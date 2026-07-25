@@ -77,9 +77,10 @@ impl World {
             String::from("Tank"));
 
         let _ = world.create_grenade(pos);
-        let _ = world.create_machinegun(Point{x: pos.x + 1, y: pos.y});
-        let _ = world.create_pistol(Point{x: pos.x + 2, y: pos.y});
-        let _ = world.create_rocket_launcher(Point{x: pos.x + 3, y: pos.y});
+        let _ = world.create_machinegun(pos);
+        let _ = world.create_pistol(pos);
+        let _ = world.create_rocket_launcher(pos);
+        let _ = world.create_bulletproof_vest(pos);
 
         return world;
     }
@@ -251,6 +252,14 @@ impl World {
         let actual_pos = self.map.nearest_free_item_position(pos)?;
         let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
         self.map.items[index] = Some(Item::rocket_launcher(self.item_count));
+        self.item_count += 1;
+        Ok(())
+    }
+
+    pub fn create_bulletproof_vest(&mut self, pos: Point) -> Result<(), GameError> {
+        let actual_pos = self.map.nearest_free_item_position(pos)?;
+        let index = self.map.xy_idx(actual_pos.x, actual_pos.y);
+        self.map.items[index] = Some(Item::bulletproof_vest(self.item_count));
         self.item_count += 1;
         Ok(())
     }

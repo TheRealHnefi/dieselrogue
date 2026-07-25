@@ -366,7 +366,9 @@ impl Entity {
                 return vec!();
             }
         }
-        
+
+        self.body.update_armor();
+
         vec!()
     }
 
@@ -381,7 +383,7 @@ impl Entity {
                 return vec!();
             }
         }
-    
+
         match self.body.unequip(equipped_item) {
             Some(item) => {
                 log.log(format!("{} unequipped {}", self.name, item.name));
@@ -389,13 +391,15 @@ impl Entity {
             },
             None => ()
         }
-        
+
+        self.body.update_armor();
+
         vec!()
     }
 
     pub fn resolve_single_fire(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
         let mut result = vec!();
-    
+
         let target_map_index;
         let target_pos;
         let item_slot;
