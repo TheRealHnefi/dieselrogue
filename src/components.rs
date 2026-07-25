@@ -4,6 +4,9 @@ use specs_derive::*;
 #[derive (Component)]
 pub struct Player {}
 
+#[derive (Component)]
+pub struct Enemy {}
+
 #[derive (Component, Debug)]
 pub struct Position {
     pub x: i32,

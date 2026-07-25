@@ -196,7 +196,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
             ctx.set(x, y, foreground, RGB::from_f32(0.0, 0.0, 0.0), glyph);
         }
         x += 1;
-        if x > 79 {
+        if x >= MAPWIDTH {
             x = 0;
             y += 1;
         }
