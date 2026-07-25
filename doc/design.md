@@ -54,6 +54,7 @@ Or perhaps no classes at all? Just perks?
 #### Conditioning
 * Double stamina
 * Refuel stamina by spending HP
+* Instant inventory management
 
 #### Engineering
 * Build trap
