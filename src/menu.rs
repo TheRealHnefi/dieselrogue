@@ -166,8 +166,8 @@ fn action_target_item_action(item: Item, item_action: ItemAction, state: &mut St
     match state.world.get_player() {
         Ok(player) => {
             state.cursor_pos = player.position;
-            state.item_being_used = Some(item);
-            state.item_action_being_used = Some(item_action);
+            state.action_item = Some(item);
+            state.action_being_used = Some(item_action);
         },
         Err(_) => ()
     }
