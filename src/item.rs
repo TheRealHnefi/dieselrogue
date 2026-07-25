@@ -3,7 +3,7 @@ use crate::components::*;
 use crate::entity::Entity;
 use crate::Map;
 use crate::intent::*;
-use crate::actions;
+use crate::actions::{self, Action};
 
 #[derive(Clone)]
 pub struct Item {
@@ -154,7 +154,7 @@ impl Item {
                 background: rltk::RGB::named(rltk::BLACK),
             },
             name: String::from("Corpse"),
-            inventory_actions: vec![],
+            inventory_actions: vec![Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
             kind: ItemKind::Misc,
@@ -207,6 +207,12 @@ impl Item {
             proxy: false,
             active: false,
         }
+    }
+
+    pub fn is_droppable(&self) -> bool {
+        self.inventory_actions.iter().any(|a| {
+            std::ptr::fn_addr_eq(a.action, actions::drop_item_action as Action)
+        })
     }
 
     pub fn proxy(&self) -> Self {

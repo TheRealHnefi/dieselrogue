@@ -123,7 +123,7 @@ pub fn getitem_player_intent(world: &mut World) -> Result<(), GameError> {
 
     let index = world.map.xy_idx(player.position.x, player.position.y);
 
-    if world.map.items[index].is_some() {
+    if world.map.items[index].as_ref().map_or(false, |i| i.is_droppable()) {
         player.intent = Intent {
             phase: ExecutionPhase::Inventory,
             data: IntentData::Void,
