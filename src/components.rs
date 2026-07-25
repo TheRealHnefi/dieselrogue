@@ -172,6 +172,23 @@ impl PartialEq for StatusEffect {
 
 impl Eq for StatusEffect {}
 
+impl StatusEffect {
+    /// Decrement the duration by one tick. Returns `None` when the effect expires.
+    /// Aiming effects are not duration-based and are returned unchanged.
+    pub fn tick(&self) -> Option<StatusEffect> {
+        match self {
+            StatusEffect::AimingAtGround(_, _) | StatusEffect::AimingAtEntity(_, _) => Some(self.clone()),
+            StatusEffect::Blind(n)      => if *n > 1 { Some(StatusEffect::Blind(*n - 1))      } else { None },
+            StatusEffect::Burning(n)    => if *n > 1 { Some(StatusEffect::Burning(*n - 1))    } else { None },
+            StatusEffect::Dazed(n)      => if *n > 1 { Some(StatusEffect::Dazed(*n - 1))      } else { None },
+            StatusEffect::Deaf(n)       => if *n > 1 { Some(StatusEffect::Deaf(*n - 1))       } else { None },
+            StatusEffect::Stuck(n)      => if *n > 1 { Some(StatusEffect::Stuck(*n - 1))      } else { None },
+            StatusEffect::Stunned(n)    => if *n > 1 { Some(StatusEffect::Stunned(*n - 1))    } else { None },
+            StatusEffect::Suppressed(n) => if *n > 1 { Some(StatusEffect::Suppressed(*n - 1)) } else { None },
+        }
+    }
+}
+
 #[derive (PartialEq, Eq, Copy, Clone)]
 pub enum SlotType {
     PrimaryHand,
@@ -207,7 +224,7 @@ impl SlotType {
 pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, damage: Damage, range: u32},
     Wearable {armor: Armor},
-    FusedExplosive {damage: Damage, timeout: u32},
+    FusedExplosive {damage: Damage, timeout: u32, flash: bool},
     Misc
 }
 

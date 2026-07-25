@@ -26,8 +26,8 @@ impl Viewshed {
         }
     }
 
-    pub fn update(&mut self, pos: Point, facing: Direction, effective_fov: &FieldOfView, map: &Map) {
-        self.visible_tiles = field_of_view(pos, self.range, map);
+    pub fn update(&mut self, pos: Point, facing: Direction, range: i32, effective_fov: &FieldOfView, map: &Map) {
+        self.visible_tiles = field_of_view(pos, range, map);
         match effective_fov {
             FieldOfView::Fov90  => self.cull_90(pos, facing, map),
             FieldOfView::Fov180 => self.cull_180(pos, facing, map),
