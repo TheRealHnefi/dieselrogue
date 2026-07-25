@@ -27,6 +27,8 @@ mod inventory_system;
 pub use inventory_system::*;
 mod menu;
 pub use menu::*;
+mod input;
+pub use input::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
