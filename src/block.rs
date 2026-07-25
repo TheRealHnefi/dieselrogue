@@ -10,6 +10,19 @@ pub struct Block {
   pub tiles: Vec<TileType>
 }
 
+fn rotate_block_90cw(block: &Block) -> Block {
+  let n = BLOCK_SIZE;
+  let mut tiles = vec![TileType::Ground; n * n];
+  for y in 0..n {
+    for x in 0..n {
+      let dst_x = n - 1 - y;
+      let dst_y = x;
+      tiles[dst_y * n + dst_x] = block.tiles[y * n + x];
+    }
+  }
+  Block { tiles }
+}
+
 fn generate_blocks(filter: &str) -> Vec<Block> {
   let mut blocks = vec!();
 
@@ -62,7 +75,13 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
           _ => ()
         }
       }
+      let r90  = rotate_block_90cw(&block);
+      let r180 = rotate_block_90cw(&r90);
+      let r270 = rotate_block_90cw(&r180);
       blocks.push(block);
+      blocks.push(r90);
+      blocks.push(r180);
+      blocks.push(r270);
     }
   }
 
