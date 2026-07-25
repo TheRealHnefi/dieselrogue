@@ -930,7 +930,15 @@ impl World {
     }
 
     fn handle_damage(&mut self, id: usize, part_index: usize, damage: Damage, deathlist: &mut Vec<usize>, log: &mut GameLog) {
+        let disabled = |e: &Entity| {
+            let p = &e.body.parts[part_index];
+            p.damage > p.max_damage
+        };
+        let was_disabled = disabled(&self.entities[id]);
         self.entities[id].apply_damage(part_index, damage);
+        if !was_disabled && disabled(&self.entities[id]) {
+            self.drop_weapons_from_disabled_part(id, part_index, log);
+        }
         let is_player = Some(id) == self.player_id;
         if self.entities[id].mortally_wounded() && !deathlist.contains(&id) {
             if self.debug_mode && is_player {
@@ -938,6 +946,61 @@ impl World {
             } else {
                 log.log(format!("{} was killed!", self.entities[id].name));
                 deathlist.push(id);
+            }
+        }
+    }
+
+    /// When a body part is disabled, drop any non-locked weapon held in its slots to the
+    /// ground. Proxy slots (two-handed weapons) share the real item's id, so the actual
+    /// weapon is located, unequipped from its primary slot, and dropped.
+    fn drop_weapons_from_disabled_part(&mut self, id: usize, part_index: usize, log: &mut GameLog) {
+        // Collect the ids of non-locked weapons occupying the disabled part's slots.
+        let weapon_ids: Vec<usize> = {
+            let body = &self.entities[id].body;
+            let mut ids = vec![];
+            for &slot_idx in &body.parts[part_index].slot_index {
+                let Some(slot_item) = &body.item_slots[slot_idx].item else { continue };
+                let item_id = slot_item.id;
+                // Locate the real (non-proxy) item sharing this id and test it, not the proxy
+                // (a proxy is never flagged locked, so the real item is the source of truth).
+                let real = body.item_slots.iter()
+                    .find_map(|s| s.item.as_ref().filter(|it| it.id == item_id && !it.proxy));
+                if let Some(real) = real {
+                    let is_weapon = matches!(real.kind, ItemKind::Firearm { .. } | ItemKind::MeleeWeapon { .. });
+                    if !real.locked && is_weapon && !ids.contains(&item_id) {
+                        ids.push(item_id);
+                    }
+                }
+            }
+            ids
+        };
+
+        for item_id in weapon_ids {
+            // Unequip from the primary (non-proxy) slot; this clears any proxy slots too.
+            let real_slot = self.entities[id].body.item_slots.iter()
+                .find(|s| s.item.as_ref().map_or(false, |it| it.id == item_id && !it.proxy))
+                .map(|s| s.slot_type);
+            let Some(slot) = real_slot else { continue };
+            let Some(item) = self.entities[id].body.unequip(slot) else { continue };
+
+            // Stop aiming if the dropped weapon was the aimed one.
+            let aiming_id = self.entities[id].body.status_effects.iter().find_map(|s| match s {
+                StatusEffect::AimingAtGround(_, i) => Some(i.id),
+                StatusEffect::AimingAtEntity(_, i) => Some(i.id),
+                _ => None,
+            });
+            if aiming_id == Some(item.id) {
+                self.entities[id].clear_aiming();
+            }
+            self.entities[id].body.update_armor();
+
+            let pos = self.entities[id].position;
+            let item_name = item.name.clone();
+            if let Ok(drop_pos) = self.map.nearest_free_item_position(pos) {
+                let map_idx = self.map.pos_idx(drop_pos);
+                self.map.items[map_idx] = Some(item);
+                log.log(format!("{} dropped {} from a disabled {}",
+                    self.entities[id].name, item_name, self.entities[id].body.parts[part_index].name));
             }
         }
     }
@@ -1579,6 +1642,106 @@ mod tests {
             &mut log);
 
         assert_eq!(world.entities[player_id].body.energy, max);
+    }
+
+    /// Index of the body part whose slots include `slot`.
+    fn part_holding_slot(world: &World, entity_id: usize, slot: SlotType) -> usize {
+        let slot_idx = world.entities[entity_id].body.item_slots.iter()
+            .position(|s| s.slot_type == slot).unwrap();
+        world.entities[entity_id].body.parts.iter()
+            .position(|p| p.slot_index.contains(&slot_idx)).unwrap()
+    }
+
+    #[test]
+    fn bodypart_damage_clamped_to_twice_max() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let id = world.player_id.unwrap();
+        world.debug_mode = true; // keep the player around even when a vital part is destroyed
+
+        let part_index = 0;
+        let max = world.entities[id].body.parts[part_index].max_damage;
+
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &mut log);
+
+        assert_eq!(world.entities[id].body.parts[part_index].damage, 2 * max);
+    }
+
+    #[test]
+    fn disabled_arm_drops_equipped_firearm() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let id = world.player_id.unwrap();
+        world.debug_mode = true;
+
+        let mut pistol = Item::pistol();
+        pistol.id = 1;
+        let _ = world.entities[id].body.equip(pistol);
+
+        let part_index = part_holding_slot(&world, id, SlotType::PrimaryHand);
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &mut log);
+
+        assert!(world.entities[id].get_equipped_item_ref(SlotType::PrimaryHand).is_none(),
+            "disabled hand should no longer hold the pistol");
+        assert!(world.map.items.iter().any(|i| i.as_ref().map_or(false, |it| it.id == 1)),
+            "pistol should have been dropped to the ground");
+    }
+
+    #[test]
+    fn disabled_arm_drops_equipped_melee_weapon() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let id = world.player_id.unwrap();
+        world.debug_mode = true;
+
+        // The knife equips into the secondary hand.
+        let mut knife = Item::knife();
+        knife.id = 3;
+        let _ = world.entities[id].body.equip(knife);
+
+        let part_index = part_holding_slot(&world, id, SlotType::SecondaryHand);
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &mut log);
+
+        assert!(world.entities[id].get_equipped_item_ref(SlotType::SecondaryHand).is_none(),
+            "disabled hand should no longer hold the knife");
+        assert!(world.map.items.iter().any(|i| i.as_ref().map_or(false, |it| it.id == 3)),
+            "knife should have been dropped to the ground");
+    }
+
+    #[test]
+    fn disabled_arm_drops_two_handed_firearm_held_as_proxy() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let id = world.player_id.unwrap();
+        world.debug_mode = true;
+
+        // A two-handed rifle: real item in PrimaryHand, proxy in SecondaryHand.
+        let mut rifle = Item::bolt_action_rifle();
+        rifle.id = 7;
+        let _ = world.entities[id].body.equip(rifle);
+
+        // Disabling the arm that only holds the proxy must still drop the whole weapon.
+        let part_index = part_holding_slot(&world, id, SlotType::SecondaryHand);
+        assert_ne!(part_index, part_holding_slot(&world, id, SlotType::PrimaryHand));
+
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &mut log);
+
+        assert!(world.entities[id].get_equipped_item_ref(SlotType::PrimaryHand).is_none());
+        assert!(world.entities[id].get_equipped_item_ref(SlotType::SecondaryHand).is_none());
+        assert!(world.map.items.iter().any(|i| i.as_ref().map_or(false, |it| it.id == 7 && !it.proxy)),
+            "the real rifle should be on the ground");
     }
 
     #[test]

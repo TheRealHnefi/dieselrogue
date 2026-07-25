@@ -440,6 +440,8 @@ impl Entity {
         };
         let actual_damage = effective_armor.modify_damage(raw_damage);
         bodypart.damage += actual_damage;
+        // Cap accumulated damage at twice the part's maximum so it can't grow unbounded.
+        bodypart.damage = bodypart.damage.min(2 * bodypart.max_damage);
 
         if bodypart.damage > bodypart.max_damage {
             self.update_abilities();
