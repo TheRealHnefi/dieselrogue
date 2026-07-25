@@ -143,4 +143,3 @@ pub fn load_game(ecs: &mut World) -> Result<(), ()> {
         Ok(_) => Ok(()),
         Err(_) => return Err(())
     }
-}
