@@ -1,4 +1,5 @@
 use specs::prelude::*;
+use specs::saveload::{MarkedBuilder, SimpleMarker, SimpleMarkerAllocator};
 use rltk::{Point};
 
 mod state;
@@ -29,6 +30,8 @@ mod menu;
 pub use menu::*;
 mod input;
 pub use input::*;
+mod saveload_system;
+pub use saveload_system::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -45,6 +48,7 @@ fn main() -> rltk::BError {
 
     let mut game_state = State::new();
 
+    game_state.ecs.register::<SimpleMarker<SerializeMarker>>();
     game_state.ecs.register::<Player>();
     game_state.ecs.register::<Enemy>();
     game_state.ecs.register::<Position>();
@@ -61,6 +65,8 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<GettingItem>();
     game_state.ecs.register::<Inventory>();
     game_state.ecs.register::<HumanoidBody>();
+
+    game_state.ecs.insert(SimpleMarkerAllocator::<SerializeMarker>::new());
 
     let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
@@ -84,8 +90,9 @@ fn main() -> rltk::BError {
         })
         .with(Facing {direction: Direction::UP})
         .with(HumanoidBody::new(20))
-        .with(Inventory {items: Vec::new()})
+        .with(Inventory {items: EntityVec::new()})
         .with(Name {value: "Player".to_string()})
+        .marked::<SimpleMarker<SerializeMarker>>()
         .build();
     game_state.ecs.insert(player_entity);
 
@@ -110,8 +117,9 @@ fn main() -> rltk::BError {
         .with(Facing {direction: Direction::UP})
         .with(BlocksTile {})
         .with(HumanoidBody::new(20))
-        .with(Inventory {items: Vec::new()})
+        .with(Inventory {items: EntityVec::new()})
         .with(Name {value: "Goon".to_string()})
+        .marked::<SimpleMarker<SerializeMarker>>()
         .build();
 
     let (gun_x, gun_y) = map.rooms[2].center();
@@ -128,6 +136,7 @@ fn main() -> rltk::BError {
         })
         .with(GettableItem {})
         .with(Name {value: "Gun".to_string()})
+        .marked::<SimpleMarker<SerializeMarker>>()
         .build();
 
     let (tank_x, tank_y) = map.rooms[3].center();
@@ -161,8 +170,9 @@ fn main() -> rltk::BError {
         })
         .with(BlocksTile {})
         .with(Facing {direction: Direction::UP})
-        .with(Vehicle {pilot: None})
+        .with(Vehicle {})
         .with(Name {value: "Tank".to_string()})
+        .marked::<SimpleMarker<SerializeMarker>>()
         .build();
 
     let cursor_pos = Point{x:0, y:0};

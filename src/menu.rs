@@ -20,6 +20,16 @@ type MenuFunction = fn (menu: &Menu, ecs: &mut World) -> RunState;
 
 impl Menu {
     pub fn new_main() -> Self {
+        let save_row = MenuRow {
+            hotkey: VirtualKeyCode::S,
+            text: "(S) Save".to_string(),
+            action: Menu::action_save
+        };
+        let load_row = MenuRow {
+            hotkey: VirtualKeyCode::L,
+            text: "(L) Load".to_string(),
+            action: Menu::action_load
+        };
         let quit_row = MenuRow {
             hotkey: VirtualKeyCode::Q,
             text: "(Q) Quit".to_string(),
@@ -34,7 +44,7 @@ impl Menu {
         Self {
             x: 35,
             y: 20,
-            rows: vec![quit_row, close_row],
+            rows: vec![save_row, load_row, quit_row, close_row],
             selected_row: 0,
             target: None
         }
@@ -54,6 +64,14 @@ impl Menu {
             selected_row: 0,
             target: Some(target)
         }
+    }
+
+    pub fn action_save(&self, _ecs: &mut World) -> RunState {
+        return RunState::Saving;
+    }
+
+    pub fn action_load(&self, _ecs: &mut World) -> RunState {
+        return RunState::Loading;
     }
 
     pub fn action_quit(&self, _ecs: &mut World) -> RunState {
