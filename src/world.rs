@@ -686,10 +686,41 @@ impl World {
     }
 
     fn post_resolve(&mut self, deathlist: Vec<usize>) {
+        let death_infos: Vec<(Sprite, Point, u32, u32)> = deathlist.iter().map(|&id| (
+            self.entities[id].sprite.clone(),
+            self.entities[id].position,
+            self.entities[id].size_x,
+            self.entities[id].size_y,
+        )).collect();
+
         for id in &deathlist {
             self.entities[*id].kill(&mut self.map);
         }
-        
+
+        for (sprite, position, size_x, size_y) in death_infos {
+            match sprite {
+                Sprite::Human => {
+                    let index = self.map.pos_idx(position);
+                    let mut corpse = Item::corpse();
+                    corpse.id = self.next_item_id;
+                    self.next_item_id += 1;
+                    self.map.items[index] = Some(corpse);
+                },
+                Sprite::Tank => {
+                    for dx in 0..size_x as i32 {
+                        for dy in 0..size_y as i32 {
+                            let index = self.map.xy_idx(position.x + dx, position.y + dy);
+                            let mut rubble = Item::rubble();
+                            rubble.id = self.next_item_id;
+                            self.next_item_id += 1;
+                            self.map.items[index] = Some(rubble);
+                        }
+                    }
+                },
+                Sprite::Door => (),
+            }
+        }
+
         self.entities.retain(|entity| {
             let should_be_dead = deathlist.iter().any(|&id| id == entity.id);
             return !should_be_dead;

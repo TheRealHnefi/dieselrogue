@@ -145,6 +145,42 @@ impl Item {
         }
     }
 
+    pub fn corpse() -> Self {
+        Item {
+            id: 0,
+            renderable: Renderable {
+                glyph: 1,
+                color: rltk::RGB::from_f32(0.5, 0.2, 0.0),
+                background: rltk::RGB::named(rltk::BLACK),
+            },
+            name: String::from("Corpse"),
+            inventory_actions: vec![],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::Misc,
+            proxy: false,
+            active: false,
+        }
+    }
+
+    pub fn rubble() -> Self {
+        Item {
+            id: 0,
+            renderable: Renderable {
+                glyph: rltk::to_cp437('≈'),
+                color: rltk::RGB::from_f32(0.5, 0.5, 0.5),
+                background: rltk::RGB::named(rltk::BLACK),
+            },
+            name: String::from("Rubble"),
+            inventory_actions: vec![],
+            equip_actions: vec![],
+            equip_slots: vec![],
+            kind: ItemKind::Misc,
+            proxy: false,
+            active: false,
+        }
+    }
+
     pub fn key(door_ids: Vec<usize>) -> Self {
         Item {
             id: 0,
