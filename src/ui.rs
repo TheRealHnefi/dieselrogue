@@ -59,6 +59,7 @@ const PHYS_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
 const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
 const ENERGY_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
+const XP_COLOR: rltk::RGB = RGB {r: 0.9, g: 0.8, b: 0.1};
 
 const WALL_COLOR: rltk::RGB = RGB {r: 0.7, g: 0.6, b: 0.4};
 const GROUND_COLOR: rltk::RGB = RGB {r: 0.3, g: 0.6, b: 0.1};
@@ -356,7 +357,7 @@ fn draw_panel_geometry(context: &mut Rltk) {
 
     // Draw titles
     offset = UI_Y_OFFSET;
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Location ╠");
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ General ╠");
     offset += LOCATION_PANEL_HEIGHT;
 
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Damage and armor ╠");
@@ -386,9 +387,9 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         Err(_) => return
     };
 
-    // Location panel — right-align indicators against the inner panel edge (UI_WIDTH - 1)
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "Location: Unknown");
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset_y, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
+    // General panel — right-align indicators against the inner panel edge (UI_WIDTH - 1)
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, format!("Level: {}", state.world.player_level));
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET + 24, offset_y, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
     if state.world.parallel_ai {
         context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5 - 1 - 8, offset_y, RGB::named(rltk::GREEN), BG_COLOR, "PARALLEL");
     }
@@ -396,10 +397,25 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5, offset_y, RGB::named(rltk::RED), BG_COLOR, "DEBUG");
     }
     offset_y += 1;
+
+    // XP bar
+    const XP_BAR_WIDTH: usize = 20;
+    let xp_filled = if state.world.player_xp_to_next_level > 0 {
+        (state.world.player_xp as f32 / state.world.player_xp_to_next_level as f32 * XP_BAR_WIDTH as f32) as usize
+    } else {
+        0
+    };
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "XP ");
+    let xp_bar_x = UI_X_OFFSET + LABEL_OFFSET + 3;
+    for i in 0..XP_BAR_WIDTH {
+        let (ch, color) = if i < xp_filled { ('█', XP_COLOR) } else { ('░', INACTIVE_COLOR) };
+        context.set(xp_bar_x + i, offset_y, color, BG_COLOR, rltk::to_cp437(ch));
+    }
+
     let pos = player.center();
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
+    context.print_color(UI_X_OFFSET + LABEL_OFFSET + 24, offset_y, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
     if state.run_state == RunState::Looking {
-        context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset_y, LABEL_COLOR, BG_COLOR,
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET + 42, offset_y, LABEL_COLOR, BG_COLOR,
             format!("Cursor: {},{}", state.cursor_pos.x, state.cursor_pos.y));
     }
     if state.freelook {
