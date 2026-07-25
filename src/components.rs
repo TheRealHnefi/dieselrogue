@@ -110,6 +110,7 @@ pub enum Effect {
     BurnTick{entity_id: usize, bodypart_index: usize},
     SyncActiveItem{item_id: usize, location: ItemLocation},
     Sound(SoundEvent),
+    Twist{entity_id: usize, direction: Direction},
 }
 
 #[derive(Clone)]
