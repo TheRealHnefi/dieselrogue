@@ -1,4 +1,4 @@
-use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
+use rltk::{BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
 use crate::entity::*;
 use crate::item::Item;
@@ -15,18 +15,6 @@ pub struct Map {
     pub visible_tiles: Vec<bool>,
     pub pawns: Vec<Option<Pawn>>,
     pub items: Vec<Option<Item>>,
-}
-
-enum Side {
-    Top,
-    Bottom,
-    Left,
-    Right
-}
-
-enum Dirs {
-    Vertical,
-    Horizontal
 }
 
 impl Map {
@@ -59,6 +47,7 @@ impl Map {
         match self.tiles[index] {
             TileType::Floor => self.pawns[index].is_some(),
             TileType::Ground => self.pawns[index].is_some(),
+            TileType::Road => self.pawns[index].is_some(),
             TileType::Wall => true,
             TileType::Doorway => self.pawns[index].is_some(),
         }
@@ -135,8 +124,6 @@ impl Map {
     }
 
     pub fn new_game_map(size_in_blocks: usize) -> Map {
-        let mut rng = RandomNumberGenerator::new();
-
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
         let tile_count = map_width * map_height;
@@ -150,21 +137,19 @@ impl Map {
           items: vec![None; tile_count]
         };
 
-        let blocks = generate_blocks();
+        let blocks = generate_block_grid(size_in_blocks);
         for i in 0..size_in_blocks {
           for j in 0..size_in_blocks {
-            let block_index = rng.range(0, blocks.len());
             for x in 0..BLOCK_SIZE {
               for y in 0..BLOCK_SIZE {
+                let block_index = j * size_in_blocks + i;
                 let block = &blocks[block_index];
                 let map_tile_index = map.xy_idx((x + (i * BLOCK_SIZE)) as i32, (y + (j * BLOCK_SIZE)) as i32);
-                map.tiles[map_tile_index] = block.tiles[block.xy_idx(x as i32, y as i32)];
+                map.tiles[map_tile_index] = block.tiles[block_xy_idx(x, y)];
               }
             }
           }
         }
-
-        
 
         return map;
     }
@@ -202,6 +187,7 @@ impl BaseMap for Map {
             TileType::Wall => true,
             TileType::Floor => false,
             TileType::Ground => false,
+            TileType::Road => false,
             TileType::Doorway => {
                 match &self.pawns[index] {
                     Some(pawn) => pawn.kind == EntityKind::Door,
