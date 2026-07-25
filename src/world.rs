@@ -244,11 +244,7 @@ impl World {
         let mut cannon = Item::mounted_cannon();
         cannon.id = self.next_item_id;
         self.next_item_id += 1;
-        let result = tank.body.equip(cannon);
-        match result {
-            Ok(_) => println!("Cannon equipped"),
-            _ => println!("Eequip error")
-        }
+        let _ = tank.body.equip(cannon);
 
         tank.paper_doll = Some(PaperDoll::Tank);
         tank.create_pawns(&mut self.map);
