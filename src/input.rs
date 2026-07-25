@@ -100,11 +100,11 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 }
             },
 
-            // VirtualKeyCode::E => {
-            //     state.menu_stack.clear();
-            //     state.menu_stack.push(Box::new(equipment_menu(&state.world)));
-            //     return RunState::AwaitingMenuInput;
-            // },
+            VirtualKeyCode::E => {
+                state.menu_stack.clear();
+                state.menu_stack.push(Box::new(equipment_menu(&state.world)));
+                return RunState::AwaitingMenuInput;
+            },
 
             // VirtualKeyCode::A => {
             //     state.menu_stack.clear();

@@ -136,7 +136,28 @@ impl Entity {
         
         vec!()
     }
+
+    pub fn resolve_unequip_item(&mut self, _map: &mut Map) -> Vec<Effect> {
+        let equipped_item;
+        match self.intent.data.clone() {
+            IntentData::EquippedItem(item) => {
+                equipped_item = item;
+            },
+            _ => {
+                debug_assert!(false);
+                return vec!();
+            }
+        }
     
+        match self.body.unequip(equipped_item) {
+            Some(item) => self.inventory.push(item),
+            None => ()
+        }
+        
+        vec!()
+    }
+
+
     pub fn resolve_single_fire(&mut self, map: &mut Map) -> Vec<Effect> {
         let mut result = vec!();
     
