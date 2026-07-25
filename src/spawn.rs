@@ -459,6 +459,39 @@ impl World {
         println!("== Debugging spawns ==");
         println!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
         println!("== Done debugging spawns ==");
+
+        self.spawn_depthmarkers(spawn_map);
+    }
+
+    /// Used for debugging spawn functionality
+    #[cfg(debug_assertions)]
+    fn spawn_depthmarkers(
+        &mut self,
+        spawn_map: &SpawnMap
+    ) {
+        for region in &spawn_map.regions {
+            type MakeItem = fn() -> Item;
+            let maker: MakeItem = match region.depth {
+                0 => Item::knife,
+                1 => Item::pistol,
+                2 => Item::revolver,
+                3 => Item::bolt_action_rifle,
+                4 => Item::rotary_machinegun,
+                5 => Item::ammo_bullets,
+                6 => Item::ammo_rockets,
+                7 => Item::ammo_batteries,
+                8 => Item::ammo_fuel,
+                _ => Item::medkit
+            };
+
+            for tile in &region.tiles {
+                if tile == &region.center_idx {
+                    continue;
+                }
+                let pos = self.map.idx_pos(*tile);
+                let _ = self.add_item(pos, maker());
+            }
+        }
     }
 
     /// Stationary guards adjacent to doorways.
