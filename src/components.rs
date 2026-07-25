@@ -302,7 +302,8 @@ pub enum SlotType {
     Bodywear,
     Backwear,
     LeftArmwear,
-    RightArmwear
+    RightArmwear,
+    TurretMount
 }
 
 impl SlotType {
@@ -317,7 +318,8 @@ impl SlotType {
             SlotType::Bodywear => "On body",
             SlotType::Backwear => "On back",
             SlotType::LeftArmwear => "On l. arm",
-            SlotType::RightArmwear => "On r. arm"
+            SlotType::RightArmwear => "On r. arm",
+            SlotType::TurretMount => "Mounted"
         }.to_string()
     }
 }

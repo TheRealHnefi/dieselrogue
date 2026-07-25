@@ -93,6 +93,8 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'M', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   damage: Damage::new(100, 0,  0, 0), range: 12, rarity: 3 })
     }
 
+    // ---- Grenades ---------------------------------------------------------
+
     pub fn grenade() -> Self {
         let rarity = 1;
         Item {
@@ -153,6 +155,59 @@ impl Item {
         }
     }
 
+// ---- Misc ---------------------------------------------------------
+
+    pub fn knife() -> Self {
+        let rarity = 0;
+        Item {
+            id: 0, rarity: rarity,
+            renderable: Renderable::new_colored_char('/', Item::rarity_to_color(rarity)),
+            name: String::from("Knife"),
+            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![SlotType::SecondaryHand],
+            kind: ItemKind::MeleeWeapon { damage: Damage::new(5, 0, 0, 0) },
+            proxy: false,
+            active: false,
+        }
+    }
+
+// ---- Armor ---------------------------------------------------------
+
+    pub fn bulletproof_vest() -> Self {
+        let rarity = 1;
+        Item {
+            id: 0, rarity: rarity,
+            renderable: Renderable::new_colored_char('V', Item::rarity_to_color(rarity)),
+            name: String::from("Bulletproof vest"),
+            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            equip_actions: vec!(),
+            equip_slots: vec!(SlotType::Bodywear),
+            kind: ItemKind::Wearable { armor: Armor::new(3, 0.25, 0, 0.1, 0, 0.0) },
+            proxy: false,
+            active: false,
+        }
+    }
+
+// ---- System items ---------------------------------------------------------
+
+    pub fn mounted_cannon() -> Self {
+        let range = 10;
+        let ammo = 10;
+        let rarity = 0;
+        Item {
+            id: 0, rarity: rarity,
+            renderable: Renderable::new_colored_char('C', Item::rarity_to_color(rarity)),
+            name: String::from("Mounted cannon"),
+            inventory_actions: vec![],
+            equip_actions: vec![Item::aim_action(range), Item::aim_at_entity_action(range), Item::fire_action()],
+            equip_slots: vec![SlotType::TurretMount],
+            kind: ItemKind::Firearm { ammo: ammo, max_ammo: ammo, damage: Damage::new(500, 0, 0, 0), range: range },
+            proxy: false,
+            active: false,
+        }
+    }
+
     pub fn corpse() -> Self {
         Item {
             id: 0, rarity: 0,
@@ -204,35 +259,6 @@ impl Item {
         }
     }
 
-    pub fn knife() -> Self {
-        let rarity = 0;
-        Item {
-            id: 0, rarity: rarity,
-            renderable: Renderable::new_colored_char('/', Item::rarity_to_color(rarity)),
-            name: String::from("Knife"),
-            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
-            equip_actions: vec![],
-            equip_slots: vec![SlotType::SecondaryHand],
-            kind: ItemKind::MeleeWeapon { damage: Damage::new(5, 0, 0, 0) },
-            proxy: false,
-            active: false,
-        }
-    }
-
-    pub fn bulletproof_vest() -> Self {
-        let rarity = 1;
-        Item {
-            id: 0, rarity: rarity,
-            renderable: Renderable::new_colored_char('V', Item::rarity_to_color(rarity)),
-            name: String::from("Bulletproof vest"),
-            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
-            equip_actions: vec!(),
-            equip_slots: vec!(SlotType::Bodywear),
-            kind: ItemKind::Wearable { armor: Armor::new(3, 0.25, 0, 0.1, 0, 0.0) },
-            proxy: false,
-            active: false,
-        }
-    }
 
     pub fn is_droppable(&self) -> bool {
         self.inventory_actions.iter().any(|a| {

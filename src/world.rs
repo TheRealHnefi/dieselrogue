@@ -241,6 +241,15 @@ impl World {
         let pos = self.map.nearest_free_pawn_position_sized(pos, 3, 3)?;
 
         let mut tank = Entity::new_tank(self.entities.len(), pos, facing, name);
+        let mut cannon = Item::mounted_cannon();
+        cannon.id = self.next_item_id;
+        self.next_item_id += 1;
+        let result = tank.body.equip(cannon);
+        match result {
+            Ok(_) => println!("Cannon equipped"),
+            _ => println!("Eequip error")
+        }
+
         tank.paper_doll = Some(PaperDoll::Tank);
         tank.create_pawns(&mut self.map);
         self.entities.push(tank);

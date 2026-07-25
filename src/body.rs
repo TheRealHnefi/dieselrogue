@@ -171,10 +171,11 @@ impl Body {
             abilities: vec!(Ability::Disembark)
         });
 
+        body.item_slots.push(ItemSlot {slot_type: SlotType::TurretMount, item: None});
         body.parts.push(BodyPart {
             name: "Turret".to_string(),
             vital: false,
-            slot_index: vec!(),
+            slot_index: vec!(body.item_slots.len() - 1),
             base_max_damage: 12,
             max_damage: 12,
             damage: 0,
