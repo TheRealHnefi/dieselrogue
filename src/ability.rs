@@ -9,43 +9,47 @@ pub enum Ability {
     // Active abilities
     Embark,
     Disembark,
+    Throw,
     Juke, // Allow player to move out of order and without turning. Allows dodging shots.
 }
 
 impl Ability {
     pub fn to_string(&self) -> String {
         match self {
-            Ability::HumanMove  => "Move",
-            Ability::VehicleMove => "Drive",
-            Ability::PickUp     => "Pick Up",
+            Ability::HumanMove    => "Move",
+            Ability::VehicleMove  => "Drive",
+            Ability::PickUp       => "Pick Up",
             Ability::WideVision   => "Wide Vision",
             Ability::Precognition => "Precognition",
-            Ability::Embark     => "Embark",
-            Ability::Disembark  => "Disembark",
-            Ability::Juke       => "Juke",
+            Ability::Embark       => "Embark",
+            Ability::Disembark    => "Disembark",
+            Ability::Throw        => "Throw",
+            Ability::Juke         => "Juke",
         }.to_string()
     }
 
     pub fn is_innate(&self) -> bool {
         match self {
-            Ability::HumanMove  => true,
+            Ability::HumanMove   => true,
             Ability::VehicleMove => true,
-            Ability::PickUp     => true,
-            Ability::Disembark  => true,
-            _                   => false,
+            Ability::PickUp      => true,
+            Ability::Disembark   => true,
+            Ability::Throw       => true,
+            _                    => false,
         }
     }
 
     pub fn is_passive(&self) -> bool {
         match self {
-            Ability::HumanMove  => true,
-            Ability::VehicleMove => true,
-            Ability::PickUp     => true,
+            Ability::HumanMove    => true,
+            Ability::VehicleMove  => true,
+            Ability::PickUp       => true,
             Ability::WideVision   => true,
             Ability::Precognition => true,
-            Ability::Embark     => false,
-            Ability::Disembark  => false,
-            Ability::Juke       => false,
+            Ability::Embark       => false,
+            Ability::Disembark    => false,
+            Ability::Throw        => false,
+            Ability::Juke         => false,
         }
     }
 
@@ -65,6 +69,8 @@ impl Ability {
                 "Allows entering a vehicle. Move into a drivable vehicle to take the controls.",
             Ability::Disembark =>
                 "Allows exiting a vehicle you are currently driving.",
+            Ability::Throw =>
+                "Allows throwing items such as grenades.",
             Ability::Juke =>
                 "Move instantly out of turn order. Costs 25 energy. Useful for dodging incoming fire.",
         }
@@ -79,6 +85,7 @@ impl Ability {
             Ability::Disembark    => 1, // Torso
             Ability::PickUp       => 2, // R. Arm
             Ability::Embark       => 2, // R. Arm
+            Ability::Throw        => 2, // R. Arm
             Ability::HumanMove    => 4, // Legs
             Ability::Juke         => 4, // Legs
         }
