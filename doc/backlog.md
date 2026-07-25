@@ -38,9 +38,6 @@
  * Break aim when moving/unequipping/losing visibility/etc
  * Make weapons fireable only on targets aimed at
  * Make aiming at cone/area possible
-* Weapons
- * Limited range
- * Fire only in FoV
 * Limit inventory size to 20
 * Refactor player functions
 * Refactor menu system (oh my god it sucks!)
