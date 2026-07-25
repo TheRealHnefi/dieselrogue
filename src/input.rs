@@ -106,6 +106,12 @@ pub fn main_screen_input(state: &mut State, context: &mut Rltk) -> RunState {
                 return RunState::AwaitingMenuInput;
             },
 
+            VirtualKeyCode::A => {
+                state.menu_stack.clear();
+                state.menu_stack.push(Box::new(ability_menu(&state.world)));
+                return RunState::AwaitingMenuInput;
+            },
+
             VirtualKeyCode::Escape => {
                 state.menu_stack.clear();
                 state.menu_stack.push(Box::new(main_menu()));

@@ -28,6 +28,8 @@ mod error;
 pub use error::*;
 mod body;
 pub use body::*;
+mod ability;
+pub use ability::*;
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
