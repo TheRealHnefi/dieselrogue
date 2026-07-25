@@ -1,11 +1,10 @@
-use rltk::{BaseMap, Algorithm2D, Point};
+use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
 use crate::entity::*;
 use crate::item::Item;
 use crate::tile::TileType;
+use crate::block::*;
 use super::{GameError, Error};
-
-const BLOCK_SIZE: usize = 32;
 
 pub struct Map {
     pub width: usize,
@@ -136,18 +135,36 @@ impl Map {
     }
 
     pub fn new_game_map(size_in_blocks: usize) -> Map {
+        let mut rng = RandomNumberGenerator::new();
+
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
         let tile_count = map_width * map_height;
         let mut map = Map {
-            tiles: vec![TileType::Ground; tile_count],
-            width: map_width,
-            height: map_height,
-            revealed_tiles: vec![true; tile_count],
-            visible_tiles: vec![false; tile_count],
-            pawns: vec![None; tile_count],
-            items: vec![None; tile_count]
+          tiles: vec![TileType::Ground; tile_count],
+          width: map_width,
+          height: map_height,
+          revealed_tiles: vec![true; tile_count],
+          visible_tiles: vec![false; tile_count],
+          pawns: vec![None; tile_count],
+          items: vec![None; tile_count]
         };
+
+        let blocks = generate_blocks();
+        for i in 0..size_in_blocks {
+          for j in 0..size_in_blocks {
+            let block_index = rng.range(0, blocks.len());
+            for x in 0..BLOCK_SIZE {
+              for y in 0..BLOCK_SIZE {
+                let block = &blocks[block_index];
+                let map_tile_index = map.xy_idx((x + (i * BLOCK_SIZE)) as i32, (y + (j * BLOCK_SIZE)) as i32);
+                map.tiles[map_tile_index] = block.tiles[block.xy_idx(x as i32, y as i32)];
+              }
+            }
+          }
+        }
+
+        
 
         return map;
     }
