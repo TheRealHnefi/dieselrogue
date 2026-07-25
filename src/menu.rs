@@ -127,7 +127,7 @@ impl MenuRow for InnateActionRow {
                 build_intent(&self.action, None, Resolution::None),
                 action_apply_intent_to_player,
             ),
-            Targeting::Positional { .. } | Targeting::Detailed
+            Targeting::Positional { .. } | Targeting::Detailed | Targeting::SelfBodypart
             | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
                 MenuAction::WithPendingAction(PendingAction {
                     entity_action: self.action.clone(),
@@ -155,7 +155,7 @@ impl MenuRow for EquippedActionRow {
                     action_apply_intent_to_player,
                 )
             },
-            Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
+            Targeting::Positional { .. } | Targeting::Detailed | Targeting::SelfBodypart | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
                 MenuAction::WithPendingAction(PendingAction {
                     entity_action: self.action.clone(),
                     source: Some(ActionSource::EquippedSlot(self.slot)),
@@ -194,7 +194,7 @@ impl MenuRow for ItemActionRow {
                     action_apply_intent_to_player,
                 )
             },
-            Targeting::Positional { .. } | Targeting::Detailed | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
+            Targeting::Positional { .. } | Targeting::Detailed | Targeting::SelfBodypart | Targeting::UseExistingAim { .. } | Targeting::EntityAim { .. } | Targeting::Direction => {
                 MenuAction::WithPendingAction(PendingAction {
                     entity_action: self.action.clone(),
                     source: Some(ActionSource::InventoryItem(self.item.clone())),

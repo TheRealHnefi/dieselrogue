@@ -729,6 +729,8 @@ impl World {
                     self.entities[*target_id].apply_status_effect(status),
                 Effect::BurnTick{entity_id: id, bodypart_index: part_index} =>
                     self.handle_damage(*id, *part_index, Damage::new(0, 0, 1, 0), &mut deathlist, log),
+                Effect::RegenTick{entity_id: id, bodypart_index: part_index} =>
+                    self.entities[*id].heal(*part_index, 1),
                 Effect::SyncActiveItem{item_id, location} =>
                     self.sync_active_item(*item_id, location.clone()),
                 Effect::Sound(sound) =>
@@ -794,6 +796,27 @@ impl World {
                             }
                         }
                     }
+                },
+                Effect::ApplyRegeneration { entity_id, bodypart_index, turns } => {
+                    let ent = &mut self.entities[*entity_id];
+                    let nparts = ent.body.parts.len();
+                    // Merge with any existing regeneration; the HashSet is keyed by variant,
+                    // so the whole per-part vector is replaced in one entry.
+                    let mut counts = match ent.body.get_status_effect(&StatusEffect::Regenerating(vec![])) {
+                        Some(StatusEffect::Regenerating(v)) => v.clone(),
+                        _ => vec![0u32; nparts],
+                    };
+                    counts.resize(nparts, 0);
+                    match bodypart_index {
+                        Some(i) if *i < nparts => counts[*i] = counts[*i].max(*turns),
+                        Some(_) => {},
+                        None => counts.iter_mut().for_each(|c| *c = (*c).max(*turns)),
+                    }
+                    ent.body.remove_status_effect(&StatusEffect::Regenerating(vec![]));
+                    ent.body.apply_status_effect(&StatusEffect::Regenerating(counts));
+                },
+                Effect::ConsumeItem { entity_id, item_id } => {
+                    self.entities[*entity_id].take_item_by_id(*item_id);
                 },
                 Effect::SpendEnergy { entity_id, amount } => {
                     self.entities[*entity_id].body.energy =
@@ -1481,6 +1504,59 @@ mod tests {
         assert_eq!(ammo, 5, "gun receives only what the box held");
         assert!(!player.body.inventory.iter().any(|i| matches!(i.kind, ItemKind::Ammo { .. })),
             "emptied ammo box should be discarded");
+    }
+
+    /// Advance one status-resolution round (heal/burn ticks + duration decay), the
+    /// same sequence `World::resolve_status_effects` runs, minus viewshed upkeep.
+    fn tick_status_round(world: &mut World, entity_id: usize, log: &mut GameLog) {
+        let effects = world.entities[entity_id].resolve_status_effects();
+        world.resolve_effects(&effects, log);
+    }
+
+    #[test]
+    fn regeneration_heals_one_hp_per_turn_then_expires() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let player_id = world.player_id.unwrap();
+        world.entities[player_id].body.parts[0].damage = 3;
+
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(
+            &vec![Effect::ApplyRegeneration { entity_id: player_id, bodypart_index: Some(0), turns: 10 }],
+            &mut log);
+
+        // Three rounds fully heal the 3 points of damage.
+        for _ in 0..3 { tick_status_round(&mut world, player_id, &mut log); }
+        assert_eq!(world.entities[player_id].body.parts[0].damage, 0);
+        assert!(world.entities[player_id].body
+            .get_status_effect(&StatusEffect::Regenerating(vec![])).is_some(),
+            "regeneration should persist for its full duration");
+
+        // Seven more rounds exhaust the 10-turn duration; the status then clears.
+        for _ in 0..7 { tick_status_round(&mut world, player_id, &mut log); }
+        assert!(world.entities[player_id].body
+            .get_status_effect(&StatusEffect::Regenerating(vec![])).is_none(),
+            "regeneration should expire after 10 turns");
+    }
+
+    #[test]
+    fn elixir_regenerates_all_body_parts() {
+        let mut world = World::new_test();
+        let _ = world.create_player(Point { x: 50, y: 50 }, Direction::Up, String::from("Player"));
+        let player_id = world.player_id.unwrap();
+
+        let nparts = world.entities[player_id].body.parts.len();
+        for i in 0..nparts { world.entities[player_id].body.parts[i].damage = 2; }
+
+        let mut log = GameLog { entries: vec![] };
+        world.resolve_effects(
+            &vec![Effect::ApplyRegeneration { entity_id: player_id, bodypart_index: None, turns: 10 }],
+            &mut log);
+
+        for _ in 0..2 { tick_status_round(&mut world, player_id, &mut log); }
+        for i in 0..nparts {
+            assert_eq!(world.entities[player_id].body.parts[i].damage, 0, "part {} not healed", i);
+        }
     }
 
     #[test]

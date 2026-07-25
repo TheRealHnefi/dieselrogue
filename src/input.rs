@@ -353,6 +353,8 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
                             start_entity_targeting(pending, max_range, state)
                         } else if let Targeting::Direction = pending.entity_action.targeting {
                             start_directional_action(state, pending.entity_action, pending.source)
+                        } else if let Targeting::SelfBodypart = pending.entity_action.targeting {
+                            start_self_bodypart_targeting(pending, state)
                         } else {
                             // Phase 1 of positional/detailed targeting: enter cursor mode.
                             // The flow continues in positional_targeting_input.
@@ -497,6 +499,26 @@ fn fire_from_aim(pending: PendingAction, ask_bodypart: bool, state: &mut State) 
         Err(_) => return RunState::AwaitingInput,
     }
     RunState::Resolve(ExecutionPhase::Instant)
+}
+
+/// Open the bodypart menu on the acting entity's own body (SelfBodypart targeting,
+/// e.g. a medkit). Selecting a part completes the intent via
+/// `action_apply_intent_to_target_bodypart`, using the player's own position.
+fn start_self_bodypart_targeting(pending: PendingAction, state: &mut State) -> RunState {
+    let pos = match state.world.get_player() {
+        Ok(player) => player.position,
+        Err(_) => return RunState::AwaitingInput,
+    };
+    state.cursor_pos = pos;
+    match targeting_menu(&state.world, pos) {
+        Some(menu) => {
+            state.menu_stack.clear();
+            state.pending_action = Some(pending);
+            state.menu_stack.push(Box::new(menu));
+            RunState::AwaitingMenuInput
+        }
+        None => RunState::AwaitingInput,
+    }
 }
 
 /// Navigate the side-panel inventory list directly: up/down move the highlight,
@@ -700,6 +722,8 @@ fn trigger_action_by_id(state: &mut State, id: ActionId) -> RunState {
             state.pending_action = Some(PendingAction { entity_action: action, source });
             RunState::AwaitingPositionalTargetingInput
         },
+        Targeting::SelfBodypart =>
+            start_self_bodypart_targeting(PendingAction { entity_action: action, source }, state),
     }
 }
 

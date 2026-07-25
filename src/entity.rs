@@ -452,6 +452,17 @@ impl Entity {
             self.body.parts[bodypart_index].damage);
     }
 
+    /// Reduce a body part's accumulated damage by `amount` (toward full health),
+    /// restoring abilities if the part becomes functional again.
+    pub fn heal(&mut self, bodypart_index: usize, amount: u32) {
+        let bodypart = &mut self.body.parts[bodypart_index];
+        let was_disabled = bodypart.damage > bodypart.max_damage;
+        bodypart.damage = bodypart.damage.saturating_sub(amount);
+        if was_disabled && bodypart.damage <= bodypart.max_damage {
+            self.update_abilities();
+        }
+    }
+
     pub fn mortally_wounded(&self) -> bool {
         for bodypart in &self.body.parts {
             if bodypart.damage >= bodypart.max_damage && bodypart.vital {
@@ -474,6 +485,16 @@ impl Entity {
         if self.body.get_status_effect(&StatusEffect::Burning(0)).is_some() {
             for i in 0..self.body.parts.len() {
                 effects.push(Effect::BurnTick { entity_id: self.index, bodypart_index: i });
+            }
+        }
+        // One heal tick per body part that still has regeneration turns left.
+        if let Some(StatusEffect::Regenerating(turns)) =
+            self.body.get_status_effect(&StatusEffect::Regenerating(vec![]))
+        {
+            for (i, &t) in turns.iter().enumerate() {
+                if t > 0 {
+                    effects.push(Effect::RegenTick { entity_id: self.index, bodypart_index: i });
+                }
             }
         }
         self.body.resolve_status_effects();
