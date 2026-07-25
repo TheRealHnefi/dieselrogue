@@ -67,9 +67,9 @@ pub fn generate_block_grid(size: usize) -> Option<Vec<Block>> {
     for x in 0 .. size {
       let index = grid_xy_idx(x, y, size);
       let above = if y > 0 { Some(grid_xy_idx(x, y - 1, size)) } else { None };
-      let below = if y < size - 1 { Some(grid_xy_idx(x, y + 1, size)) } else { None };
+      //let below = if y < size - 1 { Some(grid_xy_idx(x, y + 1, size)) } else { None };
       let left = if x > 0 { Some(grid_xy_idx(x - 1, y, size)) } else { None };
-      let right = if x < size - 1 { Some(grid_xy_idx(x + 1, y, size)) } else { None };
+      //let right = if x < size - 1 { Some(grid_xy_idx(x + 1, y, size)) } else { None };
     
       let block_above = match above {
         Some(idx) => Some(grid[idx].as_ref().unwrap()),
