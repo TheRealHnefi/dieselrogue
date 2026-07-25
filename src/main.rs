@@ -37,6 +37,22 @@ pub use serde_collections::*;
 mod rex_assets;
 pub use rex_assets::*;
 
+#[derive(Debug)]
+pub struct GameError {
+}
+
+impl From<specs::error::Error> for GameError {
+    fn from(_err: specs::error::Error) -> Self {
+        GameError {}
+    }
+}
+
+impl From<()> for GameError {
+    fn from(_err: ()) -> Self {
+        GameError {}
+    }
+}
+
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
 
@@ -72,6 +88,7 @@ fn main() -> rltk::BError {
     game_state.ecs.register::<Equippable>();
     game_state.ecs.register::<Gettable>();
     game_state.ecs.register::<GettingItem>();
+    game_state.ecs.register::<DroppingItem>();
     game_state.ecs.register::<Inventory>();
     game_state.ecs.register::<HumanoidBody>();
 

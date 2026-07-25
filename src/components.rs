@@ -108,6 +108,11 @@ pub struct Gettable {}
 pub struct GettingItem {}
 
 #[derive (Component, ConvertSaveload, Clone)]
+pub struct DroppingItem {
+    pub item: Entity
+}
+
+#[derive (Component, ConvertSaveload, Clone)]
 pub struct Inventory {
     pub items: EntityVec<Entity>
 }
