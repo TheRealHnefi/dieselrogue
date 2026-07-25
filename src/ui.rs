@@ -1,6 +1,6 @@
 use rltk::{RGB, Rltk, Point};
 use specs::prelude::*;
-use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size, RunState};
+use super::{Position, Map, HumanoidBody, GameLog, Inventory, Name, State, Size};
 use std::cmp::max;
 
 pub fn draw_ui(state: &mut State, context: &mut Rltk) {
@@ -88,73 +88,31 @@ fn draw_tooltip(ecs: &World, context: &mut Rltk, cursor_position: Point) {
             tooltip.push(format!("Right leg: {}/{}", body.right_leg.hitpoints, body.right_leg.max_hitpoints));
         }
     }
-    if !tooltip.is_empty() {
-        let run_state = ecs.fetch::<RunState>();
+    draw_infobox(context, cursor_position, tooltip)
+}
 
-        let mut width: i32 = 0;
-        for s in tooltip.iter() {
-            if width < s.len() as i32 {
-                width = s.len() as i32;
-            }
-        }
-        width += 3;
+fn draw_infobox(context: &mut Rltk, position: Point, contents: Vec<String>) {
+    if contents.is_empty() {
+        return;
+    }
 
-        let mut action_list: Vec<String> = Vec::new();
-        action_list.push("Shoot".to_string());
-        action_list.push("Throw".to_string());
-        action_list.push("Inspect".to_string());
+    let width = (contents.iter().max_by_key(|x| x.len()).unwrap_or(&"".to_string()).len() + 3) as i32;
+    let height = contents.len() as i32 + 1;
+    
+    let left = if position.x < 40 {
+        position.x + 1
+    } else {
+        position.x - width - 1 as i32
+    };
+    let top = if position.y < 25 {
+        position.y
+    } else {
+        position.y - height
+    };
 
-        let mut action_width: i32 = 0;
-        for action in action_list.iter() {
-            if action_width < action.len() as i32 {
-                action_width = action.len() as i32;
-            }
-        }
-        action_width += 3;
-        
+    context.draw_box(left, top, width, height, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
 
-        if cursor_position.x > 40 {
-            let arrow_pos = Point::new(cursor_position.x - 1, cursor_position.y);
-            let left_x = cursor_position.x - width;
-            let mut y = cursor_position.y;
-
-            context.draw_box(left_x - 1, y - 1, width -1, tooltip.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-
-            for s in tooltip.iter() {
-                context.print_color(left_x, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), s);
-                y += 1;
-            }
-            context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &">".to_string());
-
-            if *run_state == RunState::TargetingInput {
-                context.draw_box(left_x - action_width - 1, cursor_position.y, action_width, action_list.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-                y = cursor_position.y + 1;
-                for action in action_list.iter() {
-                    context.print_color(left_x - action_width, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), action);
-                    y += 1;
-                }
-            }
-        } else {
-            let arrow_pos = Point::new(cursor_position.x + 1, cursor_position.y);
-            let left_x = cursor_position.x + 3;
-            let mut y = cursor_position.y;
-
-            context.draw_box(left_x - 1, y - 1, width -1, tooltip.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-
-            for s in tooltip.iter() {
-                context.print_color(left_x + 1, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), s);
-                y += 1;
-            }
-            context.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &"<".to_string());
-
-            if *run_state == RunState::TargetingInput {
-                context.draw_box(left_x + width - 2, cursor_position.y, action_width, action_list.len() as i32 + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-                y = cursor_position.y + 1;
-                for action in action_list.iter() {
-                    context.print_color(left_x + width - 1, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), action);
-                    y += 1;
-                }
-            }
-        }
+    for (i, line) in contents.iter().enumerate() {
+        context.print(left + 2, top + 1 + i as i32, line.to_string());
     }
 }
