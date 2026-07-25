@@ -198,6 +198,7 @@ impl World {
         player.create_pawns(&mut self.map);
         self.entities.push(player);
         self.player_id = Some(0);
+        self.entities[0].update_view(&mut self.map);
 
         Ok(())
     }

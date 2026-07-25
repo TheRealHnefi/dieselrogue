@@ -444,21 +444,23 @@ fn draw_map(map: &Map, viewport: Rect, context: &mut Rltk, blink: bool) {
 }
 
 fn render_open_tile(map: &Map, tile_index: usize, blink: bool, empty_character: char) -> Renderable {
+    let empty = Renderable {
+        glyph: rltk::to_cp437(empty_character),
+        color: RGB::from_f32(0.0, 0.5, 0.0),
+        background: rltk::RGB::named(rltk::BLACK),
+    };
+    if !map.visible_tiles[tile_index] {
+        return empty;
+    }
     match &map.pawns[tile_index] {
         Some(pawn) => Renderable {
             glyph: pawn.sprite.glyph(pawn.body.facing, pawn.sprite_index, blink),
             color: rltk::RGB::named(rltk::YELLOW),
             background: rltk::RGB::named(rltk::BLACK)
         },
-        None => {
-            match &map.items[tile_index] {
-                Some(item) => item.renderable,
-                None => Renderable {
-                    glyph: rltk::to_cp437(empty_character),
-                    color: RGB::from_f32(0.0, 0.5, 0.0),
-                    background: rltk::RGB::named(rltk::BLACK),
-                }
-            }
+        None => match &map.items[tile_index] {
+            Some(item) => item.renderable,
+            None => empty,
         }
     }
 }
