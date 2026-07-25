@@ -17,6 +17,19 @@ pub enum FieldOfView {
     Fov360,
 }
 
+impl FieldOfView {
+    /// Minimum dot product of (facing, normalised_dir_to_point) for the point to be visible.
+    /// Points with a lower value are in the blind spot.
+    pub fn min_visible_dot(&self) -> f32 {
+        match self {
+            FieldOfView::Fov90  =>  0.707, // cos 45°
+            FieldOfView::Fov180 =>  0.0,   // cos 90°
+            FieldOfView::Fov270 => -0.707, // cos 135°
+            FieldOfView::Fov360 => -1.0,   // always visible
+        }
+    }
+}
+
 impl Viewshed {
     pub fn new(range: u32, fov: FieldOfView) -> Self {
         Self {

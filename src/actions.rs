@@ -6,6 +6,7 @@ use crate::intent::*;
 use crate::animation::*;
 use crate::ability::*;
 use crate::DrivingState;
+use crate::sprite::Sprite;
 
 pub type Action = fn (entity_ref: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect>;
 
@@ -439,18 +440,26 @@ pub fn disembark_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog)
     }
 }
 
+
 pub fn melee_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
     let mut result = vec!();
 
     match entity.intent.data {
         IntentData::Target(pos) => {
             let index = map.xy_idx(pos.x, pos.y);
-            let id = map.pawns[index].as_ref().unwrap().entity_id;
-            log.log(format!("{} struck {}", entity.name, map.pawns[index].as_ref().unwrap().name));
+            let pawn = map.pawns[index].as_ref().unwrap();
+            let id = pawn.entity_id;
+            let is_human = matches!(pawn.sprite, Sprite::Human);
+            log.log(format!("{} struck {}", entity.name, pawn.name));
+            let bodypart_index = if entity.has_ability(Ability::Pugilism) { 0 } else { 1 };
+            let backstab = entity.has_ability(Ability::Backstab)
+                && is_human
+                && !pawn.can_see(entity.position);
+            let damage = if backstab { Damage::new(5, 0, 0, 0) } else { Damage::new(1, 0, 0, 0) };
             result.push(Effect::Damage {
                 entity_id: id,
-                bodypart_index: 1,
-                raw_damage: Damage::new(1, 0, 0, 0)
+                bodypart_index,
+                raw_damage: damage
             });
         },
         _ => unreachable!("melee_action called with non-target intent"),
