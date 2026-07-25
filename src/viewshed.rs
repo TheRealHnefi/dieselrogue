@@ -118,6 +118,9 @@ fn compute_fov(
 // Scans one octant using recursive shadowcasting.
 // Tracks shadow intervals in slope-space [0, 1] accumulated from opaque tiles.
 // A tile's shadow spans [(col-0.5)/row, (col+0.5)/row]; visibility is tested at center slope col/row.
+//
+// Key invariant: opaque tiles ALWAYS emit their shadow, even when they are themselves inside an
+// existing shadow interval.  Skipping shadow emission for in-shadow walls causes "holes".
 fn cast_light_octant(
     origin: Point,
     range: i32,
@@ -136,10 +139,6 @@ fn cast_light_octant(
             break; // entire octant is in shadow
         }
         for col in 0..=row {
-            let slope = col as f32 / row as f32;
-            if shadows.iter().any(|&(lo, hi)| lo <= slope && slope <= hi) {
-                continue;
-            }
             let dx = dx_row * row + dx_col * col;
             let dy = dy_row * row + dy_col * col;
             let x = origin.x + dx;
@@ -147,13 +146,45 @@ fn cast_light_octant(
             if x < 0 || y < 0 || x >= map_w || y >= map_h {
                 continue;
             }
-            if dx * dx + dy * dy <= range_sq {
-                out.push(Point::new(x, y));
-            }
-            if map.is_opaque(map.xy_idx(x, y)) {
-                let lo = ((col as f32 - 0.5) / row as f32).max(0.0);
-                let hi = (col as f32 + 0.5) / row as f32;
-                add_shadow(&mut shadows, lo, hi);
+
+            let slope     = col as f32 / row as f32;
+            let in_shadow = shadows.iter().any(|&(lo, hi)| lo <= slope && slope <= hi);
+            let opaque    = map.is_opaque(map.xy_idx(x, y));
+
+            if opaque {
+                // Always emit shadow from opaque tiles, regardless of whether the tile itself
+                // is in shadow.  This keeps the shadow cascade intact through thick walls.
+                let slo = ((col as f32 - 0.5) / row as f32).max(0.0);
+                let shi =  (col as f32 + 0.5) / row as f32;
+                add_shadow(&mut shadows, slo, shi);
+                if !in_shadow && dx * dx + dy * dy <= range_sq {
+                    out.push(Point::new(x, y)); // visible wall face
+                }
+            } else {
+                if in_shadow {
+                    continue;
+                }
+                // Block transparent tiles at the octant boundary (col==row==1) when both
+                // immediately-adjacent axis-aligned tiles are opaque.  Each wall casts shadow
+                // [0, 0.5] in its own octant but never reaches slope 1.0, so without this check
+                // a transparent tile wedged in the inside corner of two walls stays visible.
+                if col == row && row == 1 {
+                    let perp_x = origin.x + dx_row;
+                    let perp_y = origin.y + dy_row;
+                    let adj_x  = origin.x + dx_col;
+                    let adj_y  = origin.y + dy_col;
+                    let perp_opaque = perp_x >= 0 && perp_y >= 0 && perp_x < map_w && perp_y < map_h
+                        && map.is_opaque(map.xy_idx(perp_x, perp_y));
+                    let adj_opaque  = adj_x  >= 0 && adj_y  >= 0 && adj_x  < map_w && adj_y  < map_h
+                        && map.is_opaque(map.xy_idx(adj_x, adj_y));
+                    if perp_opaque && adj_opaque {
+                        add_shadow(&mut shadows, 0.5, 1.5);
+                        continue;
+                    }
+                }
+                if dx * dx + dy * dy <= range_sq {
+                    out.push(Point::new(x, y));
+                }
             }
         }
     }
