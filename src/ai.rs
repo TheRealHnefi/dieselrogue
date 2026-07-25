@@ -7,6 +7,7 @@ use crate::util::adjacent;
 use crate::components::*;
 use crate::intent::*;
 use crate::Ability;
+use crate::Item;
 
 const SUSPICIOUS_TURNS: u32 = 30;
 
@@ -570,6 +571,43 @@ impl ActorAI {
             Some(dir) => resolve_step(entity, dir, map, entities).ok().flatten(),
             None => None,
         }
+    }
+
+    fn is_combat_ready(&self, entity: &Entity, map: &Map) -> bool {
+        match entity.get_primary_weapon() {
+            Some(weapon) => match weapon.kind {
+                ItemKind::Firearm { ammo, .. } if ammo >= 1 => true,
+                _ => false
+            }
+            None => false
+        }
+        // TODO: Consider melee
+    }
+
+    fn can_fire(&self, entity: &Entity, map: &Map) -> bool {
+        for (action, slot) in entity.get_available_equipment_actions(map) {
+            match action.id {
+                ActionId::AimAtEntity | ActionId::AimAtPosition | ActionId::FanFire | ActionId::FireBurst | ActionId::FireRocket | ActionId::FireShot => return true,
+                _ => ()
+            }
+        }
+        false
+    }
+
+    fn equippable_weapons<'a>(&self, entity: &'a Entity, map: &'a Map) -> Vec<&'a Item> {
+        let mut retval = vec!();
+        for (action, item) in entity.get_available_inventory_actions(map) {
+            match action.id {
+                ActionId::Equip => {
+                    match item.kind {
+                        ItemKind::Firearm { ammo, .. } if ammo >= 1 => retval.push(item),
+                        _ => ()
+                    }
+                },
+                _ => ()
+            }
+        }
+        retval
     }
 }
 

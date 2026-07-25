@@ -279,7 +279,16 @@ impl Body {
         None
     }
 
-    pub fn get_item(&mut self, slot: SlotType) -> Option<&mut Item> {
+    pub fn get_item(&self, slot: SlotType) -> Option<&Item> {
+        for self_slot in &self.item_slots {
+            if self_slot.slot_type == slot {
+                return self_slot.item.as_ref();
+            }
+        }
+        None
+    }
+
+    pub fn get_item_mut(&mut self, slot: SlotType) -> Option<&mut Item> {
         for self_slot in &mut self.item_slots {
             if self_slot.slot_type == slot {
                 return self_slot.item.as_mut();
