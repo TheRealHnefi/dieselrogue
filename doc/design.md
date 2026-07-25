@@ -31,8 +31,6 @@ No stats! It's just busywork to keep track of.
  - disarm, stun, throw, dash, grab and hold, block
 * Burglar: Silent protagonist. Goes unseen before attacking. Relies on stealth.
  - predict movement, misdirection, lockpicking, backstab, sneak, tumble
-* Extropicist: Curious magician. Aims to uncover unearthly secrets. Relies on magic.
- - circles of magic, sense magic
 * Engineer: Practical intellectual. Relies on versatile equipment.
  - build consumables, handle traps, enhance equipment, assemble, disassemble
 * Pilot: 
@@ -60,6 +58,7 @@ Or perhaps no classes at all? Just perks?
 * Double stamina
 * Refuel stamina by spending HP
 * Instant inventory management
+* Wide vision
 
 #### Engineering
 * Build trap
@@ -148,8 +147,17 @@ Or perhaps no classes at all? Just perks?
 
 ### Resources:
 * HP: Local for each body part, plus overall HP. No regeneration.
-* Fatigue: Used for abilities, including magic. No regeneration.
-* Should there be a mana resource?
+* Fatigue: Used for abilities. No regeneration.
+
+### Status effects:
+* Blind: reduce vision range to 1
+* Burning: Take fire damage on all body parts every turn
+* Stuck: Cannot move
+* Stunned: Cannot act except wait
+* Aiming at target: Can fire on target next round if in line of sight and range
+* Aiming at area: Can fire on any target in area next round
+* Deaf: Cannot hear noise
+* Dazed: Cannot spend fatigue on abilities
 
 ## Combat ideas:
 * NO resource regeneration!
@@ -164,23 +172,12 @@ Or perhaps no classes at all? Just perks?
 ## Stealth:
 * All actors have a viewing direction. Turning takes an action. 180 degree FOV for most.
 * Listening can give approximate location of enemies.
-* Backstabbing unaware opponent is guaranteed success. The risk is getting to that point.
-
-## Magic:
-* Glyph-based. Finding a glyph lets player name it - they don't know what it actually does.
-* Spells are glyph combinations. Since glyphs are named by the player, spells need to be discovered.
-* Known spells can be shortcutted, like any other ability.
-* Extropy-based
+* Backstabbing unaware opponent is guaranteed kill. The risk is getting to that point.
 
 ## Tinkering:
 * Add/remove attributes on items.
 * Build completely new items, competitive with found items.
 * Construct consumables, but never infinites.
-
-## UI:
-* Need comprehensive shortcut system.
-* Need way to see character facing and localized damage.
-* When targeting: pick target first, then pick ability from list of applicable options
 
 ## Rounds:
 All actions are one of the following categories:
@@ -270,3 +267,63 @@ are walled in.
 
 Some blocks may form large roads through the map. This metalayer of organization may be added later,
 but it's possible this one floor layout will work regardless.
+
+# UI design
+
+Key concepts:
+* Important info at a glance
+ * Stuff that changes often
+ * Stuff that has immediate effects on play
+* Clearly labelled information always
+* Detailed info on separate screens
+* Comparisons between pieces of equipment
+
+Sum of all stuff to show:
+* Event log
+* Noise log/status
+* Body parts:
+ * Health
+ * Armor
+ * Equipment
+* Fatigue
+* Inventory
+ * Item names
+ * Item descriptions
+ * Item stats
+* Equipped items
+ * Weapons
+ * Armor
+ * Item stats
+ * Item names
+ * Empty slots
+ * Item descriptions
+* Abilities
+ * Ability names
+ * Ability descriptions
+ * Ability hotkeys
+* Status effects
+ * Status effect names
+ * Status effect descriptions
+ * Status effect durations
+* Enemy information
+ * Field of view
+ * Intent
+ * Description?
+ * Health
+ * Equipment
+* Square information
+ * Walls
+ * Doors
+ * Items
+* Location information
+ * Name of area
+ * Coordinates
+
+## At-a-glance data
+* Event log
+* Noise status
+* Body parts:
+ * Health
+* Fatigue
+* Status effects
+* Location information

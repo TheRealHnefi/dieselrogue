@@ -90,8 +90,7 @@ impl GameState for State {
     fn tick(&mut self, context: &mut Rltk) {
         let begin = Instant::now();
         let tick_interval = self.last_tick.elapsed().as_millis();
-        
-        context.cls();
+
         let monotime = self.start_tick.elapsed().as_millis();
         draw_main_screen(self, context, monotime);
 
@@ -132,24 +131,24 @@ impl GameState for State {
 }
 
 impl State {
-    pub fn get_viewport(&self) -> Rect {
+    pub fn get_viewport(&self, width: i32, height: i32) -> Rect {
         let camera_pos = match self.world.get_player() {
             Ok(player) => player.center(),
-            Err(_) => Point{x: (SCREEN_WIDTH / 2) as i32, y: (SCREEN_HEIGHT / 2) as i32}
+            Err(_) => Point{x: width / 2, y: height / 2}
         };
 
-        let mut top = max(camera_pos.y - SCREEN_HEIGHT as i32 / 2, 0);
-        let mut left = max(camera_pos.x - SCREEN_WIDTH as i32 / 2, 0);
-        let mut bottom = top + VIEWPORT_HEIGHT as i32;
-        let mut right = left + SCREEN_WIDTH as i32;
+        let mut top = max(camera_pos.y - height / 2, 0);
+        let mut left = max(camera_pos.x - width / 2, 0);
+        let mut bottom = top + height;
+        let mut right = left + width;
 
         if right > self.world.map.width as i32{
             right = self.world.map.width as i32;
-            left = right - SCREEN_WIDTH as i32;
+            left = right - width as i32;
         }
         if bottom > self.world.map.height as i32 {
             bottom = self.world.map.height as i32;
-            top = bottom - VIEWPORT_HEIGHT as i32;
+            top = bottom - height as i32;
         }
 
         Rect {
@@ -181,7 +180,10 @@ impl State {
     }
 
     fn animate(&mut self, phase: IntentPhase, monotime: u128, context: &mut Rltk) {
-        let animation_done = self.animation_system.render(self.get_viewport(), monotime, context);
+        let animation_done = self.animation_system.render(
+            self.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32),
+            monotime,
+            context);
         if animation_done {
             match phase.next() {
                 Some(next_phase) => self.run_state = RunState::Resolve(next_phase),
