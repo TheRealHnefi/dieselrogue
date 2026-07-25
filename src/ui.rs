@@ -603,6 +603,11 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
                         color: rltk::RGB::named(rltk::GREEN),
                         background: rltk::RGB::named(rltk::BLACK)
                     },
+                    TileType::Fence => Renderable {
+                        glyph: rltk::to_cp437('#'),
+                        color: rltk::RGB::named(rltk::GREEN),
+                        background: rltk::RGB::named(rltk::BLACK)
+                    },
                 };
                 if !debug_mode && !map.visible_tiles[index] {
                     renderable.color = renderable.color.to_greyscale();

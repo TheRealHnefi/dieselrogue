@@ -4,5 +4,6 @@ pub enum TileType {
     Floor,
     Ground,
     Road,
-    Doorway
+    Doorway,
+    Fence
 }

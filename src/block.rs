@@ -50,6 +50,10 @@ fn generate_blocks(filter: &str) -> Vec<Block> {
             block.tiles[index] = TileType::Doorway;
             index += 1;
           },
+          '#' => {
+            block.tiles[index] = TileType::Fence;
+            index += 1;
+          },
           _ => ()
         }
       }
@@ -174,14 +178,15 @@ fn valid_tile_neighbors(tile_1: Option<TileType>, tile_2: Option<TileType>) -> b
       (None, Some(TileType::Wall)) => true,
       (None, Some(TileType::Doorway)) => true,
       (Some(TileType::Wall), Some(TileType::Wall)) => true,
-      
       (Some(TileType::Wall), Some(TileType::Floor)) => true,
+      (Some(TileType::Wall), Some(TileType::Fence)) => true,
       (Some(TileType::Floor), Some(TileType::Floor)) => true,
       (Some(TileType::Floor), Some(TileType::Doorway)) => true,
       (Some(TileType::Ground), Some(TileType::Ground)) => true,
       (Some(TileType::Ground), Some(TileType::Doorway)) => true,
       (Some(TileType::Road), Some(TileType::Road)) => true,
       (Some(TileType::Road), Some(TileType::Doorway)) => true,
+      (Some(TileType::Fence), Some(TileType::Fence)) => true,
       (_, _) => false
     }
   }
