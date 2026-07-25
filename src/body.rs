@@ -286,6 +286,7 @@ impl Body {
                 }
             }
         }
+        self.noise_tolerance = if self.abilities.contains(&Ability::IronEars) { 50 } else { 15 };
     }
 
     pub fn update_armor(&mut self) {
