@@ -823,14 +823,22 @@ impl World {
             }).or(Some(old_id));
         }
 
-        // Pawn entity_ids on the map are now stale — rebuild them all.
-        for slot in self.map.pawns.iter_mut() {
-            *slot = None;
-        }
-        let entities = &self.entities;
-        let map = &mut self.map;
-        for entity in entities {
-            entity.create_pawns(map);
+        // Pawn entity_ids are now stale. Dead entities already cleared their pawns
+        // via kill(); surviving pawns are in the right tiles but hold old IDs.
+        // Update entity_id in-place.
+        if !deathlist.is_empty() {
+            let entities = &self.entities;
+            let map = &mut self.map;
+            for entity in entities {
+                for x in 0..entity.size_x {
+                    for y in 0..entity.size_y {
+                        let idx = map.xy_idx(entity.position.x + x as i32, entity.position.y + y as i32);
+                        if let Some(pawn) = map.pawns[idx].as_mut() {
+                            pawn.entity_id = entity.id;
+                        }
+                    }
+                }
+            }
         }
     }
 
