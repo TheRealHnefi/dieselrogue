@@ -44,8 +44,7 @@ impl GameState for State {
             RunState::AwaitingInput => {
                 self.execute();
                 self.run_state = RunState::AwaitingInput;
-            },
-            _ => ()
+            }
         }
 
         draw_main_screen(self, context);

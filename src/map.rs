@@ -2,7 +2,6 @@ use rltk::{RandomNumberGenerator, BaseMap, Algorithm2D, Point};
 use std::cmp::{max, min};
 use super::{Rect};
 use specs::prelude::*;
-use serde::{Serialize, Deserialize};
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
