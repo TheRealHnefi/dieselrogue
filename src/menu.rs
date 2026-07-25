@@ -384,47 +384,52 @@ fn action_open_keybind_menu(state: &mut State) -> RunState {
     RunState::AwaitingMenuInput
 }
 
-fn rebind_wait(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Wait,      None) }
-fn rebind_get_item(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::GetItem,   None) }
-fn rebind_disembark(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Disembark, None) }
-fn rebind_inventory(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Inventory, None) }
-fn rebind_equipment(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::Equipment, None) }
-fn rebind_ability(_: &mut State)   -> RunState { RunState::AwaitingRebind(RebindTarget::Ability,   None) }
-fn rebind_juke(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Juke,      None) }
-fn rebind_look(_: &mut State)      -> RunState { RunState::AwaitingRebind(RebindTarget::Look,      None) }
-fn rebind_open_menu(_: &mut State) -> RunState { RunState::AwaitingRebind(RebindTarget::OpenMenu,  None) }
-fn rebind_freelook(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::Freelook,  None) }
+fn rebind_wait(_: &mut State)             -> RunState { RunState::AwaitingRebind(RebindTarget::Wait,          None) }
+fn rebind_get_item(_: &mut State)         -> RunState { RunState::AwaitingRebind(RebindTarget::GetItem,       None) }
+fn rebind_disembark(_: &mut State)        -> RunState { RunState::AwaitingRebind(RebindTarget::Disembark,     None) }
+fn rebind_inventory(_: &mut State)        -> RunState { RunState::AwaitingRebind(RebindTarget::Inventory,     None) }
+fn rebind_equipment(_: &mut State)        -> RunState { RunState::AwaitingRebind(RebindTarget::Equipment,     None) }
+fn rebind_ability(_: &mut State)          -> RunState { RunState::AwaitingRebind(RebindTarget::Ability,       None) }
+fn rebind_juke(_: &mut State)             -> RunState { RunState::AwaitingRebind(RebindTarget::Juke,          None) }
+fn rebind_look(_: &mut State)             -> RunState { RunState::AwaitingRebind(RebindTarget::Look,          None) }
+fn rebind_open_menu(_: &mut State)        -> RunState { RunState::AwaitingRebind(RebindTarget::OpenMenu,      None) }
+fn rebind_freelook(_: &mut State)         -> RunState { RunState::AwaitingRebind(RebindTarget::Freelook,      None) }
+fn rebind_move_left(_: &mut State)        -> RunState { RunState::AwaitingRebind(RebindTarget::MoveLeft,      None) }
+fn rebind_move_right(_: &mut State)       -> RunState { RunState::AwaitingRebind(RebindTarget::MoveRight,     None) }
+fn rebind_move_up(_: &mut State)          -> RunState { RunState::AwaitingRebind(RebindTarget::MoveUp,        None) }
+fn rebind_move_down(_: &mut State)        -> RunState { RunState::AwaitingRebind(RebindTarget::MoveDown,      None) }
+fn rebind_move_up_left(_: &mut State)     -> RunState { RunState::AwaitingRebind(RebindTarget::MoveUpLeft,    None) }
+fn rebind_move_up_right(_: &mut State)    -> RunState { RunState::AwaitingRebind(RebindTarget::MoveUpRight,   None) }
+fn rebind_move_down_right(_: &mut State)  -> RunState { RunState::AwaitingRebind(RebindTarget::MoveDownRight, None) }
+fn rebind_move_down_left(_: &mut State)   -> RunState { RunState::AwaitingRebind(RebindTarget::MoveDownLeft,  None) }
 
 pub fn keybind_menu(bindings: &Bindings) -> MenuPanel<SystemRow> {
-    let row = |name: &str, key| SystemRow {
-        text: format!("{:<16}{}", name, key_to_str(key)),
-        action: match name {
-            "Wait"      => rebind_wait,
-            "Get item"  => rebind_get_item,
-            "Disembark" => rebind_disembark,
-            "Inventory" => rebind_inventory,
-            "Equipment" => rebind_equipment,
-            "Ability"   => rebind_ability,
-            "Juke"      => rebind_juke,
-            "Look"      => rebind_look,
-            "Open menu" => rebind_open_menu,
-            _           => rebind_freelook,
-        },
+    let row = |name: &str, key, action: fn(&mut State) -> RunState| SystemRow {
+        text: format!("{:<18}{}", name, key_to_str(key)),
+        action,
     };
     MenuPanel {
         x: 35,
-        y: 20,
+        y: 7,
         rows: vec![
-            row("Wait",      bindings.wait),
-            row("Get item",  bindings.get_item),
-            row("Disembark", bindings.disembark),
-            row("Inventory", bindings.inventory),
-            row("Equipment", bindings.equipment),
-            row("Ability",   bindings.ability),
-            row("Juke",      bindings.juke),
-            row("Look",      bindings.look),
-            row("Open menu", bindings.open_menu),
-            row("Freelook",  bindings.freelook),
+            row("Wait",           bindings.wait,           rebind_wait),
+            row("Get item",       bindings.get_item,       rebind_get_item),
+            row("Disembark",      bindings.disembark,      rebind_disembark),
+            row("Inventory",      bindings.inventory,      rebind_inventory),
+            row("Equipment",      bindings.equipment,      rebind_equipment),
+            row("Ability",        bindings.ability,        rebind_ability),
+            row("Juke",           bindings.juke,           rebind_juke),
+            row("Look",           bindings.look,           rebind_look),
+            row("Open menu",      bindings.open_menu,      rebind_open_menu),
+            row("Freelook",       bindings.freelook,       rebind_freelook),
+            row("Move left",      bindings.move_left,      rebind_move_left),
+            row("Move right",     bindings.move_right,     rebind_move_right),
+            row("Move up",        bindings.move_up,        rebind_move_up),
+            row("Move down",      bindings.move_down,      rebind_move_down),
+            row("Move up-left",   bindings.move_up_left,   rebind_move_up_left),
+            row("Move up-right",  bindings.move_up_right,  rebind_move_up_right),
+            row("Move down-right",bindings.move_down_right,rebind_move_down_right),
+            row("Move down-left", bindings.move_down_left, rebind_move_down_left),
         ],
         selected_row: 0,
         no_selectable_rows: false,

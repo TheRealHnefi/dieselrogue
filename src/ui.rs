@@ -170,16 +170,24 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
 pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, context: &mut Rltk) {
     context.set_active_console(UI_CONSOLE_INDEX);
     let name = match target {
-        RebindTarget::Wait =>      "Wait",
-        RebindTarget::GetItem =>   "Get item",
-        RebindTarget::Disembark => "Disembark",
-        RebindTarget::Inventory => "Inventory",
-        RebindTarget::Equipment => "Equipment",
-        RebindTarget::Ability =>   "Ability",
-        RebindTarget::Juke =>      "Juke",
-        RebindTarget::Look =>      "Look",
-        RebindTarget::OpenMenu =>  "Open menu",
-        RebindTarget::Freelook =>  "Freelook",
+        RebindTarget::Wait =>            "Wait",
+        RebindTarget::GetItem =>         "Get item",
+        RebindTarget::Disembark =>       "Disembark",
+        RebindTarget::Inventory =>       "Inventory",
+        RebindTarget::Equipment =>       "Equipment",
+        RebindTarget::Ability =>         "Ability",
+        RebindTarget::Juke =>            "Juke",
+        RebindTarget::Look =>            "Look",
+        RebindTarget::OpenMenu =>        "Open menu",
+        RebindTarget::Freelook =>        "Freelook",
+        RebindTarget::MoveLeft =>        "Move left",
+        RebindTarget::MoveRight =>       "Move right",
+        RebindTarget::MoveUp =>          "Move up",
+        RebindTarget::MoveDown =>        "Move down",
+        RebindTarget::MoveUpLeft =>      "Move up-left",
+        RebindTarget::MoveUpRight =>     "Move up-right",
+        RebindTarget::MoveDownRight =>   "Move down-right",
+        RebindTarget::MoveDownLeft =>    "Move down-left",
     };
     let (text, color) = match conflict {
         Some(other) => (
@@ -191,7 +199,8 @@ pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, 
             INACTIVE_COLOR,
         ),
     };
-    context.print_color_centered(34, color, BG_COLOR, &text);
+    // Menu is at y=7 with 18 rows → bottom border at y=26; prompt sits two lines below
+    context.print_color_centered(28, color, BG_COLOR, &text);
 }
 
 pub fn draw_welcome_splash(context: &mut Rltk) {
