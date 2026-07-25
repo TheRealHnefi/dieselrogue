@@ -10,3 +10,14 @@ simultaneously and actions are entirely deterministic.
 The interface consists of traditional, ASCII-like tiles using a modified CP437 font.
 
 The game is implemented in Rust, using RLTK.
+
+## Screenshots
+
+![Gameplay](doc/screenshot1.png)
+*The main gameplay screen, with the map viewport and the status, inventory, equipment, and log panels.*
+
+![Equipment](doc/screenshot2.png)
+*The equipment menu, showing equipped items.*
+
+![Level up](doc/screenshot3.png)
+*Choosing an ability on level up, with the ability description panel.*
