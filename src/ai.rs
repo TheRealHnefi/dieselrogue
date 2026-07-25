@@ -523,11 +523,12 @@ impl ActorAI {
                 // Stuck on a corner with a visible target — fall through to A*.
                 self.astar_step(from_idx, dest_idx, map, tolerance)
             }
-        } else if let Some(idx) = map.field_for(dest_idx).and_then(|f| f.step(from_idx, map)) {
+        } else if let Some(idx) = map.field_step(from_idx, dest_idx) {
             // A resident static-terrain flow field covers this goal (e.g. a
             // patrol waypoint or guard anchor): obstacle-aware O(8) descent,
             // shared across every agent heading here, with no per-agent A*.
-            // Falls through to A* below only if the field can't produce a step.
+            // Falls through to A* below only if the field can't produce a step
+            // (or flow fields are disabled).
             self.path_target = None;
             Some(map.idx_pos(idx))
         } else {

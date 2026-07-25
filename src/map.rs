@@ -95,6 +95,11 @@ pub struct Map {
     /// their navigation amortize onto shared flow fields. Append ad-hoc routes
     /// via [`Map::register_patrol_route`].
     pub patrol_routes: Vec<Vec<Point>>,
+    /// When `false`, the flow-field layer is bypassed entirely: [`Map::field_step`]
+    /// returns `None` and the Step 0 pre-pass skips building/evicting fields, so
+    /// all AI navigation falls back to A*. Lets a benchmark compare fields vs
+    /// pure A*. Defaults to `true`.
+    pub use_flow_fields: bool,
 }
 
 impl Map {
@@ -259,6 +264,7 @@ impl Map {
           fov_blocked: vec![false; tile_count],
           nav_fields: NavFieldCache::new(),
           patrol_routes: Vec::new(),
+          use_flow_fields: true,
         };
 
         let mut generated_blocks = generate_block_grid(size_in_blocks, rng);
@@ -296,6 +302,7 @@ impl Map {
             fov_blocked: vec![false; tile_count],
             nav_fields: NavFieldCache::new(),
             patrol_routes: Vec::new(),
+            use_flow_fields: true,
         }
     }
 
@@ -408,6 +415,17 @@ impl Map {
     /// The resident flow field toward `goal`, if one has been built.
     pub fn field_for(&self, goal: usize) -> Option<&DistField> {
         self.nav_fields.get(goal)
+    }
+
+    /// Next step from `from` down the flow field toward `goal`, or `None` if no
+    /// field covers the goal, the goal is out of a bounded field's reach, or
+    /// flow fields are disabled ([`Map::use_flow_fields`]). Callers fall back to
+    /// A* on `None`.
+    pub fn field_step(&self, from: usize, goal: usize) -> Option<usize> {
+        if !self.use_flow_fields {
+            return None;
+        }
+        self.field_for(goal).and_then(|f| f.step(from, self))
     }
 
     /// Age and evict resident fields against this turn's `demanded` goal set:

@@ -325,42 +325,46 @@ impl World {
         // Read before this turn's stimulus is processed, so a just-changed belief
         // simply misses its field for one turn. Built serially under &mut map so
         // the read-only intent loop below can read fields under a shared borrow.
-        const FIELD_DEMAND_THRESHOLD:    usize = 12;   // min actors sharing a goal
-        const MAX_FIELD_BUILDS_PER_TURN: usize = 4;    // backstop against spikes
-        const DYNAMIC_FIELD_MAX_COST:    u32   = 800;  // ~80-tile investigation radius
-        const FIELD_EVICT_TTL:           u32   = 60;   // turns undemanded before eviction
-        const FIELD_CACHE_CAP:           usize = 64;   // hard backstop on resident fields
+        // Skipped entirely when flow fields are disabled — navigation then falls
+        // back to pure A* (used by the benchmark to compare the two).
+        if self.map.use_flow_fields {
+            const FIELD_DEMAND_THRESHOLD:    usize = 12;   // min actors sharing a goal
+            const MAX_FIELD_BUILDS_PER_TURN: usize = 4;    // backstop against spikes
+            const DYNAMIC_FIELD_MAX_COST:    u32   = 800;  // ~80-tile investigation radius
+            const FIELD_EVICT_TTL:           u32   = 60;   // turns undemanded before eviction
+            const FIELD_CACHE_CAP:           usize = 64;   // hard backstop on resident fields
 
-        // Count demand per goal cell, tracking whether a bounded field suffices.
-        let mut demand: HashMap<usize, (usize, bool)> = HashMap::new();
-        {
-            let map = &self.map;
-            for e in &self.entities {
-                if let AI::Actor(actor) = &e.ai {
-                    if let Some((p, bounded)) = actor.nav_field_goal(map) {
-                        let entry = demand.entry(map.pos_idx(p)).or_insert((0, bounded));
-                        entry.0 += 1;
-                        entry.1 &= bounded; // any full-map (static) requester wins
+            // Count demand per goal cell, tracking whether a bounded field suffices.
+            let mut demand: HashMap<usize, (usize, bool)> = HashMap::new();
+            {
+                let map = &self.map;
+                for e in &self.entities {
+                    if let AI::Actor(actor) = &e.ai {
+                        if let Some((p, bounded)) = actor.nav_field_goal(map) {
+                            let entry = demand.entry(map.pos_idx(p)).or_insert((0, bounded));
+                            entry.0 += 1;
+                            entry.1 &= bounded; // any full-map (static) requester wins
+                        }
                     }
                 }
             }
-        }
 
-        // Evict fields whose goal is no longer demanded (TTL hysteresis + cap).
-        let demanded: HashSet<usize> = demand.keys().copied().collect();
-        self.map.evict_fields(&demanded, FIELD_EVICT_TTL, FIELD_CACHE_CAP);
+            // Evict fields whose goal is no longer demanded (TTL hysteresis + cap).
+            let demanded: HashSet<usize> = demand.keys().copied().collect();
+            self.map.evict_fields(&demanded, FIELD_EVICT_TTL, FIELD_CACHE_CAP);
 
-        // Build the most-demanded new goals, gated by threshold and per-turn cap.
-        let mut popular: Vec<(usize, usize, bool)> = demand.into_iter()
-            .filter(|&(goal, (n, _))| n >= FIELD_DEMAND_THRESHOLD && self.map.field_for(goal).is_none())
-            .map(|(goal, (n, bounded))| (goal, n, bounded))
-            .collect();
-        popular.sort_unstable_by(|a, b| b.1.cmp(&a.1));
-        for (goal, _, bounded) in popular.into_iter().take(MAX_FIELD_BUILDS_PER_TURN) {
-            if bounded {
-                self.map.ensure_field_bounded(goal, DYNAMIC_FIELD_MAX_COST);
-            } else {
-                self.map.ensure_field(goal);
+            // Build the most-demanded new goals, gated by threshold and per-turn cap.
+            let mut popular: Vec<(usize, usize, bool)> = demand.into_iter()
+                .filter(|&(goal, (n, _))| n >= FIELD_DEMAND_THRESHOLD && self.map.field_for(goal).is_none())
+                .map(|(goal, (n, bounded))| (goal, n, bounded))
+                .collect();
+            popular.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+            for (goal, _, bounded) in popular.into_iter().take(MAX_FIELD_BUILDS_PER_TURN) {
+                if bounded {
+                    self.map.ensure_field_bounded(goal, DYNAMIC_FIELD_MAX_COST);
+                } else {
+                    self.map.ensure_field(goal);
+                }
             }
         }
 
@@ -1338,6 +1342,153 @@ mod tests {
                 None => break,
             }
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // AI performance benchmark. Ignored by default — run explicitly, release:
+    //
+    //   cargo test --release -- --ignored --nocapture ai_benchmark
+    //
+    // Env overrides (all optional):
+    //   BENCH_SIZE=16       map size in 32-tile blocks
+    //   BENCH_ACTORS=2000   target actor count
+    //   BENCH_TICKS=60      timed ticks per config
+    //   BENCH_WARMUP=20     untimed warm-up ticks (lets fields build)
+    //   BENCH_PARALLEL=1    1 = rayon parallel AI, 0 = serial
+    //
+    // It times World::resolve_intent_declaration (where all AI pathfinding
+    // lives) per tick, for two workloads × {flow fields ON, pure A* OFF}:
+    //   - patrol: everyone Unaware, navigating shared ring corners (full-map
+    //             fields, thousands of shared readers).
+    //   - swarm:  a cluster all Alert to one shared cell (bounded dynamic field).
+    // ---------------------------------------------------------------------
+
+    fn bench_env_usize(key: &str, default: usize) -> usize {
+        std::env::var(key).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
+    }
+
+    /// Scatter patrollers across free tiles until the world holds `target` actors.
+    fn bench_fill_patrollers(world: &mut World, target: usize) {
+        let (w, h) = (world.map.width as i32, world.map.height as i32);
+        let mut placed = 0usize;
+        let mut y = 2;
+        while y < h - 2 && world.entities.len() < target {
+            let mut x = 2;
+            while x < w - 2 && world.entities.len() < target {
+                if !world.map.blocked(x, y) {
+                    let pos = Point { x, y };
+                    let route_id = world.map.nearest_patrol_route(pos);
+                    let wpi = world.map.nearest_waypoint_index(route_id, pos);
+                    if world.create_patrol_actor(pos, Direction::Up, format!("Bench {}", placed), route_id, wpi, CombatTactic::Pursue).is_ok() {
+                        placed += 1;
+                    }
+                }
+                x += 3;
+            }
+            y += 3;
+        }
+    }
+
+    /// Spawn a cluster of actors around `center`, all Alert and investigating that
+    /// same cell — the shared-goal case a dynamic field is meant to serve. Kept
+    /// within the dynamic field's bounded radius so the field actually covers them.
+    fn bench_fill_swarm(world: &mut World, target: usize, center: Point) {
+        const R: i32 = 60; // < DYNAMIC_FIELD_MAX_COST radius (~80 tiles)
+        let (w, h) = (world.map.width as i32, world.map.height as i32);
+        let mut placed = 0usize;
+        let mut y = (center.y - R).max(2);
+        while y < (center.y + R).min(h - 2) && world.entities.len() < target {
+            let mut x = (center.x - R).max(2);
+            while x < (center.x + R).min(w - 2) && world.entities.len() < target {
+                if !world.map.blocked(x, y) {
+                    if world.create_guard_actor(Point { x, y }, Direction::Up, format!("Swarm {}", placed), CombatTactic::Pursue).is_ok() {
+                        placed += 1;
+                    }
+                }
+                x += 2;
+            }
+            y += 2;
+        }
+        for e in world.entities.iter_mut() {
+            if let AI::Actor(actor) = &mut e.ai {
+                actor.alert = AlertLevel::Alert {
+                    last_known: center,
+                    turns_remaining: u32::MAX,
+                    search: SearchBehavior::MoveToLastKnown,
+                };
+            }
+        }
+    }
+
+    fn bench_report(label: &str, mut samples: Vec<f64>, actors: usize) {
+        samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let n = samples.len();
+        let avg: f64 = samples.iter().sum::<f64>() / n as f64;
+        let pct = |q: f64| samples[((n as f64 * q) as usize).min(n - 1)];
+        println!(
+            "  {:<20} actors={:>5}  avg={:>8.3}ms  p50={:>8.3}ms  p99={:>8.3}ms  max={:>8.3}ms  ({:>6.2} us/actor)",
+            label, actors, avg, pct(0.50), pct(0.99), samples[n - 1], avg * 1000.0 / actors as f64,
+        );
+    }
+
+    fn bench_run(label: &str, size: usize, target: usize, ticks: usize, warmup: usize, use_fields: bool, parallel: bool, swarm: bool) {
+        let mut world = World::new(size, 1);
+        world.parallel_ai = parallel;
+        world.map.use_flow_fields = use_fields;
+
+        if swarm {
+            let center = Point { x: (world.map.width / 4) as i32, y: (world.map.height / 4) as i32 };
+            bench_fill_swarm(&mut world, target, center);
+        } else {
+            bench_fill_patrollers(&mut world, target);
+        }
+        let actors = world.entities.len();
+
+        let mut log = GameLog { entries: vec![] };
+        let run_phases = |world: &mut World, log: &mut GameLog| {
+            let mut phase = ExecutionPhase::Idle;
+            loop {
+                world.resolve_phase(phase, log);
+                match phase.next() { Some(next) => phase = next, None => break }
+            }
+            log.entries.clear();
+        };
+
+        for _ in 0..warmup {
+            world.resolve_intent_declaration();
+            run_phases(&mut world, &mut log);
+        }
+
+        let mut samples = Vec::with_capacity(ticks);
+        for _ in 0..ticks {
+            let t0 = std::time::Instant::now();
+            world.resolve_intent_declaration();
+            samples.push(t0.elapsed().as_secs_f64() * 1000.0);
+            run_phases(&mut world, &mut log);
+        }
+        bench_report(label, samples, actors);
+    }
+
+    #[test]
+    #[ignore]
+    fn ai_benchmark() {
+        let size     = bench_env_usize("BENCH_SIZE", 16);
+        let target   = bench_env_usize("BENCH_ACTORS", 2000);
+        let ticks    = bench_env_usize("BENCH_TICKS", 60);
+        let warmup   = bench_env_usize("BENCH_WARMUP", 20);
+        let parallel = bench_env_usize("BENCH_PARALLEL", 1) != 0;
+
+        println!(
+            "\n=== AI benchmark: size={} blocks (~{}x{} tiles), ~{} actors, {} ticks (warmup {}), parallel={} ===",
+            size, size * 32, size * 32, target, ticks, warmup, parallel,
+        );
+        println!("Timing World::resolve_intent_declaration per tick:\n");
+
+        bench_run("patrol fields=ON",  size, target, ticks, warmup, true,  parallel, false);
+        bench_run("patrol fields=OFF", size, target, ticks, warmup, false, parallel, false);
+        bench_run("swarm  fields=ON",  size, target, ticks, warmup, true,  parallel, true);
+        bench_run("swarm  fields=OFF", size, target, ticks, warmup, false, parallel, true);
+        println!();
     }
 
     #[test]
