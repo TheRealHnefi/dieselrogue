@@ -80,19 +80,19 @@ fn main() -> rltk::BError {
         Direction::Up,
         String::from("Player"));
 
-    let max_room_index = std::cmp::min(state.world.map.rooms.len(), 5);
+    // let max_room_index = std::cmp::min(state.world.map.rooms.len(), 5);
 
-    let _result = state.world.create_patrolling_goon(Point {x: pos.x + 1, y: pos.y+1},
-        Direction::Up,
-        String::from("Goon"),
-        (0..state.world.map.rooms.len()).collect());
+    // let _result = state.world.create_patrolling_goon(Point {x: pos.x + 1, y: pos.y+1},
+    //     Direction::Up,
+    //     String::from("Goon"),
+    //     (0..state.world.map.rooms.len()).collect());
 
-    let _result = state.world.create_patrolling_goon(Point {x: state.world.map.rooms[2].center().0, y: state.world.map.rooms[2].center().1},
-        Direction::Up,
-        String::from("Goon"),
-        (0..max_room_index).collect());
+    // let _result = state.world.create_patrolling_goon(Point {x: state.world.map.rooms[2].center().0, y: state.world.map.rooms[2].center().1},
+    //     Direction::Up,
+    //     String::from("Goon"),
+    //     (0..max_room_index).collect());
 
-    let _result = state.world.create_tank(Point {x: state.world.map.rooms[3].x1 + 1, y: state.world.map.rooms[3].y1 + 1},
+    let _result = state.world.create_tank(Point {x: pos.x, y: pos.y - 4},
         Direction::Up,
         String::from("Tank"));
 

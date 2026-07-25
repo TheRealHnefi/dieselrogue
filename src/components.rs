@@ -70,7 +70,8 @@ pub enum Effect {
     Damage {entity_id: usize, bodypart_index: usize, raw_damage: u32},
     OpenDoor(Point),
     DestroyWall(Point),
-    Animation(Animation)
+    Animation(Animation),
+    Embark{pilot_id: usize, vehicle_id: usize}
 }
 
 #[derive (PartialEq, Eq, Copy, Clone)]

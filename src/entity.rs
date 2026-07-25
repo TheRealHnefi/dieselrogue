@@ -7,13 +7,23 @@ use crate::GameLog;
 use crate::Viewshed;
 use crate::Ability;
 use crate::Map;
+use crate::TileType;
 use crate::Item;
 use crate::Body;
 use crate::animation::*;
 
+#[derive(PartialEq, Clone)]
+pub enum DrivingState {
+    None,
+    Driving(usize),
+    DrivenBy(usize),
+    Drivable
+}
+
 /// Concrete type containing all data of something that acts and moves.
 pub struct Entity {
     pub id: usize,
+    pub driving: DrivingState,
     pub sprite: Sprite,
     pub size: u32,
     pub position: Point,
@@ -28,6 +38,7 @@ impl Entity {
     pub fn new_human(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
+            driving: DrivingState::None,
             sprite: Sprite::Human,
             size: 1,
             position: pos,
@@ -42,6 +53,7 @@ impl Entity {
     pub fn new_patrolling_goon(id: usize, pos: Point, facing: Direction, name: String, waypoints: Vec<Point>) -> Self {
         Self {
             id: id,
+            driving: DrivingState::None,
             sprite: Sprite::Human,
             size: 1,
             position: pos,
@@ -56,6 +68,7 @@ impl Entity {
     pub fn new_tank(id: usize, pos: Point, facing: Direction, name: String) -> Self {
         Self {
             id: id,
+            driving: DrivingState::Drivable,
             sprite: Sprite::Tank,
             size: 3,
             position: pos,
@@ -67,12 +80,24 @@ impl Entity {
         }
     }
 
-    pub fn check_fit(&self, pos: Point, map: &mut Map) -> bool {
+    pub fn check_fit(&self, pos: Point, map: &Map) -> bool {
         for x in 0..self.size {
             for y in 0..self.size {
                 let index = map.xy_idx(pos.x + x as i32, pos.y + y as i32);
-                if map.pawns[index].is_some() || map.blocked_idx(index) {
-                    return false;
+                match &map.pawns[index] {
+                    Some(pawn) => {
+                        if pawn.entity_id != self.id {
+                            return false;
+                        }
+                    },
+                    None => {
+                        match map.tiles[index] {
+                            TileType::Wall => return false,
+                            TileType::ClosedDoor => return false,
+                            TileType::Floor => (),
+                            TileType::OpenDoor => ()
+                        }
+                    }
                 }
             }
         }
@@ -86,6 +111,7 @@ impl Entity {
                 let index = map.xy_idx(self.position.x + x as i32, self.position.y + y as i32);
                 map.pawns[index] = Some(Pawn {
                     entity_id: self.id,
+                    driving: self.driving.clone(),
                     sprite: self.sprite.clone(),
                     sprite_index: x + y * self.size,
                     name: self.name.clone(),
@@ -127,6 +153,22 @@ impl Entity {
         }
         else {
             None
+        }
+    }
+
+    pub fn declare_intent_by_pilot(&mut self, map: &Map, pilot_ai: &mut AI) {
+        match pilot_ai {
+            AI::Patrolling(ai) => {
+                self.intent = ai.declare_intent(self.position, &self.body, map);
+            },
+            AI::Rotator => {
+                self.intent = Intent {
+                    phase: IntentPhase::Movement,
+                    data: IntentData::Direction(self.body.facing.clockwise()),
+                    action: Entity::resolve_turn
+                };
+            },
+            AI::None => ()
         }
     }
 
@@ -514,7 +556,7 @@ impl Entity {
 
         match self.intent.data {
             IntentData::Target(pos) => {
-                if !map.blocked(pos.x, pos.y) {
+                if self.check_fit(pos, map) {
                     self.set_position(pos, map);
                 }
             },
@@ -543,8 +585,24 @@ impl Entity {
                 return vec!();
             }
         }
-        
+
         vec!()
+    }
+
+    pub fn resolve_embark(&mut self, map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
+        match self.intent.data {
+            IntentData::Target(pos) => {
+                let index = map.pos_idx(pos);
+                match &map.pawns[index] {
+                    Some(pawn) => {
+                        let vehicle_id = pawn.entity_id;
+                        return vec!(Effect::Embark{pilot_id: self.id, vehicle_id: vehicle_id});
+                    },
+                    None => return vec!()
+                }
+            },
+            _ => return vec!()
+        }
     }
 
     pub fn resolve_melee(&mut self, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
@@ -616,6 +674,7 @@ impl Entity {
 #[derive(Clone)]
 pub struct Pawn {
     pub entity_id: usize,
+    pub driving: DrivingState,
     pub sprite: Sprite,
     pub sprite_index: u32,
     pub name: String,
