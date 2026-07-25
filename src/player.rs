@@ -55,6 +55,9 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
                     };
                 }
                 else if pawn.driving == DrivingState::Drivable {
+                    if !player.has_ability(Ability::Embark) {
+                        return Err(GameError{error: Error::BadPrecondition, message: "You don't know how to operate that vehicle.".to_string()});
+                    }
                     player.intent = Intent {
                         phase: ExecutionPhase::Movement,
                         data: IntentData::Target(target_pos),
@@ -69,6 +72,9 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
                 }
             },
             None => {
+                if !player.check_fit(target_pos, &world.map) {
+                    return Err(GameError{error: Error::BadPrecondition, message: "Bump!".to_string()});
+                }
                 player.intent = Intent {
                     phase: ExecutionPhase::Movement,
                     data: IntentData::Target(target_pos),
