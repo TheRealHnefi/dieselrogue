@@ -57,6 +57,11 @@ const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
 const ENERGY_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
 
+const WALL_COLOR: rltk::RGB = RGB {r: 0.7, g: 0.6, b: 0.4};
+const GROUND_COLOR: rltk::RGB = RGB {r: 0.3, g: 0.6, b: 0.1};
+const ROAD_COLOR: rltk::RGB = RGB {r: 0.3, g: 0.3, b: 0.1};
+const FLOOR_COLOR: rltk::RGB = RGB {r: 0.5, g: 0.3, b: 0.1};
+
 pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
     context.set_active_console(UI_CONSOLE_INDEX);
 
@@ -622,23 +627,23 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
             let index = map.xy_idx(x, y);
             if debug_mode || map.revealed_tiles[index] {
                 let mut renderable = match map.tiles[index] {
-                    TileType::Floor => render_open_tile(map, entities, index, blink, monotime, '-', debug_mode),
-                    TileType::Ground => render_open_tile(map, entities, index, blink, monotime, '.', debug_mode),
-                    TileType::Road => render_open_tile(map, entities, index, blink, monotime, '_', debug_mode),
-                    TileType::Doorway => render_open_tile(map, entities, index, blink, monotime, ' ', debug_mode),
+                    TileType::Floor => render_open_tile(map, entities, index, blink, monotime, '-', FLOOR_COLOR, debug_mode),
+                    TileType::Ground => render_open_tile(map, entities, index, blink, monotime, '.', GROUND_COLOR, debug_mode),
+                    TileType::Road => render_open_tile(map, entities, index, blink, monotime, '_', ROAD_COLOR, debug_mode),
+                    TileType::Doorway => render_open_tile(map, entities, index, blink, monotime, ' ', FLOOR_COLOR, debug_mode),
                     TileType::Wall => Renderable {
                         glyph: rltk::to_cp437('█'),
-                        color: rltk::RGB::named(rltk::GREEN),
+                        color: WALL_COLOR,
                         background: rltk::RGB::named(rltk::BLACK)
                     },
                     TileType::Fence => Renderable {
                         glyph: rltk::to_cp437('#'),
-                        color: rltk::RGB::named(rltk::GREEN),
+                        color: WALL_COLOR,
                         background: rltk::RGB::named(rltk::BLACK)
                     },
                     TileType::Window => Renderable {
                         glyph: 8,
-                        color: rltk::RGB::named(rltk::GREEN),
+                        color: WALL_COLOR,
                         background: rltk::RGB::named(rltk::BLACK)
                     }
                 };
@@ -651,10 +656,10 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
     }
 }
 
-fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bool, monotime: u128, empty_character: char, debug_mode: bool) -> Renderable {
+fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, blink: bool, monotime: u128, empty_character: char, empty_color: rltk::RGB, debug_mode: bool) -> Renderable {
     let empty = Renderable {
         glyph: rltk::to_cp437(empty_character),
-        color: RGB::from_f32(0.0, 0.5, 0.0),
+        color: empty_color,
         background: rltk::RGB::named(rltk::BLACK),
     };
     if !debug_mode && !map.visible_tiles[tile_index] {
