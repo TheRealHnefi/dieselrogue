@@ -1,5 +1,4 @@
 * UI redesign
- * Separate layers for UI and map
  * Better main UI
  * Minimap
  * Better inventory screen
@@ -39,6 +38,7 @@
 * Weapons
  * Limited range
  * Fire only in FoV
+* Limit inventory size to 20
 * Refactor player functions
 * Refactor item abilities and innate abilities
 * Refactor menu system (oh my god it sucks!)

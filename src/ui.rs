@@ -158,12 +158,14 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         Err(_) => return
     };
 
+    // Location panel
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "Location: Unknown");
     context.print_color(UI_X_OFFSET + LABEL_OFFSET + 35, offset, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
     offset += 1;
     let pos = player.center();
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, format!("Position: {},{}", pos.x, pos.y));
 
+    // Health panel
     offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 1;
     const HEALTH_X_OFFSET: usize = UI_X_OFFSET + LABEL_OFFSET + 9;
     const PHYS_X_OFFSET: usize = HEALTH_X_OFFSET + 9;
@@ -175,6 +177,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     context.print_color(ELEC_X_OFFSET, offset, ELEC_COLOR, BG_COLOR, "Electric");
     context.print_color(FIRE_X_OFFSET, offset, FIRE_COLOR, BG_COLOR, "Fire");
 
+    // Status effect panel
     offset += 1;
     for bodypart in &player.body.parts {
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, &bodypart.name);
@@ -194,6 +197,13 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         } else {
             context.print_color(UI_X_OFFSET + LABEL_OFFSET + HEALTH_PANEL_WIDTH + STATUS_COLUMN_WIDTH, offset + i - STATUS_COLUMN_HEIGHT, LABEL_COLOR, BG_COLOR, status.to_string());
         }
+    }
+
+    // Inventory panel
+    offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + 2;
+    for item in &player.body.inventory {
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, &item.name);
+        offset += 1;
     }
 }
 
