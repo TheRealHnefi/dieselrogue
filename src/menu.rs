@@ -1,5 +1,6 @@
 use rltk::{VirtualKeyCode};
 use specs::prelude::*;
+use super::RunState;
 
 pub struct Menu {
     pub x: i32,
@@ -17,4 +18,4 @@ pub struct MenuRow {
 // * Go up a menu level
 // * Close the menu entirely
 // * Change things in the world
-type MenuFunction = fn (ecs: &mut World) -> ();
+type MenuFunction = fn (ecs: &mut World) -> RunState;
