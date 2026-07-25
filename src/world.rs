@@ -315,7 +315,7 @@ impl World {
                     match &self.map.pawns[index] {
                         Some(pawn) => {
                             if pawn.kind == EntityKind::Door {
-                                self.map.pawns[index] = None;
+                                self.entities[pawn.entity_id].clear_pawns(&mut self.map);
                                 self.update_views_near_event(*pos, 10);
                             }
                         },
@@ -420,11 +420,46 @@ impl World {
     }
 
     fn init_static_entities(&mut self) {
-        for index in 0..self.map.tiles.len() {
-            if self.map.tiles[index] == TileType::Doorway {
-                let door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Up, 1);
-                door.create_pawns(&mut self.map);
-                self.entities.push(door);
+        fn door_length(map: &Map, start_x: i32, start_y: i32, dx: i32, dy: i32) -> i32 {
+            let mut x = start_x;
+            let mut y = start_y;
+            let mut length = 0;
+            let mut done = false;
+            while !done {
+                if map.get_tile(x, y) == TileType::Doorway {
+                    length += 1;
+                    x += dx;
+                    y += dy;
+                    if x >= map.width as i32 || y >= map.height as i32 {
+                        done = true;
+                    }
+                } else {
+                    done = true;
+                }
+            }
+            return length;
+        }
+
+        for x in 0..self.map.width as i32 {
+            for y in 0..self.map.height as i32 {
+                let index = self.map.xy_idx(x, y);
+                if self.map.get_tile(x, y) == TileType::Doorway && self.map.pawns[index].is_none() {
+                    let right_length = door_length(&self.map, x, y, 1, 0);
+                    let down_length = door_length(&self.map, x, y, 0, 1);
+
+                    let door;
+                    if right_length > down_length {
+                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Right, right_length as u32);
+                    } else if right_length < down_length {
+                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Up, down_length as u32);
+                    } else if self.map.get_tile(x + 1, y) ==  TileType::Wall {
+                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Right, 1);
+                    } else {
+                        door = Entity::new_door(self.entities.len(), self.map.idx_pos(index), Direction::Up, 1);
+                    }
+                    door.create_pawns(&mut self.map);
+                    self.entities.push(door);
+                }
             }
         }
     }
