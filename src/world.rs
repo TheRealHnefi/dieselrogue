@@ -584,7 +584,7 @@ impl World {
 
     fn handle_damage(&mut self, id: usize, part_index: usize, damage: Damage, deathlist: &mut Vec<usize>, log: &mut GameLog) {
         self.entities[id].apply_damage(part_index, damage);
-        if self.entities[id].mortally_wounded() {
+        if self.entities[id].mortally_wounded() && !deathlist.contains(&id) {
             log.log(format!("{} was killed!", self.entities[id].name));
             deathlist.push(id);
         }
