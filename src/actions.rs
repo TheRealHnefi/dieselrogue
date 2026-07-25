@@ -411,6 +411,22 @@ pub fn melee_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
     result
 }
 
+pub fn juke_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
+    const ENERGY_COST: u32 = 25;
+    if entity.body.energy < ENERGY_COST {
+        log.log(format!("{} is too exhausted to Juke", entity.name));
+        return vec!();
+    }
+    if let IntentData::Target(pos) = entity.intent.data {
+        if entity.check_fit(pos, map) {
+            entity.body.energy -= ENERGY_COST;
+            entity.set_position(pos, map);
+            entity.clear_aiming();
+        }
+    }
+    vec!()
+}
+
 pub fn aim_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::TargetWithEquipment{slot, target} => {
