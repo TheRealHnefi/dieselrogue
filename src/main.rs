@@ -48,6 +48,8 @@ mod actions;
 pub use actions::*;
 mod settings;
 pub use settings::*;
+mod rex_assets;
+pub use rex_assets::*;
 
 use std::time::Instant;
 use tracing::{span, Subscriber};

@@ -12,6 +12,7 @@ use crate::ui::*;
 use crate::input::*;
 use crate::Rect;
 use crate::FontSize;
+use crate::RexAssets;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -50,6 +51,8 @@ pub struct State {
     pub freelook: bool,
     pub freelook_pos: Point,
 
+    pub rex_assets: RexAssets,
+
     /// Font size chosen in the menu but not yet applied (requires restart).
     pub pending_font_size: Option<FontSize>,
     /// Fullscreen toggle chosen in the menu but not yet applied (requires restart).
@@ -78,6 +81,7 @@ impl State {
             turn: 0,
             freelook: false,
             freelook_pos: Point {x: 0, y: 0},
+            rex_assets: RexAssets::new(),
             pending_font_size: None,
             pending_fullscreen: None,
             start_tick: Instant::now()
