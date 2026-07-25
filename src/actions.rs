@@ -1,4 +1,3 @@
-use rltk::console;
 use crate::Entity;
 use crate::Map;
 use crate::GameLog;
@@ -23,10 +22,7 @@ pub fn throw_grenade_action(entity: &mut Entity, map: &mut Map, log: &mut GameLo
             used_item = item;
             target_map_index = map.pos_idx(target);
         },
-        _ => {
-            debug_assert!(false);
-            return result;
-        }
+        _ => unreachable!("throw_grenade_action called with non-inventory-target intent"),
     }
 
     entity.take_item(used_item);
@@ -55,10 +51,7 @@ pub fn drop_item_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -
         IntentData::InventoryItem(item) => {
             inventory_item = item;
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("drop_item_action called with non-inventory intent"),
     }
 
     log.log(format!("{} dropped {}", entity.name, inventory_item.name));
@@ -89,10 +82,7 @@ pub fn equip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog)
         IntentData::InventoryItem(item) => {
             inventory_item = item;
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("equip_item_action called with non-inventory intent"),
     }
 
     match entity.take_item(inventory_item) {
@@ -111,10 +101,7 @@ pub fn equip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLog)
                 }
             }
         }
-        None => {
-            debug_assert!(false);
-            return vec!();
-        }
+        None => unreachable!("item from intent data was not found in entity inventory"),
     }
 
     entity.body.update_armor();
@@ -128,10 +115,7 @@ pub fn unequip_item_action(entity: &mut Entity, _map: &mut Map, log: &mut GameLo
         IntentData::EquippedItem(item) => {
             equipped_item = item;
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("unequip_item_action called with non-equipped-item intent"),
     }
 
     match entity.body.unequip(equipped_item) {
@@ -315,13 +299,8 @@ pub fn fan_fire_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) ->
 
 pub fn open_door_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
-        IntentData::Target(pos) => {
-            return vec!(Effect::OpenDoor(pos));
-        },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        IntentData::Target(pos) => vec!(Effect::OpenDoor(pos)),
+        _ => unreachable!("open_door_action called with non-target intent"),
     }
 }
 
@@ -337,10 +316,7 @@ pub fn move_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec
                 entity.set_position(pos, map);
             }
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("move_action called with non-target intent"),
     }
 
     vec!()
@@ -365,12 +341,9 @@ fn fast_turn_action(entity: &mut Entity, map: &mut Map) -> Vec<Effect> {
             entity.body.facing = direction;
             entity.set_position(entity.position, map);
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("fast_turn_action called with non-direction intent"),
     }
-    return vec!();
+    vec!()
 }
 
 fn slow_turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Vec<Effect> {
@@ -385,12 +358,9 @@ fn slow_turn_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
                 return vec!();
             }
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("slow_turn_action called with non-direction intent"),
     }
-    return vec!();
+    vec!()
 }
 
 pub fn embark_action(entity: &mut Entity, map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
@@ -411,13 +381,8 @@ pub fn embark_action(entity: &mut Entity, map: &mut Map, _log: &mut GameLog) -> 
 
 pub fn disembark_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     match entity.driving {
-        DrivingState::DrivenBy(pilot) => {
-            return vec!(Effect::Disembark{pilot_id: pilot, vehicle_id: entity.id});        
-        },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        DrivingState::DrivenBy(pilot) => vec!(Effect::Disembark{pilot_id: pilot, vehicle_id: entity.id}),
+        _ => unreachable!("disembark_action called on entity that is not being driven"),
     }
 }
 
@@ -435,10 +400,7 @@ pub fn melee_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
                 raw_damage: Damage::new(1, 0, 0, 0)
             });
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("melee_action called with non-target intent"),
     }
 
     result
@@ -447,18 +409,11 @@ pub fn melee_action(entity: &mut Entity, map: &mut Map, log: &mut GameLog) -> Ve
 pub fn aim_action(entity: &mut Entity, _map: &mut Map, _log: &mut GameLog) -> Vec<Effect> {
     match entity.intent.data {
         IntentData::TargetWithEquipment{slot, target} => {
-            {
-                let item = entity.get_equipped_item(slot).unwrap().clone();
-                console::log(format!("Item id: {}", item.id));
-            }
-            return vec!(Effect::ApplyStatus {
+            vec!(Effect::ApplyStatus {
                 target_id: entity.id,
                 status: StatusEffect::AimingAtGround(target, entity.get_equipped_item(slot).unwrap().clone())
-            });
+            })
         },
-        _ => {
-            debug_assert!(false);
-            return vec!();
-        }
+        _ => unreachable!("aim_action called with non-equipment-target intent"),
     }
 }
