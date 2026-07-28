@@ -1988,7 +1988,7 @@ mod tests {
             if let AI::Actor(actor) = &mut e.ai {
                 actor.alert = AlertLevel::Alert {
                     last_known: center,
-                    search: SearchBehavior::MoveToLastKnown,
+                    search_ticks: 0,
                 };
             }
         }

@@ -60,6 +60,49 @@ Combat:
             Rotate(towards enemy position)!
         Decay to Alert, GoTo(anchor)!
 
+## Patrolling guard (profile = Patrol, combat_tactic = Pursue)
+
+Walks a fixed route until something draws its attention, then commits hard: chases
+the intruder while it can see them, and once it loses them raises the alarm and
+sweeps an ever-widening area, shouting again as it goes. Unlike the sentinel it has
+no anchor to hold and never mills in place — it either patrols, pursues, or searches.
+
+Always:
+    Primed grenade is carried:
+        Throw grenade(enemy)!
+    Active grenade nearby:
+        Flee(grenade position)!
+
+Unaware:
+    Armed:
+        Unequip weapon!
+    Follow patrol route!
+
+Suspicious:
+    Unarmed or out of ammo:
+        Equip or reload weapon!
+    Suspicion faded:
+        Decay to Unaware!
+    Investigate area(cause of concern)!
+
+Alert:
+    Unarmed or out of ammo:
+        Equip or reload weapon!
+    Time to raise the alarm again:
+        Shout!
+    Search area(last known position)!
+
+Combat:
+    Unarmed or out of ammo:
+        Equip or reload weapon!
+    Enemy is within throw range and a grenade is carried:
+        Prime grenade!
+    Can see enemy:
+        Attack(enemy)!
+    Not yet at last known position:
+        GoTo(last known position)!
+    Decay to Alert, Shout!
+
 ## Decisions, detailed into actions
 
 ### Throw grenade(target)
@@ -112,3 +155,21 @@ Entity in range:
         Fire!
     Aim at entity!
 GoTo(position close enough to entity to fire)!
+
+### Follow patrol route
+At current waypoint:
+    Advance to next waypoint!
+GoTo(current waypoint)!
+
+### Search area(origin)
+Far from origin:
+    GoTo(origin)!
+At the current search point (or none picked yet):
+    Pick a new search point around origin, wider than the last!
+GoTo(search point)!
+
+### Prime grenade
+Prime the carried grenade! (thrown next turn by the Always block)
+
+### Shout
+Raise the alarm! (a loud shout heard by nearby guards, putting them on alert)

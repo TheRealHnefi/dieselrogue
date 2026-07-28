@@ -29,6 +29,17 @@ const GRENADE_THROW_RANGE: u32 = 5;
 /// A guard flees a live grenade whose blast radius reaches within this margin.
 const GRENADE_FLEE_MARGIN: f32 = 2.0;
 
+// --- Patrol search tunables (Alert state) ---
+/// A searching patroller re-raises the alarm every this many turns.
+const SHOUT_INTERVAL: u32 = 8;
+/// Search sweep starts this far from the last-known position and grows outward.
+const SEARCH_START_RADIUS: i32 = 2;
+const SEARCH_MAX_RADIUS:   i32 = 10;
+/// The sweep radius grows by one every this many turns.
+const SEARCH_GROW_EVERY: u32 = 6;
+/// Turns a searcher commits to one sweep heading before rotating to the next.
+const SEARCH_DIR_HOLD: u32 = 3;
+
 // ---------------------------------------------------------------------------
 // Perception
 // ---------------------------------------------------------------------------
@@ -77,6 +88,8 @@ enum Decision {
     Holster,
     /// Turn to a fixed facing (random-look / orient leaves).
     Turn   { dir: Direction },
+    /// Raise the alarm (a loud shout that alerts nearby guards).
+    Shout,
     /// Throw the carried explosive `item_id` at `target`.
     ThrowGrenade { item_id: usize, target: Point },
     /// Prime the carried explosive `item_id` (thrown next turn by the Always block).
@@ -117,30 +130,11 @@ pub enum AlertLevel {
     /// Has detected something potentially dangerous, but unconfirmed. Decays to Unaware.
     Suspicious { origin: Point, turns_remaining: u32 },
     /// Has detected something confirmed dangerous, but does not see it. Does not decay.
-    Alert      { last_known: Point, search: SearchBehavior },
-    /// Has detected something confirmed dangerous and has recently seen it or is seeing it now. 
+    /// `search_ticks` counts turns spent searching — drives the widening sweep and
+    /// the periodic re-alarm (patrol), and is ignored by profiles that don't search.
+    Alert      { last_known: Point, search_ticks: u32 },
+    /// Has detected something confirmed dangerous and has recently seen it or is seeing it now.
     Combat     { target_id: usize, last_seen: Point },
-}
-
-// ---------------------------------------------------------------------------
-// SearchBehavior — Copy so it can be extracted before borrowing self mutably
-// ---------------------------------------------------------------------------
-
-#[derive(Clone, Copy)]
-pub enum SearchBehavior {
-    MoveToLastKnown,
-    HoldAndWatch,
-    Flank,
-}
-
-impl SearchBehavior {
-    fn for_entity(entity_id: usize) -> Self {
-        match entity_id % 3 {
-            0 => SearchBehavior::MoveToLastKnown,
-            1 => SearchBehavior::HoldAndWatch,
-            _ => SearchBehavior::Flank,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +238,13 @@ impl ActorAI {
         self.nav_goal = decision.nav_goal();
 
         // Execute the decision
-        self.execute(entity, map, entities, decision)
+        let intent = self.execute(entity, map, entities, decision);
+
+        // Advance the search clock for next turn (drives sweep growth + re-alarm).
+        if let AlertLevel::Alert { search_ticks, .. } = &mut self.alert {
+            *search_ticks += 1;
+        }
+        intent
     }
 
     // --- Stimulus processing ---
@@ -344,28 +344,35 @@ impl ActorAI {
     }
 
     fn update_target(&mut self, perception: Perception) {
+        // Already engaging: a fresh sighting refreshes the target's position;
+        // lesser stimuli (noise, corpses) are ignored so combat isn't pulled off.
         if let AlertLevel::Combat { target_id, last_seen } = &mut self.alert {
-            // Already engaging: a fresh sighting refreshes the target's position;
-            // lesser stimuli (noise, corpses) are ignored so combat isn't pulled off.
             if perception.confirmed_visually && perception.confirmed_hostile {
                 if let Some(id) = perception.target_id {
                     *target_id = id;
                     *last_seen = perception.origin;
                 }
             }
+            return;
         }
-        else if perception.confirmed_visually && perception.confirmed_hostile {
-            // Enemy spotted. We are in combat.
+        // A confirmed sighting (re)enters combat from any lower state.
+        if perception.confirmed_visually && perception.confirmed_hostile {
             // TODO: Handle that unwrap more gracefully? Potentially replace confirmed_visually and rely on this?
             self.alert = AlertLevel::Combat { target_id: perception.target_id.unwrap(), last_seen: perception.origin };
+            return;
         }
-        else if perception.confirmed_hostile {
-            // We know the enemy is around here somewhere. Update position.
+        // Already searching: a comrade's shout or distant noise adds nothing — keep
+        // the current search rather than restarting its clock (else shouts feed back
+        // into each other and every guard re-alarms every turn).
+        if matches!(self.alert, AlertLevel::Alert { .. }) {
+            return;
+        }
+        // Unaware/Suspicious escalate on the stimulus.
+        if perception.confirmed_hostile {
             // TODO: This will cause the AI to get hung up on dead bodies. Handle this with a SearchTheArea behavior.
-            self.alert = AlertLevel::Alert { last_known: perception.origin, search: SearchBehavior::MoveToLastKnown };
-        }
-        else {
-            self.alert = AlertLevel::Suspicious { origin: perception.origin, turns_remaining: SUSPICIOUS_TURNS }
+            self.alert = AlertLevel::Alert { last_known: perception.origin, search_ticks: 0 };
+        } else {
+            self.alert = AlertLevel::Suspicious { origin: perception.origin, turns_remaining: SUSPICIOUS_TURNS };
         }
     }
 
@@ -382,13 +389,12 @@ impl ActorAI {
                 Profile::Guard { .. } =>
                     lost && self.far_from_anchor(entity.position)
                         && !entity.can_see(ls) && !self.can_turn_to_see(entity, map, ls),
-                _ => lost,
+                // Patrol pursues hard: only breaks off (to shout + search) once it has
+                // reached where the enemy was last seen and still can't find them.
+                _ => lost && rltk::DistanceAlg::Pythagoras.distance2d(entity.position, ls) <= 1.5,
             };
             if give_up {
-                self.alert = AlertLevel::Alert {
-                    last_known: ls,
-                    search: SearchBehavior::for_entity(entity.index),
-                };
+                self.alert = AlertLevel::Alert { last_known: ls, search_ticks: 0 };
             }
             return;
         }
@@ -437,18 +443,21 @@ impl ActorAI {
     /// execute can then take &mut self freely.
     fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity], grenades: &[(Point, u32)], roll: u32, rand_dir: Direction) -> Decision {
         let pos = entity.position;
-        // "Always" (sentinel guard): grenades trump every alert state.
-        if let Profile::Guard { .. } = self.profile {
-            if let Some(d) = self.grenade_reaction(entity, map, grenades) {
-                return d;
-            }
+        // "Always": grenades trump every alert state (both guard profiles).
+        if let Some(d) = self.grenade_reaction(entity, map, grenades) {
+            return d;
         }
         match &self.alert {
             AlertLevel::Unaware => match &self.profile {
+                // A patroller holsters, then walks its route.
                 Profile::Patrol { route_id, waypoint_index, .. } =>
-                    match map.patrol_routes.get(*route_id).and_then(|r| r.get(*waypoint_index)) {
-                        Some(&dest) => Decision::GoTo { dest, tolerance: 0, field: FieldPref::FullMap },
-                        None        => Decision::Idle,
+                    if entity.get_primary_weapon().is_some() {
+                        Decision::Holster
+                    } else {
+                        match map.patrol_routes.get(*route_id).and_then(|r| r.get(*waypoint_index)) {
+                            Some(&dest) => Decision::GoTo { dest, tolerance: 0, field: FieldPref::FullMap },
+                            None        => Decision::Idle,
+                        }
                     },
                 // At its post a relaxed guard holsters, then mostly stands watch,
                 // glancing around now and then.
@@ -473,7 +482,7 @@ impl ActorAI {
                     Decision::GoTo { dest: *origin, tolerance: 0, field: FieldPref::Bounded }
                 }
             },
-            AlertLevel::Alert { last_known, search } => {
+            AlertLevel::Alert { last_known, search_ticks } => {
                 if !self.is_combat_ready(entity) {
                     Decision::GetReadyForCombat
                 } else {
@@ -490,12 +499,13 @@ impl ActorAI {
                             } else {
                                 Decision::Idle
                             },
-                        Profile::Patrol { .. } => match search {
-                            SearchBehavior::HoldAndWatch    => Decision::Face { toward: *last_known },
-                            SearchBehavior::MoveToLastKnown =>
-                                Decision::GoTo { dest: *last_known, tolerance: 0, field: FieldPref::Bounded },
-                            SearchBehavior::Flank           =>
-                                Decision::GoTo { dest: self.flank_destination(pos, *last_known, map), tolerance: 0, field: FieldPref::None }
+                        // A patroller sweeps a widening area around the last-known spot,
+                        // re-raising the alarm on a timer to draw comrades in.
+                        Profile::Patrol { .. } =>
+                            if *search_ticks % SHOUT_INTERVAL == 0 {
+                                Decision::Shout
+                            } else {
+                                Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0, field: FieldPref::Bounded }
                         },
                     }
                 }
@@ -503,15 +513,10 @@ impl ActorAI {
             AlertLevel::Combat { target_id, last_seen } => match self.profile.combat_tactic() {
                 CombatTactic::Flee => Decision::Flee { threat: *last_seen },
                 _ => match &self.profile {
-                    // guard_combat gates its own readiness (a grenade throw doesn't need a firearm).
                     Profile::Guard { .. } =>
                         self.guard_combat(entity, map, entities, *target_id, *last_seen),
                     Profile::Patrol { .. } =>
-                        if !self.is_combat_ready(entity) {
-                            Decision::GetReadyForCombat
-                        } else {
-                            Decision::Engage { target_id: *target_id, last_seen: *last_seen }
-                        },
+                        self.patrol_combat(entity, map, entities, *target_id, *last_seen),
                 },
             },
         }
@@ -523,6 +528,7 @@ impl ActorAI {
             Decision::Idle => None,
             Decision::Holster => holster_intent(entity),
             Decision::Turn { dir } => (entity.body.facing != dir).then(|| turn_intent(dir)),
+            Decision::Shout => shout_intent(entity),
             Decision::ThrowGrenade { item_id, target } => throw_grenade_intent(entity, item_id, target),
             Decision::PrimeGrenade { item_id } => prime_grenade_intent(entity, item_id),
             Decision::GetReadyForCombat => self.get_ready_for_combat(entity, map),
@@ -534,23 +540,6 @@ impl ActorAI {
             },
             Decision::Engage { target_id, last_seen } =>
                 self.engage(entity, map, entities, target_id, last_seen),
-        }
-    }
-
-    fn flank_destination(&self, from: Point, target: Point, map: &Map) -> Point {
-        #[cfg(debug_assertions)]
-        puffin::profile_function!();
-        // Approach last-known from a perpendicular angle (5 tiles offset).
-        let dx = target.x - from.x;
-        let dy = target.y - from.y;
-        let (perp_x, perp_y) = if dx.abs() >= dy.abs() {
-            (0i32, if dy >= 0 { -5 } else { 5 })
-        } else {
-            (if dx >= 0 { -5 } else { 5 }, 0i32)
-        };
-        Point {
-            x: (target.x + perp_x).clamp(0, map.width as i32 - 1),
-            y: (target.y + perp_y).clamp(0, map.height as i32 - 1),
         }
     }
 
@@ -808,6 +797,27 @@ impl ActorAI {
         }
     }
 
+    /// The patroller's combat behaviour (doc/ai.md): prefer a grenade in throw
+    /// range, shoot while the enemy is in sight, otherwise chase to where it was
+    /// last seen. Breaking off to shout + search happens in `decay_alertness` once
+    /// the guard reaches that spot and still can't find them.
+    fn patrol_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+        if let Some(item_id) = carries_grenade(entity) {
+            let center = entity.center();
+            if rltk::DistanceAlg::Pythagoras.distance2d(center, last_seen) <= GRENADE_THROW_RANGE as f32
+                && has_los(center, last_seen, map) {
+                return Decision::PrimeGrenade { item_id };
+            }
+        }
+        if !self.is_combat_ready(entity) {
+            return Decision::GetReadyForCombat;
+        }
+        if self.can_see_target(entity, entities, target_id) {
+            return Decision::Engage { target_id, last_seen };
+        }
+        Decision::GoTo { dest: last_seen, tolerance: 0, field: FieldPref::Bounded }
+    }
+
     /// Whether the entity with `target_id` currently sits in this actor's viewshed.
     fn can_see_target(&self, entity: &Entity, entities: &[Entity], target_id: usize) -> bool {
         entities.iter().find(|e| e.index == target_id)
@@ -945,6 +955,25 @@ fn forward_tile(pos: Point, dir: Direction) -> Point {
 /// Integer midpoint between two tiles.
 fn halfway(a: Point, b: Point) -> Point {
     Point { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+}
+
+/// A widening search sweep target around `origin`: the heading rotates every
+/// `SEARCH_DIR_HOLD` turns and the radius grows over time, so the searcher spirals
+/// outward from the last-known position.
+fn patrol_search_target(origin: Point, ticks: u32, map: &Map) -> Point {
+    let radius = (SEARCH_START_RADIUS + (ticks / SEARCH_GROW_EVERY) as i32).min(SEARCH_MAX_RADIUS);
+    let (dx, dy) = Direction::ALL[((ticks / SEARCH_DIR_HOLD) % 8) as usize].delta_pos();
+    Point {
+        x: (origin.x + dx * radius).clamp(0, map.width as i32 - 1),
+        y: (origin.y + dy * radius).clamp(0, map.height as i32 - 1),
+    }
+}
+
+/// Raise the alarm: a loud shout heard by nearby guards.
+fn shout_intent(entity: &Entity) -> Option<Intent> {
+    entity.has_ability(Ability::Shout).then(|| {
+        build_intent(&shout_action_def(), None, Resolution::None)
+    })
 }
 
 /// Squared tile distance (cheap ordering key, no sqrt).
