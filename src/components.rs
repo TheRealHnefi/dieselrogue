@@ -37,7 +37,7 @@ pub enum PaperDoll {
     Tank,
 }
 
-#[derive (PartialEq, Eq, Clone, Copy)]
+#[derive (PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Direction {
     Up,
     UpRight,

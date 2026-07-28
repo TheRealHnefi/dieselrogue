@@ -1,4 +1,4 @@
-use rltk::Point;
+use rltk::{Point, RandomNumberGenerator};
 use crate::ActionSource::InventoryItem;
 use crate::Map;
 use crate::{navigate_cached, greedy_step};
@@ -11,6 +11,17 @@ use crate::Ability;
 use crate::Item;
 
 const SUSPICIOUS_TURNS: u32 = 30;
+
+// --- Guard tunables (placeholder behaviour, safe to retune) ---
+/// A guard within this Pythagorean distance of its anchor is "near" its post and
+/// mills about; beyond it, it heads back.
+const NEAR_ANCHOR_RADIUS: f32 = 3.0;
+/// Unaware guard at its anchor: idle this often (percent), else turn a random way.
+const UNAWARE_IDLE_PCT: u32 = 95;
+/// Alert guard near its anchor: rotate below the first cut, step forward below the
+/// second, else idle. Rolls share one 0..100 draw.
+const ALERT_ROTATE_PCT: u32 = 50;
+const ALERT_STEP_PCT:   u32 = 75;
 
 // ---------------------------------------------------------------------------
 // Perception
@@ -56,6 +67,10 @@ fn most_urgent(left: Option<Perception>, right: Option<Perception>) -> Option<Pe
 #[derive(Clone, Copy, Debug)]
 enum Decision {
     Idle,
+    /// Holster the equipped weapon (relaxed guard at its post).
+    Holster,
+    /// Turn to a fixed facing (random-look / orient leaves).
+    Turn   { dir: Direction },
     GetReadyForCombat,
     GoTo   { dest: Point, tolerance: u32, field: FieldPref },
     Face   { toward: Point },
@@ -170,11 +185,15 @@ pub struct ActorAI {
     path_target:  Option<usize>, // map idx of current destination
     /// Last decided shared-field goal (tile + bounded), read by World's pre-pass.
     nav_goal:     Option<(Point, bool)>,
+    /// Per-actor RNG for the probabilistic idle/look leaves. Seeded lazily from the
+    /// entity index (each actor owns its own stream, so the parallel AI pass never
+    /// shares a generator).
+    rng:          Option<RandomNumberGenerator>,
 }
 
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
-        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None }
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None, rng: None }
     }
 
     /// The shared flow-field goal this actor is heading to (tile + whether a
@@ -203,7 +222,12 @@ impl ActorAI {
 
         // Make a decision
         self.advance_waypoint(entity, map); // Move this later
-        let decision = self.decide(entity, map);
+        // Roll once up front (in this &mut context) so `decide` stays pure.
+        let (roll, rand_dir) = {
+            let rng = self.rng.get_or_insert_with(|| RandomNumberGenerator::seeded(scramble(entity.index as u64)));
+            (rng.range(0, 100) as u32, Direction::ALL[rng.range(0, 8) as usize])
+        };
+        let decision = self.decide(entity, map, roll, rand_dir);
 
         // Record its shared-field goal for World's pre-pass to read next turn.
         self.nav_goal = decision.nav_goal();
@@ -348,6 +372,13 @@ impl ActorAI {
             return;
         }
 
+        // A guard won't chase a mere hunch away from its post: drop suspicion once
+        // it strays past its anchor leash.
+        if matches!(self.alert, AlertLevel::Suspicious { .. }) && self.far_from_anchor(entity.position) {
+            self.alert = AlertLevel::Unaware;
+            return;
+        }
+
         // Decay timed states.
         let transition: Option<AlertLevel> = match &self.alert {
             AlertLevel::Suspicious { turns_remaining, origin } if *turns_remaining == 0 =>
@@ -383,7 +414,8 @@ impl ActorAI {
     /// The decision tree: current (alert, profile) state → a Decision. Pure, and
     /// every Decision field is Copy, so no borrow of self outlives the call and
     /// execute can then take &mut self freely.
-    fn decide(&self, entity: &Entity, map: &Map) -> Decision {
+    fn decide(&self, entity: &Entity, map: &Map, roll: u32, rand_dir: Direction) -> Decision {
+        let pos = entity.position;
         match &self.alert {
             AlertLevel::Unaware => match &self.profile {
                 Profile::Patrol { route_id, waypoint_index, .. } =>
@@ -391,12 +423,25 @@ impl ActorAI {
                         Some(&dest) => Decision::GoTo { dest, tolerance: 0, field: FieldPref::FullMap },
                         None        => Decision::Idle,
                     },
+                // At its post a relaxed guard holsters, then mostly stands watch,
+                // glancing around now and then.
                 Profile::Guard { anchor, .. } =>
-                    Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap },
+                    if pos != *anchor {
+                        Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap }
+                    } else if entity.get_primary_weapon().is_some() {
+                        Decision::Holster
+                    } else if roll < UNAWARE_IDLE_PCT {
+                        Decision::Idle
+                    } else {
+                        Decision::Turn { dir: rand_dir }
+                    },
             },
             AlertLevel::Suspicious { origin, .. } => {
                 if !self.is_combat_ready(entity, map) {
                     Decision::GetReadyForCombat
+                } else if self.far_from_anchor(pos) {
+                    // Won't chase a hunch off its post — head back.
+                    Decision::GoTo { dest: self.anchor().unwrap_or(*origin), tolerance: 0, field: FieldPref::FullMap }
                 } else {
                     Decision::GoTo { dest: *origin, tolerance: 0, field: FieldPref::Bounded }
                 }
@@ -405,12 +450,26 @@ impl ActorAI {
                 if !self.is_combat_ready(entity, map) {
                     Decision::GetReadyForCombat
                 } else {
-                    match search {
-                        SearchBehavior::HoldAndWatch    => Decision::Face { toward: *last_known },
-                        SearchBehavior::MoveToLastKnown =>
-                            Decision::GoTo { dest: *last_known, tolerance: 0, field: FieldPref::Bounded },
-                        SearchBehavior::Flank           =>
-                            Decision::GoTo { dest: self.flank_destination(entity.position, *last_known, map), tolerance: 0, field: FieldPref::None }
+                    match &self.profile {
+                        // A guard never forgets a confirmed threat, but holds near its
+                        // post rather than searching: mostly watch, sometimes shift.
+                        Profile::Guard { anchor, .. } =>
+                            if self.far_from_anchor(pos) {
+                                Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap }
+                            } else if roll < ALERT_ROTATE_PCT {
+                                Decision::Turn { dir: rand_dir }
+                            } else if roll < ALERT_STEP_PCT {
+                                Decision::GoTo { dest: forward_tile(pos, entity.body.facing), tolerance: 0, field: FieldPref::None }
+                            } else {
+                                Decision::Idle
+                            },
+                        Profile::Patrol { .. } => match search {
+                            SearchBehavior::HoldAndWatch    => Decision::Face { toward: *last_known },
+                            SearchBehavior::MoveToLastKnown =>
+                                Decision::GoTo { dest: *last_known, tolerance: 0, field: FieldPref::Bounded },
+                            SearchBehavior::Flank           =>
+                                Decision::GoTo { dest: self.flank_destination(pos, *last_known, map), tolerance: 0, field: FieldPref::None }
+                        },
                     }
                 }
             },
@@ -431,14 +490,9 @@ impl ActorAI {
     fn execute(&mut self, entity: &Entity, map: &Map, entities: &[Entity], decision: Decision) -> Option<Intent> {
         match decision {
             Decision::Idle => None,
-            Decision::GetReadyForCombat => {
-                let weapons = self.equippable_weapons(entity, map);
-                if weapons.len() > 0 {
-                    Some(build_intent(weapons[0].0, Some(InventoryItem(weapons[0].1.clone())), Resolution::None))
-                } else {
-                    None
-                }
-            },
+            Decision::Holster => holster_intent(entity),
+            Decision::Turn { dir } => (entity.body.facing != dir).then(|| turn_intent(dir)),
+            Decision::GetReadyForCombat => self.get_ready_for_combat(entity, map),
             Decision::GoTo { dest, tolerance, .. } => self.navigate_to(entity, dest, map, entities, tolerance),
             Decision::Face { toward } => face_intent(entity, toward),
             Decision::Flee { threat } => {
@@ -600,6 +654,33 @@ impl ActorAI {
         }
     }
 
+    /// This actor's guard anchor, if it is a guard.
+    fn anchor(&self) -> Option<Point> {
+        match &self.profile {
+            Profile::Guard { anchor, .. } => Some(*anchor),
+            _ => None,
+        }
+    }
+
+    /// Whether `pos` lies beyond the guard's anchor leash. False for non-guards
+    /// (they have no post to hold).
+    fn far_from_anchor(&self, pos: Point) -> bool {
+        self.anchor().map_or(false, |a| rltk::DistanceAlg::Pythagoras.distance2d(pos, a) > NEAR_ANCHOR_RADIUS)
+    }
+
+    /// Reload the equipped weapon if that action is available (its precondition
+    /// already vets ammo + capacity), otherwise equip a loaded weapon from
+    /// inventory. None if neither is possible.
+    fn get_ready_for_combat(&self, entity: &Entity, map: &Map) -> Option<Intent> {
+        for (action, slot) in entity.get_available_actions(map) {
+            if let (ActionId::Reload, Some(s)) = (action.id, slot) {
+                return Some(build_intent(action, Some(ActionSource::EquippedSlot(s)), Resolution::None));
+            }
+        }
+        let weapons = self.equippable_weapons(entity, map);
+        weapons.first().map(|(action, item)| build_intent(action, Some(InventoryItem((*item).clone())), Resolution::None))
+    }
+
     fn is_combat_ready(&self, entity: &Entity, map: &Map) -> bool {
         match entity.get_primary_weapon() {
             Some(weapon) => match weapon.kind {
@@ -698,8 +779,34 @@ fn find_weapon(entity: &Entity) -> Option<(SlotType, u32)> {
 }
 
 fn forward_intent(pos: Point, facing: Direction) -> Intent {
-    let (dx, dy) = facing.delta_pos();
-    move_intent(Point { x: pos.x + dx, y: pos.y + dy })
+    move_intent(forward_tile(pos, facing))
+}
+
+/// The tile one step ahead of `pos` when facing `dir`.
+fn forward_tile(pos: Point, dir: Direction) -> Point {
+    let (dx, dy) = dir.delta_pos();
+    Point { x: pos.x + dx, y: pos.y + dy }
+}
+
+/// Unequip the entity's held primary weapon back to inventory, if any.
+fn holster_intent(entity: &Entity) -> Option<Intent> {
+    let slot = equipped_weapon_slot(entity)?;
+    let unequip = unequip_action_def();
+    Some(build_intent(&unequip, Some(ActionSource::EquippedSlot(slot)), Resolution::None))
+}
+
+/// The slot holding the entity's primary weapon (hand or turret), if equipped.
+fn equipped_weapon_slot(entity: &Entity) -> Option<SlotType> {
+    [SlotType::PrimaryHand, SlotType::TurretMount].iter().copied()
+        .find(|&s| entity.body.get_item(s).is_some())
+}
+
+/// Scatter sequential entity indices into well-separated RNG seeds (splitmix64
+/// finalizer) so neighbouring guards don't roll in lockstep.
+fn scramble(mut z: u64) -> u64 {
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
+    z ^ (z >> 31)
 }
 
 // ---------------------------------------------------------------------------
