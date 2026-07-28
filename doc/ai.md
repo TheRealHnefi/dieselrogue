@@ -8,10 +8,8 @@ Tree always ends in !. If condition does not match, go to next branch.
 ## Sentinel guard (profile = Guard, combat_tactic = Hold)
 
 Always:
-	Active grenade in inventory:
-		Enemy visible:
-			Throw grenade(enemy)!
-		Throw grenade(safe spot)!
+	Primed grenade is carried:
+        Throw grenade(enemy)!
 	Active grenade nearby:
 		Flee(grenade position)!
 
@@ -61,3 +59,56 @@ Combat:
         Can turn to see last known enemy position:
             Rotate(towards enemy position)!
         Decay to Alert, GoTo(anchor)!
+
+## Decisions, detailed into actions
+
+### Throw grenade(target)
+Primed grenade is carried:
+    Target is visible:
+        Target is in range:
+            Target is at a safe distance:
+                Throw grenade at target!
+            Throw grenade near target at safe distance!
+        Throw grenade as close to target as possible!
+    Safe spot exists within range:
+        Throw grenade at safe spot!
+    Throw grenade as far away as possible!
+Target position is visible:
+    Prime grenade!
+GoTo(target)
+
+### Flee(position)
+Move away from position! (no pathfinding, just find adjacent tile that moves away from position if possible)
+
+### Unequip weapon
+Weapon in hand:
+    Unequip weapon!
+Idle!
+
+### Equip or reload weapon
+Weapon in hand:
+    Weapon not full:
+        Reload!
+    Idle!
+Weapon in inventory:
+    Equip weapon!
+
+### Investigate area(position)
+Position is in view:
+    Investigate area(near position)!
+Can turn to see position:
+    Turn(towards position)!
+GoTo(position)!
+    
+### GoTo(position)
+Pathfind to position!
+### Rotate(direction)
+Turn(dirction)!
+### Idle
+Do nothing!
+### Attack(entity)
+Entity in range:
+    Aiming:
+        Fire!
+    Aim at entity!
+GoTo(position close enough to entity to fire)!
