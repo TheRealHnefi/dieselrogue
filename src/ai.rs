@@ -22,6 +22,8 @@ const UNAWARE_IDLE_PCT: u32 = 95;
 /// second, else idle. Rolls share one 0..100 draw.
 const ALERT_ROTATE_PCT: u32 = 50;
 const ALERT_STEP_PCT:   u32 = 75;
+/// Radius a guard searches for a tile from which it can re-spot a lost target.
+const SPOT_SEARCH: i32 = 3;
 
 // ---------------------------------------------------------------------------
 // Perception
@@ -218,7 +220,7 @@ impl ActorAI {
         let perception = self.perceive(entity, entities, map, sounds);
 
         // Update beliefs according to perceptions
-        self.update_beliefs(entity, entities, perception);
+        self.update_beliefs(entity, entities, map, perception);
 
         // Make a decision
         self.advance_waypoint(entity, map); // Move this later
@@ -227,7 +229,7 @@ impl ActorAI {
             let rng = self.rng.get_or_insert_with(|| RandomNumberGenerator::seeded(scramble(entity.index as u64)));
             (rng.range(0, 100) as u32, Direction::ALL[rng.range(0, 8) as usize])
         };
-        let decision = self.decide(entity, map, roll, rand_dir);
+        let decision = self.decide(entity, map, entities, roll, rand_dir);
 
         // Record its shared-field goal for World's pre-pass to read next turn.
         self.nav_goal = decision.nav_goal();
@@ -325,17 +327,23 @@ impl ActorAI {
 
     // --- Belief updates ---
 
-    fn update_beliefs(&mut self, entity: &Entity, entities: &[Entity], perception: Option<Perception>) {
-        self.decay_alertness(entity, entities);
+    fn update_beliefs(&mut self, entity: &Entity, entities: &[Entity], map: &Map, perception: Option<Perception>) {
+        self.decay_alertness(entity, entities, map);
         if let Some(p) = perception {
             self.update_target(p);
         }
     }
 
     fn update_target(&mut self, perception: Perception) {
-        if matches!(self.alert, AlertLevel::Combat { .. }) {
-            // We are already in combat. Ignore target updates.
-            return;
+        if let AlertLevel::Combat { target_id, last_seen } = &mut self.alert {
+            // Already engaging: a fresh sighting refreshes the target's position;
+            // lesser stimuli (noise, corpses) are ignored so combat isn't pulled off.
+            if perception.confirmed_visually && perception.confirmed_hostile {
+                if let Some(id) = perception.target_id {
+                    *target_id = id;
+                    *last_seen = perception.origin;
+                }
+            }
         }
         else if perception.confirmed_visually && perception.confirmed_hostile {
             // Enemy spotted. We are in combat.
@@ -352,18 +360,22 @@ impl ActorAI {
         }
     }
 
-    fn decay_alertness(&mut self, entity: &Entity, entities: &[Entity]) {
+    fn decay_alertness(&mut self, entity: &Entity, entities: &[Entity], map: &Map) {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
-        // Combat → Alert when target leaves sight.
+        // Combat fallback. A guard is sticky: it holds the engagement through lost
+        // sight and only drops to Alert once driven off its post with no way left to
+        // reacquire. Other profiles fall back the moment the target breaks sight.
         if let AlertLevel::Combat { target_id, last_seen } = &self.alert {
             let (tid, ls) = (*target_id, *last_seen);
-            // TODO: This is probably more efficient to do the other way around - iterate over viewshed to check for existence of target id
-            // TODO: Do we even need this considering we do the same thing in the perception step?
-            let still_visible = entities.iter()
-                .find(|e| e.index == tid)
-                .map_or(false, |t| entity.viewshed.visible_tiles.contains(&t.center()));
-            if !still_visible {
+            let lost = !self.can_see_target(entity, entities, tid);
+            let give_up = match &self.profile {
+                Profile::Guard { .. } =>
+                    lost && self.far_from_anchor(entity.position)
+                        && !entity.can_see(ls) && !self.can_turn_to_see(entity, map, ls),
+                _ => lost,
+            };
+            if give_up {
                 self.alert = AlertLevel::Alert {
                     last_known: ls,
                     search: SearchBehavior::for_entity(entity.index),
@@ -414,7 +426,7 @@ impl ActorAI {
     /// The decision tree: current (alert, profile) state → a Decision. Pure, and
     /// every Decision field is Copy, so no borrow of self outlives the call and
     /// execute can then take &mut self freely.
-    fn decide(&self, entity: &Entity, map: &Map, roll: u32, rand_dir: Direction) -> Decision {
+    fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity], roll: u32, rand_dir: Direction) -> Decision {
         let pos = entity.position;
         match &self.alert {
             AlertLevel::Unaware => match &self.profile {
@@ -437,7 +449,7 @@ impl ActorAI {
                     },
             },
             AlertLevel::Suspicious { origin, .. } => {
-                if !self.is_combat_ready(entity, map) {
+                if !self.is_combat_ready(entity) {
                     Decision::GetReadyForCombat
                 } else if self.far_from_anchor(pos) {
                     // Won't chase a hunch off its post — head back.
@@ -447,7 +459,7 @@ impl ActorAI {
                 }
             },
             AlertLevel::Alert { last_known, search } => {
-                if !self.is_combat_ready(entity, map) {
+                if !self.is_combat_ready(entity) {
                     Decision::GetReadyForCombat
                 } else {
                     match &self.profile {
@@ -475,13 +487,17 @@ impl ActorAI {
             },
             AlertLevel::Combat { target_id, last_seen } => match self.profile.combat_tactic() {
                 CombatTactic::Flee => Decision::Flee { threat: *last_seen },
-                _                  => {
-                    if !self.is_combat_ready(entity, map) {
+                _ =>
+                    if !self.is_combat_ready(entity) {
                         Decision::GetReadyForCombat
                     } else {
-                        Decision::Engage { target_id: *target_id, last_seen: *last_seen }
-                    }
-                }
+                        match &self.profile {
+                            Profile::Guard { .. } =>
+                                self.guard_combat(entity, map, entities, *target_id, *last_seen),
+                            Profile::Patrol { .. } =>
+                                Decision::Engage { target_id: *target_id, last_seen: *last_seen },
+                        }
+                    },
             },
         }
     }
@@ -560,16 +576,11 @@ impl ActorAI {
             }
         }
 
-        // No attack available — pursue or hold.
-        match self.profile.combat_tactic() {
-            CombatTactic::Pursue => {
-                let dest = entities.iter().find(|e| e.index == target_id)
-                    .map(|t| t.center()).unwrap_or(last_seen);
-                self.navigate_to(entity, dest, map, entities, 1)
-            },
-            CombatTactic::Hold => None,
-            CombatTactic::Flee => unreachable!("Flee is routed to Decision::Flee"),
-        }
+        // No shot available — close on the target (or its last-seen tile) to gain
+        // range and line of sight. Flee is routed upstream to Decision::Flee.
+        let dest = entities.iter().find(|e| e.index == target_id)
+            .map(|t| t.center()).unwrap_or(last_seen);
+        self.navigate_to(entity, dest, map, entities, 1)
     }
 
     fn flee_pos(&self, entity: &Entity, threat: Point, map: &Map) -> Point {
@@ -681,7 +692,64 @@ impl ActorAI {
         weapons.first().map(|(action, item)| build_intent(action, Some(InventoryItem((*item).clone())), Resolution::None))
     }
 
-    fn is_combat_ready(&self, entity: &Entity, map: &Map) -> bool {
+    /// The sentinel guard's combat reacquire ladder (see doc/ai.md): see → attack,
+    /// last-known in view → close half the gap, could-see-by-turning → turn, else
+    /// reposition for a shot or hold and watch. Giving up far from post is handled
+    /// upstream by `decay_alertness`, so reaching the tail means we're near our post.
+    fn guard_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+        if self.can_see_target(entity, entities, target_id) {
+            return Decision::Engage { target_id, last_seen };
+        }
+        if entity.can_see(last_seen) {
+            return Decision::GoTo { dest: halfway(entity.position, last_seen), tolerance: 0, field: FieldPref::None };
+        }
+        if self.can_turn_to_see(entity, map, last_seen) {
+            return Decision::Face { toward: last_seen };
+        }
+        match self.spot_to_see(entity, map, last_seen) {
+            Some(spot) => Decision::GoTo { dest: spot, tolerance: 0, field: FieldPref::Bounded },
+            None       => Decision::Face { toward: last_seen },
+        }
+    }
+
+    /// Whether the entity with `target_id` currently sits in this actor's viewshed.
+    fn can_see_target(&self, entity: &Entity, entities: &[Entity], target_id: usize) -> bool {
+        entities.iter().find(|e| e.index == target_id)
+            .map_or(false, |t| entity.can_see(t.center()))
+    }
+
+    /// True if `target` lies within vision range with a clear sight line — i.e. the
+    /// actor would see it after turning to face it (vision is a facing cone, so
+    /// facing is the only thing turning changes).
+    fn can_turn_to_see(&self, entity: &Entity, map: &Map, target: Point) -> bool {
+        let from = entity.center();
+        rltk::DistanceAlg::Pythagoras.distance2d(from, target) <= entity.viewshed.range as f32
+            && has_los(from, target, map)
+    }
+
+    /// The nearest free tile within `SPOT_SEARCH` that has a clear sight line to
+    /// `target` in range. Bounded search — only a guard that lost sight near its
+    /// post runs it, so the O(area) LOS sweep stays off the general hot path.
+    fn spot_to_see(&self, entity: &Entity, map: &Map, target: Point) -> Option<Point> {
+        let from = entity.position;
+        let range = entity.viewshed.range as f32;
+        let mut best: Option<(Point, i32)> = None;
+        for dy in -SPOT_SEARCH..=SPOT_SEARCH {
+            for dx in -SPOT_SEARCH..=SPOT_SEARCH {
+                if dx == 0 && dy == 0 { continue; }
+                let p = Point { x: from.x + dx, y: from.y + dy };
+                if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 { continue; }
+                if map.blocked(p.x, p.y) { continue; }
+                if rltk::DistanceAlg::Pythagoras.distance2d(p, target) > range { continue; }
+                if !has_los(p, target, map) { continue; }
+                let d = dx * dx + dy * dy;
+                if best.map_or(true, |(_, bd)| d < bd) { best = Some((p, d)); }
+            }
+        }
+        best.map(|(p, _)| p)
+    }
+
+    fn is_combat_ready(&self, entity: &Entity) -> bool {
         match entity.get_primary_weapon() {
             Some(weapon) => match weapon.kind {
                 ItemKind::Firearm { ammo, .. } if ammo >= 1 => true,
@@ -690,16 +758,6 @@ impl ActorAI {
             None => false
         }
         // TODO: Consider melee
-    }
-
-    fn can_fire(&self, entity: &Entity, map: &Map) -> bool {
-        for (action, slot) in entity.get_available_equipment_actions(map) {
-            match action.id {
-                ActionId::AimAtEntity | ActionId::AimAtPosition | ActionId::FanFire | ActionId::FireBurst | ActionId::FireRocket | ActionId::FireShot => return true,
-                _ => ()
-            }
-        }
-        false
     }
 
     fn equippable_weapons<'a>(&self, entity: &'a Entity, map: &'a Map) -> Vec<(&'a EntityAction, &'a Item)> {
@@ -786,6 +844,19 @@ fn forward_intent(pos: Point, facing: Direction) -> Intent {
 fn forward_tile(pos: Point, dir: Direction) -> Point {
     let (dx, dy) = dir.delta_pos();
     Point { x: pos.x + dx, y: pos.y + dy }
+}
+
+/// Integer midpoint between two tiles.
+fn halfway(a: Point, b: Point) -> Point {
+    Point { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+}
+
+/// Clear line of sight between two tiles: no opaque tile strictly between them.
+fn has_los(from: Point, to: Point, map: &Map) -> bool {
+    let ray = rltk::line2d(rltk::LineAlg::Bresenham, from, to);
+    let n = ray.len();
+    if n <= 2 { return true; }
+    !ray[1..n - 1].iter().any(|p| map.is_opaque(map.pos_idx(*p)))
 }
 
 /// Unequip the entity's held primary weapon back to inventory, if any.
