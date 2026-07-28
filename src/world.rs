@@ -465,17 +465,28 @@ impl World {
             .map(|e| std::mem::replace(&mut e.ai, AI::None))
             .collect();
 
+        // Live on-map grenades (position + blast radius) the AI can react to. Almost
+        // always empty, so the common case costs a single length check per actor.
+        let live_grenades: Vec<(Point, u32)> = self.active_items.iter().filter_map(|a| {
+            let ItemLocation::OnMap(pos) = &a.location else { return None };
+            match self.map.items[self.map.pos_idx(*pos)].as_ref().map(|i| &i.kind) {
+                Some(ItemKind::FusedExplosive { radius, .. }) => Some((*pos, *radius)),
+                _ => None,
+            }
+        }).collect();
+
         // Step 2: Compute intents and collect any sounds emitted by AIs (e.g. alert shouts).
-        // Each closure only reads map, entities, and sounds — safe to run on a thread pool.
+        // Each closure only reads map, entities, sounds and grenades — safe to run on a thread pool.
         let map = &self.map;
         let entities = &self.entities;
         let sounds = &self.sounds_last_turn[..];
+        let grenades = &live_grenades[..];
 
         let compute = |(ai, entity): (&mut AI, &Entity)| -> Option<Intent> {
             match entity.driving {
                 DrivingState::Driving(_)  => None,
                 DrivingState::DrivenBy(_) => None,
-                _ => ai.compute_intent(entity, map, entities, sounds),
+                _ => ai.compute_intent(entity, map, entities, sounds, grenades),
             }
         };
 
@@ -496,7 +507,7 @@ impl World {
         for i in 0..entities.len() {
             if let DrivingState::DrivenBy(pilot_id) = entities[i].driving {
                 let intent = ai_states[pilot_id].compute_intent(
-                    &entities[i], map, entities, sounds,
+                    &entities[i], map, entities, sounds, grenades,
                 );
                 intents[i] = intent;
             }

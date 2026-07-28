@@ -24,6 +24,10 @@ const ALERT_ROTATE_PCT: u32 = 50;
 const ALERT_STEP_PCT:   u32 = 75;
 /// Radius a guard searches for a tile from which it can re-spot a lost target.
 const SPOT_SEARCH: i32 = 3;
+/// How far a grenade can be thrown. Mirrors `Item::throw_action`'s max range.
+const GRENADE_THROW_RANGE: u32 = 5;
+/// A guard flees a live grenade whose blast radius reaches within this margin.
+const GRENADE_FLEE_MARGIN: f32 = 2.0;
 
 // ---------------------------------------------------------------------------
 // Perception
@@ -73,6 +77,10 @@ enum Decision {
     Holster,
     /// Turn to a fixed facing (random-look / orient leaves).
     Turn   { dir: Direction },
+    /// Throw the carried explosive `item_id` at `target`.
+    ThrowGrenade { item_id: usize, target: Point },
+    /// Prime the carried explosive `item_id` (thrown next turn by the Always block).
+    PrimeGrenade { item_id: usize },
     GetReadyForCombat,
     GoTo   { dest: Point, tolerance: u32, field: FieldPref },
     Face   { toward: Point },
@@ -212,6 +220,7 @@ impl ActorAI {
         map:      &Map,
         entities: &[Entity],
         sounds:   &[SoundEvent],
+        grenades: &[(Point, u32)],
     ) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
@@ -229,7 +238,7 @@ impl ActorAI {
             let rng = self.rng.get_or_insert_with(|| RandomNumberGenerator::seeded(scramble(entity.index as u64)));
             (rng.range(0, 100) as u32, Direction::ALL[rng.range(0, 8) as usize])
         };
-        let decision = self.decide(entity, map, entities, roll, rand_dir);
+        let decision = self.decide(entity, map, entities, grenades, roll, rand_dir);
 
         // Record its shared-field goal for World's pre-pass to read next turn.
         self.nav_goal = decision.nav_goal();
@@ -426,8 +435,14 @@ impl ActorAI {
     /// The decision tree: current (alert, profile) state → a Decision. Pure, and
     /// every Decision field is Copy, so no borrow of self outlives the call and
     /// execute can then take &mut self freely.
-    fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity], roll: u32, rand_dir: Direction) -> Decision {
+    fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity], grenades: &[(Point, u32)], roll: u32, rand_dir: Direction) -> Decision {
         let pos = entity.position;
+        // "Always" (sentinel guard): grenades trump every alert state.
+        if let Profile::Guard { .. } = self.profile {
+            if let Some(d) = self.grenade_reaction(entity, map, grenades) {
+                return d;
+            }
+        }
         match &self.alert {
             AlertLevel::Unaware => match &self.profile {
                 Profile::Patrol { route_id, waypoint_index, .. } =>
@@ -487,17 +502,17 @@ impl ActorAI {
             },
             AlertLevel::Combat { target_id, last_seen } => match self.profile.combat_tactic() {
                 CombatTactic::Flee => Decision::Flee { threat: *last_seen },
-                _ =>
-                    if !self.is_combat_ready(entity) {
-                        Decision::GetReadyForCombat
-                    } else {
-                        match &self.profile {
-                            Profile::Guard { .. } =>
-                                self.guard_combat(entity, map, entities, *target_id, *last_seen),
-                            Profile::Patrol { .. } =>
-                                Decision::Engage { target_id: *target_id, last_seen: *last_seen },
-                        }
-                    },
+                _ => match &self.profile {
+                    // guard_combat gates its own readiness (a grenade throw doesn't need a firearm).
+                    Profile::Guard { .. } =>
+                        self.guard_combat(entity, map, entities, *target_id, *last_seen),
+                    Profile::Patrol { .. } =>
+                        if !self.is_combat_ready(entity) {
+                            Decision::GetReadyForCombat
+                        } else {
+                            Decision::Engage { target_id: *target_id, last_seen: *last_seen }
+                        },
+                },
             },
         }
     }
@@ -508,6 +523,8 @@ impl ActorAI {
             Decision::Idle => None,
             Decision::Holster => holster_intent(entity),
             Decision::Turn { dir } => (entity.body.facing != dir).then(|| turn_intent(dir)),
+            Decision::ThrowGrenade { item_id, target } => throw_grenade_intent(entity, item_id, target),
+            Decision::PrimeGrenade { item_id } => prime_grenade_intent(entity, item_id),
             Decision::GetReadyForCombat => self.get_ready_for_combat(entity, map),
             Decision::GoTo { dest, tolerance, .. } => self.navigate_to(entity, dest, map, entities, tolerance),
             Decision::Face { toward } => face_intent(entity, toward),
@@ -692,11 +709,90 @@ impl ActorAI {
         weapons.first().map(|(action, item)| build_intent(action, Some(InventoryItem((*item).clone())), Resolution::None))
     }
 
+    /// The "Always" grenade block: get rid of a grenade we've primed (ideally onto
+    /// the enemy), else run from a live grenade about to go off nearby. None when
+    /// no grenade concerns us this turn.
+    fn grenade_reaction(&self, entity: &Entity, map: &Map, grenades: &[(Point, u32)]) -> Option<Decision> {
+        if let Some((item_id, radius)) = primed_grenade(entity) {
+            return Some(self.throw_primed(entity, map, item_id, radius, self.known_enemy()));
+        }
+        if let Some(threat) = nearest_grenade(entity.position, grenades) {
+            return Some(Decision::Flee { threat });
+        }
+        None
+    }
+
+    /// The confirmed enemy position the guard would aim a grenade at, if any.
+    fn known_enemy(&self) -> Option<Point> {
+        match &self.alert {
+            AlertLevel::Combat { last_seen, .. } => Some(*last_seen),
+            AlertLevel::Alert  { last_known, .. } => Some(*last_known),
+            _ => None,
+        }
+    }
+
+    /// Where to lob an already-primed grenade of blast `radius`: at the enemy if it's
+    /// in range and the blast won't reach us, otherwise the best safe tile (nearest
+    /// the enemy if known, else farthest from us). Flee our own blast if we can't
+    /// throw it clear at all.
+    fn throw_primed(&self, entity: &Entity, map: &Map, item_id: usize, radius: u32, target: Option<Point>) -> Decision {
+        let (from, center) = (entity.position, entity.center());
+        if let Some(t) = target {
+            let in_range = rltk::DistanceAlg::Pythagoras.distance2d(center, t) <= GRENADE_THROW_RANGE as f32;
+            if in_range && has_los(center, t, map)
+                && rltk::DistanceAlg::Pythagoras.distance2d(from, t) > radius as f32 {
+                return Decision::ThrowGrenade { item_id, target: t };
+            }
+        }
+        match self.grenade_spot(map, from, radius, target) {
+            Some(spot) => Decision::ThrowGrenade { item_id, target: spot },
+            None       => Decision::Flee { threat: from },
+        }
+    }
+
+    /// Best in-throw-range tile for a grenade of blast `radius`: clear line of sight
+    /// and beyond our own blast, scored nearest the enemy (`toward`) if known else
+    /// farthest from us. Bounded to the throw range, and only reached while holding a
+    /// primed grenade, so the O(area) sweep stays off the general hot path.
+    fn grenade_spot(&self, map: &Map, from: Point, radius: u32, toward: Option<Point>) -> Option<Point> {
+        let r = GRENADE_THROW_RANGE as i32;
+        let mut best: Option<(Point, i32)> = None;
+        for dy in -r..=r {
+            for dx in -r..=r {
+                let p = Point { x: from.x + dx, y: from.y + dy };
+                if p == from { continue; }
+                if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 { continue; }
+                if rltk::DistanceAlg::Pythagoras.distance2d(from, p) > GRENADE_THROW_RANGE as f32 { continue; }
+                if rltk::DistanceAlg::Pythagoras.distance2d(from, p) <= radius as f32 { continue; }
+                if !has_los(from, p, map) { continue; }
+                let score = match toward {
+                    Some(t) => -sq_dist(p, t), // nearest the enemy
+                    None    =>  sq_dist(p, from), // farthest from us
+                };
+                if best.map_or(true, |(_, bs)| score > bs) { best = Some((p, score)); }
+            }
+        }
+        best.map(|(p, _)| p)
+    }
+
     /// The sentinel guard's combat reacquire ladder (see doc/ai.md): see → attack,
     /// last-known in view → close half the gap, could-see-by-turning → turn, else
     /// reposition for a shot or hold and watch. Giving up far from post is handled
     /// upstream by `decay_alertness`, so reaching the tail means we're near our post.
     fn guard_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+        // Prefer a grenade: prime one whenever the enemy is within throw range and we
+        // have a clear lob to it. The Always block throws it next turn.
+        if let Some(item_id) = carries_grenade(entity) {
+            let center = entity.center();
+            if rltk::DistanceAlg::Pythagoras.distance2d(center, last_seen) <= GRENADE_THROW_RANGE as f32
+                && has_los(center, last_seen, map) {
+                return Decision::PrimeGrenade { item_id };
+            }
+        }
+        // The rest of the ladder needs a working firearm.
+        if !self.is_combat_ready(entity) {
+            return Decision::GetReadyForCombat;
+        }
         if self.can_see_target(entity, entities, target_id) {
             return Decision::Engage { target_id, last_seen };
         }
@@ -851,6 +947,51 @@ fn halfway(a: Point, b: Point) -> Point {
     Point { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
+/// Squared tile distance (cheap ordering key, no sqrt).
+fn sq_dist(a: Point, b: Point) -> i32 {
+    let (dx, dy) = (a.x - b.x, a.y - b.y);
+    dx * dx + dy * dy
+}
+
+/// (item_id, blast radius) of a primed explosive in the entity's inventory, if any.
+fn primed_grenade(entity: &Entity) -> Option<(usize, u32)> {
+    entity.body.inventory.iter().find_map(|i| match i.kind {
+        ItemKind::FusedExplosive { radius, .. } if i.active => Some((i.id, radius)),
+        _ => None,
+    })
+}
+
+/// item_id of a throwable (un-primed) explosive in the entity's inventory, if any.
+fn carries_grenade(entity: &Entity) -> Option<usize> {
+    entity.body.inventory.iter().find_map(|i| match i.kind {
+        ItemKind::FusedExplosive { .. } if !i.active => Some(i.id),
+        _ => None,
+    })
+}
+
+/// Prime the carried explosive `item_id`, via its own Prime action.
+fn prime_grenade_intent(entity: &Entity, item_id: usize) -> Option<Intent> {
+    let item = entity.body.inventory.iter().find(|i| i.id == item_id)?;
+    let action = item.inventory_actions.iter().find(|a| a.id == ActionId::Prime)?;
+    Some(build_intent(action, Some(ActionSource::InventoryItem(item.clone())), Resolution::None))
+}
+
+/// The nearest live grenade whose blast reaches `from` (within radius + margin).
+fn nearest_grenade(from: Point, grenades: &[(Point, u32)]) -> Option<Point> {
+    grenades.iter()
+        .filter(|(pos, radius)| rltk::DistanceAlg::Pythagoras.distance2d(from, *pos)
+            <= *radius as f32 + GRENADE_FLEE_MARGIN)
+        .min_by_key(|(pos, _)| sq_dist(*pos, from))
+        .map(|(pos, _)| *pos)
+}
+
+/// Throw the carried explosive `item_id` at `target`, via its own Throw action.
+fn throw_grenade_intent(entity: &Entity, item_id: usize, target: Point) -> Option<Intent> {
+    let item = entity.body.inventory.iter().find(|i| i.id == item_id)?;
+    let action = item.inventory_actions.iter().find(|a| a.id == ActionId::Throw)?;
+    Some(build_intent(action, Some(ActionSource::InventoryItem(item.clone())), Resolution::Position(target)))
+}
+
 /// Clear line of sight between two tiles: no opaque tile strictly between them.
 fn has_los(from: Point, to: Point, map: &Map) -> bool {
     let ray = rltk::line2d(rltk::LineAlg::Bresenham, from, to);
@@ -898,12 +1039,13 @@ impl AI {
         map:      &Map,
         entities: &[Entity],
         sounds:   &[SoundEvent],
+        grenades: &[(Point, u32)],
     ) -> Option<Intent> {
         match self {
             AI::None => None,
             AI::Rotator => Some(turn_intent(entity.body.facing.clockwise())),
             AI::Forward => Some(forward_intent(entity.position, entity.body.facing)),
-            AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds),
+            AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds, grenades),
         }
     }
 }
