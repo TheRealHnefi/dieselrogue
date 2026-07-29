@@ -552,6 +552,10 @@ impl Entity {
         }
         primary_weapon
     }
+
+    pub fn is_visible(&self, map: &Map) -> bool {
+        map.is_visible(self.position)
+    }
 }
 
 

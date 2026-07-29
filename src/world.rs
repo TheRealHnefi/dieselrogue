@@ -627,11 +627,10 @@ impl World {
         self.resolve_effects(&effects, log)
     }
 
-    fn detonate_explosive(&self, pos: Point, damage: Damage, radius: u32, flash: bool, log: &mut GameLog) -> Vec<Effect> {
+    fn detonate_explosive(&self, pos: Point, damage: Damage, radius: u32, flash: bool, _log: &mut GameLog) -> Vec<Effect> {
         let mut effects: Vec<Effect> = vec![];
         let r = radius as i32;
         if flash {
-            log.log(String::from("A flashbang goes off!"));
             for entity in &self.entities {
                 let dx = entity.position.x - pos.x;
                 let dy = entity.position.y - pos.y;
@@ -641,7 +640,6 @@ impl World {
             }
             effects.push(Effect::Animation(flashbang_animation(pos, radius)));
         } else {
-            log.log(String::from("A grenade explodes!"));
             for entity in &self.entities {
                 let dx = entity.position.x - pos.x;
                 let dy = entity.position.y - pos.y;
@@ -814,7 +812,9 @@ impl World {
                                 }
                                 ent.body.inventory.retain(|i| !matches!(&i.kind, ItemKind::Ammo { charges: 0, .. }));
                                 let wname = ent.find_item_by_id(*weapon_id).map(|i| i.name.clone()).unwrap_or_default();
-                                log.log(format!("{} reloaded {} (+{} {})", ent.name, wname, loaded, kind.name()));
+                                if ent.is_visible(&self.map) {
+                                    log.log(format!("{} reloaded {} (+{} {})", ent.name, wname, loaded, kind.name()));
+                                }
                             }
                         }
                     }
@@ -863,7 +863,9 @@ impl World {
                     let pos = self.entities[*entity_id].position;
                     let idx = self.map.xy_idx(pos.x, pos.y);
                     if let Some(item) = self.map.items[idx].take() {
-                        log.log(format!("{} picked up {}", self.entities[*entity_id].name, item.name));
+                        if self.entities[*entity_id].is_visible(&self.map) {
+                            log.log(format!("{} picked up {}", self.entities[*entity_id].name, item.name));
+                        }
                         if item.active {
                             self.sync_active_item(item.id, ItemLocation::InInventory(*entity_id));
                         }
@@ -907,9 +909,13 @@ impl World {
                         let item_name = item.name.clone();
                         match self.entities[*entity_id].body.equip(item.clone()) {
                             Ok(displaced) => {
-                                log.log(format!("{} equipped {}", self.entities[*entity_id].name, item_name));
+                                if self.entities[*entity_id].is_visible(&self.map) {
+                                    log.log(format!("{} equipped {}", self.entities[*entity_id].name, item_name));
+                                }
                                 for d in displaced {
-                                    log.log(format!("{} unequipped {}", self.entities[*entity_id].name, d.name));
+                                    if self.entities[*entity_id].is_visible(&self.map) {
+                                        log.log(format!("{} unequipped {}", self.entities[*entity_id].name, d.name));
+                                    }
                                     self.entities[*entity_id].body.inventory.push(d);
                                 }
                             },
@@ -938,7 +944,9 @@ impl World {
                             if slot == SlotType::Headwear {
                                 self.entities[*entity_id].clear_scanning();
                             }
-                            log.log(format!("{} unequipped {}", self.entities[*entity_id].name, item.name));
+                            if self.entities[*entity_id].is_visible(&self.map) {
+                                log.log(format!("{} unequipped {}", self.entities[*entity_id].name, item.name));
+                            }
                             self.entities[*entity_id].body.inventory.push(item);
                             self.entities[*entity_id].body.update_armor();
                         }
@@ -985,7 +993,9 @@ impl World {
             if self.debug_mode && is_player {
                 log.log(format!("{} would have died (debug mode).", self.entities[id].name));
             } else {
-                log.log(format!("{} was killed!", self.entities[id].name));
+                if self.entities[id].is_visible(&self.map) {
+                    log.log(format!("{} was killed!", self.entities[id].name));
+                }
                 deathlist.push(id);
             }
         }
@@ -1040,8 +1050,10 @@ impl World {
             if let Ok(drop_pos) = self.map.nearest_free_item_position(pos) {
                 let map_idx = self.map.pos_idx(drop_pos);
                 self.map.items[map_idx] = Some(item);
-                log.log(format!("{} dropped {} from a disabled {}",
-                    self.entities[id].name, item_name, self.entities[id].body.parts[part_index].name));
+                if self.entities[id].is_visible(&self.map) {
+                    log.log(format!("{} dropped {} from a disabled {}",
+                        self.entities[id].name, item_name, self.entities[id].body.parts[part_index].name));
+                }
             }
         }
     }
@@ -1060,7 +1072,7 @@ impl World {
             let has_key = self.entities[actor_id].body.inventory.iter().any(|item| {
                 matches!(&item.kind, ItemKind::Key { color } if *color == door_color)
             });
-            if !has_key {
+            if !has_key && self.map.is_visible(pos) {
                 log.log("The door is locked.".to_string());
                 return;
             }
@@ -1086,7 +1098,9 @@ impl World {
         self.entities[pilot_id].clear_pawns(&mut self.map);
         self.entities[vehicle_id].driving = DrivingState::DrivenBy(pilot_id);
 
-        log.log(format!("{} entered {}", self.entities[pilot_id].name, self.entities[vehicle_id].name));
+        if self.entities[vehicle_id].is_visible(&self.map) {
+            log.log(format!("{} entered {}", self.entities[pilot_id].name, self.entities[vehicle_id].name));
+        }
 
         if self.entities[pilot_id].index == self.player_id.unwrap() {
             self.entities[pilot_id].set_visible_tiles(&mut self.map, false);
@@ -1116,10 +1130,14 @@ impl World {
                     self.entities[pilot_id].kind = EntityKind::Player;
                 }
 
-                log.log(format!("{} left their vehicle", self.entities[pilot_id].name));
+                if self.entities[vehicle_id].is_visible(&self.map) {
+                    log.log(format!("{} left their vehicle", self.entities[pilot_id].name));
+                }
             },
             Err(_) => {
-                log.log(format!("{} tried to disembark, but there is no room", self.entities[pilot_id].name));
+                if self.entities[vehicle_id].is_visible(&self.map) {
+                    log.log(format!("{} tried to disembark, but there is no room", self.entities[pilot_id].name));
+                }
             }
         }
     }

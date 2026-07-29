@@ -175,6 +175,11 @@ impl Map {
         Point {x: x as i32, y: y as i32}
     }
 
+    pub fn is_visible(&self, pos: Point) -> bool {
+        let idx = self.pos_idx(pos);
+        return self.visible_tiles[idx];
+    }
+
     pub fn blocked(&self, x: i32, y: i32) -> bool {
         let index = self.xy_idx(x, y);
         self.blocked_idx(index)
