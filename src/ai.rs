@@ -728,8 +728,7 @@ impl ActorAI {
         let (from, center) = (entity.position, entity.center());
         if let Some(t) = target {
             let in_range = rltk::DistanceAlg::Pythagoras.distance2d(center, t) <= GRENADE_THROW_RANGE as f32;
-            if in_range && has_los(center, t, map)
-                && rltk::DistanceAlg::Pythagoras.distance2d(from, t) > radius as f32 {
+            if in_range && has_los(center, t, map) {
                 return Decision::ThrowGrenade { item_id, target: t };
             }
         }
