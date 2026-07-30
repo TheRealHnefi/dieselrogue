@@ -356,12 +356,16 @@ impl World {
     }
 
     /// Resolves the player's current aim target position.
-    /// For `AimingAtGround` returns the stored point; for `AimingAtEntity` looks up
-    /// the entity's current center so the aim tracks movement.
     pub fn get_player_aim_position(&self) -> Option<Point> {
-        let player = self.get_player().ok()?;
+        self.get_entity_aim_position(self.get_player().ok()?)
+    }
+
+    /// Resolves an entity's current aim target position, if it is aiming.
+    /// For `AimingAtGround` returns the stored point; for `AimingAtEntity` looks up
+    /// the target's current center so the aim tracks movement.
+    pub fn get_entity_aim_position(&self, entity: &Entity) -> Option<Point> {
         let key = StatusEffect::AimingAtGround(Point { x: 0, y: 0 }, Item::pistol());
-        match player.body.get_status_effect(&key) {
+        match entity.body.get_status_effect(&key) {
             Some(StatusEffect::AimingAtGround(pos, _))     => Some(*pos),
             Some(StatusEffect::AimingAtEntity(entity_id, _)) =>
                 self.entities.get(*entity_id).map(|e| e.center()),

@@ -293,6 +293,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(rltk::BLACK), rltk::to_cp437('█'));
     }
     draw_targeting_range(state, viewport, context);
+    draw_aim_markers(state, viewport, context);
     draw_enemy_viewsheds(state, viewport, context);
     draw_precognition_ghosts(state, viewport, context);
     draw_direction_overlay(&state.world.map, &state.world.entities, viewport, context, state.world.debug_mode);
@@ -1027,6 +1028,50 @@ fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
             tint,
             rltk::to_cp437(' '),
         );
+    }
+}
+
+// Marks aimed-at tiles: always the player's own aim; visible enemies' aim only with Precognition.
+fn draw_aim_markers(state: &State, viewport: Rect, context: &mut Rltk) {
+    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    let marker = rltk::RGBA::from_f32(1.0, 0.55, 0.1, 0.7);
+    let map = &state.world.map;
+
+    let mut mark = |pos: Point| {
+        if pos.x < viewport.x1 || pos.x >= viewport.x2 || pos.y < viewport.y1 || pos.y >= viewport.y2 {
+            return;
+        }
+        // set_fancy inverts y (see draw_direction_overlay); shift down one tile to align.
+        context.set_fancy(
+            rltk::PointF::new((pos.x - viewport.x1) as f32, (pos.y - viewport.y1 + 1) as f32),
+            0,
+            rltk::Radians(0.0),
+            rltk::PointF::new(1.0, 1.0),
+            marker,
+            transparent,
+            rltk::to_cp437('X'),
+        );
+    };
+
+    if let Some(pos) = state.world.get_player_aim_position() {
+        mark(pos);
+    }
+
+    let precognitive = state.world.get_player()
+        .map(|p| p.has_ability(Ability::Precognition))
+        .unwrap_or(false);
+    if precognitive {
+        for entity in &state.world.entities {
+            if entity.kind != crate::entity::EntityKind::Actor {
+                continue;
+            }
+            if !map.visible_tiles[map.pos_idx(entity.center())] {
+                continue; // only reveal aim of enemies the player can currently see
+            }
+            if let Some(pos) = state.world.get_entity_aim_position(entity) {
+                mark(pos);
+            }
+        }
     }
 }
 
