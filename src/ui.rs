@@ -949,6 +949,12 @@ fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, contex
 
 // Tint the tiles a range-limited targeting ability can legally hit (visible & in range).
 fn draw_targeting_range(state: &State, viewport: Rect, context: &mut Rltk) {
+    // Only while actively targeting; the cursor is gated the same way, and aborting
+    // (Escape) leaves pending_action set, so gating on it alone would leave the tint stuck.
+    if state.run_state != RunState::AwaitingPositionalTargetingInput
+        && state.run_state != RunState::AwaitingEntityTargetingInput {
+        return;
+    }
     let max_range = match state.pending_action.as_ref().map(|pa| pa.entity_action.targeting) {
         Some(crate::Targeting::Positional { max_range })
         | Some(crate::Targeting::EntityAim { max_range }) => max_range,

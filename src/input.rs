@@ -257,6 +257,7 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                 state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
             },
             VirtualKeyCode::Escape => {
+                state.pending_action = None;
                 return RunState::AwaitingInput;
             },
             VirtualKeyCode::Return => {
