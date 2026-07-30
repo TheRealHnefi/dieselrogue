@@ -569,14 +569,20 @@ impl ActorAI {
 
             // Ranged: fire if aim is ready, else spend the turn acquiring it
             // (fire actions require an active aim status, same as the player menu).
-            if let Some((slot, range)) = find_weapon(entity) {
+            if let Some((slot, range, damage)) = find_weapon(entity) {
                 let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
                 if dist <= range as f32 {
                     let available = entity.get_available_actions(map);
                     let fire = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::UseExistingAim { .. }));
                     let aim  = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::EntityAim { .. }));
                     if let Some(&(action, _)) = fire.or(aim) {
-                        return Some(build_intent(action, Some(ActionSource::EquippedSlot(slot)), Resolution::Position(tc)));
+                        // Only the fire step carries a body part; aim-acquire has no target part yet.
+                        let resolution = if fire.is_some() {
+                            Resolution::Bodypart { target: tc, bodypart_index: aim_bodypart(target, damage) }
+                        } else {
+                            Resolution::Position(tc)
+                        };
+                        return Some(build_intent(action, Some(ActionSource::EquippedSlot(slot)), resolution));
                     }
                 }
             }
@@ -929,16 +935,31 @@ fn direction_toward(from: Point, to: Point) -> Option<Direction> {
     }
 }
 
-/// Returns the first equipped firearm with remaining ammo, and its range.
-fn find_weapon(entity: &Entity) -> Option<(SlotType, u32)> {
+/// Returns the first equipped firearm with remaining ammo, its range, and its damage.
+fn find_weapon(entity: &Entity) -> Option<(SlotType, u32, Damage)> {
     entity.body.item_slots.iter().find_map(|slot| {
         if let Some(item) = &slot.item {
-            if let ItemKind::Firearm { ammo, range, .. } = item.kind {
-                if ammo > 0 { return Some((slot.slot_type, range)); }
+            if let ItemKind::Firearm { ammo, range, damage, .. } = item.kind {
+                if ammo > 0 { return Some((slot.slot_type, range, damage)); }
             }
         }
         None
     })
+}
+
+/// Picks the target body part that takes the most damage from `weapon_damage`
+/// (i.e. least armored against it). Ties resolve to the lowest index.
+fn aim_bodypart(target: &Entity, weapon_damage: Damage) -> usize {
+    let mut best_index = 0;
+    let mut most_damage = 0;
+    for (index, part) in target.body.parts.iter().enumerate() {
+        let dealt = part.armor.modify_damage(weapon_damage);
+        if dealt > most_damage {
+            most_damage = dealt;
+            best_index = index;
+        }
+    }
+    best_index
 }
 
 fn forward_intent(pos: Point, facing: Direction) -> Intent {
