@@ -292,6 +292,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
         let cursor_color = if invalid_target { RGB::named(rltk::RED) } else { RGB::named(rltk::PINK) };
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(rltk::BLACK), rltk::to_cp437('█'));
     }
+    draw_targeting_range(state, viewport, context);
     draw_enemy_viewsheds(state, viewport, context);
     draw_precognition_ghosts(state, viewport, context);
     draw_direction_overlay(&state.world.map, &state.world.entities, viewport, context, state.world.debug_mode);
@@ -940,6 +941,48 @@ fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, contex
                 color,
                 rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0),
                 arrow,
+            );
+        }
+    }
+}
+
+// Tint the tiles a range-limited targeting ability can legally hit (visible & in range).
+fn draw_targeting_range(state: &State, viewport: Rect, context: &mut Rltk) {
+    let max_range = match state.pending_action.as_ref().map(|pa| pa.entity_action.targeting) {
+        Some(crate::Targeting::Positional { max_range })
+        | Some(crate::Targeting::EntityAim { max_range }) => max_range,
+        _ => return,
+    };
+
+    let map = &state.world.map;
+    let Ok(player) = state.world.get_player() else { return };
+    let origin = player.position;
+
+    let tint = rltk::RGBA::from_f32(0.4, 0.8, 0.5, 0.18);
+    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    for y in viewport.y1.max(0)..viewport.y2 {
+        for x in viewport.x1.max(0)..viewport.x2 {
+            let pos = Point::new(x, y);
+            let idx = map.pos_idx(pos);
+            if !map.visible_tiles[idx] {
+                continue;
+            }
+            if let Some(range) = max_range {
+                let dx = x - origin.x;
+                let dy = y - origin.y;
+                if dx * dx + dy * dy > (range * range) as i32 {
+                    continue;
+                }
+            }
+            // set_fancy inverts y (see draw_direction_overlay); shift down one tile to align.
+            context.set_fancy(
+                rltk::PointF::new((x - viewport.x1) as f32, (y - viewport.y1 + 1) as f32),
+                0,
+                rltk::Radians(0.0),
+                rltk::PointF::new(1.0, 1.0),
+                transparent,
+                tint,
+                rltk::to_cp437(' '),
             );
         }
     }
