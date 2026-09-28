@@ -1614,6 +1614,80 @@ mod tests {
         }
     }
 
+    fn aim_target(world: &World, index: usize) -> Option<usize> {
+        let key = StatusEffect::AimingAtGround(Point { x: 0, y: 0 }, Item::pistol());
+        match world.entities[index].body.get_status_effect(&key) {
+            Some(StatusEffect::AimingAtEntity(target, _)) => Some(*target),
+            _ => None,
+        }
+    }
+
+    fn alert_of(world: &World, index: usize) -> &AlertLevel {
+        match &world.entities[index].ai {
+            AI::Actor(actor) => &actor.alert,
+            _ => panic!("entity {} has no actor AI", index),
+        }
+    }
+
+    #[test]
+    fn compaction_remaps_entity_references() {
+        let mut world = World::new_test();
+        for i in 0..4 {
+            assert!(create_zombie(&mut world, Point { x: i * 2, y: 0 }, Direction::Up, format!("{}", i), AI::None).is_ok());
+        }
+        // 0 aims at and hunts 2; 2 drives 3.
+        world.entities[0].body.apply_status_effect(&StatusEffect::AimingAtEntity(2, Item::pistol()));
+        let mut actor = ActorAI::new(Profile::Guard { anchor: Point { x: 0, y: 0 }, combat_tactic: CombatTactic::Hold });
+        actor.alert = AlertLevel::Combat { target_id: 2, last_seen: Point { x: 4, y: 0 } };
+        world.entities[0].ai = AI::Actor(actor);
+        world.entities[2].driving = DrivingState::Driving(3);
+
+        // Lower indices die, so 2 shifts down to 1; 3 dies outright.
+        world.post_resolve(vec![1, 3]);
+
+        let target = aim_target(&world, 0).expect("aim should survive compaction");
+        assert_eq!(world.entities[target].name, "2");
+        match alert_of(&world, 0) {
+            AlertLevel::Combat { target_id, .. } => assert_eq!(world.entities[*target_id].name, "2"),
+            _ => panic!("combat target should survive compaction"),
+        }
+        assert!(world.entities[1].driving == DrivingState::None, "link to a dead vehicle should be cut");
+
+        // Once the target itself dies, aim is cleared and the hunter falls back to searching.
+        world.post_resolve(vec![1]);
+        assert!(aim_target(&world, 0).is_none());
+        assert!(matches!(alert_of(&world, 0), AlertLevel::Alert { .. }));
+    }
+
+    #[test]
+    fn death_drops_keep_fuses_and_items() {
+        let mut world = World::new_test();
+        for i in 0..2 {
+            assert!(create_zombie(&mut world, Point { x: i * 4, y: 0 }, Direction::Up, format!("{}", i), AI::None).is_ok());
+        }
+        // 0 dies on top of an item (e.g. a key); 1 dies carrying a primed grenade.
+        let victim_pos = world.entities[0].position;
+        let _ = world.add_item(victim_pos, Item::pistol());
+        let floor_item_id = world.map.items[world.map.pos_idx(victim_pos)].as_ref().unwrap().id;
+
+        let mut grenade = Item::grenade();
+        grenade.id = 99;
+        grenade.active = true;
+        world.entities[1].body.inventory.push(grenade);
+        world.sync_active_item(99, ItemLocation::InInventory(1));
+
+        world.post_resolve(vec![0, 1]);
+
+        let floor_item = world.map.items[world.map.pos_idx(victim_pos)].as_ref().unwrap();
+        assert_eq!(floor_item.id, floor_item_id, "corpse must not overwrite an item");
+
+        assert_eq!(world.active_items.len(), 1);
+        match world.active_items[0].location {
+            ItemLocation::OnMap(pos) => assert_eq!(world.map.items[world.map.pos_idx(pos)].as_ref().unwrap().id, 99),
+            _ => panic!("dropped grenade should be tracked on the map"),
+        }
+    }
+
     #[test]
     fn add_item_to_floor_works() {
         let mut world = World::new_test();
