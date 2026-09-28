@@ -1076,9 +1076,18 @@ impl World {
             let has_key = self.entities[actor_id].body.inventory.iter().any(|item| {
                 matches!(&item.kind, ItemKind::Key { color } if *color == door_color)
             });
-            if !has_key && self.map.is_visible(pos) {
-                log.log("The door is locked.".to_string());
-                return;
+            if !has_key {
+                if Some(actor_id) == self.player_id {
+                    let color = crate::components::COLOR_NAMES[door_color].to_lowercase();
+                    let article = if color.starts_with(['a', 'e', 'i', 'o', 'u']) { "an" } else { "a" };
+                    log.log(format!("The door is locked. You need {} {} key.", article, color));
+                    return;
+                }
+                // TODO: Keyless AI still opens locked doors the player can't see (and doors
+                // never re-close). Undecided: locked-for-all vs. guards open and doors re-close.
+                if self.map.is_visible(pos) {
+                    return;
+                }
             }
         }
         self.entities[entity_id].clear_pawns(&mut self.map);

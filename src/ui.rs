@@ -1308,20 +1308,32 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
 
     let left: Vec<(&str, Vec<String>)> = vec![
         ("OBJECTIVE", vec![
-            "Reach the edge of the map to escape.".into(),
+            "Escape by walking off the edge of the map.".into(),
             "Enemies will try to stop you.".into(),
+        ]),
+        ("DOORS & KEYS", vec![
+            "Walk into a door to open it.".into(),
+            "Coloured doors are locked. A key of the same".into(),
+            "colour opens them; keys lie somewhere on".into(),
+            "your side of the door. The way out is locked.".into(),
         ]),
         ("TURNS", vec![
             "Each action advances time.".into(),
-            "After you act, all enemies act simultaneously.".into(),
-            format!("Press [{}] to skip a turn.", k(b.wait)),
+            "You and all enemies act simultaneously.".into(),
+            format!("Press [{}] to wait a turn.", k(b.wait)),
+        ]),
+        ("ITEMS", vec![
+            format!("[{}] pick up the item you stand on.", k(b.get_item)),
+            format!("[{}] inventory: use, equip or drop items.", k(b.inventory)),
+            format!("[{}] equipment: what you wear and wield.", k(b.equipment)),
         ]),
         ("FIRING A WEAPON", vec![
-            format!("Press [{}] to open Equipment.", k(b.equipment)),
-            "Select a weapon to see its actions.".into(),
+            format!("Press [{}] and select a weapon to see its actions.", k(b.equipment)),
             "Choose Aim, move the cursor to a target,".into(),
             "then confirm. Choose Fire to shoot.".into(),
-            "You need ammo to shoot.".into(),
+            "Moving or turning spoils your aim.".into(),
+            "Weapons need ammo; Reload refills from the".into(),
+            "ammo in your inventory.".into(),
         ]),
         ("DAMAGE", vec![
             "Four types: physical, fire, electrical, piercing.".into(),
@@ -1334,9 +1346,13 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
 
     let right: Vec<(&str, Vec<String>)> = vec![
         ("MOVEMENT", vec![
-            "8 directions: arrow keys, numpad 1-4/6-9,".into(),
-            "or rebindable keys (Settings).".into(),
-            "Moving or acting always costs a turn.".into(),
+            format!("Arrows or [{}][{}][{}][{}]; diagonals [{}][{}][{}][{}].",
+                k(b.move_up), k(b.move_down), k(b.move_left), k(b.move_right),
+                k(b.move_up_left), k(b.move_up_right), k(b.move_down_left), k(b.move_down_right)),
+            "The numpad always works too.".into(),
+            "Moving turns you to face that way first;".into(),
+            format!("hold [{}] to strafe without turning.", k(b.strafe)),
+            "Keys can be changed in Settings.".into(),
         ]),
         ("LOOKING & FREELOOK", vec![
             format!("Press [{}] to enter look mode.", k(b.look)),
@@ -1345,17 +1361,24 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
             "In freelook, movement keys scroll the camera".into(),
             "without moving your character.".into(),
         ]),
-        ("SOUND", vec![
-            "Most actions produce sound enemies can hear.".into(),
-            "Gunshots are loud; careful movement less so.".into(),
-            "Enemies will investigate nearby sounds.".into(),
+        ("ENEMIES", vec![
+            "Guards see in a cone in front of them.".into(),
+            "A guard that sees you attacks at once.".into(),
+            "Gunshots, explosions and shouts carry far;".into(),
+            "enemies who hear them come looking.".into(),
             "The noise panel shows nearby sound events.".into(),
         ]),
-        ("ENERGY", vec![
-            "Shown in the status panel.".into(),
-            format!("Used by combat abilities (press [{}]).", k(b.ability)),
-            "Regenerates gradually each turn.".into(),
-            "Save it for when you need it most.".into(),
+        ("ABILITIES & ENERGY", vec![
+            format!("[{}] opens your abilities.", k(b.ability)),
+            "Many cost energy, shown in the status panel.".into(),
+            "Energy does not regenerate; stimpacks".into(),
+            "restore it. Spend it wisely.".into(),
+            "Gain experience to level up and learn".into(),
+            format!("new abilities, such as Juke [{}].", k(b.juke)),
+        ]),
+        ("VEHICLES", vec![
+            "Learn Embark to drive a vehicle you walk into.".into(),
+            format!("[{}] leaves it again.", k(b.disembark)),
         ]),
     ];
 

@@ -65,6 +65,36 @@ pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState 
     }
 }
 
+/// Maps a key to a direction: numpad is always active, plus the rebindable movement keys.
+fn key_direction(key: VirtualKeyCode, b: &Bindings) -> Option<Direction> {
+    match key {
+        VirtualKeyCode::Numpad4 => Some(Direction::Left),
+        VirtualKeyCode::Numpad6 => Some(Direction::Right),
+        VirtualKeyCode::Numpad8 => Some(Direction::Up),
+        VirtualKeyCode::Numpad2 => Some(Direction::Down),
+        VirtualKeyCode::Numpad7 => Some(Direction::UpLeft),
+        VirtualKeyCode::Numpad9 => Some(Direction::UpRight),
+        VirtualKeyCode::Numpad3 => Some(Direction::DownRight),
+        VirtualKeyCode::Numpad1 => Some(Direction::DownLeft),
+        k if k == b.move_left       => Some(Direction::Left),
+        k if k == b.move_right      => Some(Direction::Right),
+        k if k == b.move_up         => Some(Direction::Up),
+        k if k == b.move_down       => Some(Direction::Down),
+        k if k == b.move_up_left    => Some(Direction::UpLeft),
+        k if k == b.move_up_right   => Some(Direction::UpRight),
+        k if k == b.move_down_right => Some(Direction::DownRight),
+        k if k == b.move_down_left  => Some(Direction::DownLeft),
+        _ => None,
+    }
+}
+
+/// Steps the look/targeting cursor one tile, clamped to the map.
+fn move_cursor(state: &mut State, dir: Direction) {
+    let (dx, dy) = dir.delta_pos();
+    state.cursor_pos.x = (state.cursor_pos.x + dx).clamp(0, state.world.map.width as i32 - 1);
+    state.cursor_pos.y = (state.cursor_pos.y + dy).clamp(0, state.world.map.height as i32 - 1);
+}
+
 fn move_in_direction(state: &mut State, dir: Direction) -> RunState {
     if state.freelook {
         freelook_move(state, dir)
@@ -83,25 +113,10 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
     state.menu_return_state = RunState::AwaitingInput;
     match state.last_input.take() {
         Some(key) => match key {
-            // Hardcoded numpad movement — always active regardless of bindings
-            VirtualKeyCode::Numpad4 => return move_in_direction(state, Direction::Left),
-            VirtualKeyCode::Numpad6 => return move_in_direction(state, Direction::Right),
-            VirtualKeyCode::Numpad8 => return move_in_direction(state, Direction::Up),
-            VirtualKeyCode::Numpad2 => return move_in_direction(state, Direction::Down),
-            VirtualKeyCode::Numpad7 => return move_in_direction(state, Direction::UpLeft),
-            VirtualKeyCode::Numpad9 => return move_in_direction(state, Direction::UpRight),
-            VirtualKeyCode::Numpad3 => return move_in_direction(state, Direction::DownRight),
-            VirtualKeyCode::Numpad1 => return move_in_direction(state, Direction::DownLeft),
-            // Rebindable movement keys
-            key if key == b.move_left        => return move_in_direction(state, Direction::Left),
-            key if key == b.move_right       => return move_in_direction(state, Direction::Right),
-            key if key == b.move_up          => return move_in_direction(state, Direction::Up),
-            key if key == b.move_down        => return move_in_direction(state, Direction::Down),
-            key if key == b.move_up_left     => return move_in_direction(state, Direction::UpLeft),
-            key if key == b.move_up_right    => return move_in_direction(state, Direction::UpRight),
-            key if key == b.move_down_right  => return move_in_direction(state, Direction::DownRight),
-            key if key == b.move_down_left   => return move_in_direction(state, Direction::DownLeft),
-            key if key == b.wait => {
+            key if key_direction(key, &b).is_some() => {
+                return move_in_direction(state, key_direction(key, &b).unwrap());
+            },
+            key if key == b.wait || key == VirtualKeyCode::Numpad5 => {
                 return RunState::Resolve(ExecutionPhase::Idle);
             },
 
@@ -226,39 +241,11 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
 }
 
 pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let b = state.bindings;
     match state.last_input.take() {
         Some(key) => match key {
-            VirtualKeyCode::Left |
-            VirtualKeyCode::Numpad4 => {
-                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
-            },
-            VirtualKeyCode::Right |
-            VirtualKeyCode::Numpad6 => {
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
-            },
-            VirtualKeyCode::Up |
-            VirtualKeyCode::Numpad8 => {
-                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
-            },
-            VirtualKeyCode::Down |
-            VirtualKeyCode::Numpad2 => {
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
-            },
-            VirtualKeyCode::Numpad9 => {
-                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
-            },
-            VirtualKeyCode::Numpad7 => {
-                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
-                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
-            },
-            VirtualKeyCode::Numpad3 => {
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
-            },
-            VirtualKeyCode::Numpad1 => {
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
-                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+            key if key_direction(key, &b).is_some() => {
+                move_cursor(state, key_direction(key, &b).unwrap());
             },
             VirtualKeyCode::Escape => {
                 state.pending_action = None;
@@ -655,37 +642,13 @@ pub fn browse_equipment_input(state: &mut State, _context: &mut Rltk) -> RunStat
 }
 
 pub fn looking_input(state: &mut State, _context: &mut Rltk) -> RunState {
+    let b = state.bindings;
     if let Some(key) = state.last_input.take() {
         match key {
-            VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 => {
-                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
+            key if key_direction(key, &b).is_some() => {
+                move_cursor(state, key_direction(key, &b).unwrap());
             },
-            VirtualKeyCode::Right | VirtualKeyCode::Numpad6 => {
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
-            },
-            VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 => {
-                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
-            },
-            VirtualKeyCode::Down  | VirtualKeyCode::Numpad2 => {
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
-            },
-            VirtualKeyCode::Numpad9 => {
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
-                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
-            },
-            VirtualKeyCode::Numpad7 => {
-                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
-                state.cursor_pos.y = max(state.cursor_pos.y - 1, 0);
-            },
-            VirtualKeyCode::Numpad3 => {
-                state.cursor_pos.x = min(state.cursor_pos.x + 1, state.world.map.width as i32 - 1);
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
-            },
-            VirtualKeyCode::Numpad1 => {
-                state.cursor_pos.x = max(state.cursor_pos.x - 1, 0);
-                state.cursor_pos.y = min(state.cursor_pos.y + 1, state.world.map.height as i32 - 1);
-            },
-            VirtualKeyCode::Escape | VirtualKeyCode::L => {
+            key if key == VirtualKeyCode::Escape || key == b.look => {
                 return RunState::AwaitingInput;
             },
             VirtualKeyCode::Return => {
@@ -757,17 +720,10 @@ pub fn directional_targeting_input(state: &mut State, _context: &mut Rltk) -> Ru
         None => return RunState::AwaitingDirectionalTargetingInput,
     };
 
-    let dir = match key {
-        VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 => Direction::Left,
-        VirtualKeyCode::Right | VirtualKeyCode::Numpad6 => Direction::Right,
-        VirtualKeyCode::Up    | VirtualKeyCode::Numpad8 => Direction::Up,
-        VirtualKeyCode::Down  | VirtualKeyCode::Numpad2 => Direction::Down,
-        VirtualKeyCode::Numpad7 => Direction::UpLeft,
-        VirtualKeyCode::Numpad9 => Direction::UpRight,
-        VirtualKeyCode::Numpad3 => Direction::DownRight,
-        VirtualKeyCode::Numpad1 => Direction::DownLeft,
-        VirtualKeyCode::Escape  => { state.pending_action = None; return RunState::AwaitingInput; },
-        _ => return RunState::AwaitingDirectionalTargetingInput,
+    let dir = match key_direction(key, &state.bindings) {
+        Some(dir) => dir,
+        None if key == VirtualKeyCode::Escape => { state.pending_action = None; return RunState::AwaitingInput; },
+        None => return RunState::AwaitingDirectionalTargetingInput,
     };
 
     let pending = match state.pending_action.take() {
@@ -820,7 +776,7 @@ pub fn level_up_input(state: &mut State, _context: &mut Rltk) -> RunState {
             add_levelup_ability(&mut state.world, ability);
             RunState::DeclareIntent
         },
-        VirtualKeyCode::Escape => RunState::AwaitingInput,
+        // No Esc: dismissing would forfeit the level and skip the enemies' intent declaration.
         _ => RunState::AwaitingLevelUpInput,
     }
 }

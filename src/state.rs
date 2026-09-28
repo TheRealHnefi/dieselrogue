@@ -409,6 +409,7 @@ impl State {
             return;
         }
 
+        self.turn += 1;
         self.world.check_levelup();
 
         if self.world.pending_levelup {
@@ -423,6 +424,5 @@ impl State {
         }
 
         self.run_state = RunState::DeclareIntent;
-        self.turn += 1;
     }
 }

@@ -10,7 +10,7 @@ use crate::PaperDoll;
 
 /**
  * Menu overview:
- * Main menu - system commands (save, quit, load)
+ * Main menu - system commands (use item, settings, abandon run, quit)
  * Action menu - in-world commands (use item, use ability, inspect, shoot)
  *   - "Use item" enters BrowsingInventory: the player picks an item directly in the
  *     side-panel inventory list, which then opens that item's action menu.
@@ -279,6 +279,46 @@ fn action_quit(_state: &mut State) -> RunState {
     ::std::process::exit(0);
 }
 
+fn action_abandon_run(state: &mut State) -> RunState {
+    let bindings = state.bindings;
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(1);
+    *state = State::new_welcome_state(seed, bindings);
+    RunState::WelcomeScreen
+}
+
+fn action_close_menu(state: &mut State) -> RunState {
+    state.menu_stack.pop();
+    RunState::AwaitingMenuInput
+}
+
+/// A "Yes / No" panel stacked over the main menu; "No" (or Esc) returns to it.
+fn confirm_menu(yes_text: &str, on_yes: fn(&mut State) -> RunState) -> MenuPanel<SystemRow> {
+    MenuPanel {
+        x: 39,
+        y: 22,
+        rows: vec![
+            SystemRow { text: "No".to_string(),       action: action_close_menu },
+            SystemRow { text: yes_text.to_string(),   action: on_yes },
+        ],
+        selected_row: 0,
+        no_selectable_rows: false,
+        paper_doll: None,
+    }
+}
+
+fn action_confirm_abandon(state: &mut State) -> RunState {
+    state.menu_stack.push(Box::new(confirm_menu("Yes, abandon this run", action_abandon_run)));
+    RunState::AwaitingMenuInput
+}
+
+fn action_confirm_quit(state: &mut State) -> RunState {
+    state.menu_stack.push(Box::new(confirm_menu("Yes, quit the game", action_quit)));
+    RunState::AwaitingMenuInput
+}
+
 fn action_open_item_menu(state: &mut State) -> RunState {
     let has_items = state.world.get_player()
         .map(|p| !p.body.inventory.is_empty())
@@ -299,8 +339,9 @@ pub fn main_menu() -> MenuPanel<SystemRow> {
         y: 20,
         rows: vec![
             SystemRow { text: "Use item".to_string(),  action: action_open_item_menu    },
-            SystemRow { text: "Settings".to_string(),  action: action_open_settings_menu },
-            SystemRow { text: "Quit".to_string(),      action: action_quit              },
+            SystemRow { text: "Settings".to_string(),     action: action_open_settings_menu },
+            SystemRow { text: "Abandon run".to_string(),  action: action_confirm_abandon    },
+            SystemRow { text: "Quit".to_string(),         action: action_confirm_quit       },
         ],
         selected_row: 0,
         no_selectable_rows: false,

@@ -16,7 +16,9 @@ pub fn move_player_intent(direction: Direction, world: &mut World) -> Result<(),
     Ok(())
 }
 
-// TODO: Strafe doesn't work with numpad keys. Why?
+// Strafe can't work with numpad keys on Windows: with NumLock on, Shift+numpad is
+// delivered as the navigation key (Up/Home/…) plus a synthetic Shift release.
+// Arrows and the letter bindings work.
 pub fn strafe_player_intent(direction: Direction, world: &mut World) -> Result<(), GameError> {
     if world.player_id.is_none() {
         return Err(GameError{error: Error::BadPrecondition, message: String::from("Player does not exist")});

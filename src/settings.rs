@@ -32,7 +32,9 @@ pub struct Bindings {
 impl Default for Bindings {
     fn default() -> Self {
         Bindings {
-            wait:        VirtualKeyCode::Numpad5,
+            // Defaults work without a numpad (roguelike y/u/b/n diagonals, '.' to wait);
+            // numpad 1–9 always work on top of these.
+            wait:        VirtualKeyCode::Period,
             get_item:    VirtualKeyCode::G,
             disembark:   VirtualKeyCode::D,
             inventory:   VirtualKeyCode::I,
@@ -46,10 +48,10 @@ impl Default for Bindings {
             move_right:      VirtualKeyCode::Right,
             move_up:         VirtualKeyCode::Up,
             move_down:       VirtualKeyCode::Down,
-            move_up_left:    VirtualKeyCode::Numpad7,
-            move_up_right:   VirtualKeyCode::Numpad9,
-            move_down_right: VirtualKeyCode::Numpad3,
-            move_down_left:  VirtualKeyCode::Numpad1,
+            move_up_left:    VirtualKeyCode::Y,
+            move_up_right:   VirtualKeyCode::U,
+            move_down_right: VirtualKeyCode::N,
+            move_down_left:  VirtualKeyCode::B,
             strafe:          VirtualKeyCode::LShift,
         }
     }
