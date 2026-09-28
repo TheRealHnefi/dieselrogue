@@ -1312,7 +1312,8 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
             "Enemies will try to stop you.".into(),
         ]),
         ("DOORS & KEYS", vec![
-            "Walk into a door to open it.".into(),
+            "Walk into a door to open it. Doors swing".into(),
+            "shut again once nobody stands in them.".into(),
             "Coloured doors are locked. A key of the same".into(),
             "colour opens them; keys lie somewhere on".into(),
             "your side of the door. The way out is locked.".into(),

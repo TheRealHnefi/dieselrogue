@@ -23,6 +23,8 @@ pub struct World {
     pub sounds_last_turn: Vec<SoundEvent>,
     pub active_items: Vec<ActiveItem>,
     active_items_ticked: bool,
+    /// Opened doors (entity index, consecutive turn-ends with an empty doorway).
+    open_doors: Vec<(usize, u32)>,
     next_item_id: usize,
     pub debug_mode: bool,
     pub parallel_ai: bool,
@@ -48,6 +50,7 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
+            open_doors: vec![],
             map,
             debug_mode: false,
             parallel_ai: true,
@@ -95,6 +98,7 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
+            open_doors: vec![],
             map: Map::new_empty_map(100),
             debug_mode: false,
             parallel_ai: false,
@@ -139,6 +143,7 @@ impl World {
             sounds_last_turn: vec![],
             active_items: vec![],
             active_items_ticked: false,
+            open_doors: vec![],
             map,
             debug_mode: false,
             parallel_ai: false,
@@ -1072,26 +1077,42 @@ impl World {
             Some(pawn) if self.entities[pawn.entity_id].kind == EntityKind::Door => pawn.entity_id,
             _ => return,
         };
-        if let Some(door_color) = self.entities[entity_id].color {
+        // Locks only stop the player; guards can open any door.
+        if let (Some(door_color), true) = (self.entities[entity_id].color, Some(actor_id) == self.player_id) {
             let has_key = self.entities[actor_id].body.inventory.iter().any(|item| {
                 matches!(&item.kind, ItemKind::Key { color } if *color == door_color)
             });
             if !has_key {
-                if Some(actor_id) == self.player_id {
-                    let color = crate::components::COLOR_NAMES[door_color].to_lowercase();
-                    let article = if color.starts_with(['a', 'e', 'i', 'o', 'u']) { "an" } else { "a" };
-                    log.log(format!("The door is locked. You need {} {} key.", article, color));
-                    return;
-                }
-                // TODO: Keyless AI still opens locked doors the player can't see (and doors
-                // never re-close). Undecided: locked-for-all vs. guards open and doors re-close.
-                if self.map.is_visible(pos) {
-                    return;
-                }
+                let color = crate::components::COLOR_NAMES[door_color].to_lowercase();
+                let article = if color.starts_with(['a', 'e', 'i', 'o', 'u']) { "an" } else { "a" };
+                log.log(format!("The door is locked. You need {} {} key.", article, color));
+                return;
             }
         }
         self.entities[entity_id].clear_pawns(&mut self.map);
+        self.open_doors.push((entity_id, 0));
         self.update_views_near_event(pos, 10);
+    }
+
+    /// Shuts open doors whose doorway has stayed empty for a few turns, so a
+    /// locked door opened by a guard doesn't stay open for the player.
+    fn close_idle_doors(&mut self) {
+        // The opener steps in the turn after opening, so the first empty turn-end is expected.
+        const CLOSE_AFTER_EMPTY_TURNS: u32 = 3;
+
+        let (entities, map) = (&self.entities, &mut self.map);
+        self.open_doors.retain_mut(|(door_id, empty_turns)| {
+            let door = &entities[*door_id];
+            let occupied = (0..door.size_x).any(|x| (0..door.size_y).any(|y| {
+                map.pawns[map.xy_idx(door.position.x + x as i32, door.position.y + y as i32)].is_some()
+            }));
+            *empty_turns = if occupied { 0 } else { *empty_turns + 1 };
+            if *empty_turns < CLOSE_AFTER_EMPTY_TURNS {
+                return true;
+            }
+            door.create_pawns(map);
+            false
+        });
     }
 
     fn handle_destroy_wall(&mut self, pos: Point) {
@@ -1174,6 +1195,7 @@ impl World {
                 .collect()
         };
         self.resolve_effects(&effects, log);
+        self.close_idle_doors();
 
         // Update viewsheds:
         //   1. Clear the player's tile markings from the map (sequential — writes map).
@@ -1401,6 +1423,11 @@ impl World {
                 other => other,
             };
         }
+
+        self.open_doors.retain_mut(|(door_id, _)| match remap[*door_id] {
+            Some(new_id) => { *door_id = new_id; true },
+            None => false,
+        });
 
         // Carried items of the dead were already re-synced to the map by drop_existing_item.
         self.active_items.retain_mut(|active| match active.location {
