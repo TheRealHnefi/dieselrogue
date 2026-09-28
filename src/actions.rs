@@ -186,7 +186,8 @@ pub fn melee_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effe
         unreachable!("melee_action called with non-target intent")
     };
     let index = map.xy_idx(pos.x, pos.y);
-    let pawn = map.pawns[index].as_ref().unwrap();
+    // The target may have moved or died earlier this turn — the swing then hits nothing.
+    let Some(pawn) = map.pawns[index].as_ref() else { return vec![] };
     let target_id = pawn.entity_id;
     let (bodypart_index, raw_damage) = entity.melee_strike(&entities[target_id]);
     vec![
@@ -325,7 +326,8 @@ pub fn aim_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effec
     let IntentData::TargetWithEquipment { slot, target } = entity.intent.data else {
         unreachable!("aim_action called with non-equipment-target intent")
     };
-    let item = entity.get_equipped_item_ref(slot).unwrap().clone();
+    // The weapon may have been dropped earlier this turn (e.g. its arm was disabled).
+    let Some(item) = entity.get_equipped_item_ref(slot).cloned() else { return vec![] };
     let status = match &map.pawns[map.pos_idx(target)] {
         Some(pawn) => StatusEffect::AimingAtEntity(pawn.entity_id, item),
         None       => StatusEffect::AimingAtGround(target, item),

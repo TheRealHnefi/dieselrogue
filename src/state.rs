@@ -129,6 +129,7 @@ impl State {
     }
 
     pub fn new_game_state(size: usize, seed: u64, skip_intro: bool, bindings: Bindings) -> Self {
+        crate::RUN_SEED.store(seed, std::sync::atomic::Ordering::Relaxed);
         Self {
             run_state: if skip_intro { RunState::AwaitingInput } else { RunState::WelcomeScreen },
             welcome_selected: 0,

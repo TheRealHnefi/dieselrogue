@@ -346,11 +346,12 @@ impl Map {
           use_flow_fields: false,
         };
 
-        let mut generated_blocks = generate_block_grid(size_in_blocks, rng);
-        while generated_blocks.is_none() {
-          generated_blocks = generate_block_grid(size_in_blocks, rng);
-        }
-        let blocks = generated_blocks.unwrap();
+        // Backtracking can fail on an unlucky seed, so retry — but incompatible
+        // block files fail every time, which must not hang the game.
+        const MAX_GENERATION_ATTEMPTS: usize = 20;
+        let blocks = (0..MAX_GENERATION_ATTEMPTS)
+          .find_map(|_| generate_block_grid(size_in_blocks, rng))
+          .unwrap_or_else(|| panic!("Map generation failed {} times; block files may be incompatible", MAX_GENERATION_ATTEMPTS));
         for i in 0..size_in_blocks {
           for j in 0..size_in_blocks {
             for x in 0..BLOCK_SIZE {

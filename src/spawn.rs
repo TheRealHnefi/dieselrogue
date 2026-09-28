@@ -169,7 +169,7 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         for _ in 0 .. amount {
             let target_tile_idx = rng.range(0, starting_room.tiles.len());
             let target_tile = starting_room.tiles[target_tile_idx];
-            let target_item_idx = rng.range(1, starting_pool.len());
+            let target_item_idx = rng.range(0, starting_pool.len());
 
             if world.add_item(world.map.idx_pos(target_tile), starting_pool[target_item_idx]()).is_ok() {
                 items_placed += 1;
@@ -369,6 +369,7 @@ fn find_interesting_guard_positions(
     for door in interesting_doors {
         let middle_idx = door.door_tiles[door.door_tiles.len() / 2];
         let candidate_positions = world.map.get_available_exits(middle_idx);
+        if candidate_positions.is_empty() { continue; }
         let position_idx = candidate_positions[rng.range(0, candidate_positions.len())].0; // The first value of the tuple is the tile index
         let pos = world.map.idx_pos(position_idx);
         let door_pos = world.map.idx_pos(middle_idx);
@@ -419,12 +420,14 @@ fn place_items_in_rooms(
     // Higher means rare items are rarer compared to common items
     const RARITY_FACTOR: usize = 1;
 
-    let max_depth = rooms.iter().filter(|r| r.depth != usize::MAX).max_by_key(|r| r.depth).unwrap().depth;
-    let max_rarity = pool.iter().max_by_key(|i| i().rarity).unwrap()().rarity as usize;
-    let min_rarity = pool.iter().min_by_key(|i| i().rarity).unwrap()().rarity as usize;
+    // Unreachable rooms keep depth usize::MAX; they get no loot.
+    let Some(max_depth) = rooms.iter().filter(|r| r.depth != usize::MAX).map(|r| r.depth).max() else { return 0 };
+    let Some(max_rarity) = pool.iter().map(|i| i().rarity as usize).max() else { return 0 };
+    let min_rarity = pool.iter().map(|i| i().rarity as usize).min().unwrap_or(0);
     // Depth should be higher than rarity, giving a positive integer factor
-    let rarity_factor = max_depth / max_rarity;
-    let min_depth_factor = rarity_factor - RARITY_TOLERANCE;
+    let rarity_factor = max_depth / max_rarity.max(1);
+    // Saturates on shallow maps: every item may then appear at any depth.
+    let min_depth_factor = rarity_factor.saturating_sub(RARITY_TOLERANCE);
 
     let min_depth = min_depth_factor * min_rarity;
 
@@ -440,7 +443,7 @@ fn place_items_in_rooms(
     for room in rooms {
         if !(rng.range(0, item_sparsity) == 0) { continue; }
 
-        if room.depth < min_depth { continue; }
+        if room.depth < min_depth || room.depth == usize::MAX { continue; }
 
         let mut picked_item: Option<MakeItem> = None;
         while picked_item.is_none() {

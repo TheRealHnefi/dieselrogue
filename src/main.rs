@@ -123,7 +123,39 @@ fn parse_args() -> (u64, bool, bool) {
     (resolved_seed, skip_intro, ai_test)
 }
 
+/// Seed of the run in progress, for crash reports (restarts pick a new seed).
+pub static RUN_SEED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Release builds have no console, so panics are written to `crash.log` next to the game.
+fn install_crash_log() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let seed = RUN_SEED.load(std::sync::atomic::Ordering::Relaxed);
+        let report = format!(
+            "DieselRogue {} crashed.\nSeed: {}\n{}\n\n{}\n",
+            env!("CARGO_PKG_VERSION"), seed, info, std::backtrace::Backtrace::force_capture());
+        let _ = std::fs::write("crash.log", report);
+        default_hook(info);
+    }));
+}
+
+/// Resources are loaded relative to the working directory; when launched from
+/// elsewhere (e.g. a shortcut), fall back to the executable's own folder.
+fn use_exe_dir_if_needed() {
+    if std::path::Path::new("resources").is_dir() {
+        return;
+    }
+    if let Some(dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+        if dir.join("resources").is_dir() {
+            let _ = std::env::set_current_dir(dir);
+        }
+    }
+}
+
 fn main() -> rltk::BError {
+    use_exe_dir_if_needed();
+    install_crash_log();
+
     #[cfg(debug_assertions)]
     println!("Debugging enabled");
     #[cfg(debug_assertions)]

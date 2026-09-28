@@ -1106,10 +1106,10 @@ impl World {
             log.log(format!("{} entered {}", self.entities[pilot_id].name, self.entities[vehicle_id].name));
         }
 
-        if self.entities[pilot_id].index == self.player_id.unwrap() {
+        if self.player_id == Some(pilot_id) {
             self.entities[pilot_id].set_visible_tiles(&mut self.map, false);
             self.entities[vehicle_id].set_visible_tiles(&mut self.map, true);
-            self.entities[self.player_id.unwrap()].kind = EntityKind::Actor;
+            self.entities[pilot_id].kind = EntityKind::Actor;
             self.player_id = Some(vehicle_id);
             self.entities[vehicle_id].kind = EntityKind::Player;
         }
@@ -1126,7 +1126,7 @@ impl World {
                 self.entities[vehicle_id].create_pawns(&mut self.map);
                 self.entities[pilot_id].update_view(&mut self.map);
 
-                if self.entities[vehicle_id].index == self.player_id.unwrap() {
+                if self.player_id == Some(vehicle_id) {
                     self.entities[vehicle_id].set_visible_tiles(&mut self.map, false);
                     self.entities[pilot_id].set_visible_tiles(&mut self.map, true);
                     self.player_id = Some(pilot_id);
@@ -1296,28 +1296,38 @@ impl World {
 
         for info in death_infos {
             match info.sprite {
+                // Remains never overwrite an item already on the tile (e.g. a key).
                 Sprite::Human => {
-                    let index = self.map.pos_idx(info.position);
-                    let mut corpse = Item::corpse();
-                    corpse.id = self.next_item_id;
-                    self.next_item_id += 1;
-                    self.map.items[index] = Some(corpse);
+                    let _ = self.add_item(info.position, Item::corpse());
                 },
                 Sprite::Tank => {
                     for dx in 0..info.size_x as i32 {
                         for dy in 0..info.size_y as i32 {
-                            let index = self.map.xy_idx(info.position.x + dx, info.position.y + dy);
-                            let mut rubble = Item::rubble();
-                            rubble.id = self.next_item_id;
-                            self.next_item_id += 1;
-                            self.map.items[index] = Some(rubble);
+                            let pos = Point { x: info.position.x + dx, y: info.position.y + dy };
+                            let _ = self.add_item(pos, Item::rubble());
                         }
                     }
                 },
                 Sprite::Door => (),
             }
             for item in info.drops {
-                let _ = self.add_item(info.position, item);
+                self.drop_existing_item(info.position, item);
+            }
+        }
+
+        if deathlist.is_empty() {
+            return;
+        }
+
+        // Compaction shifts indices; map each old index to its new one (None = removed).
+        let mut remap: Vec<Option<usize>> = Vec::with_capacity(self.entities.len());
+        let mut next = 0;
+        for entity in &self.entities {
+            if deathlist.contains(&entity.index) {
+                remap.push(None);
+            } else {
+                remap.push(Some(next));
+                next += 1;
             }
         }
 
@@ -1326,36 +1336,82 @@ impl World {
             return !should_be_dead;
         });
 
-        // TODO: This compaction causes a bug, since AI's sometimes rely on stable entity ID's. Reconsider this approach.
         for (i, entity) in self.entities.iter_mut().enumerate() {
             entity.index = i;
         }
 
-        // Update player_id to the player's new index after compaction.
-        // Returns None if the player was killed and removed.
-        if self.player_id.is_some() {
-            self.player_id = self.entities.iter().position(|e| {
-                matches!(e.kind, crate::entity::EntityKind::Player)
-            });
-        }
+        self.remap_entity_refs(&remap);
 
         // Pawn entity_ids are now stale. Dead entities already cleared their pawns
         // via kill(); surviving pawns are in the right tiles but hold old IDs.
         // Update entity_id in-place.
-        if !deathlist.is_empty() {
-            let entities = &self.entities;
-            let map = &mut self.map;
-            for entity in entities {
-                for x in 0..entity.size_x {
-                    for y in 0..entity.size_y {
-                        let idx = map.xy_idx(entity.position.x + x as i32, entity.position.y + y as i32);
-                        if let Some(pawn) = map.pawns[idx].as_mut() {
-                            pawn.entity_id = entity.index;
-                        }
+        let entities = &self.entities;
+        let map = &mut self.map;
+        for entity in entities {
+            if matches!(entity.driving, DrivingState::Driving(_)) {
+                continue; // embarked pilots have no pawns; their stale position may hold another's
+            }
+            for x in 0..entity.size_x {
+                for y in 0..entity.size_y {
+                    let idx = map.xy_idx(entity.position.x + x as i32, entity.position.y + y as i32);
+                    if let Some(pawn) = map.pawns[idx].as_mut() {
+                        pawn.entity_id = entity.index;
                     }
                 }
             }
         }
+    }
+
+    /// Rewrites every stored entity index after compaction. References to removed
+    /// entities are dropped (aim cleared, combat target lost, vehicle link cut).
+    fn remap_entity_refs(&mut self, remap: &[Option<usize>]) {
+        let aim_key = StatusEffect::AimingAtGround(Point { x: 0, y: 0 }, Item::pistol());
+
+        self.player_id = self.player_id.and_then(|id| remap[id]);
+
+        for entity in &mut self.entities {
+            if let Some(StatusEffect::AimingAtEntity(target, item)) = entity.body.get_status_effect(&aim_key).cloned() {
+                entity.body.remove_status_effect(&aim_key);
+                if let Some(new_target) = remap[target] {
+                    entity.body.apply_status_effect(&StatusEffect::AimingAtEntity(new_target, item));
+                }
+            }
+
+            if let AI::Actor(actor) = &mut entity.ai {
+                if let AlertLevel::Combat { target_id, last_seen } = actor.alert {
+                    actor.alert = match remap[target_id] {
+                        Some(new_id) => AlertLevel::Combat { target_id: new_id, last_seen },
+                        None => AlertLevel::Alert { last_known: last_seen, search_ticks: 0 },
+                    };
+                }
+            }
+
+            entity.driving = match entity.driving.clone() {
+                DrivingState::Driving(v) => remap[v].map_or(DrivingState::None, DrivingState::Driving),
+                DrivingState::DrivenBy(p) => remap[p].map_or(DrivingState::Drivable, DrivingState::DrivenBy),
+                other => other,
+            };
+        }
+
+        // Carried items of the dead were already re-synced to the map by drop_existing_item.
+        self.active_items.retain_mut(|active| match active.location {
+            ItemLocation::InInventory(eid) => match remap[eid] {
+                Some(new_id) => { active.location = ItemLocation::InInventory(new_id); true },
+                None => false,
+            },
+            ItemLocation::OnMap(_) => true,
+        });
+    }
+
+    /// Places an item that already exists (keeps its id) on the nearest free tile,
+    /// keeping a live fuse tracked at its new location.
+    fn drop_existing_item(&mut self, pos: Point, item: Item) {
+        let Ok(drop_pos) = self.map.nearest_free_item_position(pos) else { return };
+        if item.active {
+            self.sync_active_item(item.id, ItemLocation::OnMap(drop_pos));
+        }
+        let idx = self.map.pos_idx(drop_pos);
+        self.map.items[idx] = Some(item);
     }
 
     /// Apply death effects
