@@ -215,7 +215,7 @@ pub fn build_field(goal: usize, map: &Map) -> DistField {
 /// Tiles past that horizon stay [`u16::MAX`] (unreachable), making agents
 ///  fall back to A*. Pass `u32::MAX` for a full-map field.
 pub fn build_field_bounded(goal: usize, map: &Map, max_cost: u32) -> DistField {
-    println!("Building field");
+    tracing::debug!("Building field");
     let size = map.width * map.height;
     let mut dist = vec![u16::MAX; size];
     if goal >= size {

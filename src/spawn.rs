@@ -1,5 +1,5 @@
 use rltk::{Point, RandomNumberGenerator};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE, AI, ActorAI, Profile};
 use crate::item::MakeItem;
 
@@ -104,17 +104,16 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
     set_region_depth(&mut regions, start_region, &boundaries);
     set_interesting_regions(&mut regions, &boundaries);
 
-    #[cfg(debug_assertions)]
     {
-        println!("== Spawn analysis ==");
-        println!("   Found {} regions, smallest is {} tiles, biggest is {} tiles",
+        tracing::debug!("== Spawn analysis ==");
+        tracing::debug!("   Found {} regions, smallest is {} tiles, biggest is {} tiles",
             regions.len(),
             regions.iter().min_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len(),
             regions.iter().max_by(|lhs, rhs| lhs.tiles.len().cmp(&rhs.tiles.len())).unwrap().tiles.len());
-        println!("   Found {} rooms, of which {} are interesting",
+        tracing::debug!("   Found {} rooms, of which {} are interesting",
             regions.iter().filter(|r| r.is_room).count(),
             regions.iter().filter(|r| r.is_interesting).count());
-        println!("== End spawn analysis ==");
+        tracing::debug!("== End spawn analysis ==");
     }
 
     SpawnMap { tile_region, regions, boundaries }
@@ -178,23 +177,21 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         }
 
         total_items_placed += items_placed;
-        #[cfg(debug_assertions)]
-        println!("Placed {} starting items", items_placed);
+        tracing::debug!("Placed {} starting items", items_placed);
     }
 
     let exceptional_placed = place_items_in_rooms(world, exceptional_pool, &interesting_rooms, EXCEPTIONAL_ITEM_SPARSITY, rng);
     let equipment_placed = place_items_in_rooms(world, equipment_pool, &boring_rooms, EQUIPMENT_ITEM_SPARSITY, rng);
     let consumables_placed = place_items_in_rooms(world, consumables_pool, &boring_rooms, CONSUMABLE_ITEM_SPARSITY, rng);
 
-    #[cfg(debug_assertions)]
     {
         total_items_placed += exceptional_placed;
         total_items_placed += equipment_placed;
         total_items_placed += consumables_placed;
-        println!("Placed {} exceptional items", exceptional_placed);
-        println!("Placed {} equipment items", equipment_placed);
-        println!("Placed {} consumable items", consumables_placed);
-        println!("Placed {} total items", total_items_placed);
+        tracing::debug!("Placed {} exceptional items", exceptional_placed);
+        tracing::debug!("Placed {} equipment items", equipment_placed);
+        tracing::debug!("Placed {} consumable items", consumables_placed);
+        tracing::debug!("Placed {} total items", total_items_placed);
     }
 }
 
@@ -220,14 +217,13 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     let middle_area = middle_zone_radius * middle_zone_radius - inner_zone_radius * inner_zone_radius;
     let outer_area = outer_zone_radius * outer_zone_radius - middle_zone_radius * middle_zone_radius;
 
-    #[cfg(debug_assertions)]
     {
-        println!("Map radii: center: {} inner: {} middle: {} outer: {}",
+        tracing::debug!("Map radii: center: {} inner: {} middle: {} outer: {}",
             center_zone_radius,
             inner_zone_radius,
             middle_zone_radius,
             outer_zone_radius);
-        println!("Map areas: center: {} inner: {} middle: {} outer: {}",
+        tracing::debug!("Map areas: center: {} inner: {} middle: {} outer: {}",
             center_zone_radius*center_zone_radius,
             inner_area,
             middle_area,
@@ -311,7 +307,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
                     world.entities[idx].ai = ai;
                     enemy_count += 1;
                 },
-                Err(e) => println!("{}", e.message)
+                Err(e) => tracing::warn!("{}", e.message)
             }
         }
     }
@@ -319,8 +315,7 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     // Patrol routes are built during map generation (see Map::create_patrol_routes).
     enemy_count += place_patrolling_enemies(world, center, inner_zone_radius, middle_zone_radius);
 
-    #[cfg(debug_assertions)]
-    println!("Placed {} enemies", enemy_count);
+    tracing::debug!("Placed {} enemies", enemy_count);
 }
 
 // ---------------------------------------------------------------------------
@@ -352,12 +347,11 @@ fn place_patrolling_enemies(
                     world.entities[idx].ai = AI::Actor(ActorAI::new(ai_profile));
                     enemies += 1;
                 },
-                Err(e) => println!("{}", e.message)
+                Err(e) => tracing::warn!("{}", e.message)
             }
         }
     }
-    #[cfg(debug_assertions)]
-    println!("Placed {} patrolling enemies", enemies);
+    tracing::debug!("Placed {} patrolling enemies", enemies);
 
     enemies
 }
@@ -382,14 +376,14 @@ fn find_interesting_guard_positions(
         let mut facing = Direction::Up;
         match Direction::delta_to_dir(pos.x - door_pos.x, pos.y - door_pos.y) {
             Ok(dir) => facing = dir,
-            Err(e) => println!("Error when placing guard by door: {}", e.message)
+            Err(e) => tracing::warn!("Error when placing guard by door: {}", e.message)
         }
         // If looking into a wall, face door instead
         let (d_pos_x, d_pos_y) = facing.delta_pos();
         if world.map.get_tile(pos.x + d_pos_x, pos.y + d_pos_y) == TileType::Wall {
             match Direction::delta_to_dir(door_pos.x - pos.x, door_pos.y - pos.y) {
                 Ok(dir) => facing = dir,
-                Err(e) => println!("Error when placing guard by door: {}", e.message)
+                Err(e) => tracing::warn!("Error when placing guard by door: {}", e.message)
             }
         }
         result.push((pos, facing))
@@ -592,8 +586,7 @@ fn set_interesting_regions(regions: &mut Vec<Region>, region_boundaries: &Vec<Re
         }
     }
     
-    #[cfg(debug_assertions)]
-    println!("Interesting regions found: {}", interesting_indices.len());
+    tracing::debug!("Interesting regions found: {}", interesting_indices.len());
 
     for idx in interesting_indices {
         regions[idx].is_interesting = true;
@@ -758,9 +751,9 @@ impl World {
         &mut self,
         spawn_map: &SpawnMap
     ) {
-        println!("== Debugging spawns ==");
-        println!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
-        println!("== Done debugging spawns ==");
+        tracing::debug!("== Debugging spawns ==");
+        tracing::debug!("   Spawn map size: regions: {}, boundaries: {}", spawn_map.regions.len(), spawn_map.boundaries.len());
+        tracing::debug!("== Done debugging spawns ==");
 
         //self.spawn_depthmarkers(spawn_map);
         //self.spawn_interesting_markers(spawn_map);
@@ -822,7 +815,7 @@ impl World {
     #[allow(unused)]
     fn spawn_waypoint_markers(&mut self) {
         let waypoints: Vec<Point> = self.map.patrol_routes.iter().flatten().copied().collect();
-        println!("Spawning {} waypoint markers", waypoints.len());
+        tracing::debug!("Spawning {} waypoint markers", waypoints.len());
         for wp in waypoints {
             let _ = self.add_item(wp, Item::medkit());
         }
@@ -839,7 +832,7 @@ impl World {
         }
         let limit = self.map.width * self.map.height;
         let mut path: Vec<Point> = Vec::new();
-        let mut seen: HashSet<usize> = HashSet::new();
+        let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
         for route in &self.map.patrol_routes {
             for i in 0..route.len() {
                 let goal = self.map.pos_idx(route[(i + 1) % route.len()]);
@@ -923,7 +916,7 @@ impl World {
             }
         }
 
-        println!("Locked {} of {} zone boundaries.", locked_count, order.len());
+        tracing::debug!("Locked {} of {} zone boundaries.", locked_count, order.len());
         boundary_colors
     }
 
@@ -988,6 +981,6 @@ impl World {
             unlocked.insert(color);
         }
 
-        println!("Placed {} keys across {} color(s).", total_placed, color_first_depth.len());
+        tracing::debug!("Placed {} keys across {} color(s).", total_placed, color_first_depth.len());
     }
 }

@@ -328,7 +328,7 @@ impl Map {
     /// Generate a gameplay map and its spawn analysis together. Patrol routes
     /// depend on the analysis, so both are built here and returned as a pair.
     pub fn new_game_map(size_in_blocks: usize, rng: &mut RandomNumberGenerator, style: PatrolStyle) -> (Map, SpawnMap) {
-        println!("Generating map");
+        tracing::debug!("Generating map");
         let map_width = size_in_blocks * BLOCK_SIZE;
         let map_height = size_in_blocks * BLOCK_SIZE;
         let tile_count = map_width * map_height;
@@ -415,7 +415,7 @@ impl Map {
         goals.dedup();
 
         #[cfg(debug_assertions)]
-        println!("Building {} navfields", goals.len());
+        tracing::debug!("Building {} navfields", goals.len());
 
         for goal in goals {
             if !self.nav_fields.contains(goal) {
@@ -489,7 +489,7 @@ impl Map {
         }
 
         #[cfg(debug_assertions)]
-        println!("Created {} patrol routes", self.patrol_routes.len());
+        tracing::debug!("Created {} patrol routes", self.patrol_routes.len());
     }
 
     /// Waypoints for an outdoor region: road tiles that transition into a doorway

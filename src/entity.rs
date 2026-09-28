@@ -484,7 +484,7 @@ impl Entity {
             self.update_abilities();
         }
 
-        println!("{} was hit in {} for {} damage, now has {} damage",
+        tracing::debug!("{} was hit in {} for {} damage, now has {} damage",
             self.name,
             self.body.parts[bodypart_index].name,
             actual_damage,

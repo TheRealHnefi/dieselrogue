@@ -1,3 +1,6 @@
+// No console window in release builds.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod state;
 pub use state::*;
 mod world;
@@ -124,15 +127,16 @@ fn main() -> rltk::BError {
     #[cfg(debug_assertions)]
     println!("Debugging enabled");
     #[cfg(debug_assertions)]
-    let _puffin_server = puffin_http::Server::new("0.0.0.0:8585").expect("puffin_http server");
+    let _puffin_server = puffin_http::Server::new("127.0.0.1:8585").expect("puffin_http server");
     #[cfg(debug_assertions)]
     puffin::set_scopes_on(true);
 
+    let log_level = if cfg!(debug_assertions) { "dieselrogue=debug" } else { "dieselrogue=warn" };
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer()
             .without_time()
             .with_filter(tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("dieselrogue=debug".parse().unwrap())))
+                .add_directive(log_level.parse().unwrap())))
         .with(SlowSpanLayer { threshold_ms: 20 })
         .init();
 
@@ -157,18 +161,15 @@ fn main() -> rltk::BError {
     let context = builder.build()?;
 
     let (seed, skip_intro, ai_test) = parse_args();
-    println!("RNG seed: {}", seed);
+    tracing::info!("RNG seed: {}", seed);
 
-    let mut state = if ai_test {
+    let state = if ai_test {
         State::new_ai_test_state(seed, settings.bindings)
     } else if skip_intro {
         State::new_game_state(25, seed, true, settings.bindings)
     } else {
         State::new_welcome_state(seed, settings.bindings)
     };
-
-    state.log.entries.push("Welcome! Reach the edge of the map to win.".to_string());
-    state.log.entries.push("Press F1 for help.".to_string());
 
     rltk::main_loop(context, state)
 }

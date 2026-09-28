@@ -137,7 +137,10 @@ impl State {
             menu_return_state: RunState::AwaitingInput,
             help_return_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
-            log: GameLog {entries: vec![]},
+            log: GameLog {entries: vec![
+                "Welcome! Reach the edge of the map to win.".to_string(),
+                "Press F1 for help.".to_string(),
+            ]},
             world: World::new(size, seed, crate::PatrolStyle::Roads),
             animation_system: AnimationSystem::new(),
             menu_stack: vec![],

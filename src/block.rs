@@ -121,7 +121,7 @@ pub fn generate_blocks(filter: &str) -> Vec<Block> {
 }
 
 pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Option<Vec<Block>> {
-  println!("Generating blocks");
+  tracing::debug!("Generating blocks");
 
   let corner_blocks   = generate_blocks("corner");
   let edge_blocks     = generate_blocks("edge");
@@ -209,11 +209,11 @@ pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Opti
   let center = (size / 2) * size + (size / 2);
   if n_middle > 0 {
     candidates[center] = (middle_start..nb).collect();
-    println!("  Middle block variants available: {}", n_middle);
+    tracing::debug!("  Middle block variants available: {}", n_middle);
   }
 
   if candidates.iter().any(|c| c.is_empty()) {
-    println!("Block files cannot satisfy boundary constraints — giving up.");
+    tracing::warn!("Block files cannot satisfy boundary constraints — giving up.");
     return None;
   }
 
@@ -232,7 +232,7 @@ pub fn generate_block_grid(size: usize, rng: &mut RandomNumberGenerator) -> Opti
   if n_middle > 0 { seeds.push(center); }
 
   if wfc_propagate(&seeds, &mut candidates, size, nb, &compat).is_err() {
-    println!("Initial propagation failed — block files may be incompatible.");
+    tracing::warn!("Initial propagation failed — block files may be incompatible.");
     return None;
   }
 
