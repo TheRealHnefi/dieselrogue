@@ -114,6 +114,12 @@ Embark can steal it. A tank that is already crewed can only be destroyed.
 The pilot knows Embark innately. Its tree has two halves: on foot (the pilot's own
 body) and driving (the tank's body, with the tank's narrow 90° view and slow turning).
 
+It boards only on a confirmed threat, so mere suspicion can be used to lure it away
+from the tank — but never far: "near tank" is a short leash, and past it the pilot
+gives up and returns. It never shouts. Instead, the engine of a manned tank is heard
+by other guards as a suspicious noise, so an alerted pilot that reaches its tank
+draws the curious toward it.
+
 ### On foot
 
 Always:
@@ -176,6 +182,8 @@ Seeing the player:
 Hearing:
     Player footsteps:
         Suspicious(sound position)! (footsteps of other guards are ignored)
+    Vehicle engine (any driver, including other guards):
+        Suspicious(sound position)!
     Gunshot, burst, explosion or shout:
         Alert(sound position)!
 Seeing:
