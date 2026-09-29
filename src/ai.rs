@@ -4,6 +4,7 @@ use crate::Map;
 use crate::{navigate_cached, greedy_step};
 use crate::Entity;
 use crate::EntityKind;
+use crate::DrivingState;
 use crate::util::adjacent;
 use crate::components::*;
 use crate::intent::*;
@@ -30,6 +31,8 @@ const UNAWARE_IDLE_PCT: u32 = 95;
 /// second, else idle. Rolls share one 0..100 draw.
 const ALERT_ROTATE_PCT: u32 = 50;
 const ALERT_STEP_PCT:   u32 = 75;
+/// A pilot investigates suspicion only this far from its post beside the tank.
+const PILOT_LEASH: f32 = 6.0;
 /// Radius a guard searches for a tile from which it can re-spot a lost target.
 const SPOT_SEARCH: i32 = 3;
 /// How far a grenade can be thrown. Mirrors `Item::throw_action`'s max range.
@@ -121,6 +124,8 @@ enum Decision {
     Face   { toward: Point },
     Flee   { threat: Point },
     Engage { target_id: usize, last_seen: Point },
+    /// Walk to the tank `vehicle_id` and climb in.
+    Board  { vehicle_id: usize },
 }
 
 /// Whether a GoTo destination is worth a shared flow field, and its extent.
@@ -186,15 +191,29 @@ pub enum Profile {
     Guard {
         anchor: Point,
         combat_tactic: CombatTactic,
-    }
-    // TODO: Add Pilot
+    },
+    /// Crew of one tank (entity index; None once destroyed). `anchor` is its post
+    /// beside the parked tank.
+    Pilot {
+        vehicle: Option<usize>,
+        anchor: Point,
+    },
 }
 
 impl Profile {
     fn combat_tactic(&self) -> &CombatTactic {
         match self {
             Profile::Patrol    { combat_tactic, .. } => combat_tactic,
-            Profile::Guard     { combat_tactic, .. } => combat_tactic
+            Profile::Guard     { combat_tactic, .. } => combat_tactic,
+            Profile::Pilot     { .. }                => &CombatTactic::Pursue,
+        }
+    }
+
+    /// The tank this pilot crews, for index remapping.
+    pub fn vehicle_mut(&mut self) -> Option<&mut Option<usize>> {
+        match self {
+            Profile::Pilot { vehicle, .. } => Some(vehicle),
+            _ => None,
         }
     }
 }
@@ -451,7 +470,7 @@ impl ActorAI {
                         && !entity.can_see(ls) && !self.can_turn_to_see(entity, map, ls),
                 // Patrol pursues hard: only breaks off (to shout + search) once it has
                 // reached where the enemy was last seen and still can't find them.
-                _ => lost && rltk::DistanceAlg::Pythagoras.distance2d(entity.position, ls) <= 1.5,
+                _ => lost && rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), ls) <= 1.5,
             };
             if give_up {
                 self.alert = AlertLevel::Alert { last_known: ls, search_ticks: 0 };
@@ -507,6 +526,9 @@ impl ActorAI {
         if let Some(d) = self.grenade_reaction(entity, map, grenades) {
             return d;
         }
+        if let Some(d) = self.pilot_decision(entity, map, entities) {
+            return d;
+        }
         match &self.alert {
             AlertLevel::Unaware => match &self.profile {
                 // A patroller holsters, then walks its route.
@@ -519,9 +541,9 @@ impl ActorAI {
                             None        => Decision::Idle,
                         }
                     },
-                // At its post a relaxed guard holsters, then mostly stands watch,
-                // glancing around now and then.
-                Profile::Guard { anchor, .. } =>
+                // At its post a relaxed guard (or a pilot by its tank) holsters, then
+                // mostly stands watch, glancing around now and then.
+                Profile::Guard { anchor, .. } | Profile::Pilot { anchor, .. } =>
                     if pos != *anchor {
                         Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap }
                     } else if entity.get_primary_weapon().is_some() {
@@ -567,6 +589,9 @@ impl ActorAI {
                             } else {
                                 Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0, field: FieldPref::Bounded }
                         },
+                        // A pilot whose tank is gone searches like a patroller, but silently.
+                        Profile::Pilot { .. } =>
+                            Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0, field: FieldPref::Bounded },
                     }
                 }
             },
@@ -575,7 +600,7 @@ impl ActorAI {
                 _ => match &self.profile {
                     Profile::Guard { .. } =>
                         self.guard_combat(entity, map, entities, *target_id, *last_seen),
-                    Profile::Patrol { .. } =>
+                    Profile::Patrol { .. } | Profile::Pilot { .. } =>
                         self.patrol_combat(entity, map, entities, *target_id, *last_seen),
                 },
             },
@@ -587,7 +612,7 @@ impl ActorAI {
         match decision {
             Decision::Idle => None,
             Decision::Holster => holster_intent(entity),
-            Decision::Turn { dir } => (entity.body.facing != dir).then(|| turn_intent(dir)),
+            Decision::Turn { dir } => (entity.body.facing != dir).then(|| turn_toward_intent(entity, dir)),
             Decision::Shout => shout_intent(entity),
             Decision::ThrowGrenade { item_id, target } => throw_grenade_intent(entity, item_id, target),
             Decision::PrimeGrenade { item_id } => prime_grenade_intent(entity, item_id),
@@ -600,7 +625,60 @@ impl ActorAI {
             },
             Decision::Engage { target_id, last_seen } =>
                 self.engage(entity, map, entities, target_id, last_seen),
+            Decision::Board { vehicle_id } => self.board(entity, map, entities, vehicle_id),
         }
+    }
+
+    // --- Behaviour: Pilot (doc/ai.md "Pilot") ---
+
+    /// The pilot's own branches: fighting from the tank, or running to board it on a
+    /// confirmed threat. None defers to the shared tree (relaxed or suspicious by the
+    /// tank, or fighting on foot once the tank is gone).
+    fn pilot_decision(&self, entity: &Entity, map: &Map, entities: &[Entity]) -> Option<Decision> {
+        let Profile::Pilot { vehicle, .. } = &self.profile else { return None };
+        let driving = matches!(entity.driving, DrivingState::DrivenBy(_));
+        match &self.alert {
+            // Searching from the tank: silent, and the engine noise draws the curious.
+            AlertLevel::Alert { last_known, search_ticks } if driving =>
+                Some(Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0, field: FieldPref::None }),
+            AlertLevel::Combat { target_id, last_seen } if driving =>
+                Some(self.tank_combat(entity, map, entities, *target_id, *last_seen)),
+            AlertLevel::Alert { .. } | AlertLevel::Combat { .. } => {
+                let tank_id = vehicle.filter(|&v| entities.get(v).is_some_and(|t| t.driving == DrivingState::Drivable))?;
+                if let AlertLevel::Combat { target_id, last_seen } = &self.alert {
+                    if entities.get(*target_id).is_some_and(|t| adjacent(entity.position, t.center())) {
+                        return Some(Decision::Engage { target_id: *target_id, last_seen: *last_seen });
+                    }
+                }
+                Some(Decision::Board { vehicle_id: tank_id })
+            },
+            _ => None,
+        }
+    }
+
+    /// Combat from a tank: shoot on sight, else swing the turret toward the last
+    /// sighting, else drive there. Falling back to Alert happens in `decay_alertness`.
+    fn tank_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+        if self.is_combat_ready(entity) && self.can_see_target(entity, entities, target_id) {
+            return Decision::Engage { target_id, last_seen };
+        }
+        if !entity.can_see(last_seen) && self.can_turn_to_see(entity, map, last_seen) {
+            return Decision::Face { toward: last_seen };
+        }
+        Decision::GoTo { dest: last_seen, tolerance: 0, field: FieldPref::None }
+    }
+
+    /// Climb into the tank when beside it, else walk to the nearest free tile next to it.
+    fn board(&mut self, entity: &Entity, map: &Map, entities: &[Entity], vehicle_id: usize) -> Option<Intent> {
+        let tank = entities.get(vehicle_id)?;
+        if let Some(tile) = footprint(tank).find(|&t| adjacent(entity.position, t)) {
+            let dir = direction_to(entity.position, tile)?;
+            return resolve_step(entity, dir, map, entities).ok().flatten();
+        }
+        let spot = footprint_ring(tank)
+            .filter(|p| p.x >= 0 && p.y >= 0 && p.x < map.width as i32 && p.y < map.height as i32 && !map.blocked(p.x, p.y))
+            .min_by_key(|&p| sq_dist(p, entity.position))?;
+        self.navigate_to(entity, spot, map, entities, 0)
     }
 
     // --- Behaviour: Combat ---
@@ -620,7 +698,8 @@ impl ActorAI {
             let tc = target.center();
 
             // Melee if adjacent — via resolve_step so the AI turns to face first.
-            if adjacent(entity.position, tc) {
+            // Vehicles can't melee; they shoot at any range.
+            if adjacent(entity.position, tc) && !entity.has_ability(Ability::VehicleMove) {
                 return match direction_to(entity.position, tc) {
                     Some(dir) => resolve_step(entity, dir, map, entities).ok().flatten(),
                     None      => Some(melee_intent(tc)),
@@ -689,6 +768,10 @@ impl ActorAI {
         if entity.position == destination {
             return None;
         }
+        if entity.has_ability(Ability::VehicleMove) {
+            let dir = vehicle_step(entity, destination, map)?;
+            return resolve_step(entity, dir, map, entities).ok().flatten();
+        }
         if !entity.has_ability(Ability::HumanMove) {
             return None;
         }
@@ -737,18 +820,19 @@ impl ActorAI {
         }
     }
 
-    /// This actor's guard anchor, if it is a guard.
+    /// This actor's post, if it holds one (guards and pilots).
     fn anchor(&self) -> Option<Point> {
         match &self.profile {
-            Profile::Guard { anchor, .. } => Some(*anchor),
+            Profile::Guard { anchor, .. } | Profile::Pilot { anchor, .. } => Some(*anchor),
             _ => None,
         }
     }
 
-    /// Whether `pos` lies beyond the guard's anchor leash. False for non-guards
-    /// (they have no post to hold).
+    /// Whether `pos` lies beyond the actor's leash around its post. False for
+    /// actors without a post.
     fn far_from_anchor(&self, pos: Point) -> bool {
-        self.anchor().map_or(false, |a| rltk::DistanceAlg::Pythagoras.distance2d(pos, a) > NEAR_ANCHOR_RADIUS)
+        let leash = if matches!(self.profile, Profile::Pilot { .. }) { PILOT_LEASH } else { NEAR_ANCHOR_RADIUS };
+        self.anchor().map_or(false, |a| rltk::DistanceAlg::Pythagoras.distance2d(pos, a) > leash)
     }
 
     /// Reload the equipped weapon if that action is available (its precondition
@@ -956,10 +1040,45 @@ impl ActorAI {
 
 /// Turn to face `toward` (any distance), or None if already facing it.
 fn face_intent(entity: &Entity, toward: Point) -> Option<Intent> {
-    match direction_toward(entity.position, toward) {
-        Some(dir) if entity.body.facing != dir => Some(turn_intent(dir)),
+    match direction_toward(entity.center(), toward) {
+        Some(dir) if entity.body.facing != dir => Some(turn_toward_intent(entity, dir)),
         _ => None,
     }
+}
+
+/// Every tile an entity occupies.
+fn footprint(entity: &Entity) -> impl Iterator<Item = Point> + '_ {
+    (0..entity.size_y as i32).flat_map(move |dy| (0..entity.size_x as i32)
+        .map(move |dx| Point { x: entity.position.x + dx, y: entity.position.y + dy }))
+}
+
+/// The ring of tiles just outside an entity's footprint (may fall off the map).
+fn footprint_ring(entity: &Entity) -> impl Iterator<Item = Point> + '_ {
+    let (w, h) = (entity.size_x as i32, entity.size_y as i32);
+    (-1..=h).flat_map(move |dy| (-1..=w).map(move |dx| (dx, dy)))
+        .filter(move |&(dx, dy)| dx == -1 || dy == -1 || dx == w || dy == h)
+        .map(move |(dx, dy)| Point { x: entity.position.x + dx, y: entity.position.y + dy })
+}
+
+/// Greedy step for a multi-tile vehicle: the direction whose move fits and brings its
+/// center strictly closer to `dest`. The tile pathfinders assume 1×1 walkers (and see
+/// the vehicle's own body as blocking), so vehicles don't use them; a vehicle with no
+/// improving move waits.
+fn vehicle_step(entity: &Entity, dest: Point, map: &Map) -> Option<Direction> {
+    let center_offset = Point { x: entity.center().x - entity.position.x, y: entity.center().y - entity.position.y };
+    let mut best = (sq_dist(entity.center(), dest), None);
+    for dir in Direction::ALL {
+        let (dx, dy) = dir.delta_pos();
+        let pos = Point { x: entity.position.x + dx, y: entity.position.y + dy };
+        if !entity.check_fit(pos, map) {
+            continue;
+        }
+        let d = sq_dist(Point { x: pos.x + center_offset.x, y: pos.y + center_offset.y }, dest);
+        if d < best.0 {
+            best = (d, Some(dir));
+        }
+    }
+    best.1
 }
 
 /// Direction from an adjacent `to`; debug-asserts adjacency.

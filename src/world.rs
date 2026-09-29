@@ -301,6 +301,10 @@ impl World {
         self.entities[idx].xp_value = 1000;
         self.carry_item(idx, Item::knife)?;
         self.carry_item(idx, Item::shock_pistol)?;
+        // Pilots know how to drive innately; the player has to learn it.
+        let body = &mut self.entities[idx].body;
+        body.parts[Ability::Embark.default_body_part()].abilities.push(Ability::Embark);
+        body.update_abilities();
         Ok(idx)
     }
 
@@ -334,10 +338,11 @@ impl World {
     }
 
 
-    pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<(), GameError> {
+    pub fn create_tank(&mut self, pos: Point, facing: Direction, name: String) -> Result<usize, GameError> {
         let pos = self.map.nearest_free_pawn_position_sized(pos, 3, 3)?;
 
-        let mut tank = Entity::tank(self.entities.len(), pos, facing, name);
+        let idx = self.entities.len();
+        let mut tank = Entity::tank(idx, pos, facing, name);
         let mut cannon = Item::mounted_cannon();
         cannon.id = self.next_item_id;
         self.next_item_id += 1;
@@ -347,7 +352,7 @@ impl World {
         tank.create_pawns(&mut self.map);
         self.entities.push(tank);
 
-        Ok(())
+        Ok(idx)
     }
 
     pub fn get_player(&self) -> Result<&Entity, GameError> {
@@ -1338,6 +1343,15 @@ impl World {
             self.kill_entity(*index);
         }
 
+        // A destroyed vehicle throws its driver out rather than taking them along.
+        for &vehicle_id in &deathlist {
+            if let DrivingState::DrivenBy(pilot_id) = self.entities[vehicle_id].driving {
+                if !deathlist.contains(&pilot_id) {
+                    self.eject_driver(pilot_id, vehicle_id);
+                }
+            }
+        }
+
         for info in death_infos {
             match info.sprite {
                 // Remains never overwrite an item already on the tile (e.g. a key).
@@ -1422,6 +1436,9 @@ impl World {
             }
 
             if let AI::Actor(actor) = &mut entity.ai {
+                if let Some(vehicle) = actor.profile.vehicle_mut() {
+                    *vehicle = vehicle.and_then(|v| remap[v]);
+                }
                 if let AlertLevel::Combat { target_id, last_seen } = actor.alert {
                     actor.alert = match remap[target_id] {
                         Some(new_id) => AlertLevel::Combat { target_id: new_id, last_seen },
@@ -1450,6 +1467,23 @@ impl World {
             },
             ItemLocation::OnMap(_) => true,
         });
+    }
+
+    /// Puts the driver of a destroyed vehicle back on foot beside the wreck. If the
+    /// vehicle was the player's, control returns to the driver.
+    fn eject_driver(&mut self, pilot_id: usize, vehicle_id: usize) {
+        let Ok(pos) = self.map.nearest_free_pawn_position(self.entities[vehicle_id].center()) else { return };
+        self.entities[pilot_id].driving = DrivingState::None;
+        self.entities[pilot_id].position = pos;
+        self.entities[pilot_id].create_pawns(&mut self.map);
+        self.entities[pilot_id].update_view(&mut self.map);
+        if self.player_id == Some(vehicle_id) {
+            self.entities[vehicle_id].set_visible_tiles(&mut self.map, false);
+            self.entities[vehicle_id].kind = EntityKind::Actor;
+            self.entities[pilot_id].kind = EntityKind::Player;
+            self.entities[pilot_id].set_visible_tiles(&mut self.map, true);
+            self.player_id = Some(pilot_id);
+        }
     }
 
     /// Places an item that already exists (keeps its id) on the nearest free tile,

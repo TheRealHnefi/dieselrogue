@@ -1407,6 +1407,9 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
         ("VEHICLES", vec![
             "Learn Embark to drive a vehicle you walk into.".into(),
             format!("[{}] leaves it again.", k(b.disembark)),
+            "Tank crews run for their tank when alarmed;".into(),
+            "stop them first and the tank is yours.".into(),
+            "A tank turns slowly and can't pass doors.".into(),
         ]),
     ];
 

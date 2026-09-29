@@ -230,11 +230,25 @@ pub fn resolve_step(entity: &Entity, direction: Direction, map: &Map, entities: 
     }
 
     if entity.body.facing != direction {
-        return Ok(Some(turn_intent(direction)));
+        return Ok(Some(turn_toward_intent(entity, direction)));
     }
 
     let (dx, dy) = direction.delta_pos();
     let target = Point { x: entity.position.x + dx, y: entity.position.y + dy };
+
+    if driving {
+        let leaves_map = target.x < 0 || target.y < 0
+            || target.x + entity.size_x as i32 > map.width as i32
+            || target.y + entity.size_y as i32 > map.height as i32;
+        if leaves_map {
+            // Driving off the edge escapes just like walking off it.
+            return if entity.kind == EntityKind::Player {
+                Err(GameError { error: Error::MapExit, message: String::new() })
+            } else {
+                Ok(None)
+            };
+        }
+    }
 
     if !driving {
         if target.x < 0 || target.y < 0 || target.x >= map.width as i32 || target.y >= map.height as i32 {
@@ -268,6 +282,22 @@ pub fn resolve_step(entity: &Entity, direction: Direction, map: &Map, entities: 
     } else {
         Ok(None)
     }
+}
+
+/// Turns toward `direction`. Vehicles turn only 45° per turn, so they take one
+/// step the shorter way round.
+pub fn turn_toward_intent(entity: &Entity, direction: Direction) -> Intent {
+    if !entity.has_ability(Ability::VehicleMove) {
+        return turn_intent(direction);
+    }
+    let from = entity.body.facing;
+    let mut clockwise_steps = 0;
+    let mut dir = from;
+    while dir != direction {
+        dir = dir.clockwise();
+        clockwise_steps += 1;
+    }
+    turn_intent(if clockwise_steps <= 4 { from.clockwise() } else { from.counter_clockwise() })
 }
 
 /// Hotkey-only catalog descriptor for picking up the item underfoot.

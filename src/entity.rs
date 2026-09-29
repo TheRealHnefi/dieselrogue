@@ -180,7 +180,11 @@ impl Entity {
     pub fn check_fit(&self, pos: Point, map: &Map) -> bool {
         for x in 0..self.size_x {
             for y in 0..self.size_y {
-                let index = map.xy_idx(pos.x + x as i32, pos.y + y as i32);
+                let (tx, ty) = (pos.x + x as i32, pos.y + y as i32);
+                if tx < 0 || ty < 0 || tx >= map.width as i32 || ty >= map.height as i32 {
+                    return false;
+                }
+                let index = map.xy_idx(tx, ty);
                 match &map.pawns[index] {
                     Some(pawn) => {
                         if pawn.entity_id != self.index {

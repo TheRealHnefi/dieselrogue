@@ -315,12 +315,59 @@ pub fn spawn_enemies(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNu
     // Patrol routes are built during map generation (see Map::create_patrol_routes).
     enemy_count += place_patrolling_enemies(world, center, inner_zone_radius, middle_zone_radius);
 
-    tracing::debug!("Placed {} enemies", enemy_count);
+    let tanks = place_tanks(world, spawn_map, center, inner_zone_radius / 2, rng);
+
+    tracing::debug!("Placed {} enemies and {} tanks", enemy_count, tanks);
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/// Parks 10–15 tanks on roads and in hangars, spread out and away from the start.
+/// About a quarter stand empty; the rest have a pilot posted beside them.
+/// Returns the number of tanks placed.
+fn place_tanks(world: &mut World, spawn_map: &SpawnMap, start: Point, min_start_dist: i32, rng: &mut RandomNumberGenerator) -> usize {
+    const MIN_SPACING: i32 = 60;
+    const MAX_ATTEMPTS: usize = 2000;
+    const UNPILOTED_ONE_IN: i32 = 4;
+
+    let spots = find_tank_spawns(&world.map, &spawn_map.regions);
+    let candidates: Vec<usize> = spots.road_tiles.iter().chain(spots.hangar_tiles.iter()).copied().collect();
+    if candidates.is_empty() {
+        return 0;
+    }
+
+    let wanted = rng.range(10, 16) as usize;
+    let mut placed: Vec<Point> = Vec::new();
+    for _ in 0..MAX_ATTEMPTS {
+        if placed.len() >= wanted {
+            break;
+        }
+        let tile = world.map.idx_pos(candidates[rng.range(0, candidates.len())]);
+        if chebyshev(tile, start) < min_start_dist || placed.iter().any(|&p| chebyshev(p, tile) < MIN_SPACING) {
+            continue;
+        }
+        let facing = [Direction::Up, Direction::Down, Direction::Left, Direction::Right][rng.range(0, 4) as usize];
+        let Ok(tank_idx) = world.create_tank(Point { x: tile.x - 1, y: tile.y - 1 }, facing, "Tank".to_string()) else { continue };
+        placed.push(tile);
+
+        if rng.range(0, UNPILOTED_ONE_IN) == 0 {
+            continue;
+        }
+        let tank_pos = world.entities[tank_idx].position;
+        let beside = Point { x: tank_pos.x - 1, y: tank_pos.y + 1 };
+        match world.create_pilot(beside, facing) {
+            Ok(pilot_idx) => {
+                let anchor = world.entities[pilot_idx].position;
+                let profile = Profile::Pilot { vehicle: Some(tank_idx), anchor };
+                world.entities[pilot_idx].ai = AI::Actor(ActorAI::new(profile));
+            },
+            Err(e) => tracing::warn!("Error when placing pilot: {}", e.message),
+        }
+    }
+    placed.len()
+}
 fn place_patrolling_enemies(
     world: &mut World,
     center: Point,
