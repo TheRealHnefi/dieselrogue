@@ -23,8 +23,8 @@ pub struct World {
     pub sounds_last_turn: Vec<SoundEvent>,
     pub active_items: Vec<ActiveItem>,
     active_items_ticked: bool,
-    /// Opened doors (entity index, consecutive turn-ends with an empty doorway).
-    open_doors: Vec<(usize, u32)>,
+    /// Opened doors (entity index, consecutive turn-ends with an empty doorway, opened by the player).
+    open_doors: Vec<(usize, u32, bool)>,
     next_item_id: usize,
     pub debug_mode: bool,
     pub parallel_ai: bool,
@@ -484,18 +484,31 @@ impl World {
             }
         }).collect();
 
+        // Sounds the AI can react to. Guards ignore each other's footsteps, and with
+        // thousands walking, filtering once here spares every actor scanning them all.
+        let ai_sounds: Vec<SoundEvent> = self.sounds_last_turn.iter()
+            .filter(|s| s.kind != SoundKind::Footstep || s.from_player)
+            .cloned()
+            .collect();
+
         // Step 2: Compute intents and collect any sounds emitted by AIs (e.g. alert shouts).
         // Each closure only reads map, entities, sounds and grenades — safe to run on a thread pool.
         let map = &self.map;
         let entities = &self.entities;
-        let sounds = &self.sounds_last_turn[..];
+        let sounds = &ai_sounds[..];
         let grenades = &live_grenades[..];
+        // Doors the player left open: a clue that someone passed through.
+        let player_doors: Vec<Point> = self.open_doors.iter()
+            .filter(|(_, _, by_player)| *by_player)
+            .map(|(door_id, _, _)| self.entities[*door_id].center())
+            .collect();
+        let doors = &player_doors[..];
 
         let compute = |(ai, entity): (&mut AI, &Entity)| -> Option<Intent> {
             match entity.driving {
                 DrivingState::Driving(_)  => None,
                 DrivingState::DrivenBy(_) => None,
-                _ => ai.compute_intent(entity, map, entities, sounds, grenades),
+                _ => ai.compute_intent(entity, map, entities, sounds, grenades, doors),
             }
         };
 
@@ -516,7 +529,7 @@ impl World {
         for i in 0..entities.len() {
             if let DrivingState::DrivenBy(pilot_id) = entities[i].driving {
                 let intent = ai_states[pilot_id].compute_intent(
-                    &entities[i], map, entities, sounds, grenades,
+                    &entities[i], map, entities, sounds, grenades, doors,
                 );
                 intents[i] = intent;
             }
@@ -660,7 +673,7 @@ impl World {
             }
             effects.push(Effect::Animation(explosion_animation(pos, radius)));
         }
-        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 25 }));
+        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 25, from_player: false }));
         effects
     }
 
@@ -1090,7 +1103,7 @@ impl World {
             }
         }
         self.entities[entity_id].clear_pawns(&mut self.map);
-        self.open_doors.push((entity_id, 0));
+        self.open_doors.push((entity_id, 0, Some(actor_id) == self.player_id));
         self.update_views_near_event(pos, 10);
     }
 
@@ -1101,7 +1114,7 @@ impl World {
         const CLOSE_AFTER_EMPTY_TURNS: u32 = 3;
 
         let (entities, map) = (&self.entities, &mut self.map);
-        self.open_doors.retain_mut(|(door_id, empty_turns)| {
+        self.open_doors.retain_mut(|(door_id, empty_turns, _)| {
             let door = &entities[*door_id];
             let occupied = (0..door.size_x).any(|x| (0..door.size_y).any(|y| {
                 map.pawns[map.xy_idx(door.position.x + x as i32, door.position.y + y as i32)].is_some()
@@ -1424,7 +1437,7 @@ impl World {
             };
         }
 
-        self.open_doors.retain_mut(|(door_id, _)| match remap[*door_id] {
+        self.open_doors.retain_mut(|(door_id, _, _)| match remap[*door_id] {
             Some(new_id) => { *door_id = new_id; true },
             None => false,
         });

@@ -103,6 +103,33 @@ Combat:
         GoTo(last known position)!
     Decay to Alert, Shout!
 
+## Perception (shared by all profiles)
+
+What moves a guard between alert states. A confirmed threat is never forgotten:
+nothing decays from Alert or Combat to Unaware. Only unconfirmed suspicion fades.
+
+Seeing the player:
+    Fills a detection meter each turn in view (faster when closer, instant within
+    3 tiles, doubled when Alert, instant in Combat). Drains one step per turn out of view.
+    Meter full:
+        Combat(player)!
+    Meter partly full:
+        Suspicious(player position)! (a glimpse — unconfirmed)
+Hearing:
+    Player footsteps:
+        Suspicious(sound position)! (footsteps of other guards are ignored)
+    Gunshot, burst, explosion or shout:
+        Alert(sound position)!
+Seeing:
+    A body:
+        Alert(body position)!
+    A door the player left open:
+        Suspicious(door position)!
+
+Priority when several happen at once: confirmed threats beat unconfirmed ones, then
+seen beats heard. An Alert guard only reacts to seeing the player (anything else would
+restart its search).
+
 ## Decisions, detailed into actions
 
 ### Throw grenade(target)

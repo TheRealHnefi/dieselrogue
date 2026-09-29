@@ -12,6 +12,14 @@ use crate::Item;
 
 const SUSPICIOUS_TURNS: u32 = 30;
 
+// --- Detection tunables: sighting the player fills a meter instead of alerting at once ---
+/// Meter value at which a sighting becomes a confirmed hostile.
+const DETECT_THRESHOLD: u8 = 6;
+/// Within this distance the player is recognised immediately.
+const DETECT_INSTANT_RADIUS: f32 = 3.0;
+/// Per-turn gain by distance band: (max distance, gain). Beyond the last band: 1.
+const DETECT_GAIN_BANDS: [(f32, u8); 2] = [(8.0, 3), (14.0, 2)];
+
 // --- Guard tunables (placeholder behaviour, safe to retune) ---
 /// A guard within this Pythagorean distance of its anchor is "near" its post and
 /// mills about; beyond it, it heads back.
@@ -67,6 +75,20 @@ impl Perception {
     fn urgency(&self) -> (bool, bool, bool) {
         (self.confirmed_hostile, self.confirmed_visually, self.confirmed_origin)
     }
+}
+
+/// A door the player left open, if in view: someone passed through here.
+fn notice_open_door(entity: &Entity, doors: &[Point]) -> Option<Perception> {
+    let range = entity.viewshed.range as f32;
+    doors.iter()
+        .find(|&&door| rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), door) <= range && entity.can_see(door))
+        .map(|&origin| Perception {
+            confirmed_hostile: false,
+            confirmed_origin: false,
+            confirmed_visually: false,
+            origin,
+            target_id: None
+        })
 }
 
 /// The more urgent of two perceptions, biased toward `left` on a tie.
@@ -193,11 +215,19 @@ pub struct ActorAI {
     /// entity index (each actor owns its own stream, so the parallel AI pass never
     /// shares a generator).
     rng:          Option<RandomNumberGenerator>,
+    /// How well the player has been recognised, 0..=DETECT_THRESHOLD. Fills while the
+    /// player is in view, drains out of view; full = confirmed hostile.
+    detection:    u8,
 }
 
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
-        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None, rng: None }
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None, rng: None, detection: 0 }
+    }
+
+    /// Recognition progress in 0.0..=1.0, for the UI.
+    pub fn detection_level(&self) -> f32 {
+        self.detection as f32 / DETECT_THRESHOLD as f32
     }
 
     /// The shared flow-field goal this actor is heading to (tile + whether a
@@ -215,12 +245,13 @@ impl ActorAI {
         entities: &[Entity],
         sounds:   &[SoundEvent],
         grenades: &[(Point, u32)],
+        doors:    &[Point],
     ) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
 
         // Perceive: collect this turn stimuli and return perception.
-        let perception = self.perceive(entity, entities, map, sounds);
+        let perception = self.perceive(entity, entities, map, sounds, doors);
 
         // Update beliefs according to perceptions
         self.update_beliefs(entity, entities, map, perception);
@@ -250,11 +281,12 @@ impl ActorAI {
     // --- Stimulus processing ---
 
     /// Returns the most important Perception, if any, to be acted upon later
-    fn perceive(&mut self, entity: &Entity, entities: &[Entity], map: &Map, sounds: &[SoundEvent]) -> Option<Perception> {
+    fn perceive(&mut self, entity: &Entity, entities: &[Entity], map: &Map, sounds: &[SoundEvent], doors: &[Point]) -> Option<Perception> {
         let sound_candidate = self.process_sounds(entity, sounds);
         let visual_candidate = self.process_vision(entity, entities, map);
+        let door_candidate = notice_open_door(entity, doors);
 
-        return most_urgent(visual_candidate, sound_candidate);
+        most_urgent(most_urgent(visual_candidate, sound_candidate), door_candidate)
     }
 
     fn process_sounds(&mut self, entity: &Entity, sounds: &[SoundEvent]) -> Option<Perception> {
@@ -264,11 +296,10 @@ impl ActorAI {
         let mut retval: Option<Perception> = None;
 
         for s in sounds {
-            // TODO: Remove footsteps while debugging AI behavior to prevent them from getting confused from their friends
-            match s.kind {
-                SoundKind::Footstep => continue,
-                _ => ()
-            } 
+            // Guards tell the player's footsteps from their comrades' (deliberately unrealistic).
+            if s.kind == SoundKind::Footstep && !s.from_player {
+                continue;
+            }
             let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
             if dist > s.volume as f32 || entity.center() == s.pos {
                 continue;
@@ -303,35 +334,64 @@ impl ActorAI {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
             
+        // Look for both the player and a body; neither may cut the scan short for the other.
+        let mut player: Option<(usize, Point)> = None;
+        let mut corpse: Option<Point> = None;
         for point in &entity.viewshed.visible_tiles {
-            // Return if player is seen, because it is more important than anything else
-            if let Some(entity_id) = map.get_entity_id(point.x, point.y) {
-                if entities[entity_id].kind == EntityKind::Player {
-                    let pc = entities[entity_id].center();
-                    return Some (Perception {
-                        confirmed_hostile: true,
-                        confirmed_origin: true,
-                        confirmed_visually: true,
-                        origin: pc,
-                        target_id: Some(entity_id)
-                    });
+            if player.is_none() {
+                if let Some(entity_id) = map.get_entity_id(point.x, point.y) {
+                    if entities[entity_id].kind == EntityKind::Player {
+                        player = Some((entity_id, entities[entity_id].center()));
+                    }
                 }
             }
-            // Return on first corpse seen, because it's the current most urgent case possible.
-            if let Some(item) = map.get_item_ref(point.x, point.y) {
-                if item.kind == ItemKind::Corpse {
-                    return Some (Perception {
-                        confirmed_hostile: true,
-                        confirmed_origin: false,
-                        confirmed_visually: false,
-                        origin: point.clone(),
-                        target_id: None
-                    });
+            if corpse.is_none() {
+                if matches!(map.get_item_ref(point.x, point.y), Some(item) if item.kind == ItemKind::Corpse) {
+                    corpse = Some(*point);
                 }
+            }
+            if player.is_some() && corpse.is_some() {
+                break;
             }
         }
 
-        None
+        // A body is proof of a threat, though not of where it went.
+        let body = corpse.map(|origin| Perception {
+            confirmed_hostile: true,
+            confirmed_origin: false,
+            confirmed_visually: false,
+            origin,
+            target_id: None
+        });
+        most_urgent(self.register_sighting(entity, player), body)
+    }
+
+    /// Fills the detection meter while the player is in view and drains it otherwise.
+    /// Below full, a sighting is only a glimpse: seen, but not yet recognised as hostile.
+    fn register_sighting(&mut self, entity: &Entity, seen: Option<(usize, Point)>) -> Option<Perception> {
+        let Some((target_id, origin)) = seen else {
+            self.detection = self.detection.saturating_sub(1);
+            return None;
+        };
+        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), origin);
+        let mut gain = if dist <= DETECT_INSTANT_RADIUS {
+            DETECT_THRESHOLD
+        } else {
+            DETECT_GAIN_BANDS.iter().find(|(max, _)| dist <= *max).map_or(1, |(_, g)| *g)
+        };
+        match self.alert {
+            AlertLevel::Combat { .. } => gain = DETECT_THRESHOLD, // already knows exactly who it's fighting
+            AlertLevel::Alert { .. }  => gain *= 2,               // primed by a confirmed threat
+            _ => {}
+        }
+        self.detection = self.detection.saturating_add(gain).min(DETECT_THRESHOLD);
+        Some(Perception {
+            confirmed_hostile: self.detection >= DETECT_THRESHOLD,
+            confirmed_origin: true,
+            confirmed_visually: true,
+            origin,
+            target_id: Some(target_id)
+        })
     }
 
     // --- Belief updates ---
@@ -1089,12 +1149,13 @@ impl AI {
         entities: &[Entity],
         sounds:   &[SoundEvent],
         grenades: &[(Point, u32)],
+        doors:    &[Point],
     ) -> Option<Intent> {
         match self {
             AI::None => None,
             AI::Rotator => Some(turn_intent(entity.body.facing.clockwise())),
             AI::Forward => Some(forward_intent(entity.position, entity.body.facing)),
-            AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds, grenades),
+            AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds, grenades, doors),
         }
     }
 }

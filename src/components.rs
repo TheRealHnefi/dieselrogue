@@ -245,7 +245,7 @@ pub enum Effect {
     Log(String),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum SoundKind {
     Gunshot,
     Burst,
@@ -260,6 +260,9 @@ pub struct SoundEvent {
     pub kind: SoundKind,
     pub pos: Point,
     pub volume: u32,
+    /// Made by the player (or the vehicle they drive). Guards only react to the
+    /// player's footsteps, never to each other's.
+    pub from_player: bool,
 }
 
 // Status Effects are considered Eq if they have the same enum type, even if the value is

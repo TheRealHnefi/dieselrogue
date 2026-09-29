@@ -294,6 +294,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
     }
     draw_targeting_range(state, viewport, context);
     draw_aim_markers(state, viewport, context);
+    draw_detection_markers(state, viewport, context);
     draw_enemy_viewsheds(state, viewport, context);
     draw_precognition_ghosts(state, viewport, context);
     draw_direction_overlay(&state.world.map, &state.world.entities, viewport, context, state.world.debug_mode);
@@ -1037,6 +1038,27 @@ fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
     }
 }
 
+// Above each visible guard: '?' while it is recognising the player, '!' once it is fighting them.
+fn draw_detection_markers(state: &State, viewport: Rect, context: &mut Rltk) {
+    let map = &state.world.map;
+    for entity in &state.world.entities {
+        let crate::AI::Actor(ai) = &entity.ai else { continue };
+        if !map.visible_tiles[map.pos_idx(entity.center())] {
+            continue;
+        }
+        let (glyph, color) = match ai.alert {
+            crate::AlertLevel::Combat { .. } => ('!', RGB::named(rltk::RED)),
+            _ if ai.detection_level() > 0.0  => ('?', RGB::named(rltk::YELLOW)),
+            _ => continue,
+        };
+        let (x, y) = (entity.position.x, entity.position.y - 1);
+        if x < viewport.x1 || x >= viewport.x2 || y < viewport.y1 || y >= viewport.y2 {
+            continue;
+        }
+        context.set(x - viewport.x1, y - viewport.y1, color, RGB::named(rltk::BLACK), rltk::to_cp437(glyph));
+    }
+}
+
 // Marks aimed-at tiles: always the player's own aim; visible enemies' aim only with Precognition.
 fn draw_aim_markers(state: &State, viewport: Rect, context: &mut Rltk) {
     let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
@@ -1364,9 +1386,14 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
         ]),
         ("ENEMIES", vec![
             "Guards see in a cone in front of them.".into(),
-            "A guard that sees you attacks at once.".into(),
-            "Gunshots, explosions and shouts carry far;".into(),
-            "enemies who hear them come looking.".into(),
+            "A guard that sees you grows suspicious [?],".into(),
+            "faster the closer you are (at once within 3".into(),
+            "tiles). Break line of sight before it spots".into(),
+            "you [!]. Its suspicion fades once you're gone.".into(),
+            "Guards hear your footsteps and investigate.".into(),
+            "Gunshots, explosions, shouts and bodies alarm".into(),
+            "them, and an alarmed guard never forgets.".into(),
+            "Doors you leave open make guards curious.".into(),
             "The noise panel shows nearby sound events.".into(),
         ]),
         ("ABILITIES & ENERGY", vec![
