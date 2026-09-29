@@ -103,6 +103,64 @@ Combat:
         GoTo(last known position)!
     Decay to Alert, Shout!
 
+## Pilot (profile = Pilot, bound to one vehicle)
+
+A crewman posted beside a parked tank. It lounges by the vehicle until it learns of a
+confirmed threat, then runs for the tank and fights from inside it. The tank is its
+whole job: it never strays far from it on foot, and once aboard it never gets out.
+Killing the pilot before it reaches the tank leaves the tank empty, so a player with
+Embark can steal it. A tank that is already crewed can only be destroyed.
+
+The pilot knows Embark innately. Its tree has two halves: on foot (the pilot's own
+body) and driving (the tank's body, with the tank's narrow 90° view and slow turning).
+
+### On foot
+
+Always:
+    Primed grenade is carried:
+        Throw grenade(enemy)!
+    Active grenade nearby:
+        Flee(grenade position)!
+
+Unaware:
+    Armed:
+        Unequip weapon!
+    Near tank:
+        95%: Idle!
+        5%: Rotate(random)!
+    GoTo(tank)!
+
+Suspicious:
+    Unarmed or out of ammo:
+        Equip or reload weapon!
+    Near tank:
+        Investigate area(cause of concern)!
+    Decay to Unaware, GoTo(tank)!
+
+Alert and Combat:
+    Tank is gone (destroyed or stolen):
+        Act as a patrolling guard (Alert/Combat branches above)!
+    Enemy is adjacent:
+        Attack(enemy)!
+    Board tank!
+
+### Driving
+
+A driving pilot is always Alert or Combat: it only boards on a confirmed threat, and
+it never forgets one.
+
+Alert:
+    Search area(last known position)!
+
+Combat:
+    Can see enemy:
+        Attack(enemy)!
+    Can turn to see last known enemy position:
+        Rotate(towards enemy position)!
+    Not yet at last known position:
+        GoTo(last known position)!
+    Decay to Alert!
+
 ## Perception (shared by all profiles)
 
 What moves a guard between alert states. A confirmed threat is never forgotten:
@@ -200,3 +258,13 @@ Prime the carried grenade! (thrown next turn by the Always block)
 
 ### Shout
 Raise the alarm! (a loud shout heard by nearby guards, putting them on alert)
+
+### Board tank
+Adjacent to tank:
+    Walk into tank! (embarks; the pilot now drives)
+GoTo(tank)!
+
+### While driving: Rotate and GoTo
+A tank turns only 45° per turn, so Rotate(direction) turns one step toward direction
+and GoTo turns before each move just like on foot. A tank cannot open doors or squeeze
+through narrow gaps; if the path is blocked it waits (Idle!) rather than bumping.
