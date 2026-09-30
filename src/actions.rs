@@ -194,7 +194,7 @@ pub fn melee_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effe
     let (bodypart_index, raw_damage) = entity.melee_strike(&entities[target_id]);
     vec![
         Effect::Log(format!("{} struck {}", entity.name, entities[target_id].name)),
-        Effect::Damage { entity_id: target_id, bodypart_index, raw_damage },
+        Effect::Damage { entity_id: target_id, bodypart_index, raw_damage, source: Some(entity.index) },
     ]
 }
 
@@ -228,7 +228,7 @@ fn aimed_shots(entity: &Entity, map: &Map, entities: &[Entity], shots: u32, mult
         let times = if fired > 1 { format!(" {} times", fired) } else { String::new() };
         effects.push(Effect::Log(format!("{} fired{} at {}", entity.name, times, entities[pawn.entity_id].name)));
         for _ in 0..fired {
-            effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
+            effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage, source: Some(entity.index) });
         }
         effects.extend(suppress(entity, pawn.entity_id));
     }
@@ -276,7 +276,7 @@ pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         effects.push(Effect::Log(format!("{} fired {} shots at {}", entity.name, shots, entities[pawn.entity_id].name)));
         for _ in 0..shots {
-            effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
+            effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage, source: Some(entity.index) });
         }
         effects.extend(suppress(entity, pawn.entity_id));
     }
@@ -300,7 +300,7 @@ pub fn rocket_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Ve
     ];
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         for part_index in 0..entities[pawn.entity_id].body.parts.len() {
-            effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part_index, raw_damage: damage });
+            effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part_index, raw_damage: damage, source: Some(entity.index) });
         }
         effects.extend(suppress(entity, pawn.entity_id));
     }
@@ -346,7 +346,7 @@ pub fn fan_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
             if let Some(pawn) = &map.pawns[map.pos_idx(tile_pos)] {
                 effects.push(Effect::Log(format!("{} hit {} with fan fire", entity.name, entities[pawn.entity_id].name)));
                 for part in 0..entities[pawn.entity_id].body.parts.len() {
-                    effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part, raw_damage: damage });
+                    effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part, raw_damage: damage, source: Some(entity.index) });
                 }
                 effects.extend(suppress(entity, pawn.entity_id));
             }
@@ -598,6 +598,6 @@ pub fn rush_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effec
     if let Some(pos) = best_pos {
         effects.push(Effect::Move { entity_id: entity.index, pos });
     }
-    effects.push(Effect::Damage { entity_id: target_id, bodypart_index, raw_damage });
+    effects.push(Effect::Damage { entity_id: target_id, bodypart_index, raw_damage, source: Some(entity.index) });
     effects
 }

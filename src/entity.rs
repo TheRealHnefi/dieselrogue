@@ -57,7 +57,9 @@ pub struct Entity {
     /// query time via `get_available_actions`.
     pub innate_actions: Vec<EntityAction>,
     // XP granted for killing actor
-    pub xp_value: usize
+    pub xp_value: usize,
+    /// Set once the player has damaged it; its death then earns the player XP.
+    pub hurt_by_player: bool,
 }
 
 fn human_innate_actions() -> Vec<EntityAction> {
@@ -118,7 +120,8 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: human_innate_actions(),
-            xp_value: 1000
+            xp_value: 1000,
+            hurt_by_player: false,
         }
     }
 
@@ -139,7 +142,8 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: vec![],
-            xp_value: 1000
+            xp_value: 1000,
+            hurt_by_player: false,
         }
     }
 
@@ -173,7 +177,8 @@ impl Entity {
             color: None,
             paper_doll: None,
             innate_actions: vec![],
-            xp_value: 0
+            xp_value: 0,
+            hurt_by_player: false,
         }
     }
 

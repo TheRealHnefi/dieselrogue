@@ -7,6 +7,8 @@ use crate::animation::explosion_animation;
 pub struct ActiveItem {
     pub item_id: usize,
     pub location: ItemLocation,
+    /// Who primed it, credited with anything its blast kills.
+    pub owner: Option<usize>,
 }
 
 /// The contents of the game world itself.
@@ -26,6 +28,8 @@ pub struct World {
     /// Opened doors (entity index, consecutive turn-ends with an empty doorway, opened by the player).
     open_doors: Vec<(usize, u32, bool)>,
     next_item_id: usize,
+    /// The run's seed, for choices that must be reproducible per run (level-up offers).
+    seed: u64,
     pub debug_mode: bool,
     pub parallel_ai: bool,
 }
@@ -52,6 +56,7 @@ impl World {
             active_items_ticked: false,
             open_doors: vec![],
             map,
+            seed,
             debug_mode: false,
             parallel_ai: true,
         };
@@ -100,6 +105,7 @@ impl World {
             active_items_ticked: false,
             open_doors: vec![],
             map: Map::new_empty_map(100),
+            seed: 0,
             debug_mode: false,
             parallel_ai: false,
         }
@@ -145,6 +151,7 @@ impl World {
             active_items_ticked: false,
             open_doors: vec![],
             map,
+            seed: 0,
             debug_mode: false,
             parallel_ai: false,
         };
@@ -393,13 +400,35 @@ impl World {
         }
     }
 
+    /// Up to three abilities to choose from at a level-up, drawn from different
+    /// categories where possible. Seeded by the run and level, so a given level-up
+    /// always offers the same choice.
     pub fn compute_levelup_options(&self) -> Vec<Ability> {
-        match self.get_player() {
-            Ok(player) => Ability::iter()
-                .filter(|a| !a.is_innate() && !player.has_ability(a.clone()))
-                .collect(),
-            Err(_) => vec![],
+        const CHOICES: usize = 3;
+        let Ok(player) = self.get_player() else { return vec![] };
+        // Abilities on a disabled limb are still known, so they're not offered again.
+        let known = |a: &Ability| player.body.parts.iter().any(|p| p.abilities.contains(a));
+        let mut pool: Vec<Ability> = Ability::iter().filter(|a| !a.is_innate() && !known(a)).collect();
+
+        let mut rng = RandomNumberGenerator::seeded(self.seed ^ (self.player_level as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        let mut picks: Vec<Ability> = Vec::with_capacity(CHOICES);
+        while picks.len() < CHOICES && !pool.is_empty() {
+            // Pick an unused category evenly (big categories mustn't crowd out small
+            // ones), then an ability within it; once categories run out, anything goes.
+            let mut categories: Vec<AbilityCategory> = Vec::new();
+            for a in &pool {
+                if !categories.contains(&a.category()) && picks.iter().all(|p| p.category() != a.category()) {
+                    categories.push(a.category());
+                }
+            }
+            let candidates: Vec<usize> = match categories.get(rng.range(0, categories.len().max(1))) {
+                Some(&c) => (0..pool.len()).filter(|&i| pool[i].category() == c).collect(),
+                None => (0..pool.len()).collect(),
+            };
+            let i = candidates[rng.range(0, candidates.len())];
+            picks.push(pool.remove(i));
         }
+        picks
     }
 
     pub fn add_item(&mut self, pos: Point, mut item: Item)  -> Result<(), GameError> {
@@ -603,6 +632,7 @@ impl World {
             timeout: u32,
             radius: u32,
             flash: bool,
+            owner: Option<usize>,
         }
 
         let mut ticks: Vec<Tick> = vec!();
@@ -627,7 +657,7 @@ impl World {
                 },
             };
             if let Some((location, damage, timeout, radius, flash)) = found {
-                ticks.push(Tick { item_id: active.item_id, location, damage, timeout, radius, flash });
+                ticks.push(Tick { item_id: active.item_id, location, damage, timeout, radius, flash, owner: active.owner });
             }
         }
 
@@ -641,7 +671,7 @@ impl World {
                     ItemLocation::OnMap(p) => *p,
                     ItemLocation::InInventory(eid) => self.entities[*eid].position,
                 };
-                effects.extend(self.detonate_explosive(pos, tick.damage, tick.radius, tick.flash, log));
+                effects.extend(self.detonate_explosive(pos, tick.damage, tick.radius, tick.flash, tick.owner, log));
                 self.remove_item_from_location(tick.item_id, &tick.location);
                 exploded.push(tick.item_id);
             } else {
@@ -654,7 +684,7 @@ impl World {
         self.resolve_effects(&effects, log)
     }
 
-    fn detonate_explosive(&self, pos: Point, damage: Damage, radius: u32, flash: bool, _log: &mut GameLog) -> Vec<Effect> {
+    fn detonate_explosive(&self, pos: Point, damage: Damage, radius: u32, flash: bool, owner: Option<usize>, _log: &mut GameLog) -> Vec<Effect> {
         let mut effects: Vec<Effect> = vec![];
         let r = radius as i32;
         if flash {
@@ -672,7 +702,7 @@ impl World {
                 let dy = entity.position.y - pos.y;
                 if dx * dx + dy * dy <= r * r {
                     for part in 0..entity.body.parts.len() {
-                        effects.push(Effect::Damage { entity_id: entity.index, bodypart_index: part, raw_damage: damage });
+                        effects.push(Effect::Damage { entity_id: entity.index, bodypart_index: part, raw_damage: damage, source: owner });
                     }
                 }
             }
@@ -755,7 +785,10 @@ impl World {
         let mut deathlist: Vec<usize> = vec!();
         for effect in effects.iter() {
             match effect {
-                Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage} => {
+                Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage, source} => {
+                    if source.is_some() && *source == self.player_id {
+                        self.entities[*id].hurt_by_player = true;
+                    }
                     let elec_penetrates = self.entities[*id].body.parts[*part_index].armor.electrical_penetrates(*damage);
                     self.handle_damage(*id, *part_index, *damage, &mut deathlist, log);
                     if damage.fire > 0 {
@@ -945,6 +978,9 @@ impl World {
                         item.active = true;
                         item.inventory_actions.retain(|a| a.name != "Prime");
                         self.sync_active_item(*item_id, ItemLocation::InInventory(*entity_id));
+                        if let Some(active) = self.active_items.iter_mut().find(|a| a.item_id == *item_id) {
+                            active.owner = Some(*entity_id);
+                        }
                     }
                 },
                 Effect::EquipItem { entity_id, item_id } => {
@@ -1017,7 +1053,7 @@ impl World {
         if let Some(entry) = self.active_items.iter_mut().find(|e| e.item_id == item_id) {
             entry.location = location;
         } else {
-            self.active_items.push(ActiveItem { item_id, location });
+            self.active_items.push(ActiveItem { item_id, location, owner: None });
         }
     }
 
@@ -1475,6 +1511,9 @@ impl World {
             None => false,
         });
 
+        for active in &mut self.active_items {
+            active.owner = active.owner.and_then(|o| remap[o]);
+        }
         // Carried items of the dead were already re-synced to the map by drop_existing_item.
         self.active_items.retain_mut(|active| match active.location {
             ItemLocation::InInventory(eid) => match remap[eid] {
@@ -1517,8 +1556,12 @@ impl World {
     fn kill_entity(&mut self, index: usize) {
         let entity = &mut self.entities[index];
         entity.clear_pawns(&mut self.map);
-        self.player_xp += entity.xp_value;
-        tracing::debug!("Player got {} xp", entity.xp_value);
+        // Only the player's own kills count, including ones it wounded that died later
+        // (e.g. of burns); guards shooting each other earn nothing.
+        if entity.hurt_by_player {
+            self.player_xp += entity.xp_value;
+            tracing::debug!("Player got {} xp", entity.xp_value);
+        }
     }
 
     fn update_views_near_event(&mut self, position: Point, radius: i32) {
@@ -1967,7 +2010,7 @@ mod tests {
 
         let mut log = GameLog { entries: vec![] };
         world.resolve_effects(
-            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0), source: None }],
             &mut log);
 
         assert_eq!(world.entities[id].body.parts[part_index].damage, 2 * max);
@@ -1987,7 +2030,7 @@ mod tests {
         let part_index = part_holding_slot(&world, id, SlotType::PrimaryHand);
         let mut log = GameLog { entries: vec![] };
         world.resolve_effects(
-            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0), source: None }],
             &mut log);
 
         assert!(world.entities[id].get_equipped_item_ref(SlotType::PrimaryHand).is_none(),
@@ -2011,7 +2054,7 @@ mod tests {
         let part_index = part_holding_slot(&world, id, SlotType::SecondaryHand);
         let mut log = GameLog { entries: vec![] };
         world.resolve_effects(
-            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0), source: None }],
             &mut log);
 
         assert!(world.entities[id].get_equipped_item_ref(SlotType::SecondaryHand).is_none(),
@@ -2038,7 +2081,7 @@ mod tests {
 
         let mut log = GameLog { entries: vec![] };
         world.resolve_effects(
-            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0) }],
+            &vec![Effect::Damage { entity_id: id, bodypart_index: part_index, raw_damage: Damage::new(100_000, 0, 0, 0), source: None }],
             &mut log);
 
         assert!(world.entities[id].get_equipped_item_ref(SlotType::PrimaryHand).is_none());

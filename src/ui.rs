@@ -1267,6 +1267,15 @@ pub fn draw_level_up_screen(state: &State, context: &mut Rltk) {
         BG_COLOR,
         options[selected].to_string(),
     );
+    let kind = if options[selected].is_passive() { "passive" } else { "active" };
+    let tag = format!("{} · {}", options[selected].category().name(), kind);
+    context.print_color(
+        LEVELUP_DESC_X + desc_box_width - 1 - tag.chars().count() as i32,
+        LEVELUP_TOP_Y + 1,
+        INACTIVE_COLOR,
+        BG_COLOR,
+        tag,
+    );
     for (i, line) in desc_lines.iter().enumerate() {
         context.print_color(
             LEVELUP_DESC_X + 2,

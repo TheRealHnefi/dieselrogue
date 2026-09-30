@@ -1,3 +1,25 @@
+/// Broad playstyle an ability supports; level-ups offer a spread across these.
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum AbilityCategory {
+    Ranged,
+    Melee,
+    Defense,
+    Stealth,
+    Misc,
+}
+
+impl AbilityCategory {
+    pub fn name(&self) -> &'static str {
+        match self {
+            AbilityCategory::Ranged  => "Ranged",
+            AbilityCategory::Melee   => "Melee",
+            AbilityCategory::Defense => "Defense",
+            AbilityCategory::Stealth => "Stealth",
+            AbilityCategory::Misc    => "Misc",
+        }
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Hash, strum::EnumIter)]
 pub enum Ability {
     // Passive abilities
@@ -79,6 +101,24 @@ impl Ability {
             Ability::Twist       => false,
             Ability::Distract    => false,
             _                    => false,
+        }
+    }
+
+    pub fn category(&self) -> AbilityCategory {
+        match self {
+            Ability::SteadyHands | Ability::Marksman | Ability::Scavenger | Ability::Suppression
+            | Ability::QuickDraw | Ability::CalledShot | Ability::DoubleTap | Ability::FastReload
+                => AbilityCategory::Ranged,
+            Ability::Pugilism | Ability::Backstab | Ability::Rush | Ability::Twist
+                => AbilityCategory::Melee,
+            Ability::Tough | Ability::IronBody | Ability::IronEars | Ability::Juke
+                => AbilityCategory::Defense,
+            Ability::Stealth | Ability::Distract | Ability::Precognition | Ability::WideVision
+                => AbilityCategory::Stealth,
+            Ability::EagleEyes | Ability::Embark
+            | Ability::HumanMove | Ability::VehicleMove | Ability::PickUp | Ability::Disembark
+            | Ability::Throw | Ability::Shout
+                => AbilityCategory::Misc,
         }
     }
 

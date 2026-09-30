@@ -182,7 +182,8 @@ pub enum ItemLocation {
 
 pub enum Effect {
     /// Apply damage to entity
-    Damage      { entity_id: usize, bodypart_index: usize, raw_damage: Damage },
+    /// Apply damage to entity; `source` is the attacker, if any (for kill credit)
+    Damage      { entity_id: usize, bodypart_index: usize, raw_damage: Damage, source: Option<usize> },
     /// Open door at position
     OpenDoor    { pos: Point, actor_id: usize },
     /// Remove wall
