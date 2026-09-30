@@ -319,7 +319,11 @@ impl GameState for State {
                 self.run_state = level_up_input(self, context);
             },
             RunState::Resolve(phase) => {
-                self.resolve(phase, monotime);
+                if phase == ExecutionPhase::Idle && self.player_acts_freely() {
+                    self.resolve_free_action();
+                } else {
+                    self.resolve(phase, monotime);
+                }
             },
             RunState::RenderAnimations(phase) => {
                 self.animate(phase, monotime, context);
@@ -366,6 +370,19 @@ impl State {
     }
 
     #[tracing::instrument(skip_all)]
+    /// Whether the action the player just chose takes no time.
+    fn player_acts_freely(&self) -> bool {
+        self.world.get_player().is_ok_and(|p| p.intent.phase == ExecutionPhase::Free)
+    }
+
+    /// Carries out a free action on its own, then hands control straight back: no
+    /// other phase runs, nobody else acts and the turn doesn't advance.
+    fn resolve_free_action(&mut self) {
+        // Free actions have no animations; any that appeared would be skipped.
+        let _ = self.world.resolve_phase(ExecutionPhase::Free, &mut self.log);
+        self.run_state = RunState::AwaitingInput;
+    }
+
     fn resolve(&mut self, phase: ExecutionPhase, monotime: u128) {
         let mut animations = vec!();
         let mut maybe_next_phase = phase.next();

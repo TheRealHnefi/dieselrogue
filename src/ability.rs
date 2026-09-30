@@ -12,6 +12,10 @@ pub enum Ability {
     Backstab,
     Stealth,
     Tough,
+    SteadyHands,
+    Marksman,
+    Scavenger,
+    Suppression,
     // Active abilities
     Embark,
     Disembark,
@@ -22,6 +26,10 @@ pub enum Ability {
     Twist,
     Distract,
     Shout,
+    QuickDraw,
+    CalledShot,
+    DoubleTap,
+    FastReload,
 }
 
 impl Ability {
@@ -47,6 +55,14 @@ impl Ability {
             Ability::Twist        => "Twist",
             Ability::Distract     => "Distract",
             Ability::Shout        => "Shout",
+            Ability::SteadyHands  => "Steady Hands",
+            Ability::Marksman     => "Marksman",
+            Ability::Scavenger    => "Scavenger",
+            Ability::Suppression  => "Suppression",
+            Ability::QuickDraw    => "Quick Draw",
+            Ability::CalledShot   => "Called Shot",
+            Ability::DoubleTap    => "Double Tap",
+            Ability::FastReload   => "Fast Reload",
         }.to_string()
     }
 
@@ -88,6 +104,14 @@ impl Ability {
             Ability::Twist        => false,
             Ability::Distract     => false,
             Ability::Shout        => false,
+            Ability::SteadyHands  => true,
+            Ability::Marksman     => true,
+            Ability::Scavenger    => true,
+            Ability::Suppression  => true,
+            Ability::QuickDraw    => false,
+            Ability::CalledShot   => false,
+            Ability::DoubleTap    => false,
+            Ability::FastReload   => false,
         }
     }
 
@@ -133,6 +157,22 @@ impl Ability {
                 "Catch an enemy's attention within range 10, removing their aim and cancelling their action. Only works if they can see you.",
             Ability::Shout =>
                 "Let out a loud shout, alerting nearby enemies to your presence.",
+            Ability::SteadyHands =>
+                "Your aim survives the first step or turn you take after aiming.",
+            Ability::Marksman =>
+                "Your firearms reach 25% further (at least 2 tiles).",
+            Ability::Scavenger =>
+                "Ammunition boxes you pick up hold 50% more rounds.",
+            Ability::Suppression =>
+                "Enemies hit by your firearms lose their aim.",
+            Ability::QuickDraw =>
+                "Equip a firearm from your inventory and aim it at an enemy in a single turn. Costs 10 energy.",
+            Ability::CalledShot =>
+                "Fire an aimed shot at a body part of your choice for double damage. Costs 15 energy.",
+            Ability::DoubleTap =>
+                "Fire two aimed shots in a single turn. Costs 10 energy and two rounds.",
+            Ability::FastReload =>
+                "Reload your weapon without spending a turn. Costs 10 energy.",
         }
     }
 
@@ -159,6 +199,14 @@ impl Ability {
             Ability::Twist        => 2, // R. Arm
             Ability::Distract     => 0, // Head
             Ability::Shout        => 0, // Head
+            Ability::SteadyHands  => 2, // R. Arm
+            Ability::Marksman     => 0, // Head
+            Ability::Scavenger    => 1, // Torso
+            Ability::Suppression  => 2, // R. Arm
+            Ability::QuickDraw    => 2, // R. Arm
+            Ability::CalledShot   => 0, // Head
+            Ability::DoubleTap    => 2, // R. Arm
+            Ability::FastReload   => 3, // L. Arm
         }
     }
 }

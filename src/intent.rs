@@ -66,6 +66,10 @@ pub enum ActionId {
     Unequip,
     Juke,
     Disembark,
+    QuickDraw,
+    CalledShot,
+    DoubleTap,
+    FastReload,
 }
 
 #[derive(Clone)]
@@ -130,7 +134,10 @@ pub enum ExecutionPhase {
     /// Actions that move the entity, notably after attacks are resolved
     Movement,
     /// Actions that are performed by items laying on the ground
-    ActiveItems
+    ActiveItems,
+    /// Player actions that take no time at all: resolved on their own, outside the
+    /// turn, without advancing it (see `State`'s Resolve handling)
+    Free,
 }
 
 impl ExecutionPhase {
@@ -141,7 +148,8 @@ impl ExecutionPhase {
             ExecutionPhase::Inventory => Some(ExecutionPhase::Attack),
             ExecutionPhase::Attack => Some(ExecutionPhase::Movement),
             ExecutionPhase::Movement => Some(ExecutionPhase::ActiveItems),
-            ExecutionPhase::ActiveItems => None
+            ExecutionPhase::ActiveItems => None,
+            ExecutionPhase::Free => None,
         }
     }
 }

@@ -205,6 +205,8 @@ pub enum Effect {
     Twist       { entity_id: usize, direction: Direction },
     /// Remove the aim of target entity
     Distract    { entity_id: usize },
+    /// Spoil an entity's aim (Suppression), without touching its planned action
+    ClearAim    { entity_id: usize },
     /// Move entity to pos (updates pawns + clears aiming).
     Move        { entity_id: usize, pos: Point },
     /// Change entity facing and refresh pawns (clears aiming).
@@ -285,6 +287,8 @@ pub enum StatusEffect {
     /// Recon vision: a long-range cone aimed at the stored tile replaces normal sight.
     /// Persists until the wearer moves or turns.
     Scanning(Point),
+    /// Steady Hands: the next step or turn keeps the aim instead of spoiling it.
+    Steady,
 }
 
 impl StatusEffect {
@@ -299,6 +303,7 @@ impl StatusEffect {
             StatusEffect::IronBody(_) => 5,
             StatusEffect::Regenerating(_) => 6,
             StatusEffect::Scanning(_) => 7,
+            StatusEffect::Steady => 8,
         }
     }
 
@@ -313,6 +318,7 @@ impl StatusEffect {
             StatusEffect::IronBody(_) => "Iron Body",
             StatusEffect::Regenerating(_) => "Regenerating",
             StatusEffect::Scanning(_) => "Recon",
+            StatusEffect::Steady => "Steady",
         }.to_string()
     }
 }
@@ -344,6 +350,7 @@ impl StatusEffect {
             // Show the longest-running part's countdown.
             StatusEffect::Regenerating(v) => Some(v.iter().copied().max().unwrap_or(0)),
             StatusEffect::Scanning(_) => None,
+            StatusEffect::Steady => None,
         }
     }
 
@@ -363,6 +370,7 @@ impl StatusEffect {
             },
             // Persistent; cleared explicitly on move/turn, not by ticking.
             StatusEffect::Scanning(_) => Some(self.clone()),
+            StatusEffect::Steady => Some(self.clone()),
         }
     }
 }
@@ -429,7 +437,8 @@ pub enum ItemKind {
     FusedExplosive {damage: Damage, timeout: u32, radius: u32, flash: bool},
     Key {color: usize},
     /// A box of ammunition holding `charges` rounds of `kind`, used to reload firearms.
-    Ammo {kind: AmmoKind, charges: u32},
+    /// `boosted` marks a box already enlarged by Scavenger, so re-picking it can't stack.
+    Ammo {kind: AmmoKind, charges: u32, boosted: bool},
     /// A consumable that applies Regenerating for `turns` turns (to one body part
     /// or all, depending on the item's targeting).
     Healing {turns: u32},

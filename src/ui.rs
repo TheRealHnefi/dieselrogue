@@ -276,9 +276,10 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
         || state.run_state == RunState::Looking;
     if in_cursor_mode && blink {
         let invalid_target = state.pending_action.as_ref().map(|pa| {
-            if let crate::Targeting::Positional { max_range } = pa.entity_action.targeting {
+            if let crate::Targeting::Positional { .. } = pa.entity_action.targeting {
                 let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
                 let not_visible = !state.world.map.visible_tiles[cursor_idx];
+                let max_range = state.world.get_player().ok().and_then(|p| p.action_range(&pa.entity_action));
                 let out_of_range = if let Some(range) = max_range {
                     state.world.get_player().ok().map(|p| {
                         let dx = state.cursor_pos.x - p.position.x;
@@ -659,7 +660,7 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
             let key_color = rltk::RGB::from_u8(r, g, b);
             context.print_color(x, offset_y, key_color, BG_COLOR, crate::components::COLOR_NAMES[*color]);
         },
-        ItemKind::Ammo { kind, charges } => {
+        ItemKind::Ammo { kind, charges, .. } => {
             context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, format!("{} {}", charges, kind.name()));
         },
         ItemKind::Healing { turns } => {
@@ -956,14 +957,14 @@ fn draw_targeting_range(state: &State, viewport: Rect, context: &mut Rltk) {
         && state.run_state != RunState::AwaitingEntityTargetingInput {
         return;
     }
-    let max_range = match state.pending_action.as_ref().map(|pa| pa.entity_action.targeting) {
-        Some(crate::Targeting::Positional { max_range })
-        | Some(crate::Targeting::EntityAim { max_range }) => max_range,
-        _ => return,
-    };
+    let Some(pending) = state.pending_action.as_ref() else { return };
+    if !matches!(pending.entity_action.targeting, crate::Targeting::Positional { .. } | crate::Targeting::EntityAim { .. }) {
+        return;
+    }
 
     let map = &state.world.map;
     let Ok(player) = state.world.get_player() else { return };
+    let max_range = player.action_range(&pending.entity_action);
     let origin = player.position;
 
     let tint = rltk::RGBA::from_f32(0.4, 0.8, 0.5, 0.18);

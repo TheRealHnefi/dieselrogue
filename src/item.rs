@@ -2,6 +2,7 @@ use rltk::Point;
 use rltk::RGB;
 use crate::components::*;
 use crate::entity::Entity;
+use crate::Ability;
 use crate::Map;
 use crate::intent::*;
 use crate::actions::{self, Action};
@@ -437,7 +438,7 @@ impl Item {
 impl Item {
     fn make_firearm(def: FirearmDef) -> Item {
         // Reload appears first so the equipped-weapon action menu lists it ahead of fire actions.
-        let mut equip_actions = vec![Item::reload_action()];
+        let mut equip_actions = vec![Item::reload_action(), Item::fast_reload_action()];
         equip_actions.extend(match def.fire_mode {
             FireMode::Single         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action()],
             FireMode::SingleScoped   => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action(), Item::recon_action()],
@@ -446,6 +447,10 @@ impl Item {
             FireMode::Rocket         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_rocket_action()],
             FireMode::Fan            => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fan_fire_action()],
         });
+        // Ability-gated shots for weapons that fire single aimed rounds.
+        if matches!(def.fire_mode, FireMode::Single | FireMode::SingleScoped | FireMode::SingleAndBurst) {
+            equip_actions.extend([Item::called_shot_action(), Item::double_tap_action()]);
+        }
         let equip_slots = if def.two_handed {
             vec![SlotType::PrimaryHand, SlotType::SecondaryHand]
         } else {
@@ -457,7 +462,7 @@ impl Item {
             rarity: def.rarity,
             renderable: Renderable::new_colored_char(def.glyph, Item::rarity_to_color(def.rarity)),
             name: def.name.to_string(),
-            inventory_actions: vec![Item::equip_action(), Item::reload_action(), Item::drop_action()],
+            inventory_actions: vec![Item::equip_action(), Item::quick_draw_action(def.range), Item::reload_action(), Item::drop_action()],
             equip_actions,
             equip_slots,
             kind: ItemKind::Firearm { ammo: def.ammo, max_ammo: def.ammo, ammo_kind: def.ammo_kind, damage: def.damage, range: def.range },
@@ -476,7 +481,7 @@ impl Item {
             inventory_actions: vec![Item::reload_from_ammo_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::Ammo { kind, charges },
+            kind: ItemKind::Ammo { kind, charges, boosted: false },
             proxy: false,
             locked: false,
             active: false,
@@ -541,6 +546,20 @@ impl Item {
     }
     fn fan_fire_action() -> EntityAction {
         EntityAction { id: ActionId::FanFire,       name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::fan_fire_action      }
+    }
+    fn called_shot_action() -> EntityAction {
+        EntityAction { id: ActionId::CalledShot,    name: "Called shot".to_string(),      targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: |e, m, i| e.has_ability(Ability::CalledShot) && precondition_is_aiming(e, m, i), action: actions::called_shot_action }
+    }
+    fn double_tap_action() -> EntityAction {
+        EntityAction { id: ActionId::DoubleTap,     name: "Double tap".to_string(),       targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: |e, m, i| e.has_ability(Ability::DoubleTap) && precondition_is_aiming(e, m, i), action: actions::double_tap_action }
+    }
+    /// Quick Draw, offered on firearms in the inventory: equip and aim in one turn.
+    fn quick_draw_action(range: u32) -> EntityAction {
+        EntityAction { id: ActionId::QuickDraw,     name: "Quick draw".to_string(),       targeting: Targeting::EntityAim { max_range: Some(range) },   phase: ExecutionPhase::Attack, precondition: |e, _, _| e.has_ability(Ability::QuickDraw), action: actions::quick_draw_action }
+    }
+    /// Fast Reload: a reload in the Free phase, so it takes no turn.
+    fn fast_reload_action() -> EntityAction {
+        EntityAction { id: ActionId::FastReload,    name: "Fast reload".to_string(),      targeting: Targeting::None,       phase: ExecutionPhase::Free,      precondition: |e, m, i| e.has_ability(Ability::FastReload) && precondition_can_reload(e, m, i), action: actions::fast_reload_action }
     }
     fn aim_at_entity_action(range: u32) -> EntityAction {
         EntityAction { id: ActionId::AimAtEntity,   name: "Aim at entity".to_string(),    targeting: Targeting::EntityAim { max_range: Some(range) },   phase: ExecutionPhase::Attack, precondition: precondition_ok,        action: actions::aim_action           }
@@ -611,7 +630,7 @@ fn is_reloadable(item: &Item, kind: AmmoKind) -> bool {
 
 /// True if the entity carries at least one ammo box of `kind` with charges left.
 fn has_ammo_of_kind(entity: &Entity, kind: AmmoKind) -> bool {
-    entity.body.inventory.iter().any(|i| matches!(&i.kind, ItemKind::Ammo { kind: k, charges } if *k == kind && *charges > 0))
+    entity.body.inventory.iter().any(|i| matches!(&i.kind, ItemKind::Ammo { kind: k, charges, .. } if *k == kind && *charges > 0))
 }
 
 /// Reload precondition for a reloadable item (firearm or powered gear): it must be below
@@ -628,7 +647,7 @@ pub fn precondition_can_reload(self_ref: &Entity, _map: &Map, item: Option<&Item
 pub fn precondition_ammo_has_target(self_ref: &Entity, _map: &Map, item: Option<&Item>) -> bool {
     let kind = match item {
         Some(i) => match &i.kind {
-            ItemKind::Ammo { kind, charges } if *charges > 0 => *kind,
+            ItemKind::Ammo { kind, charges, .. } if *charges > 0 => *kind,
             _ => return false,
         },
         None => return false,

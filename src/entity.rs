@@ -446,6 +446,27 @@ impl Entity {
         self.body.has_ability(ability)
     }
 
+    /// A firearm's reach in this entity's hands: Marksman adds 25% (at least 2 tiles).
+    pub fn firearm_range(&self, base: u32) -> u32 {
+        if self.has_ability(Ability::Marksman) {
+            base + base.div_ceil(4).max(2)
+        } else {
+            base
+        }
+    }
+
+    /// The range limit of a targeted action, with Marksman applied to firearm aiming.
+    pub fn action_range(&self, action: &EntityAction) -> Option<u32> {
+        let base = match action.targeting {
+            Targeting::Positional { max_range } | Targeting::EntityAim { max_range } => max_range?,
+            _ => return None,
+        };
+        match action.id {
+            ActionId::AimAtPosition | ActionId::AimAtEntity | ActionId::QuickDraw => Some(self.firearm_range(base)),
+            _ => Some(base),
+        }
+    }
+
     pub fn can_see(&self, pos: Point) -> bool {
         self.viewshed.visible_tiles.contains(&pos)
     }
@@ -520,7 +541,16 @@ impl Entity {
     }
 
     pub fn clear_aiming(&mut self) {
-        self.body.status_effects.retain(|s| !matches!(s, StatusEffect::AimingAtGround(..) | StatusEffect::AimingAtEntity(..)));
+        self.body.status_effects.retain(|s| !matches!(s, StatusEffect::AimingAtGround(..) | StatusEffect::AimingAtEntity(..) | StatusEffect::Steady));
+    }
+
+    /// Moving or turning spoils the aim, unless Steady Hands' grace is still unused.
+    pub fn spoil_aim(&mut self) {
+        if self.body.get_status_effect(&StatusEffect::Steady).is_some() {
+            self.body.remove_status_effect(&StatusEffect::Steady);
+        } else {
+            self.clear_aiming();
+        }
     }
 
     /// Ends recon vision (called when the wearer moves, turns, or removes the helmet).

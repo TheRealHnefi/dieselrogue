@@ -775,8 +775,14 @@ impl World {
                     self.handle_disembark(*pilot_id, *vehicle_id, log),
                 Effect::Animation(animation) =>
                     animations.push(animation.clone()),
-                Effect::ApplyStatus{target_id, status} =>
-                    self.entities[*target_id].apply_status_effect(status),
+                Effect::ApplyStatus{target_id, status} => {
+                    // Statuses are keyed by kind and a set never replaces an equal entry,
+                    // so a new aim must drop the old one (and its Steady grace) first.
+                    if matches!(status, StatusEffect::AimingAtGround(..) | StatusEffect::AimingAtEntity(..)) {
+                        self.entities[*target_id].clear_aiming();
+                    }
+                    self.entities[*target_id].apply_status_effect(status);
+                },
                 Effect::BurnTick{entity_id: id, bodypart_index: part_index} =>
                     self.handle_damage(*id, *part_index, Damage::new(0, 0, 1, 0), &mut deathlist, log),
                 Effect::RegenTick{entity_id: id, bodypart_index: part_index} =>
@@ -793,17 +799,19 @@ impl World {
                     entity.clear_aiming();
                     entity.intent = idle_intent();
                 },
+                Effect::ClearAim{entity_id} =>
+                    self.entities[*entity_id].clear_aiming(),
                 Effect::Log(msg) => log.log(msg.clone()),
                 Effect::Move { entity_id, pos } => {
                     self.entities[*entity_id].set_position(*pos, &mut self.map);
-                    self.entities[*entity_id].clear_aiming();
+                    self.entities[*entity_id].spoil_aim();
                     self.entities[*entity_id].clear_scanning();
                 },
                 Effect::SetFacing { entity_id, direction } => {
                     self.entities[*entity_id].body.facing = *direction;
                     let pos = self.entities[*entity_id].position;
                     self.entities[*entity_id].set_position(pos, &mut self.map);
-                    self.entities[*entity_id].clear_aiming();
+                    self.entities[*entity_id].spoil_aim();
                     self.entities[*entity_id].clear_scanning();
                 },
                 Effect::ConsumeAmmo { entity_id, slot, shots } => {
@@ -825,7 +833,7 @@ impl World {
                             let mut loaded = 0u32;
                             for item in ent.body.inventory.iter_mut() {
                                 if loaded >= need { break; }
-                                if let ItemKind::Ammo { kind: k, charges } = &mut item.kind {
+                                if let ItemKind::Ammo { kind: k, charges, .. } = &mut item.kind {
                                     if *k == kind && *charges > 0 {
                                         let take = (*charges).min(need - loaded);
                                         *charges -= take;
@@ -889,9 +897,17 @@ impl World {
                 Effect::PickUpItem { entity_id } => {
                     let pos = self.entities[*entity_id].position;
                     let idx = self.map.xy_idx(pos.x, pos.y);
-                    if let Some(item) = self.map.items[idx].take() {
+                    if let Some(mut item) = self.map.items[idx].take() {
                         if self.entities[*entity_id].is_visible(&self.map) {
                             log.log(format!("{} picked up {}", self.entities[*entity_id].name, item.name));
+                        }
+                        if self.entities[*entity_id].has_ability(Ability::Scavenger) {
+                            if let ItemKind::Ammo { charges, boosted, .. } = &mut item.kind {
+                                if !*boosted {
+                                    *charges += charges.div_ceil(2);
+                                    *boosted = true;
+                                }
+                            }
                         }
                         if item.active {
                             self.sync_active_item(item.id, ItemLocation::InInventory(*entity_id));
@@ -1249,7 +1265,7 @@ impl World {
             match player.body.get_status_effect(&key) {
                 Some(StatusEffect::AimingAtEntity(entity_id, item)) => {
                     let range = match item.kind {
-                        ItemKind::Firearm { range, .. } => range,
+                        ItemKind::Firearm { range, .. } => player.firearm_range(range),
                         _ => 0,
                     };
                     Some((*entity_id, range))

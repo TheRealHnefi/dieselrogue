@@ -1119,7 +1119,7 @@ fn find_weapon(entity: &Entity) -> Option<(SlotType, u32, Damage)> {
     entity.body.item_slots.iter().find_map(|slot| {
         if let Some(item) = &slot.item {
             if let ItemKind::Firearm { ammo, range, damage, .. } = item.kind {
-                if ammo > 0 { return Some((slot.slot_type, range, damage)); }
+                if ammo > 0 { return Some((slot.slot_type, entity.firearm_range(range), damage)); }
             }
         }
         None

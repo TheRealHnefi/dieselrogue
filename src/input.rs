@@ -257,9 +257,10 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
                     Some(pending) => {
                         let cursor_idx = state.world.map.pos_idx(state.cursor_pos);
                         match pending.entity_action.targeting {
-                            Targeting::Positional { max_range } => {
+                            Targeting::Positional { .. } => {
                                 // Reject a non-visible tile or one beyond the action's range.
                                 let mut ok = state.world.map.visible_tiles[cursor_idx];
+                                let max_range = state.world.get_player().ok().and_then(|p| p.action_range(&pending.entity_action));
                                 if let (true, Some(range), Ok(player)) = (ok, max_range, state.world.get_player()) {
                                     let dx = state.cursor_pos.x - player.position.x;
                                     let dy = state.cursor_pos.y - player.position.y;
@@ -818,6 +819,7 @@ pub fn entity_targeting_input(state: &mut State, _context: &mut Rltk) -> RunStat
 }
 
 pub fn start_entity_targeting(pending: PendingAction, max_range: Option<u32>, state: &mut State) -> RunState {
+    let max_range = state.world.get_player().map_or(max_range, |p| p.action_range(&pending.entity_action));
     let targets = collect_entity_targets(&state.world, max_range);
     if targets.is_empty() {
         state.log("No targets in range.".to_string());

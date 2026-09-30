@@ -1,5 +1,6 @@
 use rltk::Point;
 use crate::Entity;
+use crate::Item;
 use crate::Map;
 use crate::components::*;
 use crate::intent::*;
@@ -201,25 +202,61 @@ pub fn melee_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effe
 // Ranged fire
 // ---------------------------------------------------------------------------
 
-pub fn single_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
+/// Suppression: a firearm hit makes the target lose its aim.
+fn suppress(entity: &Entity, target_id: usize) -> Option<Effect> {
+    entity.has_ability(Ability::Suppression).then_some(Effect::ClearAim { entity_id: target_id })
+}
+
+/// `shots` aimed rounds at the aimed tile's chosen body part, each dealing the
+/// weapon's damage times `multiplier`. Shared by single fire, Called Shot and Double Tap.
+fn aimed_shots(entity: &Entity, map: &Map, entities: &[Entity], shots: u32, multiplier: u32) -> Vec<Effect> {
     let (slot, target_pos, bodypart) = match extract_fire_intent(entity) {
         Some(v) => v,
-        None => unreachable!("single_fire_action called with non-fire intent"),
+        None => unreachable!("aimed fire called with non-fire intent"),
     };
-    let (damage, _range, fired) = match read_ammo(entity, slot, 1) {
+    let (damage, _range, fired) = match read_ammo(entity, slot, shots) {
         Some(v) => v,
         None => return vec![Effect::Log(format!("{} pulled the trigger. 'Click'.", entity.name))],
     };
+    let damage = Damage::new(damage.physical * multiplier, damage.electrical * multiplier, damage.fire * multiplier, damage.piercing * multiplier);
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
         Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 20, from_player: entity.kind == EntityKind::Player }),
-        Effect::Animation(shot_animation(entity.position, target_pos, 1)),
+        Effect::Animation(shot_animation(entity.position, target_pos, fired as i32)),
     ];
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
-        effects.push(Effect::Log(format!("{} fired at {}", entity.name, entities[pawn.entity_id].name)));
-        effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
+        let times = if fired > 1 { format!(" {} times", fired) } else { String::new() };
+        effects.push(Effect::Log(format!("{} fired{} at {}", entity.name, times, entities[pawn.entity_id].name)));
+        for _ in 0..fired {
+            effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
+        }
+        effects.extend(suppress(entity, pawn.entity_id));
     }
     effects
+}
+
+/// Refuses an energy-costing action the entity can't afford, else prefixes the cost.
+fn with_energy(entity: &Entity, cost: u32, name: &str, effects: impl FnOnce() -> Vec<Effect>) -> Vec<Effect> {
+    if entity.body.energy < cost {
+        return vec![Effect::Log(format!("{} is too exhausted to {}", entity.name, name))];
+    }
+    let mut all = vec![Effect::SpendEnergy { entity_id: entity.index, amount: cost }];
+    all.extend(effects());
+    all
+}
+
+pub fn single_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
+    aimed_shots(entity, map, entities, 1, 1)
+}
+
+/// Called Shot: one aimed round at the chosen body part for double damage.
+pub fn called_shot_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
+    with_energy(entity, 15, "take a called shot", || aimed_shots(entity, map, entities, 1, 2))
+}
+
+/// Double Tap: two aimed rounds in one turn.
+pub fn double_tap_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
+    with_energy(entity, 10, "double tap", || aimed_shots(entity, map, entities, 2, 1))
 }
 
 pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
@@ -241,6 +278,7 @@ pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec
         for _ in 0..shots {
             effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage });
         }
+        effects.extend(suppress(entity, pawn.entity_id));
     }
     effects
 }
@@ -264,6 +302,7 @@ pub fn rocket_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Ve
         for part_index in 0..entities[pawn.entity_id].body.parts.len() {
             effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part_index, raw_damage: damage });
         }
+        effects.extend(suppress(entity, pawn.entity_id));
     }
     effects
 }
@@ -309,6 +348,7 @@ pub fn fan_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
                 for part in 0..entities[pawn.entity_id].body.parts.len() {
                     effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part, raw_damage: damage });
                 }
+                effects.extend(suppress(entity, pawn.entity_id));
             }
             arc_positions.push(tile_pos);
         }
@@ -329,11 +369,32 @@ pub fn aim_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effec
     };
     // The weapon may have been dropped earlier this turn (e.g. its arm was disabled).
     let Some(item) = entity.get_equipped_item_ref(slot).cloned() else { return vec![] };
+    aim_effects(entity, map, target, item)
+}
+
+/// Aim `item` at `target` (tracking a pawn standing there), with Steady Hands' grace.
+fn aim_effects(entity: &Entity, map: &Map, target: Point, item: Item) -> Vec<Effect> {
     let status = match &map.pawns[map.pos_idx(target)] {
         Some(pawn) => StatusEffect::AimingAtEntity(pawn.entity_id, item),
         None       => StatusEffect::AimingAtGround(target, item),
     };
-    vec![Effect::ApplyStatus { target_id: entity.index, status }]
+    let mut effects = vec![Effect::ApplyStatus { target_id: entity.index, status }];
+    if entity.has_ability(Ability::SteadyHands) {
+        effects.push(Effect::ApplyStatus { target_id: entity.index, status: StatusEffect::Steady });
+    }
+    effects
+}
+
+/// Quick Draw: equip a firearm from the inventory and aim it, all in one turn.
+pub fn quick_draw_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+    let IntentData::TargetWithInventory { ref item, target } = entity.intent.data else {
+        unreachable!("quick_draw_action called with non-inventory-target intent")
+    };
+    with_energy(entity, 10, "quick draw", || {
+        let mut effects = vec![Effect::EquipItem { entity_id: entity.index, item_id: item.id }];
+        effects.extend(aim_effects(entity, map, target, item.clone()));
+        effects
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -409,6 +470,11 @@ pub fn reload_weapon_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -
         _ => unreachable!("reload_weapon_action called with non-item intent"),
     };
     vec![Effect::ReloadWeapon { entity_id: entity.index, weapon_id }]
+}
+
+/// Fast Reload: a reload that takes no time (resolved in the Free phase).
+pub fn fast_reload_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
+    with_energy(entity, 10, "fast reload", || reload_weapon_action(entity, map, entities))
 }
 
 /// Reload initiated from an ammo box — finds a matching firearm to fill.
