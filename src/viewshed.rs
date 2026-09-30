@@ -2,14 +2,14 @@ use rltk::Point;
 use crate::components::*;
 use crate::Map;
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Viewshed {
     pub range: i32,
     pub fov: FieldOfView,
     pub visible_tiles: Vec<Point>
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub enum FieldOfView {
     Fov90,
     Fov180,

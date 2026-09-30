@@ -1,4 +1,4 @@
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, serde::Serialize, serde::Deserialize)]
 pub enum TileType {
     Wall,
     Floor,

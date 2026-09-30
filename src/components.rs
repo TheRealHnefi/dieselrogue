@@ -30,14 +30,14 @@ pub const COLOR_NAMES: [&str; 16] = [
 
 /// Which paper-doll image to show when inspecting an entity.
 /// Add a variant here whenever a new sprite sheet is added to RexAssets.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum PaperDoll {
     Player,
     MaleSilhouette,
     Tank,
 }
 
-#[derive (PartialEq, Eq, Clone, Copy, Debug)]
+#[derive (PartialEq, Eq, Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub enum Direction {
     Up,
     UpRight,
@@ -141,7 +141,7 @@ impl Direction {
     }
 }
 
-#[derive (Copy, Clone)]
+#[derive (Copy, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Renderable {
     pub glyph: rltk::FontCharType,
     pub color: rltk::RGB,
@@ -174,7 +174,7 @@ impl Renderable {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub enum ItemLocation {
     OnMap(Point),
     InInventory(usize),
@@ -248,7 +248,7 @@ pub enum Effect {
     Log(String),
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SoundKind {
     Gunshot,
     Burst,
@@ -258,7 +258,7 @@ pub enum SoundKind {
     Shout,
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct SoundEvent {
     pub kind: SoundKind,
     pub pos: Point,
@@ -273,7 +273,7 @@ pub struct SoundEvent {
 // pretty quick lookup without a bunch of extra logic to avoid duplicates.
 // Since the enum is a closed set, we simply make the hash an increasing integer via the to_index
 // function. Equivalence testing uses the same function, ensuring coherence between Hash and Eq.
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub enum StatusEffect {
     AimingAtGround(Point, Item),
     AimingAtEntity(usize, Item),
@@ -376,7 +376,7 @@ impl StatusEffect {
     }
 }
 
-#[derive (PartialEq, Eq, Copy, Clone)]
+#[derive (PartialEq, Eq, Copy, Clone, serde::Serialize, serde::Deserialize)]
 pub enum SlotType {
     PrimaryHand,
     SecondaryHand,
@@ -411,7 +411,7 @@ impl SlotType {
 
 /// Category of ammunition. A firearm consumes exactly one kind; an ammo box
 /// supplies exactly one kind.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AmmoKind {
     Bullets,
     Rockets,
@@ -430,7 +430,7 @@ impl AmmoKind {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ItemKind {
     Firearm {ammo: u32, max_ammo: u32, ammo_kind: AmmoKind, damage: Damage, range: u32},
     MeleeWeapon {damage: Damage},
@@ -481,7 +481,7 @@ impl ItemKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Damage {
     pub physical: u32,
     pub fire: u32,
@@ -500,7 +500,7 @@ impl Damage {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Armor {
     pub phys_absorption: u32,
     pub phys_resistance: f32,

@@ -87,6 +87,12 @@ pub struct State {
     /// True when the strafe modifier key is currently held.
     pub strafe_held: bool,
 
+    /// A save file exists for this run (on the title screen: one can be continued).
+    /// Death, victory and abandoning the run discard it.
+    pub has_save: bool,
+    /// Shown on the title screen, e.g. when a save couldn't be loaded.
+    pub title_message: Option<String>,
+
     start_tick: Instant
 }
 
@@ -124,7 +130,35 @@ impl State {
             pending_fullscreen: None,
             last_input: None,
             strafe_held: false,
+            has_save: crate::savegame::exists(),
+            title_message: None,
             start_tick: Instant::now(),
+        }
+    }
+
+    /// Resume a saved run.
+    pub fn from_save(save: crate::savegame::SaveData, bindings: Bindings) -> Self {
+        crate::RUN_SEED.store(save.seed, std::sync::atomic::Ordering::Relaxed);
+        let mut state = State::new_welcome_state(save.seed, bindings);
+        state.world = save.world;
+        state.log = save.log;
+        state.turn = save.turn;
+        state.has_save = true;
+        state.run_state = RunState::AwaitingInput;
+        state.log("Game loaded.".to_string());
+        state
+    }
+
+    /// Write the run to the save slot.
+    pub fn save_game(&self) -> Result<(), String> {
+        crate::savegame::save(&self.world, &self.log, self.turn, self.seed)
+    }
+
+    /// The run is over (death, victory, abandoned): its save must not be continued.
+    pub fn discard_save(&mut self) {
+        if self.has_save {
+            crate::savegame::delete();
+            self.has_save = false;
         }
     }
 
@@ -160,6 +194,8 @@ impl State {
             pending_fullscreen: None,
             last_input: None,
             strafe_held: false,
+            has_save: false,
+            title_message: None,
             start_tick: Instant::now()
         }
     }
@@ -194,6 +230,8 @@ impl State {
             pending_fullscreen: None,
             last_input: None,
             strafe_held: false,
+            has_save: false,
+            title_message: None,
             start_tick: Instant::now()
         }
     }
@@ -255,6 +293,7 @@ impl GameState for State {
                 return;
             },
             RunState::Victory => {
+                self.discard_save();
                 draw_victory_screen(context);
                 self.run_state = victory_input(self, context);
                 return;
@@ -422,6 +461,7 @@ impl State {
         self.world.resolve_status_effects(&mut self.log);
 
         if self.world.get_player().is_err() {
+            self.discard_save();
             self.run_state = RunState::GameOver;
             return;
         }

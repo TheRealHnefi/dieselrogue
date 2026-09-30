@@ -7,12 +7,16 @@ use crate::Map;
 use crate::intent::*;
 use crate::actions::{self, Action};
 
-#[derive(Clone)]
+/// Saved games skip the action lists (they hold fn pointers); `Item::restore_actions`
+/// rebuilds them from the item's maker on load.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Item {
     pub id: usize,
     pub renderable: Renderable,
     pub name: String,
+    #[serde(skip)]
     pub inventory_actions: Vec<EntityAction>,
+    #[serde(skip)]
     pub equip_actions: Vec<EntityAction>,
     pub equip_slots: Vec<SlotType>,
     pub kind: ItemKind,
@@ -37,10 +41,50 @@ pub const EXCEPTIONAL_ITEMS: &[MakeItem] = &[
     Item::jetpack,
 ];
 
+/// Every argument-free item maker (keys, made per colour, are handled separately).
+/// Used to rebuild items' actions when loading a save; add new items here.
+pub const ALL_ITEMS: &[MakeItem] = &[
+    Item::revolver, Item::pistol, Item::flare_gun, Item::shock_pistol, Item::submachine_gun,
+    Item::bolt_action_rifle, Item::semi_auto_rifle, Item::assault_rifle, Item::sniper_rifle,
+    Item::machinegun, Item::rotary_machinegun, Item::shock_carbine, Item::shock_cannon,
+    Item::flamethrower, Item::rocket_launcher, Item::multi_rocket_launcher,
+    Item::ammo_bullets, Item::ammo_rockets, Item::ammo_batteries, Item::ammo_fuel,
+    Item::medkit, Item::large_medkit, Item::elixir, Item::stimpack,
+    Item::grenade, Item::fire_grenade, Item::shock_grenade, Item::flashbang, Item::knife,
+    Item::bulletproof_vest, Item::helmet, Item::heavy_helmet, Item::riot_armor, Item::riot_pants,
+    Item::heavy_combat_suit, Item::light_kevlar_pants, Item::tactical_helmet, Item::rocket_boots,
+    Item::jetpack, Item::mounted_cannon, Item::corpse, Item::rubble,
+];
+
 impl Item {
     /// Whether this is one of the `EXCEPTIONAL_ITEMS` (matched by the name its maker gives it).
     pub fn is_exceptional(&self) -> bool {
         EXCEPTIONAL_ITEMS.iter().any(|make| make().name == self.name)
+    }
+
+    /// Makers of `ALL_ITEMS` by item name, for `restore_actions`.
+    pub fn makers_by_name() -> std::collections::HashMap<String, MakeItem> {
+        ALL_ITEMS.iter().map(|&make| (make().name, make)).collect()
+    }
+
+    /// Rebuilds the action lists a loaded item lost (fn pointers aren't saved) from a
+    /// fresh item of the same kind. A primed explosive no longer offers Prime.
+    pub fn restore_actions(&mut self, makers: &std::collections::HashMap<String, MakeItem>) {
+        if self.proxy {
+            return; // proxies never carry actions
+        }
+        let fresh = match self.kind {
+            ItemKind::Key { color } => Item::key(color),
+            _ => match makers.get(&self.name) {
+                Some(make) => make(),
+                None => return,
+            },
+        };
+        self.inventory_actions = fresh.inventory_actions;
+        self.equip_actions = fresh.equip_actions;
+        if self.active {
+            self.inventory_actions.retain(|a| a.id != ActionId::Prime);
+        }
     }
 }
 

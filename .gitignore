@@ -1,4 +1,5 @@
 /target
-/savegame.json
+/savegame.dat
+/savegame.dat.tmp
 /settings.json
 /crash.log

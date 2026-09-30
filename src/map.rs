@@ -128,6 +128,7 @@ impl NavFieldCache {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Map {
     pub width: usize,
     pub height: usize,
@@ -146,7 +147,8 @@ pub struct Map {
     /// Resident cache of static-terrain flow fields, keyed by goal tile index.
     /// Built lazily via [`Map::ensure_field`]/[`Map::ensure_field_bounded`] and
     /// shared across all agents navigating to that goal. Evicted once their
-    /// goal goes undemanded (see [`Map::evict_fields`]).
+    /// goal goes undemanded (see [`Map::evict_fields`]). A cache: not saved, rebuilt on load.
+    #[serde(skip, default = "NavFieldCache::new")]
     nav_fields: NavFieldCache,
     /// Shared, read-only patrol routes as ordered loops of waypoints. Built once
     /// at map generation and referenced by `Profile::Patrol` via index, so many patrollers
@@ -407,8 +409,8 @@ impl Map {
     }
 
     /// Pre-build a permanent (pinned) full-map flow field for every distinct
-    /// patrol-route waypoint.
-    fn prebuild_patrol_fields(&mut self) {
+    /// patrol-route waypoint. Also rebuilds them after loading a save.
+    pub(crate) fn prebuild_patrol_fields(&mut self) {
         if !self.use_flow_fields {
             return;
         }

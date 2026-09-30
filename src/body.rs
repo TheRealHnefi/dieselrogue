@@ -4,7 +4,7 @@ use crate::item::*;
 use crate::error::*;
 use crate::Ability;
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Body {
     pub facing: Direction,
     pub inventory: Vec<Item>,
@@ -17,7 +17,7 @@ pub struct Body {
     pub noise_tolerance: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct BodyPart {
     pub name: String,
     pub vital: bool,
@@ -32,7 +32,7 @@ pub struct BodyPart {
     pub innate_armor: Armor,
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct ItemSlot {
     pub slot_type: SlotType,
     pub item: Option<Item>

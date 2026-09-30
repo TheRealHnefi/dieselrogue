@@ -1,6 +1,6 @@
 use crate::components::*;
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub enum Sprite {
     Human,
     Tank,

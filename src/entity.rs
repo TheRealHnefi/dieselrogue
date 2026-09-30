@@ -11,7 +11,7 @@ use crate::Item;
 use crate::Body;
 use crate::actions;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 pub enum DrivingState {
     None,
     Driving(usize),
@@ -19,7 +19,7 @@ pub enum DrivingState {
     Drivable
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 pub enum EntityKind {
     Player,
     Actor,
@@ -35,9 +35,13 @@ pub enum EntityKind {
 /// Entities project lightweight [`Pawn`] values onto `Map::pawns` for O(1) tile queries.
 /// Call [`Entity::create_pawns`] after spawning or moving, and [`Entity::clear_pawns`] before
 /// removing an entity. [`Entity::set_position`] handles both automatically.
+///
+/// Saved games skip the intent and innate actions (they hold fn pointers); both are
+/// rebuilt on load, see `World::restore_after_load`.
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Entity {
-    // Unstable index, recalculated every frame.
-    // TODO: Add stable ID, for AI targeting purposes
+    // Index into World::entities. Shifts when entities die; stored references are
+    // remapped then (see World::remap_entity_refs).
     pub index: usize,
     pub kind: EntityKind,
     pub driving: DrivingState,
@@ -46,6 +50,7 @@ pub struct Entity {
     pub size_y: u32,
     pub position: Point,
     pub name: String,
+    #[serde(skip, default = "idle_intent")]
     pub intent: Intent,
     pub body: Body,
     pub viewshed: Viewshed,
@@ -55,11 +60,20 @@ pub struct Entity {
     /// Actions the entity can perform independent of items — choosable by both
     /// the player menu and the AI. Filtered by each action's precondition at
     /// query time via `get_available_actions`.
+    #[serde(skip)]
     pub innate_actions: Vec<EntityAction>,
     // XP granted for killing actor
     pub xp_value: usize,
     /// Set once the player has damaged it; its death then earns the player XP.
     pub hurt_by_player: bool,
+}
+
+/// Innate actions for an entity of this sprite; used at creation and when loading a save.
+pub fn innate_actions_for(sprite: &Sprite) -> Vec<EntityAction> {
+    match sprite {
+        Sprite::Human => human_innate_actions(),
+        _ => vec![],
+    }
 }
 
 fn human_innate_actions() -> Vec<EntityAction> {
@@ -609,7 +623,7 @@ impl Entity {
 /// Multi-tile entities (e.g. tanks) place one Pawn per occupied tile, each with its own
 /// `sprite_index` for rendering. All of these Pawns share the same `entity_id`.
 /// For any other entity data, look up `World::entities[pawn.entity_id]`.
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Pawn {
     pub entity_id: usize,
     pub sprite_index: u32,

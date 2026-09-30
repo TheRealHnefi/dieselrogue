@@ -2,11 +2,17 @@ use rltk::{VirtualKeyCode, Rltk, Point};
 use super::*;
 use std::cmp::*;
 
+/// Title screen entries; "Continue" only when a saved run exists.
+pub fn title_items(has_save: bool) -> &'static [&'static str] {
+    if has_save { &["Continue", "New Game", "Settings", "Quit"] } else { &["New Game", "Settings", "Quit"] }
+}
+
 pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
     let key = match state.last_input.take() {
         Some(k) => k,
         None => return RunState::WelcomeScreen,
     };
+    let items = title_items(state.has_save);
 
     match key {
         VirtualKeyCode::Up | VirtualKeyCode::Numpad8 => {
@@ -16,15 +22,25 @@ pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState 
             RunState::WelcomeScreen
         },
         VirtualKeyCode::Down | VirtualKeyCode::Numpad2 => {
-            if state.welcome_selected < 2 {
+            if state.welcome_selected + 1 < items.len() {
                 state.welcome_selected += 1;
             }
             RunState::WelcomeScreen
         },
         VirtualKeyCode::Return | VirtualKeyCode::Space => {
-            match state.welcome_selected {
-                0 => RunState::WelcomeSplash,
-                1 => {
+            match items[state.welcome_selected] {
+                "Continue" => match crate::savegame::load() {
+                    Ok(save) => {
+                        *state = State::from_save(save, state.bindings);
+                        RunState::AwaitingInput
+                    },
+                    Err(e) => {
+                        state.title_message = Some(format!("The saved game could not be loaded: {}.", e));
+                        RunState::WelcomeScreen
+                    },
+                },
+                "New Game" => RunState::WelcomeSplash,
+                "Settings" => {
                     state.menu_return_state = RunState::WelcomeScreen;
                     state.menu_stack.clear();
                     state.menu_stack.push(Box::new(settings_menu(state.pending_font_size, state.pending_fullscreen)));
@@ -56,6 +72,8 @@ pub fn game_over_input(state: &mut State, _context: &mut Rltk) -> RunState {
 pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState {
     match state.last_input.take() {
         Some(_) => {
+            // One slot: a new run replaces any saved one.
+            state.discard_save();
             let seed = state.seed;
             let bindings = state.bindings;
             *state = State::new_game_state(25, seed, false, bindings);

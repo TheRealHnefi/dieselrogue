@@ -57,6 +57,7 @@ mod pathfinding;
 pub use pathfinding::*;
 mod spawn;
 pub use spawn::*;
+mod savegame;
 
 use std::time::Instant;
 use tracing::{span, Subscriber};

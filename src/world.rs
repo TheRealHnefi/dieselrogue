@@ -9,6 +9,7 @@ use crate::animation::explosion_animation;
 const DISCOVERY_TILES_PER_XP: usize = 10;
 const EXCEPTIONAL_FIND_XP: usize = 4000;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ActiveItem {
     pub item_id: usize,
     pub location: ItemLocation,
@@ -17,6 +18,7 @@ pub struct ActiveItem {
 }
 
 /// The contents of the game world itself.
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct World {
     pub player_id: Option<usize>,
     pub player_xp: usize,
@@ -1310,6 +1312,27 @@ impl World {
 
         self.clear_stale_entity_aim();
         self.collect_discovery_xp();
+    }
+
+    /// Rebuilds what a saved game doesn't store: item and innate actions (fn pointers),
+    /// the flow-field cache and the enemies' intents for the coming turn.
+    pub fn restore_after_load(&mut self) {
+        let makers = Item::makers_by_name();
+        for item in self.map.items.iter_mut().flatten() {
+            item.restore_actions(&makers);
+        }
+        for entity in &mut self.entities {
+            entity.innate_actions = innate_actions_for(&entity.sprite);
+            for item in &mut entity.body.inventory {
+                item.restore_actions(&makers);
+            }
+            for item in entity.body.item_slots.iter_mut().filter_map(|s| s.item.as_mut()) {
+                item.restore_actions(&makers);
+            }
+        }
+        self.map.prebuild_patrol_fields();
+        // Intents weren't saved; let every actor decide its next move afresh.
+        self.resolve_intent_declaration();
     }
 
     /// Pays discovery XP for the tiles revealed since last turn, in whole points: one

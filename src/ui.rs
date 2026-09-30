@@ -147,9 +147,9 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
     let box_x = SCREEN_WIDTH as i32 / 2 - box_w / 2;
     let box_y = 40i32;
 
-    context.draw_box(box_x, box_y, box_w, 4, LINE_COLOR, BG_COLOR);
+    let items = crate::title_items(state.has_save);
+    context.draw_box(box_x, box_y, box_w, items.len() as i32 + 1, LINE_COLOR, BG_COLOR);
 
-    let items = ["New Game", "Settings", "Quit"];
     for (i, &item) in items.iter().enumerate() {
         let row_y = box_y + 1 + i as i32;
         let (fg, bg) = if i == state.welcome_selected {
@@ -160,6 +160,10 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
         let fill = " ".repeat((box_w - 1) as usize);
         context.print_color(box_x + 1, row_y, fg, bg, fill);
         context.print_color(box_x + 2, row_y, fg, bg, item);
+    }
+
+    if let Some(message) = &state.title_message {
+        context.print_color_centered(box_y + items.len() as i32 + 3, RGB::named(rltk::RED), BG_COLOR, message.as_str());
     }
 
     context.print_color_centered(

@@ -151,6 +151,7 @@ impl Decision {
 // AlertLevel
 // ---------------------------------------------------------------------------
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum AlertLevel {
     /// Not acting on any threats
     Unaware,
@@ -168,7 +169,7 @@ pub enum AlertLevel {
 // CombatTactic
 // ---------------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub enum CombatTactic {
     Pursue,
     Hold,
@@ -179,6 +180,7 @@ pub enum CombatTactic {
 // Profile
 // ---------------------------------------------------------------------------
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum Profile {
     Patrol {
         /// Index into [`Map::patrol_routes`] — the shared, read-only route this
@@ -222,6 +224,7 @@ impl Profile {
 // ActorAI
 // ---------------------------------------------------------------------------
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ActorAI {
     pub profile: Profile,
     pub alert:   AlertLevel,
@@ -232,7 +235,8 @@ pub struct ActorAI {
     nav_goal:     Option<(Point, bool)>,
     /// Per-actor RNG for the probabilistic idle/look leaves. Seeded lazily from the
     /// entity index (each actor owns its own stream, so the parallel AI pass never
-    /// shares a generator).
+    /// shares a generator). Not saved: a loaded game reseeds it lazily.
+    #[serde(skip)]
     rng:          Option<RandomNumberGenerator>,
     /// How well the player has been recognised, 0..=DETECT_THRESHOLD. Fills while the
     /// player is in view, drains out of view; full = confirmed hostile.
@@ -1253,6 +1257,7 @@ fn scramble(mut z: u64) -> u64 {
 // AI enum — public entry point
 // ---------------------------------------------------------------------------
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum AI {
     None,
     Rotator,

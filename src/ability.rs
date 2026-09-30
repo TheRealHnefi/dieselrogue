@@ -20,7 +20,7 @@ impl AbilityCategory {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, strum::EnumIter)]
+#[derive(Clone, Eq, PartialEq, Hash, strum::EnumIter, serde::Serialize, serde::Deserialize)]
 pub enum Ability {
     // Passive abilities
     HumanMove,

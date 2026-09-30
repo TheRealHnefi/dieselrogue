@@ -279,7 +279,19 @@ fn action_quit(_state: &mut State) -> RunState {
     ::std::process::exit(0);
 }
 
+fn action_save_and_quit(state: &mut State) -> RunState {
+    match state.save_game() {
+        Ok(()) => ::std::process::exit(0),
+        Err(e) => {
+            state.menu_stack.clear();
+            state.log(format!("Could not save the game: {}", e));
+            RunState::AwaitingInput
+        }
+    }
+}
+
 fn action_abandon_run(state: &mut State) -> RunState {
+    state.discard_save();
     let bindings = state.bindings;
     let seed = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -314,8 +326,20 @@ fn action_confirm_abandon(state: &mut State) -> RunState {
     RunState::AwaitingMenuInput
 }
 
+/// Quitting offers to save the run; "No" (or Esc) returns to the game.
 fn action_confirm_quit(state: &mut State) -> RunState {
-    state.menu_stack.push(Box::new(confirm_menu("Yes, quit the game", action_quit)));
+    state.menu_stack.push(Box::new(MenuPanel {
+        x: 39,
+        y: 22,
+        rows: vec![
+            SystemRow { text: "No".to_string(),                 action: action_close_menu },
+            SystemRow { text: "Save and quit".to_string(),      action: action_save_and_quit },
+            SystemRow { text: "Quit without saving".to_string(), action: action_quit },
+        ],
+        selected_row: 0,
+        no_selectable_rows: false,
+        paper_doll: None,
+    }));
     RunState::AwaitingMenuInput
 }
 
