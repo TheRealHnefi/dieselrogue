@@ -439,9 +439,12 @@ impl Entity {
         for tile_pos in &self.viewshed.visible_tiles {
             let index = map.pos_idx(*tile_pos);
             map.visible_tiles[index] = visibility;
-            map.revealed_tiles[index] = visibility | map.revealed_tiles[index];
+            if visibility && !map.revealed_tiles[index] {
+                map.revealed_tiles[index] = true;
+                map.newly_revealed += 1;
+            }
         }
-    }    
+    }
 
     pub fn update_abilities(&mut self) {
         self.body.update_abilities();

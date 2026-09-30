@@ -1411,8 +1411,9 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
             "Many cost energy, shown in the status panel.".into(),
             "Energy does not regenerate; stimpacks".into(),
             "restore it. Spend it wisely.".into(),
-            "Gain experience to level up and learn".into(),
-            format!("new abilities, such as Juke [{}].", k(b.juke)),
+            "Gain experience by exploring, finding rare".into(),
+            "gear and defeating enemies. Each level lets".into(),
+            format!("you learn an ability, such as Juke [{}].", k(b.juke)),
         ]),
         ("VEHICLES", vec![
             "Learn Embark to drive a vehicle you walk into.".into(),

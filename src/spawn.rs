@@ -142,14 +142,7 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         Item::medkit, Item::large_medkit, Item::elixir,
         Item::stimpack,
     ];
-    let exceptional_pool: &[MakeItem] = &[
-        Item::sniper_rifle,
-        Item::multi_rocket_launcher,
-        Item::shock_cannon,
-        Item::rocket_boots,
-        Item::tactical_helmet,
-        Item::jetpack,
-    ];
+    let exceptional_pool: &[MakeItem] = crate::item::EXCEPTIONAL_ITEMS;
 
     /// Higher means fewer items
     const EXCEPTIONAL_ITEM_SPARSITY: usize = 4;

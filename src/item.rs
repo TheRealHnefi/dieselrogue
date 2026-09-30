@@ -26,6 +26,24 @@ pub struct Item {
 
 pub type MakeItem = fn() -> Item;
 
+/// The rare, game-changing gear placed in interesting rooms. The first pickup of
+/// each earns discovery XP.
+pub const EXCEPTIONAL_ITEMS: &[MakeItem] = &[
+    Item::sniper_rifle,
+    Item::multi_rocket_launcher,
+    Item::shock_cannon,
+    Item::rocket_boots,
+    Item::tactical_helmet,
+    Item::jetpack,
+];
+
+impl Item {
+    /// Whether this is one of the `EXCEPTIONAL_ITEMS` (matched by the name its maker gives it).
+    pub fn is_exceptional(&self) -> bool {
+        EXCEPTIONAL_ITEMS.iter().any(|make| make().name == self.name)
+    }
+}
+
 // ---- Firearm definition types -----------------------------------------------
 
 /// Which fire actions a firearm exposes in the equip menu.

@@ -4,6 +4,11 @@ use strum::IntoEnumIterator;
 use std::collections::{HashMap, HashSet};
 use crate::animation::explosion_animation;
 
+// Discovery XP. Tuned so that revealing about half the map (~32k XP) plus one of each
+// exceptional item (6 × 4000) reaches the level cap (55k), with kills on top.
+const DISCOVERY_TILES_PER_XP: usize = 10;
+const EXCEPTIONAL_FIND_XP: usize = 4000;
+
 pub struct ActiveItem {
     pub item_id: usize,
     pub location: ItemLocation,
@@ -30,6 +35,10 @@ pub struct World {
     next_item_id: usize,
     /// The run's seed, for choices that must be reproducible per run (level-up offers).
     seed: u64,
+    /// Tiles the player has revealed so far (discovery XP is paid per DISCOVERY_TILES_PER_XP).
+    discovered_tiles: usize,
+    /// Exceptional item types already picked up (each pays EXCEPTIONAL_FIND_XP once).
+    found_exceptional: Vec<String>,
     pub debug_mode: bool,
     pub parallel_ai: bool,
 }
@@ -57,6 +66,8 @@ impl World {
             open_doors: vec![],
             map,
             seed,
+            discovered_tiles: 0,
+            found_exceptional: vec![],
             debug_mode: false,
             parallel_ai: true,
         };
@@ -86,6 +97,8 @@ impl World {
             world.spawn_debug(&spawn_map);
         }
 
+        // The starting view is free: discovery XP counts from the first turn on.
+        world.map.newly_revealed = 0;
         return world;
     }
 
@@ -106,6 +119,8 @@ impl World {
             open_doors: vec![],
             map: Map::new_empty_map(100),
             seed: 0,
+            discovered_tiles: 0,
+            found_exceptional: vec![],
             debug_mode: false,
             parallel_ai: false,
         }
@@ -152,6 +167,8 @@ impl World {
             open_doors: vec![],
             map,
             seed: 0,
+            discovered_tiles: 0,
+            found_exceptional: vec![],
             debug_mode: false,
             parallel_ai: false,
         };
@@ -934,6 +951,11 @@ impl World {
                         if self.entities[*entity_id].is_visible(&self.map) {
                             log.log(format!("{} picked up {}", self.entities[*entity_id].name, item.name));
                         }
+                        if Some(*entity_id) == self.player_id && item.is_exceptional() && !self.found_exceptional.contains(&item.name) {
+                            self.found_exceptional.push(item.name.clone());
+                            self.player_xp += EXCEPTIONAL_FIND_XP;
+                            log.log(format!("A rare find! +{} XP", EXCEPTIONAL_FIND_XP));
+                        }
                         if self.entities[*entity_id].has_ability(Ability::Scavenger) {
                             if let ItemKind::Ammo { charges, boosted, .. } = &mut item.kind {
                                 if !*boosted {
@@ -1287,6 +1309,15 @@ impl World {
         }
 
         self.clear_stale_entity_aim();
+        self.collect_discovery_xp();
+    }
+
+    /// Pays discovery XP for the tiles revealed since last turn, in whole points: one
+    /// per DISCOVERY_TILES_PER_XP tiles, with the remainder carried over.
+    fn collect_discovery_xp(&mut self) {
+        let before = self.discovered_tiles;
+        self.discovered_tiles += std::mem::take(&mut self.map.newly_revealed);
+        self.player_xp += self.discovered_tiles / DISCOVERY_TILES_PER_XP - before / DISCOVERY_TILES_PER_XP;
     }
 
     fn clear_stale_entity_aim(&mut self) {
@@ -1828,6 +1859,63 @@ mod tests {
             ItemLocation::OnMap(pos) => assert_eq!(world.map.items[world.map.pos_idx(pos)].as_ref().unwrap().id, 99),
             _ => panic!("dropped grenade should be tracked on the map"),
         }
+    }
+
+    fn look_around(world: &mut World, pos: Point) {
+        let pid = world.player_id.unwrap();
+        world.entities[pid].clear_pawns(&mut world.map);
+        world.entities[pid].position = pos;
+        world.entities[pid].create_pawns(&mut world.map);
+        for dir in [Direction::Up, Direction::Right, Direction::Down, Direction::Left] {
+            world.entities[pid].body.facing = dir;
+            world.entities[pid].update_view(&mut world.map);
+        }
+        world.collect_discovery_xp();
+    }
+
+    #[test]
+    fn discovery_xp_pays_per_newly_revealed_tile() {
+        let mut world = World::new_test();
+        assert!(world.create_player(Point { x: 30, y: 30 }, Direction::Up, "Player".into()).is_ok());
+        // The starting view is free, as in World::new.
+        world.map.newly_revealed = 0;
+        let seen = |w: &World| w.map.revealed_tiles.iter().filter(|&&r| r).count();
+        let start = seen(&world);
+
+        look_around(&mut world, Point { x: 30, y: 30 });
+        let revealed = seen(&world) - start;
+        assert!(revealed > 0);
+        assert_eq!(world.discovered_tiles, revealed);
+        assert_eq!(world.player_xp, revealed / DISCOVERY_TILES_PER_XP);
+
+        // Looking at the same tiles again pays nothing.
+        look_around(&mut world, Point { x: 30, y: 30 });
+        assert_eq!(world.player_xp, revealed / DISCOVERY_TILES_PER_XP);
+
+        // New ground pays, with the remainder carried over rather than rounded away.
+        look_around(&mut world, Point { x: 70, y: 70 });
+        let revealed = seen(&world) - start;
+        assert_eq!(world.discovered_tiles, revealed);
+        assert_eq!(world.player_xp, revealed / DISCOVERY_TILES_PER_XP);
+    }
+
+    #[test]
+    fn first_exceptional_find_pays_once() {
+        let mut world = World::new_test();
+        assert!(world.create_player(Point { x: 10, y: 10 }, Direction::Up, "Player".into()).is_ok());
+        let pid = world.player_id.unwrap();
+        let pos = world.entities[pid].position;
+        let mut log = GameLog { entries: vec![] };
+        let mut pick_up = |world: &mut World, item: Item| {
+            let _ = world.add_item(pos, item);
+            world.resolve_effects(&vec![Effect::PickUpItem { entity_id: pid }], &mut log);
+            world.player_xp
+        };
+
+        assert_eq!(pick_up(&mut world, Item::pistol()), 0, "ordinary gear pays nothing");
+        assert_eq!(pick_up(&mut world, Item::tactical_helmet()), EXCEPTIONAL_FIND_XP);
+        assert_eq!(pick_up(&mut world, Item::tactical_helmet()), EXCEPTIONAL_FIND_XP, "a second of the same kind pays nothing");
+        assert_eq!(pick_up(&mut world, Item::jetpack()), 2 * EXCEPTIONAL_FIND_XP);
     }
 
     #[test]

@@ -157,6 +157,8 @@ pub struct Map {
     /// returns `None` and the Step 0 pre-pass skips building/evicting fields, so
     /// all AI navigation falls back to A*. Defaults to `true`.
     pub use_flow_fields: bool,
+    /// Tiles the player has revealed since the World last collected them (for discovery XP).
+    pub newly_revealed: usize,
 }
 
 impl Map {
@@ -344,6 +346,7 @@ impl Map {
           nav_fields: NavFieldCache::new(),
           patrol_routes: Vec::new(),
           use_flow_fields: false,
+          newly_revealed: 0,
         };
 
         // Backtracking can fail on an unlucky seed, so retry — but incompatible
@@ -393,6 +396,7 @@ impl Map {
             nav_fields: NavFieldCache::new(),
             patrol_routes: Vec::new(),
             use_flow_fields: true,
+            newly_revealed: 0,
         }
     }
 
