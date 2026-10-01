@@ -1942,6 +1942,49 @@ mod tests {
     }
 
     #[test]
+    fn hits_on_a_wrecked_limb_still_wear_down_health() {
+        let mut man = Entity::human(0, Point { x: 1, y: 1 }, Direction::Up, "Man".into());
+        let full = man.body.max_hp();
+        let legs = 4;
+        let shot = Damage::new(10, 0, 0, 0);
+        // Wreck the legs until their own damage is capped.
+        for _ in 0..3 {
+            man.apply_damage(legs, shot);
+        }
+        let capped = man.body.parts[legs].damage;
+        assert_eq!(capped, 2 * man.body.parts[legs].max_damage);
+        assert_eq!(man.body.hp(), full - 30);
+
+        // Further hits don't move the part, but do move overall health, until it kills.
+        man.apply_damage(legs, shot);
+        assert_eq!(man.body.parts[legs].damage, capped);
+        assert_eq!(man.body.hp(), full - 40);
+        assert!(man.body.parts.iter().filter(|p| p.vital).all(|p| p.damage == 0));
+        while man.body.hp() > 0 {
+            assert!(!man.mortally_wounded());
+            man.apply_damage(legs, shot);
+        }
+        assert!(man.mortally_wounded(), "no health left must be lethal");
+    }
+
+    #[test]
+    fn healing_any_part_restores_overall_health() {
+        let mut man = Entity::human(0, Point { x: 1, y: 1 }, Direction::Up, "Man".into());
+        let full = man.body.max_hp();
+        man.apply_damage(1, Damage::new(10, 0, 0, 0));
+        assert_eq!(man.body.hp(), full - 10);
+
+        // The head is unhurt, yet healing it still restores overall health.
+        man.heal(0, 4);
+        assert_eq!(man.body.parts[0].damage, 0);
+        assert_eq!(man.body.hp(), full - 6);
+
+        // Healing never goes past full health.
+        man.heal(1, 100);
+        assert_eq!(man.body.hp(), full);
+    }
+
+    #[test]
     fn add_item_to_floor_works() {
         let mut world = World::new_test();
         let pos = Point {x: 1, y: 1};

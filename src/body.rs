@@ -15,6 +15,10 @@ pub struct Body {
     pub energy: u32,
     pub max_energy: u32,
     pub noise_tolerance: u32,
+    /// Overall damage taken, on top of each part's own. Unlike a part's, it isn't capped
+    /// short of lethal: hits on a wrecked limb still wear the body down.
+    #[serde(default)]
+    pub damage: u32,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -51,6 +55,7 @@ impl Body {
             energy: 100,
             max_energy: 100,
             noise_tolerance: 15,
+            damage: 0,
         };
 
         body.item_slots.push(ItemSlot {slot_type: SlotType::Headwear, item: None});
@@ -145,6 +150,7 @@ impl Body {
             energy: 0,
             max_energy: 0,
             noise_tolerance: 15,
+            damage: 0,
         };
 
         body.parts.push(BodyPart {
@@ -200,6 +206,7 @@ impl Body {
             energy: 0,
             max_energy: 0,
             noise_tolerance: 15,
+            damage: 0,
         };
 
         body.parts.push(BodyPart {
@@ -339,6 +346,15 @@ impl Body {
 
     pub fn has_ability(&self, ability: Ability) -> bool {
         self.abilities.contains(&ability)
+    }
+
+    /// Overall health: the sum of the parts' maxima (so Tough raises it too).
+    pub fn max_hp(&self) -> u32 {
+        self.parts.iter().map(|p| p.max_damage).sum()
+    }
+
+    pub fn hp(&self) -> u32 {
+        self.max_hp().saturating_sub(self.damage)
     }
 
     pub fn apply_status_effect(&mut self, status: &StatusEffect) {

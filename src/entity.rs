@@ -530,6 +530,8 @@ impl Entity {
         if bodypart.damage > bodypart.max_damage {
             self.update_abilities();
         }
+        // Overall health takes the full hit, even when the part's damage is capped.
+        self.body.damage = (self.body.damage + actual_damage).min(self.body.max_hp());
 
         tracing::debug!("{} was hit in {} for {} damage, now has {} damage",
             self.name,
@@ -539,8 +541,10 @@ impl Entity {
     }
 
     /// Reduce a body part's accumulated damage by `amount` (toward full health),
-    /// restoring abilities if the part becomes functional again.
+    /// restoring abilities if the part becomes functional again. Overall health
+    /// recovers by `amount` too, even when the part itself was unhurt.
     pub fn heal(&mut self, bodypart_index: usize, amount: u32) {
+        self.body.damage = self.body.damage.saturating_sub(amount);
         let bodypart = &mut self.body.parts[bodypart_index];
         let was_disabled = bodypart.damage > bodypart.max_damage;
         bodypart.damage = bodypart.damage.saturating_sub(amount);
@@ -549,7 +553,11 @@ impl Entity {
         }
     }
 
+    /// Dead once overall health runs out, or a vital part is destroyed.
     pub fn mortally_wounded(&self) -> bool {
+        if self.body.hp() == 0 {
+            return true;
+        }
         for bodypart in &self.body.parts {
             if bodypart.damage >= bodypart.max_damage && bodypart.vital {
                 return true;

@@ -31,7 +31,7 @@ pub const MAIN_CONSOLE_INDEX: usize = 0;
 pub const UI_CONSOLE_INDEX: usize = 1;
 
 const LOCATION_PANEL_HEIGHT: usize = 5;
-const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 9;
+const HEALTH_AND_STATUS_PANEL_HEIGHT: usize = 10;
 const HEALTH_PANEL_WIDTH: usize = 45;
 const STATUS_PANEL_WIDTH: usize = UI_WIDTH - HEALTH_PANEL_WIDTH;
 const GROUND_ITEM_PANEL_HEIGHT: usize = 4;
@@ -59,6 +59,7 @@ const PHYS_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
 const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
 const ENERGY_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
+const HEALTH_COLOR: rltk::RGB = RGB {r: 0.85, g: 0.15, b: 0.15};
 const XP_COLOR: rltk::RGB = RGB {r: 0.9, g: 0.8, b: 0.1};
 
 const WALL_COLOR: rltk::RGB = RGB {r: 0.7, g: 0.6, b: 0.4};
@@ -457,21 +458,20 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         offset_y += 1;
     }
 
-    // Energy bar
-    const ENERGY_BAR_WIDTH: usize = 20;
-    let filled = if player.body.max_energy > 0 {
-        (player.body.energy as f32 / player.body.max_energy as f32 * ENERGY_BAR_WIDTH as f32) as usize
-    } else {
-        0
+    // Overall health and energy bars, one per row.
+    const BAR_WIDTH: usize = 20;
+    let mut draw_bar = |y: usize, label: &str, value: u32, max: u32, color: RGB| {
+        let filled = if max > 0 { (value as f32 / max as f32 * BAR_WIDTH as f32).ceil() as usize } else { 0 };
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, y, LABEL_COLOR, BG_COLOR, label);
+        let bar_x = UI_X_OFFSET + LABEL_OFFSET + 7;
+        for i in 0..BAR_WIDTH {
+            let (ch, c) = if i < filled { ('█', color) } else { ('░', INACTIVE_COLOR) };
+            context.set(bar_x + i, y, c, BG_COLOR, rltk::to_cp437(ch));
+        }
+        context.print_color(bar_x + BAR_WIDTH + 1, y, LABEL_COLOR, BG_COLOR, format!("{}/{}", value, max));
     };
-    context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, "Energy ");
-    let bar_x = UI_X_OFFSET + LABEL_OFFSET + 7;
-    for i in 0..ENERGY_BAR_WIDTH {
-        let (ch, color) = if i < filled { ('█', ENERGY_COLOR) } else { ('░', INACTIVE_COLOR) };
-        context.set(bar_x + i, offset_y, color, BG_COLOR, rltk::to_cp437(ch));
-    }
-    context.print_color(bar_x + ENERGY_BAR_WIDTH + 1, offset_y, LABEL_COLOR, BG_COLOR,
-        format!("{}/{}", player.body.energy, player.body.max_energy));
+    draw_bar(offset_y, "Health ", player.body.hp(), player.body.max_hp(), HEALTH_COLOR);
+    draw_bar(offset_y + 1, "Energy ", player.body.energy, player.body.max_energy, ENERGY_COLOR);
 
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + 2;
     const STATUS_COLUMN_WIDTH: usize = 12;
@@ -1378,6 +1378,9 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
             "Fire causes burning (damage over time).".into(),
             "Electrical can stun — you skip your next turn.".into(),
             "Head and torso are vital. Losing either is lethal.".into(),
+            "Every hit also lowers your overall health, even".into(),
+            "on a wrecked limb; at zero you die. Healing any".into(),
+            "body part restores it.".into(),
         ]),
     ];
 
