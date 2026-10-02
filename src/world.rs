@@ -784,7 +784,8 @@ impl World {
             }
         }
 
-        // Cancel every move intent whose destination is contested.
+        // Cancel every move intent whose destination is contested, and let the AI know
+        // it bumped into someone so it can break the tie next turn.
         for entity in &mut self.entities {
             if entity.intent.phase == ExecutionPhase::Movement
                 && std::ptr::fn_addr_eq(entity.intent.action, move_action as Action)
@@ -792,6 +793,9 @@ impl World {
                 if let IntentData::Target(pos) = entity.intent.data {
                     if target_counts[&(pos.x, pos.y)] > 1 {
                         entity.intent = idle_intent();
+                        if let AI::Actor(ai) = &mut entity.ai {
+                            ai.note_bumped(pos);
+                        }
                     }
                 }
             }

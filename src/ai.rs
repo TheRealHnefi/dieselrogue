@@ -31,6 +31,8 @@ const UNAWARE_IDLE_PCT: u32 = 95;
 /// second, else idle. Rolls share one 0..100 draw.
 const ALERT_ROTATE_PCT: u32 = 50;
 const ALERT_STEP_PCT:   u32 = 75;
+/// A patroller counts a waypoint it can see within this many tiles as reached.
+const WAYPOINT_REACH: i32 = 3;
 /// A pilot investigates suspicion only this far from its post beside the tank.
 const PILOT_LEASH: f32 = 6.0;
 /// Radius a guard searches for a tile from which it can re-spot a lost target.
@@ -241,11 +243,20 @@ pub struct ActorAI {
     /// How well the player has been recognised, 0..=DETECT_THRESHOLD. Fills while the
     /// player is in view, drains out of view; full = confirmed hostile.
     detection:    u8,
+    /// The tile our last move was cancelled at because someone else stepped for it too.
+    /// Set by World, consumed next turn to break the tie (see `react_to_bump`).
+    #[serde(default)]
+    bumped_at:    Option<Point>,
 }
 
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
-        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None, rng: None, detection: 0 }
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None, rng: None, detection: 0, bumped_at: None }
+    }
+
+    /// Our move into `tile` was cancelled because another actor stepped for it too.
+    pub fn note_bumped(&mut self, tile: Point) {
+        self.bumped_at = Some(tile);
     }
 
     /// Recognition progress in 0.0..=1.0, for the UI.
@@ -282,9 +293,9 @@ impl ActorAI {
         // Make a decision
         self.advance_waypoint(entity, map); // Move this later
         // Roll once up front (in this &mut context) so `decide` stays pure.
-        let (roll, rand_dir) = {
+        let (roll, rand_dir, bump_roll) = {
             let rng = self.rng.get_or_insert_with(|| RandomNumberGenerator::seeded(scramble(entity.index as u64)));
-            (rng.range(0, 100) as u32, Direction::ALL[rng.range(0, 8) as usize])
+            (rng.range(0, 100) as u32, Direction::ALL[rng.range(0, 8) as usize], rng.range(0, 3) as u32)
         };
         let decision = self.decide(entity, map, entities, grenades, roll, rand_dir);
 
@@ -292,13 +303,43 @@ impl ActorAI {
         self.nav_goal = decision.nav_goal();
 
         // Execute the decision
-        let intent = self.execute(entity, map, entities, decision);
+        let mut intent = self.execute(entity, map, entities, decision);
+        if let Some(tile) = self.bumped_at.take() {
+            intent = self.react_to_bump(entity, map, entities, intent, tile, bump_roll, rand_dir);
+        }
 
         // Advance the search clock for next turn (drives sweep growth + re-alarm).
         if let AlertLevel::Alert { search_ticks, .. } = &mut self.alert {
             *search_ticks += 1;
         }
         intent
+    }
+
+    /// Last turn someone else stepped for the same tile and both moves were cancelled.
+    /// Deciding the same way again would repeat the stand-off forever, so, like two
+    /// people walking into each other, roll: try again, wait a beat, or sidestep to a
+    /// random free tile other than the contested one. Non-move intents pass through.
+    fn react_to_bump(&mut self, entity: &Entity, map: &Map, entities: &[Entity], intent: Option<Intent>,
+                     contested: Point, roll: u32, rand_dir: Direction) -> Option<Intent> {
+        let is_move = intent.as_ref().is_some_and(|i| std::ptr::fn_addr_eq(i.action, crate::actions::move_action as crate::actions::Action));
+        if !is_move {
+            return intent;
+        }
+        match roll {
+            0 => intent,
+            1 => None,
+            _ => {
+                let start = Direction::ALL.iter().position(|&d| d == rand_dir).unwrap_or(0);
+                let dir = (0..8).map(|k| Direction::ALL[(start + k) % 8]).find(|dir| {
+                    let (dx, dy) = dir.delta_pos();
+                    let tile = Point { x: entity.position.x + dx, y: entity.position.y + dy };
+                    tile != contested && entity.check_fit(tile, map)
+                })?;
+                // We leave the cached path; repath from wherever the sidestep lands.
+                self.path_target = None;
+                resolve_step(entity, dir, map, entities).ok().flatten()
+            },
+        }
     }
 
     // --- Stimulus processing ---
@@ -508,12 +549,18 @@ impl ActorAI {
 
     // --- Decision ---
 
-    /// Advance a patroller to its next waypoint once it stands on the current one.
+    /// Advance a patroller to its next waypoint once it reaches the current one: stands
+    /// on it, or is within WAYPOINT_REACH of it with it in sight (another guard may be
+    /// standing on it). The navigation target itself stays the exact waypoint tile.
     fn advance_waypoint(&mut self, entity: &Entity, map: &Map) {
         if !matches!(self.alert, AlertLevel::Unaware) { return; }
         if let Profile::Patrol { route_id, waypoint_index, .. } = &mut self.profile {
             if let Some(route) = map.patrol_routes.get(*route_id) {
-                if !route.is_empty() && route[*waypoint_index] == entity.position {
+                let reached = |wp: Point| {
+                    let pos = entity.position;
+                    wp == pos || ((wp.x - pos.x).abs().max((wp.y - pos.y).abs()) <= WAYPOINT_REACH && entity.can_see(wp))
+                };
+                if !route.is_empty() && reached(route[*waypoint_index]) {
                     *waypoint_index = (*waypoint_index + 1) % route.len();
                     self.path_target = None;
                 }
