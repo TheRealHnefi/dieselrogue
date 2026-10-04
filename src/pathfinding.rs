@@ -122,8 +122,9 @@ pub fn navigate_cached(
     cached_target: &mut Option<usize>,
     tolerance: u32,
 ) -> bool {
+    // A closed door as the next step doesn't stale the path: the actor opens it.
     let path_stale = out.is_empty()
-        || out.last().map_or(false, |&i| map.blocked_idx(i));
+        || out.last().map_or(false, |&i| map.blocked_idx(i) && !map.is_closed_door(i));
 
     let dest_ok = match *cached_target {
         Some(prev) if prev == end => true,
@@ -151,7 +152,7 @@ pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
     let mut best_h   = current_h;
     let mut best_idx = None;
 
-    for (idx, _) in map.get_available_exits(start) {
+    for (idx, _) in map.nav_exits(start) {
         let h = map.get_pathing_distance(idx, end);
         if h < best_h {
             best_h   = h;
@@ -163,6 +164,9 @@ pub fn greedy_step(start: usize, end: usize, map: &Map) -> Option<usize> {
 }
 
 /// Find a path from `start` to `end` on `map`, writing steps into `out`.
+///
+/// Closed doors count as passable at a surcharge (see [`Map::nav_exits`]);
+/// stepping into one resolves to facing and opening it (see `resolve_step`).
 ///
 /// Steps are written in reversed order: `out[0]` is the step closest to
 /// `end`, `out.last()` is the first step to take from `start`.  This layout
@@ -213,7 +217,7 @@ pub fn navigate(start: usize, end: usize, map: &Map, out: &mut Vec<usize>) -> bo
             }
             expansions += 1;
 
-            for (neighbour, edge_cost) in map.get_available_exits(current.idx) {
+            for (neighbour, edge_cost) in map.nav_exits(current.idx) {
                 let new_g = current.g + edge_cost;
 
                 if let Some((_, existing_g)) = scratch.get(neighbour) {

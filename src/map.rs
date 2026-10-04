@@ -519,6 +519,41 @@ impl Map {
         !self.blocked(x, y)
     }
 
+    /// Whether a closed door's pawn occupies `idx`. Walking into the tile opens
+    /// the door (see `resolve_step`), so AI navigation treats it as passable.
+    pub fn is_closed_door(&self, idx: usize) -> bool {
+        self.tiles[idx] == TileType::Doorway && self.fov_blocked[idx]
+    }
+
+    /// Exits for AI navigation: like [`Map::get_available_exits`], but closed
+    /// doors count as passable at a surcharge (facing + opening costs turns).
+    pub fn nav_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
+        const DOOR_COST: f32 = 2.0;
+        const STEPS: [(i32, i32, f32); 8] = [
+            (-1,  0, 1.0),  (1,  0, 1.0),  (0, -1, 1.0),  (0, 1, 1.0),
+            (-1, -1, 1.45), (1, -1, 1.45), (-1, 1, 1.45), (1, 1, 1.45),
+        ];
+
+        let mut exits = rltk::SmallVec::new();
+        let w = self.width as i32;
+        let x = idx as i32 % w;
+        let y = idx as i32 / w;
+
+        for (dx, dy, cost) in STEPS {
+            let (nx, ny) = (x + dx, y + dy);
+            if nx < 1 || nx > w - 1 || ny < 1 || ny > self.height as i32 - 1 {
+                continue;
+            }
+            let nidx = (idx as i32 + dx + dy * w) as usize;
+            if !self.blocked_idx(nidx) {
+                exits.push((nidx, cost));
+            } else if self.is_closed_door(nidx) {
+                exits.push((nidx, cost + DOOR_COST));
+            }
+        }
+        exits
+    }
+
     pub fn is_opaque(&self, index: usize) -> bool {
         match self.tiles[index] {
             TileType::Wall => true,

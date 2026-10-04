@@ -276,3 +276,9 @@ GoTo(tank)!
 A tank turns only 45° per turn, so Rotate(direction) turns one step toward direction
 and GoTo turns before each move just like on foot. A tank cannot open doors or squeeze
 through narrow gaps; if the path is blocked it waits (Idle!) rather than bumping.
+
+### Open door
+Pathfinding leads through door:
+    Facing door:
+        Open door!
+    Face door!
