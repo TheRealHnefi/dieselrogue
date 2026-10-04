@@ -42,6 +42,22 @@ const GRENADE_THROW_RANGE: u32 = 5;
 /// A guard flees a live grenade whose blast radius reaches within this margin.
 const GRENADE_FLEE_MARGIN: f32 = 2.0;
 
+// --- Combat plan tunables (doc/ai.md "Combat plans") ---
+/// Minimum range advantage before a pursuer fights at range instead of closing.
+const KITE_MARGIN: u32 = 3;
+/// Extra clearance kept beyond the enemy's weapon range while kiting.
+const KITE_BUFFER: f32 = 1.0;
+/// Combat-active allies within this distance count toward a group (rally range).
+const RALLY_RANGE: f32 = 12.0;
+/// Swarmers hold this far from the enemy until the group has converged.
+const STANDOFF_DIST: f32 = 8.0;
+/// Staged allies (besides us) needed before a swarm breaks in.
+const SWARM_ALLIES: usize = 2;
+/// Ring radius searched for a tile out of the enemy's sight (flank).
+const HIDE_SEARCH: i32 = 8;
+/// The flank approach point sits this far past the enemy's position.
+const FLANK_DEPTH: i32 = 3;
+
 // --- Patrol search tunables (Alert state) ---
 /// A searching patroller re-raises the alarm every this many turns.
 const SHOUT_INTERVAL: u32 = 8;
@@ -123,11 +139,42 @@ enum Decision {
     PrimeGrenade { item_id: usize },
     GetReadyForCombat,
     GoTo   { dest: Point, tolerance: u32 },
+    /// Step toward a point without turning, keeping the vision cone where it is.
+    Strafe { toward: Point },
     Face   { toward: Point },
     Flee   { threat: Point },
     Engage { target_id: usize, last_seen: Point },
     /// Walk to the tank `vehicle_id` and climb in.
     Board  { vehicle_id: usize },
+}
+
+// ---------------------------------------------------------------------------
+// CombatPlan
+// ---------------------------------------------------------------------------
+
+/// How a pursuer fights (doc/ai.md "Combat plans"): picked on entering Combat
+/// and kept until the situation changes drastically, so behaviour reads as
+/// intent rather than per-turn jitter.
+#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
+struct CombatPlan {
+    kind: PlanKind,
+    /// Situation snapshot at pick time, compared against for the replan triggers.
+    enemy_range: u32,
+    enemy_blast: bool,
+    allies: u8,
+}
+
+#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
+enum PlanKind {
+    /// Fight from the band between the enemy's reach and ours.
+    KeepRange,
+    /// Stage at standoff distance until the group has converged, then rush.
+    Swarm,
+    /// Break the sight line at `hide`, then re-approach via `flank` (the far
+    /// side of the enemy's position). `hidden` flips once contact is broken.
+    Flank { hide: Point, flank: Point, hidden: bool },
+    /// The plain chase.
+    Rush,
 }
 
 // ---------------------------------------------------------------------------
@@ -213,6 +260,9 @@ pub struct ActorAI {
     // Shared path cache — destination tracked to avoid redundant A* calls.
     current_path: Vec<usize>,    // reversed; .last() = next step index
     path_target:  Option<usize>, // map idx of current destination
+    /// The committed combat plan (Pursue tactic only). See doc/ai.md "Combat plans".
+    #[serde(default)]
+    plan:         Option<CombatPlan>,
     /// Per-actor RNG for the probabilistic idle/look leaves. Seeded lazily from the
     /// entity index (each actor owns its own stream, so the parallel AI pass never
     /// shares a generator). Not saved: a loaded game reseeds it lazily.
@@ -229,7 +279,7 @@ pub struct ActorAI {
 
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
-        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, rng: None, detection: 0, bumped_at: None }
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, plan: None, rng: None, detection: 0, bumped_at: None }
     }
 
     /// Our move into `tile` was cancelled because another actor stepped for it too.
@@ -251,6 +301,7 @@ impl ActorAI {
         sounds:   &[SoundEvent],
         grenades: &[(Point, u32)],
         doors:    &[Point],
+        allies:   &[Point],
     ) -> Option<Intent> {
         #[cfg(debug_assertions)]
         puffin::profile_function!();
@@ -261,6 +312,9 @@ impl ActorAI {
         // Update beliefs according to perceptions
         self.update_beliefs(entity, entities, map, perception);
 
+        // Commit to (or revise) a combat plan before deciding this turn's move.
+        self.update_plan(entity, map, entities, allies);
+
         // Make a decision
         self.advance_waypoint(entity, map); // Move this later
         // Roll once up front (in this &mut context) so `decide` stays pure.
@@ -268,7 +322,7 @@ impl ActorAI {
             let rng = self.rng.get_or_insert_with(|| RandomNumberGenerator::seeded(scramble(entity.index as u64)));
             (rng.range(0, 100) as u32, Direction::ALL[rng.range(0, 8) as usize], rng.range(0, 3) as u32)
         };
-        let decision = self.decide(entity, map, entities, grenades, roll, rand_dir);
+        let decision = self.decide(entity, map, entities, allies, grenades, roll, rand_dir);
 
         // Execute the decision
         let mut intent = self.execute(entity, map, entities, decision);
@@ -539,7 +593,7 @@ impl ActorAI {
     /// The decision tree: current (alert, profile) state → a Decision. Pure, and
     /// every Decision field is Copy, so no borrow of self outlives the call and
     /// execute can then take &mut self freely.
-    fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity], grenades: &[(Point, u32)], roll: u32, rand_dir: Direction) -> Decision {
+    fn decide(&self, entity: &Entity, map: &Map, entities: &[Entity], allies: &[Point], grenades: &[(Point, u32)], roll: u32, rand_dir: Direction) -> Decision {
         let pos = entity.position;
         // "Always": grenades trump every alert state (both guard profiles).
         if let Some(d) = self.grenade_reaction(entity, map, grenades) {
@@ -616,12 +670,12 @@ impl ActorAI {
             },
             AlertLevel::Combat { target_id, last_seen } => match self.profile.combat_tactic() {
                 CombatTactic::Flee => Decision::Flee { threat: *last_seen },
-                _ => match &self.profile {
-                    Profile::Guard { .. } =>
-                        self.guard_combat(entity, map, entities, *target_id, *last_seen),
-                    Profile::Patrol { .. } | Profile::Pilot { .. } =>
-                        self.patrol_combat(entity, map, entities, *target_id, *last_seen),
-                },
+                // A sentinel's job is the post, not the hunt: it keeps its
+                // reacquire ladder instead of a plan.
+                CombatTactic::Hold =>
+                    self.guard_combat(entity, map, entities, *target_id, *last_seen),
+                CombatTactic::Pursue =>
+                    self.plan_combat(entity, map, entities, allies, *target_id, *last_seen),
             },
         }
     }
@@ -637,6 +691,10 @@ impl ActorAI {
             Decision::PrimeGrenade { item_id } => prime_grenade_intent(entity, item_id),
             Decision::GetReadyForCombat => self.get_ready_for_combat(entity, map),
             Decision::GoTo { dest, tolerance } => self.navigate_to(entity, dest, map, entities, tolerance),
+            // Strafe keeps the facing; when cornered (no sidestep improves),
+            // fall back to pathing so the actor still repositions.
+            Decision::Strafe { toward } => strafe_step(entity, map, toward)
+                .or_else(|| self.navigate_to(entity, toward, map, entities, 0)),
             Decision::Face { toward } => face_intent(entity, toward),
             Decision::Flee { threat } => {
                 let dest = self.flee_pos(entity, threat, map);
@@ -957,11 +1015,10 @@ impl ActorAI {
         }
     }
 
-    /// The patroller's combat behaviour (doc/ai.md): prefer a grenade in throw
-    /// range, shoot while the enemy is in sight, otherwise chase to where it was
-    /// last seen. Breaking off to shout + search happens in `decay_alertness` once
-    /// the guard reaches that spot and still can't find them.
-    fn patrol_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+    /// The pursuer's combat behaviour (doc/ai.md "Combat plans"): the grenade and
+    /// readiness preludes, then the committed plan. Breaking off to shout + search
+    /// happens in `decay_alertness` once the chase reaches the last-seen spot.
+    fn plan_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], allies: &[Point], target_id: usize, last_seen: Point) -> Decision {
         if let Some(item_id) = carries_grenade(entity) {
             let center = entity.center();
             if rltk::DistanceAlg::Pythagoras.distance2d(center, last_seen) <= GRENADE_THROW_RANGE as f32
@@ -972,10 +1029,170 @@ impl ActorAI {
         if !self.is_combat_ready(entity) {
             return Decision::GetReadyForCombat;
         }
+        match self.plan.map(|p| p.kind) {
+            Some(PlanKind::KeepRange) =>
+                self.keep_range(entity, entities, target_id, last_seen),
+            Some(PlanKind::Swarm) =>
+                self.swarm(entity, map, entities, allies, target_id, last_seen),
+            Some(PlanKind::Flank { hide, flank, hidden }) =>
+                self.flank(entity, entities, target_id, last_seen, hide, flank, hidden),
+            _ => self.rush(entity, entities, target_id, last_seen),
+        }
+    }
+
+    /// The plain chase (doc/ai.md "Rush"): attack on sight, else run at the last
+    /// seen position.
+    fn rush(&self, entity: &Entity, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
         if self.can_see_target(entity, entities, target_id) {
             return Decision::Engage { target_id, last_seen };
         }
         Decision::GoTo { dest: last_seen, tolerance: 0 }
+    }
+
+    /// Keep range (doc/ai.md): fight from the band between the enemy's reach and
+    /// ours, backing off without looking away whenever they close.
+    fn keep_range(&self, entity: &Entity, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+        let enemy_range = self.plan.map_or(1, |p| p.enemy_range) as f32;
+        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        if dist <= enemy_range + KITE_BUFFER {
+            return Decision::Strafe { toward: away_point(entity.position, last_seen) };
+        }
+        if dist <= wielded_range(entity) as f32 {
+            if self.can_see_target(entity, entities, target_id) {
+                return Decision::Engage { target_id, last_seen };
+            }
+            // In range but the sight line is fouled: sidestep, eyes on them.
+            return Decision::Strafe { toward: last_seen };
+        }
+        Decision::GoTo { dest: last_seen, tolerance: 0 }
+    }
+
+    /// Swarm (doc/ai.md): hold at standoff until enough allies have converged on
+    /// the enemy, then everyone breaks in at once.
+    fn swarm(&self, entity: &Entity, map: &Map, entities: &[Entity], allies: &[Point], target_id: usize, last_seen: Point) -> Decision {
+        let staged = allies.iter()
+            .filter(|&&p| p != entity.center()
+                && rltk::DistanceAlg::Pythagoras.distance2d(p, last_seen) <= STANDOFF_DIST + 1.0)
+            .count();
+        if staged >= SWARM_ALLIES {
+            return self.rush(entity, entities, target_id, last_seen);
+        }
+        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        if dist > STANDOFF_DIST {
+            return Decision::GoTo { dest: last_seen, tolerance: 0 };
+        }
+        // Hold the ring with eyes on the enemy.
+        if self.can_see_target(entity, entities, target_id) || entity.can_see(last_seen) {
+            return Decision::Idle;
+        }
+        if self.can_turn_to_see(entity, map, last_seen) {
+            return Decision::Face { toward: last_seen };
+        }
+        Decision::Strafe { toward: last_seen }
+    }
+
+    /// Flank (doc/ai.md): break the sight line at `hide`, then come in via the
+    /// far-side `flank` point. `hidden` flips in `update_plan` once contact
+    /// breaks; attack on sight the moment the enemy is reacquired.
+    fn flank(&self, entity: &Entity, entities: &[Entity], target_id: usize, last_seen: Point, hide: Point, flank: Point, hidden: bool) -> Decision {
+        if !hidden {
+            return Decision::GoTo { dest: hide, tolerance: 0 };
+        }
+        if self.can_see_target(entity, entities, target_id) {
+            return Decision::Engage { target_id, last_seen };
+        }
+        // Reaching beside the flank point counts (another flanker may hold it).
+        let arrived = (entity.position.x - flank.x).abs().max((entity.position.y - flank.y).abs()) <= 1;
+        if !arrived {
+            return Decision::GoTo { dest: flank, tolerance: 0 };
+        }
+        self.rush(entity, entities, target_id, last_seen)
+    }
+
+    /// Keep the combat plan in step with the situation (doc/ai.md "Replanning"):
+    /// pick one on entering Combat, re-pick only on a drastic change, advance the
+    /// flank stage, drop the plan outside Combat. Runs before `decide`, which
+    /// only reads it.
+    fn update_plan(&mut self, entity: &Entity, map: &Map, entities: &[Entity], allies: &[Point]) {
+        let AlertLevel::Combat { target_id, last_seen } = self.alert else {
+            self.plan = None;
+            return;
+        };
+        // Plans are for pursuers on foot; sentinels, fleers and tanks keep their ladders.
+        if !matches!(self.profile.combat_tactic(), CombatTactic::Pursue)
+            || matches!(entity.driving, DrivingState::DrivenBy(_)) {
+            return;
+        }
+
+        let enemy = entities.iter().find(|e| e.index == target_id);
+        let enemy_range = enemy.map_or(1, |e| wielded_range(e));
+        let enemy_blast = enemy.map_or(false, |e| wielded_blast(e));
+        let nearby = count_allies(entity, allies, RALLY_RANGE);
+
+        let drastic = match &self.plan {
+            None => true,
+            Some(p) => {
+                // A weapon change only counts when it is actually seen happening.
+                let seen = self.can_see_target(entity, entities, target_id);
+                let weapon_changed = seen && (p.enemy_range != enemy_range || p.enemy_blast != enemy_blast);
+                let allies_changed = (nearby as i32 - p.allies as i32).abs() >= 2;
+                let impossible = match p.kind {
+                    PlanKind::Swarm => nearby < SWARM_ALLIES,
+                    PlanKind::KeepRange => own_best_range(entity) < p.enemy_range + KITE_MARGIN,
+                    _ => false,
+                };
+                weapon_changed || allies_changed || impossible
+            }
+        };
+        if drastic {
+            self.plan = Some(self.pick_plan(entity, map, last_seen, enemy_range, enemy_blast, nearby));
+        }
+
+        // Advance the flank once contact is broken (hide reached or sight line gone).
+        if let Some(plan) = &mut self.plan {
+            if let PlanKind::Flank { hide, hidden, .. } = &mut plan.kind {
+                if !*hidden && (entity.position == *hide || !has_los(entity.center(), last_seen, map)) {
+                    *hidden = true;
+                }
+            }
+        }
+    }
+
+    /// The first matching plan for the situation (doc/ai.md "Picking a plan").
+    fn pick_plan(&self, entity: &Entity, map: &Map, last_seen: Point, enemy_range: u32, enemy_blast: bool, nearby: usize) -> CombatPlan {
+        let snapshot = |kind| CombatPlan { kind, enemy_range, enemy_blast, allies: nearby.min(u8::MAX as usize) as u8 };
+        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        if own_best_range(entity) >= enemy_range + KITE_MARGIN && dist > enemy_range as f32 {
+            return snapshot(PlanKind::KeepRange);
+        }
+        if nearby >= SWARM_ALLIES && !enemy_blast {
+            return snapshot(PlanKind::Swarm);
+        }
+        if let Some(hide) = self.hide_spot(entity, map, last_seen) {
+            let flank = flank_point(entity.position, last_seen, map);
+            return snapshot(PlanKind::Flank { hide, flank, hidden: false });
+        }
+        snapshot(PlanKind::Rush)
+    }
+
+    /// The nearest free tile within HIDE_SEARCH with no sight line to `target`:
+    /// where a flanker breaks contact. Only runs when a plan is (re)picked, so
+    /// the O(area) LOS sweep stays off the per-turn hot path.
+    fn hide_spot(&self, entity: &Entity, map: &Map, target: Point) -> Option<Point> {
+        let from = entity.position;
+        let mut best: Option<(Point, i32)> = None;
+        for dy in -HIDE_SEARCH..=HIDE_SEARCH {
+            for dx in -HIDE_SEARCH..=HIDE_SEARCH {
+                if dx == 0 && dy == 0 { continue; }
+                let p = Point { x: from.x + dx, y: from.y + dy };
+                if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 { continue; }
+                if map.blocked(p.x, p.y) { continue; }
+                if has_los(p, target, map) { continue; }
+                let d = dx * dx + dy * dy;
+                if best.map_or(true, |(_, bd)| d < bd) { best = Some((p, d)); }
+            }
+        }
+        best.map(|(p, _)| p)
     }
 
     /// Whether the entity with `target_id` currently sits in this actor's viewshed.
@@ -1048,6 +1265,73 @@ impl ActorAI {
 // ---------------------------------------------------------------------------
 
 /// A resolved AI decision: produced by `decide`, carried out by `execute`.
+
+/// Range of the wielded firearm; melee reach when unarmed. What an onlooker can
+/// judge — hidden inventory stays unknown.
+fn wielded_range(entity: &Entity) -> u32 {
+    match entity.get_primary_weapon().map(|w| &w.kind) {
+        Some(ItemKind::Firearm { range, .. }) => *range,
+        _ => 1,
+    }
+}
+
+/// Whether the wielded weapon fires a blast (rocket launcher).
+fn wielded_blast(entity: &Entity) -> bool {
+    entity.get_primary_weapon()
+        .map_or(false, |w| w.equip_actions.iter().any(|a| a.id == ActionId::FireRocket))
+}
+
+/// Our best loaded firearm's range, equipped or carried — what we could fight with.
+fn own_best_range(entity: &Entity) -> u32 {
+    entity.body.inventory.iter()
+        .chain(entity.body.item_slots.iter().filter_map(|s| s.item.as_ref()))
+        .filter_map(|i| match i.kind {
+            ItemKind::Firearm { range, ammo, .. } if ammo >= 1 => Some(range),
+            _ => None,
+        })
+        .max()
+        .unwrap_or(1)
+}
+
+/// Combat-active allies within `range` of us, excluding ourselves.
+fn count_allies(entity: &Entity, allies: &[Point], range: f32) -> usize {
+    let c = entity.center();
+    allies.iter()
+        .filter(|&&p| p != c && rltk::DistanceAlg::Pythagoras.distance2d(c, p) <= range)
+        .count()
+}
+
+/// A point directly away from `threat`, as a strafe target for backing off.
+fn away_point(pos: Point, threat: Point) -> Point {
+    Point { x: 2 * pos.x - threat.x, y: 2 * pos.y - threat.y }
+}
+
+/// A walkable approach tile on the far side of `enemy`, seen from `from`.
+fn flank_point(from: Point, enemy: Point, map: &Map) -> Point {
+    let (dx, dy) = ((enemy.x - from.x).signum(), (enemy.y - from.y).signum());
+    map.snap_to_walkable(Point { x: enemy.x + dx * FLANK_DEPTH, y: enemy.y + dy * FLANK_DEPTH })
+}
+
+/// Step to the adjacent free tile closest to `toward` WITHOUT turning, so the
+/// vision cone stays put. None when no adjacent tile improves on standing still.
+fn strafe_step(entity: &Entity, map: &Map, toward: Point) -> Option<Intent> {
+    let deltas: [(i32, i32); 8] = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)];
+    let mut best = (rltk::DistanceAlg::Pythagoras.distance2d(entity.position, toward), None);
+    for (dx, dy) in deltas {
+        let p = Point { x: entity.position.x + dx, y: entity.position.y + dy };
+        if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 {
+            continue;
+        }
+        if map.blocked(p.x, p.y) {
+            continue;
+        }
+        let d = rltk::DistanceAlg::Pythagoras.distance2d(p, toward);
+        if d < best.0 {
+            best = (d, Some(p));
+        }
+    }
+    best.1.map(move_intent)
+}
 
 /// Turn to face `toward` (any distance), or None if already facing it.
 fn face_intent(entity: &Entity, toward: Point) -> Option<Intent> {
@@ -1281,12 +1565,13 @@ impl AI {
         sounds:   &[SoundEvent],
         grenades: &[(Point, u32)],
         doors:    &[Point],
+        allies:   &[Point],
     ) -> Option<Intent> {
         match self {
             AI::None => None,
             AI::Rotator => Some(turn_intent(entity.body.facing.clockwise())),
             AI::Forward => Some(forward_intent(entity.position, entity.body.facing)),
-            AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds, grenades, doors),
+            AI::Actor(actor) => actor.compute_intent(entity, map, entities, sounds, grenades, doors, allies),
         }
     }
 }

@@ -462,6 +462,14 @@ impl World {
 
     #[tracing::instrument(skip_all)]
     pub fn resolve_intent_declaration(&mut self) {
+        // Positions of combat-active actors (last turn's beliefs), for the swarm
+        // plan's rally counts. Collected before the AI states are extracted below,
+        // since the extracted entities carry AI::None during the parallel pass.
+        let combat_allies: Vec<Point> = self.entities.iter()
+            .filter(|e| matches!(&e.ai, AI::Actor(a) if matches!(a.alert, AlertLevel::Combat { .. })))
+            .map(|e| e.center())
+            .collect();
+
         // Step 1: Extract all AI states so we can hold &self.entities (immutable)
         // while mutating AI state (path cache etc.) during computation.
         let mut ai_states: Vec<AI> = self.entities.iter_mut()
@@ -497,12 +505,13 @@ impl World {
             .map(|(door_id, _, _)| self.entities[*door_id].center())
             .collect();
         let doors = &player_doors[..];
+        let allies = &combat_allies[..];
 
         let compute = |(ai, entity): (&mut AI, &Entity)| -> Option<Intent> {
             match entity.driving {
                 DrivingState::Driving(_)  => None,
                 DrivingState::DrivenBy(_) => None,
-                _ => ai.compute_intent(entity, map, entities, sounds, grenades, doors),
+                _ => ai.compute_intent(entity, map, entities, sounds, grenades, doors, allies),
             }
         };
 
@@ -523,7 +532,7 @@ impl World {
         for i in 0..entities.len() {
             if let DrivingState::DrivenBy(pilot_id) = entities[i].driving {
                 let intent = ai_states[pilot_id].compute_intent(
-                    &entities[i], map, entities, sounds, grenades, doors,
+                    &entities[i], map, entities, sounds, grenades, doors, allies,
                 );
                 intents[i] = intent;
             }
