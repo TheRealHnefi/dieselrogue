@@ -97,11 +97,7 @@ Combat:
         Equip or reload weapon!
     Enemy is within throw range and a grenade is carried:
         Prime grenade!
-    Can see enemy:
-        Attack(enemy)!
-    Not yet at last known position:
-        GoTo(last known position)!
-    Decay to Alert, Shout!
+    Follow combat plan! (see Combat plans; a finished Rush ends as before: Decay to Alert, Shout!)
 
 ## Pilot (profile = Pilot, bound to one vehicle)
 
@@ -166,6 +162,79 @@ Combat:
     Not yet at last known position:
         GoTo(last known position)!
     Decay to Alert!
+
+## Combat plans (combat_tactic = Pursue)
+
+On entering Combat the AI reads the situation once and commits to a plan; the
+plan is kept until the situation changes drastically (see Replanning), so the
+behaviour reads as intent rather than per-turn jitter. Dropping out of Combat
+(losing the target, decaying to Alert) discards the plan; re-entering Combat
+picks a fresh one.
+
+Plans only apply to pursuers. A sentinel (combat_tactic = Hold) keeps its
+reacquire ladder — its job is the post, not the hunt — and a driving pilot
+keeps the tank ladder: a tank neither strafes nor flanks. Fleeing is unchanged.
+
+A plan is judged on what the AI can see: the enemy's wielded weapon gives its
+range and whether it has a blast; a hidden inventory is unknown. An unarmed or
+unseen-weapon enemy counts as melee range.
+
+Picking a plan (first match wins):
+    My weapon outranges the enemy's by 3+ tiles and I am outside the enemy's range:
+        Keep range!
+    2+ other combat-active allies within rally range (12 tiles) and the enemy weapon has no blast:
+        Swarm!
+    A spot out of the enemy's view is reachable nearby:
+        Flank!
+    Rush!
+
+### Keep range
+Fight from the band between the enemy's reach and my own; never enter theirs.
+    Enemy inside my range and outside theirs:
+        Can see enemy:
+            Attack(enemy)!
+        Strafe(toward enemy)! (sidestep to regain the sight line, eyes on them)
+    Enemy inside or at the edge of their own range:
+        Strafe(away from enemy)! (back off without looking away)
+    GoTo(enemy, stop at the band)!
+
+### Swarm
+Overwhelm from several sides at once instead of trickling in one by one.
+    Fewer than 2 converging allies (combat-active, within rally range, closer to the enemy than their standoff):
+        Hold at standoff distance, Strafe to keep enemy in view!
+    Rush!
+
+### Flank
+Break line of sight and come in from another side. Losing sight of the enemy
+is the point: while the flank is under way the AI stays committed and does not
+decay into searching.
+    Still in the enemy's view:
+        GoTo(nearest spot out of the enemy's view)! (shortest way out of sight, even turning away)
+    Flank point not reached:
+        GoTo(flank point)! (a tile on the far side of the enemy's last position; the route may pass doors)
+    Rush!
+
+### Rush
+The existing chase: attack on sight, else run at the last seen position.
+    Can see enemy:
+        Attack(enemy)!
+    Not yet at last known position:
+        GoTo(last known position)!
+    Decay to Alert, Shout!
+
+### Replanning (drastic changes only)
+    Enemy's wielded weapon visibly changed (dropped, holstered, swapped):
+        Re-pick plan!
+    Combat-active allies within rally range changed by 2 or more since the plan was picked:
+        Re-pick plan!
+    Plan impossible (no flank spot or route, range band can't be held):
+        Re-pick plan!
+
+### Strafing in combat
+A combat-active AI moves with strafe steps (move without turning) whenever the
+enemy is in view and a normal step would swing its vision cone off them. When
+it deliberately breaks sight (start of a flank), it instead takes the shortest
+step out of the enemy's view, even if that means turning away.
 
 ## Perception (shared by all profiles)
 
@@ -238,6 +307,10 @@ GoTo(position)!
     
 ### GoTo(position)
 Pathfind to position!
+### Strafe(position)
+Step one tile toward position without turning — facing (and the vision cone)
+stays where it was. No pathfinding: pick the adjacent free tile that closes on
+position, or Idle! if none does.
 ### Rotate(direction)
 Turn(dirction)!
 ### Idle
