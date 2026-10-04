@@ -122,31 +122,12 @@ enum Decision {
     /// Prime the carried explosive `item_id` (thrown next turn by the Always block).
     PrimeGrenade { item_id: usize },
     GetReadyForCombat,
-    GoTo   { dest: Point, tolerance: u32, field: FieldPref },
+    GoTo   { dest: Point, tolerance: u32 },
     Face   { toward: Point },
     Flee   { threat: Point },
     Engage { target_id: usize, last_seen: Point },
     /// Walk to the tank `vehicle_id` and climb in.
     Board  { vehicle_id: usize },
-}
-
-/// Whether a GoTo destination is worth a shared flow field, and its extent.
-/// FullMap = static goal (patrol/guard); Bounded = dynamic goal (investigation /
-/// last-known) whose interested agents cluster nearby; None = per-agent goal not
-/// worth sharing (flank offset).
-#[derive(Clone, Copy, Debug)]
-enum FieldPref { None, FullMap, Bounded }
-
-impl Decision {
-    /// The shared flow-field goal this decision heads to (if any) and whether a
-    /// bounded field suffices. Single source of truth for World's field pre-pass.
-    fn nav_goal(&self) -> Option<(Point, bool)> {
-        match self {
-            Decision::GoTo { dest, field: FieldPref::FullMap, .. } => Some((*dest, false)),
-            Decision::GoTo { dest, field: FieldPref::Bounded, .. } => Some((*dest, true)),
-            _ => None,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -186,8 +167,7 @@ pub enum CombatTactic {
 pub enum Profile {
     Patrol {
         /// Index into [`Map::patrol_routes`] — the shared, read-only route this
-        /// actor follows. Many patrollers share a route so their navigation can
-        /// amortize onto the route's shared flow fields.
+        /// actor follows.
         route_id: usize,
         waypoint_index: usize,
         combat_tactic: CombatTactic,
@@ -233,8 +213,6 @@ pub struct ActorAI {
     // Shared path cache — destination tracked to avoid redundant A* calls.
     current_path: Vec<usize>,    // reversed; .last() = next step index
     path_target:  Option<usize>, // map idx of current destination
-    /// Last decided shared-field goal (tile + bounded), read by World's pre-pass.
-    nav_goal:     Option<(Point, bool)>,
     /// Per-actor RNG for the probabilistic idle/look leaves. Seeded lazily from the
     /// entity index (each actor owns its own stream, so the parallel AI pass never
     /// shares a generator). Not saved: a loaded game reseeds it lazily.
@@ -251,7 +229,7 @@ pub struct ActorAI {
 
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
-        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, nav_goal: None, rng: None, detection: 0, bumped_at: None }
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, rng: None, detection: 0, bumped_at: None }
     }
 
     /// Our move into `tile` was cancelled because another actor stepped for it too.
@@ -262,13 +240,6 @@ impl ActorAI {
     /// Recognition progress in 0.0..=1.0, for the UI.
     pub fn detection_level(&self) -> f32 {
         self.detection as f32 / DETECT_THRESHOLD as f32
-    }
-
-    /// The shared flow-field goal this actor is heading to (tile + whether a
-    /// bounded field suffices), decided last turn. Read by World's field pre-pass
-    /// to count shared-goal demand. `None` for combat/flank/idle (no shared field).
-    pub fn nav_field_goal(&self) -> Option<(Point, bool)> {
-        self.nav_goal
     }
 
     /// Follows a perceive → update → decide → execute logic for easier overview.
@@ -298,9 +269,6 @@ impl ActorAI {
             (rng.range(0, 100) as u32, Direction::ALL[rng.range(0, 8) as usize], rng.range(0, 3) as u32)
         };
         let decision = self.decide(entity, map, entities, grenades, roll, rand_dir);
-
-        // Record its shared-field goal for World's pre-pass to read next turn.
-        self.nav_goal = decision.nav_goal();
 
         // Execute the decision
         let mut intent = self.execute(entity, map, entities, decision);
@@ -588,7 +556,7 @@ impl ActorAI {
                         Decision::Holster
                     } else {
                         match map.patrol_routes.get(*route_id).and_then(|r| r.get(*waypoint_index)) {
-                            Some(&dest) => Decision::GoTo { dest, tolerance: 0, field: FieldPref::FullMap },
+                            Some(&dest) => Decision::GoTo { dest, tolerance: 0 },
                             None        => Decision::Idle,
                         }
                     },
@@ -596,7 +564,7 @@ impl ActorAI {
                 // mostly stands watch, glancing around now and then.
                 Profile::Guard { anchor, .. } | Profile::Pilot { anchor, .. } =>
                     if pos != *anchor {
-                        Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap }
+                        Decision::GoTo { dest: *anchor, tolerance: 0 }
                     } else if entity.get_primary_weapon().is_some() {
                         Decision::Holster
                     } else if roll < UNAWARE_IDLE_PCT {
@@ -610,9 +578,9 @@ impl ActorAI {
                     Decision::GetReadyForCombat
                 } else if self.far_from_anchor(pos) {
                     // Won't chase a hunch off its post — head back.
-                    Decision::GoTo { dest: self.anchor().unwrap_or(*origin), tolerance: 0, field: FieldPref::FullMap }
+                    Decision::GoTo { dest: self.anchor().unwrap_or(*origin), tolerance: 0 }
                 } else {
-                    Decision::GoTo { dest: *origin, tolerance: 0, field: FieldPref::Bounded }
+                    Decision::GoTo { dest: *origin, tolerance: 0 }
                 }
             },
             AlertLevel::Alert { last_known, search_ticks } => {
@@ -624,11 +592,11 @@ impl ActorAI {
                         // post rather than searching: mostly watch, sometimes shift.
                         Profile::Guard { anchor, .. } =>
                             if self.far_from_anchor(pos) {
-                                Decision::GoTo { dest: *anchor, tolerance: 0, field: FieldPref::FullMap }
+                                Decision::GoTo { dest: *anchor, tolerance: 0 }
                             } else if roll < ALERT_ROTATE_PCT {
                                 Decision::Turn { dir: rand_dir }
                             } else if roll < ALERT_STEP_PCT {
-                                Decision::GoTo { dest: forward_tile(pos, entity.body.facing), tolerance: 0, field: FieldPref::None }
+                                Decision::GoTo { dest: forward_tile(pos, entity.body.facing), tolerance: 0 }
                             } else {
                                 Decision::Idle
                             },
@@ -638,11 +606,11 @@ impl ActorAI {
                             if *search_ticks % SHOUT_INTERVAL == 0 {
                                 Decision::Shout
                             } else {
-                                Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0, field: FieldPref::Bounded }
+                                Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0 }
                         },
                         // A pilot whose tank is gone searches like a patroller, but silently.
                         Profile::Pilot { .. } =>
-                            Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0, field: FieldPref::Bounded },
+                            Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0 },
                     }
                 }
             },
@@ -668,7 +636,7 @@ impl ActorAI {
             Decision::ThrowGrenade { item_id, target } => throw_grenade_intent(entity, item_id, target),
             Decision::PrimeGrenade { item_id } => prime_grenade_intent(entity, item_id),
             Decision::GetReadyForCombat => self.get_ready_for_combat(entity, map),
-            Decision::GoTo { dest, tolerance, .. } => self.navigate_to(entity, dest, map, entities, tolerance),
+            Decision::GoTo { dest, tolerance } => self.navigate_to(entity, dest, map, entities, tolerance),
             Decision::Face { toward } => face_intent(entity, toward),
             Decision::Flee { threat } => {
                 let dest = self.flee_pos(entity, threat, map);
@@ -691,7 +659,7 @@ impl ActorAI {
         match &self.alert {
             // Searching from the tank: silent, and the engine noise draws the curious.
             AlertLevel::Alert { last_known, search_ticks } if driving =>
-                Some(Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0, field: FieldPref::None }),
+                Some(Decision::GoTo { dest: patrol_search_target(*last_known, *search_ticks, map), tolerance: 0 }),
             AlertLevel::Combat { target_id, last_seen } if driving =>
                 Some(self.tank_combat(entity, map, entities, *target_id, *last_seen)),
             AlertLevel::Alert { .. } | AlertLevel::Combat { .. } => {
@@ -716,7 +684,7 @@ impl ActorAI {
         if !entity.can_see(last_seen) && self.can_turn_to_see(entity, map, last_seen) {
             return Decision::Face { toward: last_seen };
         }
-        Decision::GoTo { dest: last_seen, tolerance: 0, field: FieldPref::None }
+        Decision::GoTo { dest: last_seen, tolerance: 0 }
     }
 
     /// Climb into the tank when beside it, else walk to the nearest free tile next to it.
@@ -853,14 +821,6 @@ impl ActorAI {
                 // Stuck on a corner with a visible target — fall through to A*.
                 self.astar_step(from_idx, dest_idx, map, tolerance)
             }
-        } else if let Some(idx) = map.field_step(from_idx, dest_idx) {
-            // A resident static-terrain flow field covers this goal (e.g. a
-            // patrol waypoint or guard anchor): obstacle-aware O(8) descent,
-            // shared across every agent heading here, with no per-agent A*.
-            // Falls through to A* below only if the field can't produce a step
-            // (or flow fields are disabled).
-            self.path_target = None;
-            Some(map.idx_pos(idx))
         } else {
             self.astar_step(from_idx, dest_idx, map, tolerance)
         }?;
@@ -986,13 +946,13 @@ impl ActorAI {
             return Decision::Engage { target_id, last_seen };
         }
         if entity.can_see(last_seen) {
-            return Decision::GoTo { dest: halfway(entity.position, last_seen), tolerance: 0, field: FieldPref::None };
+            return Decision::GoTo { dest: halfway(entity.position, last_seen), tolerance: 0 };
         }
         if self.can_turn_to_see(entity, map, last_seen) {
             return Decision::Face { toward: last_seen };
         }
         match self.spot_to_see(entity, map, last_seen) {
-            Some(spot) => Decision::GoTo { dest: spot, tolerance: 0, field: FieldPref::Bounded },
+            Some(spot) => Decision::GoTo { dest: spot, tolerance: 0 },
             None       => Decision::Face { toward: last_seen },
         }
     }
@@ -1015,7 +975,7 @@ impl ActorAI {
         if self.can_see_target(entity, entities, target_id) {
             return Decision::Engage { target_id, last_seen };
         }
-        Decision::GoTo { dest: last_seen, tolerance: 0, field: FieldPref::Bounded }
+        Decision::GoTo { dest: last_seen, tolerance: 0 }
     }
 
     /// Whether the entity with `target_id` currently sits in this actor's viewshed.

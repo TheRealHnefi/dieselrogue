@@ -864,33 +864,23 @@ impl World {
         }
     }
 
-    /// Debug: drop one item type along the flow-field path each patroller would
-    /// walk between consecutive waypoints (routes are cyclic). Waypoint tiles are
+    /// Debug: drop one item type along the A* path each patroller would walk
+    /// between consecutive waypoints (routes are cyclic). Waypoint tiles are
     /// left bare for [`World::spawn_waypoint_markers`].
     #[cfg(debug_assertions)]
     #[allow(unused)]
     fn spawn_route_path_markers(&mut self) {
-        if !self.map.use_flow_fields {
-            return;
-        }
-        let limit = self.map.width * self.map.height;
         let mut path: Vec<Point> = Vec::new();
         let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        let mut steps: Vec<usize> = Vec::new();
         for route in &self.map.patrol_routes {
             for i in 0..route.len() {
+                let start = self.map.pos_idx(route[i]);
                 let goal = self.map.pos_idx(route[(i + 1) % route.len()]);
-                let field = &self.map.field_for(goal).unwrap();
-                let mut cur = self.map.pos_idx(route[i]);
-                let mut guard = 0;
-                while cur != goal {
-                    match field.step(cur, &self.map) {
-                        Some(next) => cur = next,
-                        None => break,
-                    }
-                    guard += 1;
-                    if guard > limit { break; }
-                    if cur != goal && seen.insert(cur) {
-                        path.push(self.map.idx_pos(cur));
+                crate::navigate(start, goal, &self.map, &mut steps);
+                for &idx in steps.iter().rev() {
+                    if idx != goal && seen.insert(idx) {
+                        path.push(self.map.idx_pos(idx));
                     }
                 }
             }

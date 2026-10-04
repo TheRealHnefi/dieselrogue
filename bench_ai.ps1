@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-    Run the AI navigation benchmark (flow fields vs pure A*) with tunable params.
+    Run the AI navigation benchmark with tunable params.
 
 .DESCRIPTION
     Wraps `cargo test --release -- --ignored --nocapture ai_benchmark`, setting the
     BENCH_* environment variables the harness reads. By default it filters cargo's
-    output down to just the header and the six result rows; pass -ShowAll to see the
-    full output (map generation, field builds, etc.).
+    output down to just the header and the three result rows; pass -ShowAll to see
+    the full output (map generation, etc.).
 
 .EXAMPLE
     ./bench_ai.ps1                       # defaults: 2000 actors, 512x512, 60 ticks
@@ -39,6 +39,6 @@ $output = cargo test --release -- --ignored --nocapture ai_benchmark
 if ($ShowAll) {
     $output
 } else {
-    # Header line + the six "<scenario> fields=..." result rows.
-    $output | Select-String -Pattern 'AI benchmark:|fields=(ON|OFF)'
+    # Header line + the three scenario result rows.
+    $output | Select-String -Pattern 'AI benchmark:|actors='
 }

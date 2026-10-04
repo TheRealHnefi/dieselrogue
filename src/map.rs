@@ -1,11 +1,9 @@
 use rltk::{Point, RandomNumberGenerator};
 use std::cmp::{max, min};
-use std::collections::{HashMap, HashSet};
 use crate::entity::Pawn;
 use crate::item::Item;
 use crate::tile::TileType;
 use crate::block::*;
-use crate::DistField;
 use crate::spawn::{SpawnMap, Region};
 use super::{GameError, Error};
 
@@ -18,7 +16,7 @@ pub enum PatrolStyle {
 }
 
 /// Greedily collapse points within `radius` (Chebyshev) into one representative,
-/// keeping the distinct-waypoint count (and thus pinned flow fields) low.
+/// keeping the distinct-waypoint count low.
 fn cluster_points(points: &[Point], radius: i32) -> Vec<Point> {
     let mut reps: Vec<Point> = Vec::new();
     for &p in points {
@@ -56,78 +54,6 @@ fn split_routes(waypoints: &[Point], count: usize) -> Vec<Vec<Point>> {
     waypoints.chunks(per.max(1)).map(|c| c.to_vec()).collect()
 }
 
-/// Resident cache of flow fields keyed by goal tile index, with turn-based
-/// eviction so dynamic goals (investigation / last-known cells) don't accumulate
-/// once nobody is heading to them any more.
-struct NavFieldCache {
-    fields: HashMap<usize, DistField>,
-    /// Turns since each field's goal was last demanded (0 = wanted this turn).
-    /// Only *evictable* fields appear here; pinned fields are never aged.
-    idle: HashMap<usize, u32>,
-    /// Goals whose fields are permanent (pre-built static routes). Never aged or
-    /// evicted, so they cause no steady-state rebuild spikes.
-    pinned: HashSet<usize>,
-}
-
-impl NavFieldCache {
-    fn new() -> Self {
-        NavFieldCache { fields: HashMap::new(), idle: HashMap::new(), pinned: HashSet::new() }
-    }
-
-    fn get(&self, goal: usize) -> Option<&DistField> {
-        self.fields.get(&goal)
-    }
-
-    fn contains(&self, goal: usize) -> bool {
-        self.fields.contains_key(&goal)
-    }
-
-    fn insert(&mut self, goal: usize, field: DistField) {
-        self.fields.insert(goal, field);
-        self.idle.insert(goal, 0);
-    }
-
-    /// Insert a permanent field that eviction never touches.
-    fn insert_pinned(&mut self, goal: usize, field: DistField) {
-        self.fields.insert(goal, field);
-        self.pinned.insert(goal);
-    }
-
-    fn clear(&mut self) {
-        self.fields.clear();
-        self.idle.clear();
-        self.pinned.clear();
-    }
-
-    /// Age fields against this turn's `demanded` goal set: reset demanded ones to
-    /// 0, age the rest, evict those past `ttl`, then enforce a hard `cap` (oldest
-    /// survivors first). Called once per turn under `&mut map`.
-    fn evict(&mut self, demanded: &HashSet<usize>, ttl: u32, cap: usize) {
-        for (goal, age) in self.idle.iter_mut() {
-            if demanded.contains(goal) { *age = 0; } else { *age = age.saturating_add(1); }
-        }
-        let mut drop: Vec<usize> = self.idle.iter()
-            .filter(|(_, &age)| age > ttl)
-            .map(|(&g, _)| g)
-            .collect();
-        // Cap applies to evictable fields only (pinned aren't tracked in `idle`).
-        if self.idle.len().saturating_sub(drop.len()) > cap {
-            // Still over cap after TTL eviction: drop the oldest survivors too.
-            let mut survivors: Vec<(usize, u32)> = self.idle.iter()
-                .filter(|(g, _)| !drop.contains(g))
-                .map(|(&g, &a)| (g, a))
-                .collect();
-            survivors.sort_unstable_by(|a, b| b.1.cmp(&a.1)); // oldest first
-            let over = self.idle.len() - drop.len() - cap;
-            drop.extend(survivors.into_iter().take(over).map(|(g, _)| g));
-        }
-        for g in drop {
-            self.fields.remove(&g);
-            self.idle.remove(&g);
-        }
-    }
-}
-
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Map {
     pub width: usize,
@@ -144,21 +70,10 @@ pub struct Map {
     /// a Doorway tile, cleared when the door is removed. Used by `is_opaque` without needing
     /// entity access.
     pub fov_blocked: Vec<bool>,
-    /// Resident cache of static-terrain flow fields, keyed by goal tile index.
-    /// Built lazily via [`Map::ensure_field`]/[`Map::ensure_field_bounded`] and
-    /// shared across all agents navigating to that goal. Evicted once their
-    /// goal goes undemanded (see [`Map::evict_fields`]). A cache: not saved, rebuilt on load.
-    #[serde(skip, default = "NavFieldCache::new")]
-    nav_fields: NavFieldCache,
     /// Shared, read-only patrol routes as ordered loops of waypoints. Built once
-    /// at map generation and referenced by `Profile::Patrol` via index, so many patrollers
-    /// share the same waypoint cells which lets their navigation amortize onto shared flow fields.
+    /// at map generation and referenced by `Profile::Patrol` via index.
     /// Append ad-hoc routes via [`Map::register_patrol_route`].
     pub patrol_routes: Vec<Vec<Point>>,
-    /// When `false`, the flow-field layer is bypassed entirely: [`Map::field_step`]
-    /// returns `None` and the Step 0 pre-pass skips building/evicting fields, so
-    /// all AI navigation falls back to A*. Defaults to `true`.
-    pub use_flow_fields: bool,
     /// Tiles the player has revealed since the World last collected them (for discovery XP).
     pub newly_revealed: usize,
 }
@@ -345,9 +260,7 @@ impl Map {
           pawns: vec![None; tile_count],
           items: vec![None; tile_count],
           fov_blocked: vec![false; tile_count],
-          nav_fields: NavFieldCache::new(),
           patrol_routes: Vec::new(),
-          use_flow_fields: false,
           newly_revealed: 0,
         };
 
@@ -378,9 +291,6 @@ impl Map {
             PatrolStyle::Roads => map.create_patrol_routes(&spawn_map, rng),
             PatrolStyle::Rings => map.build_patrol_rings(),
         }
-        if map.use_flow_fields {
-            map.prebuild_patrol_fields();
-        }
         (map, spawn_map)
     }
 
@@ -395,9 +305,7 @@ impl Map {
             pawns: vec![None; tile_count],
             items: vec![None; tile_count],
             fov_blocked: vec![false; tile_count],
-            nav_fields: NavFieldCache::new(),
             patrol_routes: Vec::new(),
-            use_flow_fields: true,
             newly_revealed: 0,
         }
     }
@@ -406,30 +314,6 @@ impl Map {
     pub fn register_patrol_route(&mut self, route: Vec<Point>) -> usize {
         self.patrol_routes.push(route);
         self.patrol_routes.len() - 1
-    }
-
-    /// Pre-build a permanent (pinned) full-map flow field for every distinct
-    /// patrol-route waypoint. Also rebuilds them after loading a save.
-    pub(crate) fn prebuild_patrol_fields(&mut self) {
-        if !self.use_flow_fields {
-            return;
-        }
-        let mut goals: Vec<usize> = self.patrol_routes.iter()
-            .flatten()
-            .map(|&p| self.pos_idx(p))
-            .collect();
-        goals.sort_unstable();
-        goals.dedup();
-
-        #[cfg(debug_assertions)]
-        tracing::debug!("Building {} navfields", goals.len());
-
-        for goal in goals {
-            if !self.nav_fields.contains(goal) {
-                let field = crate::build_field(goal, self);
-                self.nav_fields.insert_pinned(goal, field);
-            }
-        }
     }
 
     /// Concentric rectangular rings centred on the map, from a ~100-tile-wide
@@ -463,7 +347,7 @@ impl Map {
 
     /// Build gameplay patrol routes for large regions: road/door transitions for
     /// outdoor regions, doorway-to-doorway loops for indoor ones. Route and
-    /// waypoint counts are bounded so each pinned full-map flow field stays cheap.
+    /// waypoint counts are bounded.
     fn create_patrol_routes(&mut self, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
         const MIN_REGION_TILES: usize = 1024;
         const TILES_PER_ROUTE:  usize = 40_000;
@@ -615,81 +499,6 @@ impl Map {
         })
     }
 
-    /// Ensure a resident full-map flow field toward `goal` exists (see
-    /// [`Map::ensure_field_bounded`]).
-    pub fn ensure_field(&mut self, goal: usize) {
-        self.ensure_field_bounded(goal, u32::MAX);
-    }
-
-    /// Ensure a resident flow field toward `goal` exists, building it once over
-    /// static terrain if absent, flooding no further than `max_cost` (pass
-    /// `u32::MAX` for full-map coverage).
-    pub fn ensure_field_bounded(&mut self, goal: usize, max_cost: u32) {
-        if !self.use_flow_fields {
-            return;
-        }
-        if !self.nav_fields.contains(goal) {
-            let field = crate::build_field_bounded(goal, self, max_cost);
-            self.nav_fields.insert(goal, field);
-        }
-    }
-
-    /// The resident flow field toward `goal`, if one has been built.
-    pub fn field_for(&self, goal: usize) -> Option<&DistField> {
-        if !self.use_flow_fields {
-            return None;
-        }
-        self.nav_fields.get(goal)
-    }
-
-    /// Next step from `from` down the flow field toward `goal`.
-    /// Callers should fall back to A* on `None`.
-    pub fn field_step(&self, from: usize, goal: usize) -> Option<usize> {
-        if !self.use_flow_fields {
-            return None;
-        }
-        self.field_for(goal).and_then(|f| f.step(from, self))
-    }
-
-    /// Age and evict resident fields against this turn's `demanded` goal set:
-    /// fields whose goal went undemanded for more than `ttl` turns are dropped,
-    /// and the cache is capped at `cap` entries (oldest survivors evicted first).
-    pub fn evict_fields(&mut self, demanded: &HashSet<usize>, ttl: u32, cap: usize) {
-        if !self.use_flow_fields {
-            return;
-        }
-        self.nav_fields.evict(demanded, ttl, cap);
-    }
-
-    /// Drop all resident flow fields. Call whenever terrain changes.
-    pub fn invalidate_fields(&mut self) {
-        if !self.use_flow_fields {
-            return;
-        }
-        self.nav_fields.clear();
-    }
-
-    /// Neighbours passable over static terrain, ignoring pawn occupancy.
-    /// Costs mirror [`Map::get_available_exits`].
-    pub fn terrain_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
-        let mut exits = rltk::SmallVec::new();
-        let x = idx as i32 % self.width as i32;
-        let y = idx as i32 / self.width as i32;
-        let w = self.width as usize;
-
-        if self.terrain_passable(x-1, y) { exits.push((idx-1, 1.0)) };
-        if self.terrain_passable(x+1, y) { exits.push((idx+1, 1.0)) };
-        if self.terrain_passable(x, y-1) { exits.push((idx-w, 1.0)) };
-        if self.terrain_passable(x, y+1) { exits.push((idx+w, 1.0)) };
-
-        if self.terrain_passable(x-1, y-1) { exits.push(((idx-w)-1, 1.45)); }
-        if self.terrain_passable(x+1, y-1) { exits.push(((idx-w)+1, 1.45)); }
-        if self.terrain_passable(x-1, y+1) { exits.push(((idx+w)-1, 1.45)); }
-        if self.terrain_passable(x+1, y+1) { exits.push(((idx+w)+1, 1.45)); }
-
-        exits
-    }
-
     /// Whether `(x, y)` is walkable terrain, disregarding pawns. Mirrors the
     /// border-exclusion bounds of [`Map::is_exit_valid`]; doorways count as
     /// passable (they only block movement when a pawn occupies them).
@@ -748,58 +557,5 @@ impl Map {
         let p1 = Point::new(idx1 % w, idx1 / w);
         let p2 = Point::new(idx2 % w, idx2 / w);
         rltk::DistanceAlg::Pythagoras.distance2d(p1, p2)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn undemanded_fields_are_evicted_past_ttl() {
-        let mut map = Map::new_empty_map(30);
-        let goal = map.xy_idx(10, 10);
-        map.ensure_field(goal);
-        assert!(map.field_for(goal).is_some());
-
-        let empty: HashSet<usize> = HashSet::new();
-        for _ in 0..5 { map.evict_fields(&empty, 5, 64); } // within TTL
-        assert!(map.field_for(goal).is_some());
-        for _ in 0..3 { map.evict_fields(&empty, 5, 64); } // now past TTL
-        assert!(map.field_for(goal).is_none());
-    }
-
-    #[test]
-    fn demanded_fields_survive_eviction() {
-        let mut map = Map::new_empty_map(30);
-        let goal = map.xy_idx(10, 10);
-        map.ensure_field(goal);
-        let demanded: HashSet<usize> = std::iter::once(goal).collect();
-        for _ in 0..100 { map.evict_fields(&demanded, 5, 64); }
-        assert!(map.field_for(goal).is_some());
-    }
-
-    #[test]
-    fn invalidate_clears_all_fields() {
-        let mut map = Map::new_empty_map(30);
-        let a = map.xy_idx(10, 10);
-        let b = map.xy_idx(20, 20);
-        map.ensure_field(a);
-        map.ensure_field(b);
-        assert!(map.field_for(a).is_some() && map.field_for(b).is_some());
-        map.invalidate_fields();
-        assert!(map.field_for(a).is_none() && map.field_for(b).is_none());
-    }
-
-    #[test]
-    fn bounded_field_limits_reach() {
-        let mut map = Map::new_empty_map(80);
-        let goal = map.xy_idx(40, 40);
-        map.ensure_field_bounded(goal, 100); // ~10 orthogonal steps
-        let near = map.xy_idx(43, 40); // cost 30 <= 100: inside the horizon
-        let far  = map.xy_idx(70, 70); // well beyond the bound
-        let field = map.field_for(goal).unwrap();
-        assert!(field.step(near, &map).is_some());
-        assert!(field.step(far,  &map).is_none());
     }
 }

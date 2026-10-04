@@ -1,7 +1,7 @@
 use super::*;
 use rltk::{Point, RandomNumberGenerator};
 use strum::IntoEnumIterator;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use crate::animation::explosion_animation;
 
 // Discovery XP. Tuned so that revealing about half the map (~32k XP) plus one of each
@@ -462,65 +462,6 @@ impl World {
 
     #[tracing::instrument(skip_all)]
     pub fn resolve_intent_declaration(&mut self) {
-        // Step 0: Maintain shared flow fields for the goals actors will navigate
-        // to — both static (patrol waypoints / guard anchors) and dynamic
-        // (investigation origins / last-known positions carried over from prior
-        // turns). A field only beats per-agent A* when many agents descend the
-        // same one, so we count demand per exact goal cell and build only goals
-        // shared by >= FIELD_DEMAND_THRESHOLD actors (beliefs derive from shared
-        // events — the same sound pos, the same sighting — so groups naturally
-        // land on identical cells). Others fall back to A* in navigate_to, so
-        // this is a safe no-op when goals are distinct. Dynamic goals get
-        // radius-bounded fields (interested agents cluster near the goal); static
-        // goals get full-map fields. Fields persist across turns and are evicted
-        // once their goal goes undemanded.
-        //
-        // Read before this turn's stimulus is processed, so a just-changed belief
-        // simply misses its field for one turn. Built serially under &mut map so
-        // the read-only intent loop below can read fields under a shared borrow.
-        // Skipped entirely when flow fields are disabled — navigation then falls
-        // back to pure A* (used by the benchmark to compare the two).
-        if self.map.use_flow_fields {
-            const FIELD_DEMAND_THRESHOLD:    usize = 12;   // min actors sharing a goal
-            const MAX_FIELD_BUILDS_PER_TURN: usize = 4;    // backstop against spikes
-            const DYNAMIC_FIELD_MAX_COST:    u32   = 800;  // ~80-tile investigation radius
-            const FIELD_EVICT_TTL:           u32   = 60;   // turns undemanded before eviction
-            const FIELD_CACHE_CAP:           usize = 64;   // hard backstop on resident fields
-
-            // Count demand per goal cell, tracking whether a bounded field suffices.
-            let mut demand: HashMap<usize, (usize, bool)> = HashMap::new();
-            {
-                let map = &self.map;
-                for e in &self.entities {
-                    if let AI::Actor(actor) = &e.ai {
-                        if let Some((p, bounded)) = actor.nav_field_goal() {
-                            let entry = demand.entry(map.pos_idx(p)).or_insert((0, bounded));
-                            entry.0 += 1;
-                            entry.1 &= bounded; // any full-map (static) requester wins
-                        }
-                    }
-                }
-            }
-
-            // Evict fields whose goal is no longer demanded (TTL hysteresis + cap).
-            let demanded: HashSet<usize> = demand.keys().copied().collect();
-            self.map.evict_fields(&demanded, FIELD_EVICT_TTL, FIELD_CACHE_CAP);
-
-            // Build the most-demanded new goals, gated by threshold and per-turn cap.
-            let mut popular: Vec<(usize, usize, bool)> = demand.into_iter()
-                .filter(|&(goal, (n, _))| n >= FIELD_DEMAND_THRESHOLD && self.map.field_for(goal).is_none())
-                .map(|(goal, (n, bounded))| (goal, n, bounded))
-                .collect();
-            popular.sort_unstable_by(|a, b| b.1.cmp(&a.1));
-            for (goal, _, bounded) in popular.into_iter().take(MAX_FIELD_BUILDS_PER_TURN) {
-                if bounded {
-                    self.map.ensure_field_bounded(goal, DYNAMIC_FIELD_MAX_COST);
-                } else {
-                    self.map.ensure_field(goal);
-                }
-            }
-        }
-
         // Step 1: Extract all AI states so we can hold &self.entities (immutable)
         // while mutating AI state (path cache etc.) during computation.
         let mut ai_states: Vec<AI> = self.entities.iter_mut()
@@ -1217,10 +1158,6 @@ impl World {
         let index = self.map.pos_idx(pos);
         if self.map.tiles[index] == TileType::Wall {
             self.map.tiles[index] = TileType::Floor;
-            // Terrain changed: resident flow fields are baked over static terrain
-            // and are now stale (they'd miss the opening). Drop them; Step 0
-            // rebuilds the still-demanded ones next turn within its build budget.
-            self.map.invalidate_fields();
             self.update_views_near_event(pos, 10);
         }
     }
@@ -1318,8 +1255,8 @@ impl World {
         self.collect_discovery_xp();
     }
 
-    /// Rebuilds what a saved game doesn't store: item and innate actions (fn pointers),
-    /// the flow-field cache and the enemies' intents for the coming turn.
+    /// Rebuilds what a saved game doesn't store: item and innate actions (fn pointers)
+    /// and the enemies' intents for the coming turn.
     pub fn restore_after_load(&mut self) {
         let makers = Item::makers_by_name();
         for item in self.map.items.iter_mut().flatten() {
@@ -1334,7 +1271,6 @@ impl World {
                 item.restore_actions(&makers);
             }
         }
-        self.map.prebuild_patrol_fields();
         // Intents weren't saved; let every actor decide its next move afresh.
         self.resolve_intent_declaration();
     }
@@ -2354,29 +2290,27 @@ mod tests {
     //   BENCH_SIZE=16       map size in 32-tile blocks
     //   BENCH_ACTORS=2000   target actor count
     //   BENCH_TICKS=60      timed ticks per config
-    //   BENCH_WARMUP=20     untimed warm-up ticks (lets fields build)
+    //   BENCH_WARMUP=20     untimed warm-up ticks
     //   BENCH_PARALLEL=1    1 = rayon parallel AI, 0 = serial
     //
     // It times World::resolve_intent_declaration (where all AI pathfinding
-    // lives) per tick, for two workloads × {flow fields ON, pure A* OFF}:
-    //   - patrol: everyone Unaware, navigating shared ring corners (full-map
-    //             fields, thousands of shared readers).
-    //   - swarm:  a cluster all Alert to one shared cell (bounded dynamic field).
+    // lives) per tick, for three workloads:
+    //   - patrol:   everyone Unaware, navigating shared ring corners.
+    //   - swarm:    a cluster all Alert to one shared cell.
+    //   - gauntlet: map-wide scatter, all heading for one distant goal.
     // ---------------------------------------------------------------------
 
     #[derive(Clone, Copy)]
     enum BenchScenario {
-        /// Everyone Unaware, navigating shared ring corners (full-map fields).
+        /// Everyone Unaware, navigating shared ring corners.
         Patrol,
-        /// A cluster all Alert to one shared cell within the bounded field radius.
+        /// A cluster all Alert to one shared cell.
         Swarm,
         /// Worst case for A*: agents scattered across the whole map, all sharing
         /// ONE distant static goal (a guard anchor at the far outer-ring corner).
         /// The goal is out of sight (so greedy can't short-circuit) and reached
         /// only by long, obstacle-heavy paths — where A* pays its worst per-agent
-        /// cost (partial paths capped at MAX_EXPANSIONS, frequent repaths), while
-        /// the (static, full-map) field stays flat O(8). Covers far agents because
-        /// static goals get full-map fields, unlike the bounded Swarm case.
+        /// cost (partial paths capped at MAX_EXPANSIONS, frequent repaths).
         Gauntlet,
     }
 
@@ -2412,10 +2346,9 @@ mod tests {
     }
 
     /// Spawn a cluster of actors around `center`, all Alert and investigating that
-    /// same cell — the shared-goal case a dynamic field is meant to serve. Kept
-    /// within the dynamic field's bounded radius so the field actually covers them.
+    /// same cell.
     fn bench_fill_swarm(world: &mut World, target: usize, center: Point) {
-        const R: i32 = 60; // < DYNAMIC_FIELD_MAX_COST radius (~80 tiles)
+        const R: i32 = 60;
         let (w, h) = (world.map.width as i32, world.map.height as i32);
         let mut placed = 0usize;
         let mut y = (center.y - R).max(2);
@@ -2448,7 +2381,7 @@ mod tests {
 
     /// Scatter guards across the whole map, all sharing one distant `anchor`
     /// (Unaware, so they path toward it). Long out-of-sight obstacle-heavy routes
-    /// to a single shared static goal — worst case for A*, full-map field win.
+    /// to a single shared static goal — worst case for A*.
     fn bench_fill_gauntlet(world: &mut World, target: usize, anchor: Point) {
         let (w, h) = (world.map.width as i32, world.map.height as i32);
         let mut placed = 0usize;
@@ -2483,10 +2416,9 @@ mod tests {
         );
     }
 
-    fn bench_run(label: &str, size: usize, target: usize, ticks: usize, warmup: usize, use_fields: bool, parallel: bool, scenario: BenchScenario) {
+    fn bench_run(label: &str, size: usize, target: usize, ticks: usize, warmup: usize, parallel: bool, scenario: BenchScenario) {
         let mut world = World::new(size, 1, PatrolStyle::Rings);
         world.parallel_ai = parallel;
-        world.map.use_flow_fields = use_fields;
 
         match scenario {
             BenchScenario::Patrol => bench_fill_patrollers(&mut world, target),
@@ -2545,12 +2477,9 @@ mod tests {
         );
         println!("Timing World::resolve_intent_declaration per tick:\n");
 
-        bench_run("patrol   fields=ON",  size, target, ticks, warmup, true,  parallel, BenchScenario::Patrol);
-        bench_run("patrol   fields=OFF", size, target, ticks, warmup, false, parallel, BenchScenario::Patrol);
-        bench_run("swarm    fields=ON",  size, target, ticks, warmup, true,  parallel, BenchScenario::Swarm);
-        bench_run("swarm    fields=OFF", size, target, ticks, warmup, false, parallel, BenchScenario::Swarm);
-        bench_run("gauntlet fields=ON",  size, target, ticks, warmup, true,  parallel, BenchScenario::Gauntlet);
-        bench_run("gauntlet fields=OFF", size, target, ticks, warmup, false, parallel, BenchScenario::Gauntlet);
+        bench_run("patrol",   size, target, ticks, warmup, parallel, BenchScenario::Patrol);
+        bench_run("swarm",    size, target, ticks, warmup, parallel, BenchScenario::Swarm);
+        bench_run("gauntlet", size, target, ticks, warmup, parallel, BenchScenario::Gauntlet);
         println!();
     }
 }
