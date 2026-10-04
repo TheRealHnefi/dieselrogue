@@ -232,6 +232,11 @@ impl Animation {
     }
 
     pub fn render(&mut self, viewport: Rect, delta_time: u32, context: &mut Rltk) {
+        // The system keeps rendering every animation until ALL are done, so a
+        // finished one (current_frame == frames.len()) must stay inert.
+        if self.done {
+            return;
+        }
         self.time_spent_in_current_frame += delta_time;
 
         if self.time_spent_in_current_frame >= self.frames[self.current_frame].duration_ms {
