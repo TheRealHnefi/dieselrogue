@@ -6,7 +6,7 @@ use std::time::Instant;
 use crate::Ability;
 use crate::AnimationSystem;
 use crate::World;
-use crate::GameLog;
+use crate::{GameLog, LogEntry, LogKind};
 use crate::Menu;
 use crate::PendingAction;
 use crate::ExecutionPhase;
@@ -173,8 +173,8 @@ impl State {
             help_return_state: RunState::AwaitingInput,
             cursor_pos: Point {x: 0, y:0},
             log: GameLog {entries: vec![
-                "Welcome! Reach the edge of the map to win.".to_string(),
-                "Press F1 for help.".to_string(),
+                LogEntry { text: "Welcome! Reach the edge of the map to win.".to_string(), kind: LogKind::Info },
+                LogEntry { text: "Press F1 for help.".to_string(), kind: LogKind::Info },
             ]},
             world: World::new(size, seed, crate::PatrolStyle::Roads),
             animation_system: AnimationSystem::new(),

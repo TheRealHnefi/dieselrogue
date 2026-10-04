@@ -34,6 +34,16 @@ fn extract_fire_intent(entity: &Entity) -> Option<(SlotType, Point, usize)> {
     }
 }
 
+/// A log line about `entity`'s deed (see [`Effect::Log`] for when it shows).
+fn log(entity: &Entity, msg: String) -> Effect {
+    Effect::Log { actor_id: entity.index, target_id: None, msg }
+}
+
+/// A log line about `entity`'s deed against `target_id`.
+fn log_vs(entity: &Entity, target_id: usize, msg: String) -> Effect {
+    Effect::Log { actor_id: entity.index, target_id: Some(target_id), msg }
+}
+
 fn away_direction(from: Point, away_from: Point) -> Direction {
     let dx = (from.x - away_from.x).signum();
     let dy = (from.y - away_from.y).signum();
@@ -56,7 +66,7 @@ fn away_direction(from: Point, away_from: Point) -> Direction {
 
 pub fn move_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     if !entity.has_ability(Ability::HumanMove) && !entity.has_ability(Ability::VehicleMove) {
-        return vec![Effect::Log(format!("{} tried to move, but couldn't", entity.name))];
+        return vec![log(entity, format!("{} tried to move, but couldn't", entity.name))];
     }
     let IntentData::Target(pos) = entity.intent.data else {
         unreachable!("move_action called with non-target intent")
@@ -89,16 +99,16 @@ pub fn turn_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Eff
                 Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: entity.position, volume: 15, from_player: entity.kind == EntityKind::Player }),
             ];
         } else {
-            return vec![Effect::Log(format!("{} tried to turn, but couldn't", entity.name))];
+            return vec![log(entity, format!("{} tried to turn, but couldn't", entity.name))];
         }
     }
-    vec![Effect::Log(format!("{} tried to turn, but couldn't", entity.name))]
+    vec![log(entity, format!("{} tried to turn, but couldn't", entity.name))]
 }
 
 pub fn juke_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     const ENERGY_COST: u32 = 25;
     if entity.body.energy < ENERGY_COST {
-        return vec![Effect::Log(format!("{} is too exhausted to Juke", entity.name))];
+        return vec![log(entity, format!("{} is too exhausted to Juke", entity.name))];
     }
     let IntentData::Target(pos) = entity.intent.data else { return vec![]; };
     if !entity.check_fit(pos, map) { return vec![]; }
@@ -118,7 +128,7 @@ pub fn juke_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
 pub fn rocket_boots_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     let IntentData::TargetWithEquipment { slot, target } = entity.intent.data else { return vec![]; };
     if !entity.check_fit(target, map) {
-        return vec![Effect::Log(format!("{} can't land there.", entity.name))];
+        return vec![log(entity, format!("{} can't land there.", entity.name))];
     }
     let Some(item_id) = entity.get_equipped_item_ref(slot).map(|i| i.id) else { return vec![]; };
     vec![
@@ -136,7 +146,7 @@ pub fn rocket_jump_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> V
     let Some(item_id) = entity.get_equipped_item_ref(slot).map(|i| i.id) else { return vec![]; };
     let dest = match map.nearest_free_pawn_position(target) {
         Ok(pos) => pos,
-        Err(_) => return vec![Effect::Log(format!("{} found nowhere to land.", entity.name))],
+        Err(_) => return vec![log(entity, format!("{} found nowhere to land.", entity.name))],
     };
     let origin = entity.position;
     vec![
@@ -152,7 +162,7 @@ pub fn rocket_jump_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> V
 pub fn recon_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     let IntentData::TargetWithEquipment { target, .. } = entity.intent.data else { return vec![]; };
     vec![
-        Effect::Log(format!("{} scans the area.", entity.name)),
+        log(entity, format!("{} scans the area.", entity.name)),
         Effect::ApplyScan { entity_id: entity.index, target },
     ]
 }
@@ -193,7 +203,7 @@ pub fn melee_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effe
     let target_id = pawn.entity_id;
     let (bodypart_index, raw_damage) = entity.melee_strike(&entities[target_id]);
     vec![
-        Effect::Log(format!("{} struck {}", entity.name, entities[target_id].name)),
+        log_vs(entity, target_id, format!("{} struck {}", entity.name, entities[target_id].name)),
         Effect::Damage { entity_id: target_id, bodypart_index, raw_damage, source: Some(entity.index) },
     ]
 }
@@ -216,7 +226,7 @@ fn aimed_shots(entity: &Entity, map: &Map, entities: &[Entity], shots: u32, mult
     };
     let (damage, _range, fired) = match read_ammo(entity, slot, shots) {
         Some(v) => v,
-        None => return vec![Effect::Log(format!("{} pulled the trigger. 'Click'.", entity.name))],
+        None => return vec![log(entity, format!("{} pulled the trigger. 'Click'.", entity.name))],
     };
     let damage = Damage::new(damage.physical * multiplier, damage.electrical * multiplier, damage.fire * multiplier, damage.piercing * multiplier);
     let mut effects = vec![
@@ -226,7 +236,7 @@ fn aimed_shots(entity: &Entity, map: &Map, entities: &[Entity], shots: u32, mult
     ];
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         let times = if fired > 1 { format!(" {} times", fired) } else { String::new() };
-        effects.push(Effect::Log(format!("{} fired{} at {}", entity.name, times, entities[pawn.entity_id].name)));
+        effects.push(log_vs(entity, pawn.entity_id, format!("{} fired{} at {}", entity.name, times, entities[pawn.entity_id].name)));
         for _ in 0..fired {
             effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage, source: Some(entity.index) });
         }
@@ -238,7 +248,7 @@ fn aimed_shots(entity: &Entity, map: &Map, entities: &[Entity], shots: u32, mult
 /// Refuses an energy-costing action the entity can't afford, else prefixes the cost.
 fn with_energy(entity: &Entity, cost: u32, name: &str, effects: impl FnOnce() -> Vec<Effect>) -> Vec<Effect> {
     if entity.body.energy < cost {
-        return vec![Effect::Log(format!("{} is too exhausted to {}", entity.name, name))];
+        return vec![log(entity, format!("{} is too exhausted to {}", entity.name, name))];
     }
     let mut all = vec![Effect::SpendEnergy { entity_id: entity.index, amount: cost }];
     all.extend(effects());
@@ -266,7 +276,7 @@ pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec
     };
     let (damage, _range, shots) = match read_ammo(entity, slot, 5) {
         Some(v) => v,
-        None => return vec![Effect::Log(format!("{} pulled the trigger. 'Clickclickclickclickclick'.", entity.name))],
+        None => return vec![log(entity, format!("{} pulled the trigger. 'Clickclickclickclickclick'.", entity.name))],
     };
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots },
@@ -274,7 +284,7 @@ pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec
         Effect::Animation(shot_animation(entity.position, target_pos, shots as i32)),
     ];
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
-        effects.push(Effect::Log(format!("{} fired {} shots at {}", entity.name, shots, entities[pawn.entity_id].name)));
+        effects.push(log_vs(entity, pawn.entity_id, format!("{} fired {} shots at {}", entity.name, shots, entities[pawn.entity_id].name)));
         for _ in 0..shots {
             effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: bodypart, raw_damage: damage, source: Some(entity.index) });
         }
@@ -290,7 +300,7 @@ pub fn rocket_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Ve
     };
     let (damage, _range, fired) = match read_ammo(entity, slot, 1) {
         Some(v) => v,
-        None => return vec![Effect::Log(format!("{} pulled the trigger. 'Click'.", entity.name))],
+        None => return vec![log(entity, format!("{} pulled the trigger. 'Click'.", entity.name))],
     };
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
@@ -314,7 +324,7 @@ pub fn fan_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
     };
     let (damage, range, fired) = match read_ammo(entity, slot, 1) {
         Some(v) => v,
-        None => return vec![Effect::Log(format!("{} pulled the trigger. 'Click'.", entity.name))],
+        None => return vec![log(entity, format!("{} pulled the trigger. 'Click'.", entity.name))],
     };
     let src = entity.position;
     let dx = (target_pos.x - src.x) as f32;
@@ -344,7 +354,7 @@ pub fn fan_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
             let n = ray.len();
             if ray[1..n.saturating_sub(1)].iter().any(|p| map.blocked(p.x, p.y)) { continue; }
             if let Some(pawn) = &map.pawns[map.pos_idx(tile_pos)] {
-                effects.push(Effect::Log(format!("{} hit {} with fan fire", entity.name, entities[pawn.entity_id].name)));
+                effects.push(log_vs(entity, pawn.entity_id, format!("{} hit {} with fan fire", entity.name, entities[pawn.entity_id].name)));
                 for part in 0..entities[pawn.entity_id].body.parts.len() {
                     effects.push(Effect::Damage { entity_id: pawn.entity_id, bodypart_index: part, raw_damage: damage, source: Some(entity.index) });
                 }
@@ -405,7 +415,7 @@ pub fn get_item_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<
     let index = map.xy_idx(entity.position.x, entity.position.y);
     if map.items[index].is_none() { return vec![]; }
     if entity.body.inventory.len() >= crate::components::INVENTORY_MAX {
-        return vec![Effect::Log(format!("{} can't carry any more items.", entity.name))];
+        return vec![log(entity, format!("{} can't carry any more items.", entity.name))];
     }
     vec![Effect::PickUpItem { entity_id: entity.index }]
 }
@@ -415,7 +425,7 @@ pub fn drop_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Ve
         unreachable!("drop_item_action called with non-inventory intent")
     };
     vec![
-        Effect::Log(format!("{} dropped {}", entity.name, item.name)),
+        log(entity, format!("{} dropped {}", entity.name, item.name)),
         Effect::DropItem { entity_id: entity.index, item_id: item.id },
     ]
 }
@@ -443,7 +453,7 @@ pub fn prime_grenade_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -
         unreachable!("prime_grenade_action called with non-inventory intent")
     };
     vec![
-        Effect::Log(format!("{} primed the {}", entity.name, item.name)),
+        log(entity, format!("{} primed the {}", entity.name, item.name)),
         Effect::PrimeItem { entity_id: entity.index, item_id: item.id },
     ]
 }
@@ -453,7 +463,7 @@ pub fn throw_grenade_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -
         unreachable!("throw_grenade_action called with non-inventory-target intent")
     };
     vec![
-        Effect::Log(format!("{} threw a {}", entity.name, item.name)),
+        log(entity, format!("{} threw a {}", entity.name, item.name)),
         Effect::ThrowItem { entity_id: entity.index, item_id: item.id, target_pos: target },
     ]
 }
@@ -503,7 +513,7 @@ pub fn use_healing_item_action(entity: &Entity, _map: &Map, _entities: &[Entity]
         None => "whole body".to_string(),
     };
     vec![
-        Effect::Log(format!("{} used {} ({})", entity.name, item.name, scope)),
+        log(entity, format!("{} used {} ({})", entity.name, item.name, scope)),
         Effect::ApplyRegeneration { entity_id: entity.index, bodypart_index, turns },
         Effect::ConsumeItem { entity_id: entity.index, item_id: item.id },
     ]
@@ -516,7 +526,7 @@ pub fn use_stimpack_action(entity: &Entity, _map: &Map, _entities: &[Entity]) ->
     };
     let ItemKind::Stimpack { energy } = item.kind else { return vec![] };
     vec![
-        Effect::Log(format!("{} used {}", entity.name, item.name)),
+        log(entity, format!("{} used {}", entity.name, item.name)),
         Effect::RestoreEnergy { entity_id: entity.index, amount: energy },
         Effect::ConsumeItem { entity_id: entity.index, item_id: item.id },
     ]
@@ -533,7 +543,7 @@ pub fn shout_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Ef
 pub fn iron_body_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     const ENERGY_COST: u32 = 50;
     if entity.body.energy < ENERGY_COST {
-        return vec![Effect::Log(format!("{} is too exhausted to use Iron Body", entity.name))];
+        return vec![log(entity, format!("{} is too exhausted to use Iron Body", entity.name))];
     }
     vec![
         Effect::SpendEnergy { entity_id: entity.index, amount: ENERGY_COST },
@@ -544,7 +554,7 @@ pub fn iron_body_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Ve
 pub fn distract_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
     const ENERGY_COST: u32 = 10;
     if entity.body.energy < ENERGY_COST {
-        return vec![Effect::Log(format!("{} is too exhausted to Distract", entity.name))];
+        return vec![log(entity, format!("{} is too exhausted to Distract", entity.name))];
     }
     let IntentData::Target(target_pos) = entity.intent.data else { return vec![]; };
     let target_id = match &map.pawns[map.pos_idx(target_pos)] {
@@ -552,7 +562,7 @@ pub fn distract_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
         None => return vec![],
     };
     if !entities[target_id].can_see(entity.position) {
-        return vec![Effect::Log(format!("{} cannot be distracted — they can't see you", entities[target_id].name))];
+        return vec![log(entity, format!("{} cannot be distracted — they can't see you", entities[target_id].name))];
     }
     vec![
         Effect::SpendEnergy { entity_id: entity.index, amount: ENERGY_COST },
@@ -563,7 +573,7 @@ pub fn distract_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
 pub fn twist_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     const ENERGY_COST: u32 = 10;
     if entity.body.energy < ENERGY_COST {
-        return vec![Effect::Log(format!("{} is too exhausted to Twist", entity.name))];
+        return vec![log(entity, format!("{} is too exhausted to Twist", entity.name))];
     }
     let IntentData::Target(target_pos) = entity.intent.data else { return vec![]; };
     let target_id = match &map.pawns[map.pos_idx(target_pos)] {
@@ -580,7 +590,7 @@ pub fn twist_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Eff
 pub fn rush_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
     const ENERGY_COST: u32 = 25;
     if entity.body.energy < ENERGY_COST {
-        return vec![Effect::Log(format!("{} is too exhausted to Rush", entity.name))];
+        return vec![log(entity, format!("{} is too exhausted to Rush", entity.name))];
     }
     let IntentData::Target(target_pos) = entity.intent.data else { return vec![]; };
     let target_id = match &map.pawns[map.pos_idx(target_pos)] {

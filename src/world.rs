@@ -798,7 +798,14 @@ impl World {
                 },
                 Effect::ClearAim{entity_id} =>
                     self.entities[*entity_id].clear_aiming(),
-                Effect::Log(msg) => log.log(msg.clone()),
+                Effect::Log { actor_id, target_id, msg } => {
+                    if Some(*actor_id) == self.player_id {
+                        log.log(msg.clone());
+                    } else if self.entities[*actor_id].is_visible(&self.map)
+                        || matches!((target_id, self.player_id), (Some(t), Some(p)) if *t == p) {
+                        log.log_enemy(msg.clone());
+                    }
+                },
                 Effect::Move { entity_id, pos } => {
                     self.entities[*entity_id].set_position(*pos, &mut self.map);
                     self.entities[*entity_id].spoil_aim();
@@ -845,7 +852,7 @@ impl World {
                                 ent.body.inventory.retain(|i| !matches!(&i.kind, ItemKind::Ammo { charges: 0, .. }));
                                 let wname = ent.find_item_by_id(*weapon_id).map(|i| i.name.clone()).unwrap_or_default();
                                 if ent.is_visible(&self.map) {
-                                    log.log(format!("{} reloaded {} (+{} {})", ent.name, wname, loaded, kind.name()));
+                                    log.log_deed(Some(*entity_id) == self.player_id, format!("{} reloaded {} (+{} {})", ent.name, wname, loaded, kind.name()));
                                 }
                             }
                         }
@@ -896,7 +903,7 @@ impl World {
                     let idx = self.map.xy_idx(pos.x, pos.y);
                     if let Some(mut item) = self.map.items[idx].take() {
                         if self.entities[*entity_id].is_visible(&self.map) {
-                            log.log(format!("{} picked up {}", self.entities[*entity_id].name, item.name));
+                            log.log_deed(Some(*entity_id) == self.player_id, format!("{} picked up {}", self.entities[*entity_id].name, item.name));
                         }
                         if Some(*entity_id) == self.player_id && item.is_exceptional() && !self.found_exceptional.contains(&item.name) {
                             self.found_exceptional.push(item.name.clone());
@@ -958,11 +965,11 @@ impl World {
                         match self.entities[*entity_id].body.equip(item.clone()) {
                             Ok(displaced) => {
                                 if self.entities[*entity_id].is_visible(&self.map) {
-                                    log.log(format!("{} equipped {}", self.entities[*entity_id].name, item_name));
+                                    log.log_deed(Some(*entity_id) == self.player_id, format!("{} equipped {}", self.entities[*entity_id].name, item_name));
                                 }
                                 for d in displaced {
                                     if self.entities[*entity_id].is_visible(&self.map) {
-                                        log.log(format!("{} unequipped {}", self.entities[*entity_id].name, d.name));
+                                        log.log_deed(Some(*entity_id) == self.player_id, format!("{} unequipped {}", self.entities[*entity_id].name, d.name));
                                     }
                                     self.entities[*entity_id].body.inventory.push(d);
                                 }
@@ -993,7 +1000,7 @@ impl World {
                                 self.entities[*entity_id].clear_scanning();
                             }
                             if self.entities[*entity_id].is_visible(&self.map) {
-                                log.log(format!("{} unequipped {}", self.entities[*entity_id].name, item.name));
+                                log.log_deed(Some(*entity_id) == self.player_id, format!("{} unequipped {}", self.entities[*entity_id].name, item.name));
                             }
                             self.entities[*entity_id].body.inventory.push(item);
                             self.entities[*entity_id].body.update_armor();
@@ -1042,7 +1049,7 @@ impl World {
                 log.log(format!("{} would have died (debug mode).", self.entities[id].name));
             } else {
                 if self.entities[id].is_visible(&self.map) {
-                    log.log(format!("{} was killed!", self.entities[id].name));
+                    log.log_deed(is_player, format!("{} was killed!", self.entities[id].name));
                 }
                 deathlist.push(id);
             }
@@ -1099,7 +1106,7 @@ impl World {
                 let map_idx = self.map.pos_idx(drop_pos);
                 self.map.items[map_idx] = Some(item);
                 if self.entities[id].is_visible(&self.map) {
-                    log.log(format!("{} dropped {} from a disabled {}",
+                    log.log_deed(Some(id) == self.player_id, format!("{} dropped {} from a disabled {}",
                         self.entities[id].name, item_name, self.entities[id].body.parts[part_index].name));
                 }
             }
@@ -1168,7 +1175,7 @@ impl World {
         self.entities[vehicle_id].driving = DrivingState::DrivenBy(pilot_id);
 
         if self.entities[vehicle_id].is_visible(&self.map) {
-            log.log(format!("{} entered {}", self.entities[pilot_id].name, self.entities[vehicle_id].name));
+            log.log_deed(Some(pilot_id) == self.player_id, format!("{} entered {}", self.entities[pilot_id].name, self.entities[vehicle_id].name));
         }
 
         if self.player_id == Some(pilot_id) {
@@ -1200,12 +1207,12 @@ impl World {
                 }
 
                 if self.entities[vehicle_id].is_visible(&self.map) {
-                    log.log(format!("{} left their vehicle", self.entities[pilot_id].name));
+                    log.log_deed(Some(pilot_id) == self.player_id, format!("{} left their vehicle", self.entities[pilot_id].name));
                 }
             },
             Err(_) => {
                 if self.entities[vehicle_id].is_visible(&self.map) {
-                    log.log(format!("{} tried to disembark, but there is no room", self.entities[pilot_id].name));
+                    log.log_deed(Some(vehicle_id) == self.player_id, format!("{} tried to disembark, but there is no room", self.entities[pilot_id].name));
                 }
             }
         }

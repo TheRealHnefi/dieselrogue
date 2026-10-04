@@ -9,6 +9,7 @@ use crate::Rect;
 use crate::entity::Entity;
 use crate::RebindTarget;
 use crate::Item;
+use crate::LogKind;
 
 const LEVELUP_SELECT_COLOR: rltk::RGB = RGB { r: 0.9, g: 0.7, b: 0.0 };
 const LEVELUP_LIST_X: i32 = 4;
@@ -60,6 +61,7 @@ const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
 const ENERGY_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
 const HEALTH_COLOR: rltk::RGB = RGB {r: 0.85, g: 0.15, b: 0.15};
+const ENEMY_LOG_COLOR: rltk::RGB = RGB {r: 1.0, g: 0.35, b: 0.35};
 const XP_COLOR: rltk::RGB = RGB {r: 0.9, g: 0.8, b: 0.1};
 
 const WALL_COLOR: rltk::RGB = RGB {r: 0.7, g: 0.6, b: 0.4};
@@ -564,8 +566,12 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + EQUIPMENT_PANEL_HEIGHT + ABILITIES_PANEL_HEIGHT + 2;
     let max_logs = LOG_NOISE_PANEL_HEIGHT - 2;
     let length = max(state.log.entries.len() as i32 - max_logs as i32, 0) as usize;
-    for message in &state.log.entries[length..] {
-        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, message);
+    for entry in &state.log.entries[length..] {
+        let color = match entry.kind {
+            LogKind::Enemy => ENEMY_LOG_COLOR,
+            LogKind::Info  => LABEL_COLOR,
+        };
+        context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, color, BG_COLOR, &entry.text);
         offset_y += 1;
     }
 

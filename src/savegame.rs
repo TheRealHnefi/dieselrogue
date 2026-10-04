@@ -11,7 +11,7 @@ use crate::{World, GameLog};
 const SAVE_PATH: &str = "savegame.dat";
 const MAGIC: &[u8; 4] = b"DRSV";
 /// Bump when the saved layout changes; saves from other versions are refused.
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 2; // 2: log entries carry a LogKind tint
 const SCRAMBLE_KEY: u64 = 0x5EED_D1E5_E1D0_6E75;
 
 /// Everything a run needs to continue, beyond what the world itself holds.
@@ -122,7 +122,9 @@ mod tests {
     fn round_trip_preserves_the_run() {
         let path = temp_path("round_trip");
         let world = sample_world();
-        let log = GameLog { entries: vec!["one".into(), "two".into()] };
+        let mut log = GameLog { entries: vec![] };
+        log.log("one".to_string());
+        log.log_enemy("two".to_string());
         save_to(&path, &world, &log, 42, 777).unwrap();
         let loaded = load_from(&path).unwrap();
         let _ = fs::remove_file(&path);

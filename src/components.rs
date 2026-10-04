@@ -244,8 +244,10 @@ pub enum Effect {
     EquipItem   { entity_id: usize, item_id: usize },
     /// Unequip the item with the given id back to inventory.
     UnequipItem { entity_id: usize, item_id: usize },
-    /// Append a message to the game log.
-    Log(String),
+    /// Append a message about `actor_id`'s deed to the game log. Shown only when
+    /// the player sees the actor (own deeds always show); `target_id` names the
+    /// entity acted on — a deed against the player always shows.
+    Log         { actor_id: usize, target_id: Option<usize>, msg: String },
 }
 
 #[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]

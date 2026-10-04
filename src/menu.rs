@@ -352,7 +352,7 @@ fn action_open_item_menu(state: &mut State) -> RunState {
         state.inventory_selected = 0;
         RunState::BrowsingInventory
     } else {
-        state.log.entries.push("No usable items".to_string());
+        state.log.log("No usable items".to_string());
         RunState::AwaitingInput
     }
 }
