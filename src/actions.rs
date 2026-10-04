@@ -232,8 +232,8 @@ fn aimed_shots(entity: &Entity, map: &Map, entities: &[Entity], shots: u32, mult
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
         Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 20, from_player: entity.kind == EntityKind::Player }),
-        Effect::Animation(shot_animation(entity.position, target_pos, fired as i32)),
     ];
+    effects.extend(shot_animation(map, entity.position, target_pos, fired as i32).map(Effect::Animation));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         let times = if fired > 1 { format!(" {} times", fired) } else { String::new() };
         effects.push(log_vs(entity, pawn.entity_id, format!("{} fired{} at {}", entity.name, times, entities[pawn.entity_id].name)));
@@ -281,8 +281,8 @@ pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots },
         Effect::Sound(SoundEvent { kind: SoundKind::Burst, pos: entity.position, volume: 25, from_player: entity.kind == EntityKind::Player }),
-        Effect::Animation(shot_animation(entity.position, target_pos, shots as i32)),
     ];
+    effects.extend(shot_animation(map, entity.position, target_pos, shots as i32).map(Effect::Animation));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         effects.push(log_vs(entity, pawn.entity_id, format!("{} fired {} shots at {}", entity.name, shots, entities[pawn.entity_id].name)));
         for _ in 0..shots {
@@ -306,7 +306,7 @@ pub fn rocket_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Ve
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
         Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: entity.position, volume: 30, from_player: entity.kind == EntityKind::Player }),
         Effect::DestroyWall(target_pos),
-        Effect::Animation(explosion_animation(target_pos, 1)),
+        Effect::Animation(rocket_animation(map, entity.position, target_pos, 1)),
     ];
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
         for part_index in 0..entities[pawn.entity_id].body.parts.len() {
@@ -458,14 +458,16 @@ pub fn prime_grenade_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -
     ]
 }
 
-pub fn throw_grenade_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
+pub fn throw_grenade_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     let IntentData::TargetWithInventory { ref item, target } = entity.intent.data else {
         unreachable!("throw_grenade_action called with non-inventory-target intent")
     };
-    vec![
+    let mut effects = vec![
         log(entity, format!("{} threw a {}", entity.name, item.name)),
         Effect::ThrowItem { entity_id: entity.index, item_id: item.id, target_pos: target },
-    ]
+    ];
+    effects.extend(throw_animation(map, entity.position, target).map(Effect::Animation));
+    effects
 }
 
 /// Reload initiated from a firearm — equipped (EquippedItem) or carried (InventoryItem).
