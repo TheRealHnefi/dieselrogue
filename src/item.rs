@@ -117,28 +117,28 @@ struct FirearmDef {
 
 impl Item {
     pub fn revolver() -> Self {
-        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 5,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "Revolver",             glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 6,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(12,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 0 })
+        Item::make_firearm(FirearmDef { name: "Pistol",               glyph: 'P', fire_mode: FireMode::Single,         two_handed: false, ammo: 12,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(7,  0,  0, 0), range: 6,  rarity: 0 })
     }
     pub fn flare_gun() -> Self {
         Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'F', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   ammo_kind: AmmoKind::Fuel,      damage: Damage::new( 0,  0, 10, 0), range: 5,  rarity: 0 })
     }
     pub fn shock_pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'S', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  3,  0, 0), range: 3,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'S', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  5,  0, 0), range: 3,  rarity: 1 })
     }
     pub fn submachine_gun() -> Self {
-        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 0), range: 5,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(7,  0,  0, 0), range: 5,  rarity: 1 })
     }
     pub fn bolt_action_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'B', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(25,  0,  0, 0), range: 15, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Bolt action rifle",    glyph: 'B', fire_mode: FireMode::Single,         two_handed: true,  ammo: 5,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(20,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn semi_auto_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'R', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(20,  0,  0, 0), range: 15, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Semi-automatic rifle", glyph: 'R', fire_mode: FireMode::Single,         two_handed: true,  ammo: 10,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 15, rarity: 2 })
     }
     pub fn assault_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 12, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 0), range: 10, rarity: 2 })
     }
     pub fn sniper_rifle() -> Self {
         Item::make_firearm(FirearmDef { name: "Sniper rifle",        glyph: 'R', fire_mode: FireMode::SingleScoped,    two_handed: true,  ammo: 5,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 10), range: 35, rarity: 2 })
@@ -147,22 +147,22 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
     }
     pub fn rotary_machinegun() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, ammo_kind: AmmoKind::Bullets,   damage: Damage::new(12,  0,  0, 0), range: 10, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 5), range: 10, rarity: 3 })
     }
     pub fn shock_carbine() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  3,  0, 0), range: 6,  rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  5,  0, 0), range: 7,  rarity: 2 })
     }
     pub fn shock_cannon() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0, 25,  0, 0), range: 8,  rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0, 25,  0, 0), range: 11,  rarity: 3 })
     }
     pub fn flamethrower() -> Self {
-        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  ammo_kind: AmmoKind::Fuel,      damage: Damage::new( 0,  0,  3, 0), range: 10, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  ammo_kind: AmmoKind::Fuel,      damage: Damage::new( 0,  0,  5, 0), range: 9, rarity: 2 })
     }
     pub fn rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'R', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(500, 0,  0, 0), range: 15, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'R', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(100, 0, 50, 10), range: 25, rarity: 3 })
     }
     pub fn multi_rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'M', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(100, 0,  0, 0), range: 12, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'M', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(50, 0,  25, 5), range: 17, rarity: 3 })
     }
 
     // ---- Ammunition -------------------------------------------------------
@@ -239,7 +239,7 @@ impl Item {
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 3, 0), timeout: 4, radius: 3, flash: false },
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 5, 0), timeout: 4, radius: 3, flash: false },
             proxy: false,
             locked: false,
             active: false,
@@ -271,7 +271,7 @@ impl Item {
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
             equip_slots: vec![],
-            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 0, 0, 0), timeout: 4, radius: 10, flash: true },
+            kind: ItemKind::FusedExplosive { damage: Damage::new(0, 1, 0, 0), timeout: 4, radius: 10, flash: true },
             proxy: false,
             locked: false,
             active: false,
@@ -307,7 +307,7 @@ impl Item {
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions: vec!(),
             equip_slots: vec!(SlotType::Bodywear),
-            kind: ItemKind::Wearable { armor: Armor::new(3, 0.25, 0, 0.1, 0, 0.0) },
+            kind: ItemKind::Wearable { armor: Armor::new(5, 0.25, 1, 0.0, 0, 0.0) },
             proxy: false,
             locked: false,
             active: false,
@@ -318,29 +318,29 @@ impl Item {
 
     pub fn helmet() -> Self {
         Item::make_wearable("Helmet", '^', vec![SlotType::Headwear],
-            Armor::new(2, 0.15, 0, 0.0, 0, 0.0), 1)
+            Armor::new(4, 0.25, 0, 0.0, 0, 0.0), 1)
     }
     pub fn heavy_helmet() -> Self {
         Item::make_wearable("Heavy helmet", '^', vec![SlotType::Headwear],
-            Armor::new(4, 0.25, 1, 0.10, 1, 0.10), 2)
+            Armor::new(7, 0.25, 1, 0.25, 1, 0.25), 2)
     }
     pub fn riot_armor() -> Self {
         Item::make_wearable("Riot armor", ']',
             vec![SlotType::Bodywear, SlotType::LeftArmwear, SlotType::RightArmwear],
-            Armor::new(3, 0.25, 1, 0.10, 0, 0.05), 2)
+            Armor::new(3, 0.15, 4, 0.25, 3, 0.25), 2)
     }
     pub fn riot_pants() -> Self {
         Item::make_wearable("Riot pants", ']', vec![SlotType::Legwear],
-            Armor::new(2, 0.20, 1, 0.10, 0, 0.05), 1)
+            Armor::new(3, 0.15, 4, 0.25, 3, 0.25), 1)
     }
     pub fn heavy_combat_suit() -> Self {
         Item::make_wearable("Heavy combat suit", ']',
             vec![SlotType::Bodywear, SlotType::LeftArmwear, SlotType::RightArmwear, SlotType::Legwear, SlotType::Footwear],
-            Armor::new(5, 0.35, 2, 0.20, 2, 0.20), 3)
+            Armor::new(10, 0.5, 3, 0.20, 2, 0.20), 3)
     }
     pub fn light_kevlar_pants() -> Self {
         Item::make_wearable("Light kevlar pants", ']', vec![SlotType::Legwear],
-            Armor::new(1, 0.15, 0, 0.0, 0, 0.0), 0)
+            Armor::new(5, 0.25, 1, 0.0, 0, 0.0), 0)
     }
 
     /// Active headwear: light head protection plus the Recon action (a long-range
@@ -354,7 +354,7 @@ impl Item {
             inventory_actions: vec![Item::equip_action(), Item::drop_action()],
             equip_actions: vec![Item::recon_action()],
             equip_slots: vec![SlotType::Headwear],
-            kind: ItemKind::Wearable { armor: Armor::new(2, 0.15, 0, 0.0, 0, 0.0) },
+            kind: ItemKind::Wearable { armor: Armor::new(4, 0.15, 0, 0.0, 0, 0.0) },
             proxy: false,
             locked: false,
             active: false,

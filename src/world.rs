@@ -768,7 +768,7 @@ impl World {
                         self.entities[*id].apply_status_effect(&StatusEffect::Burning(5));
                     }
                     if elec_penetrates {
-                        self.entities[*id].apply_status_effect(&StatusEffect::Shocked(1));
+                        self.entities[*id].apply_status_effect(&StatusEffect::Shocked(2));
                     }
                 }
                 Effect::OpenDoor {pos, actor_id} =>
