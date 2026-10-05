@@ -76,9 +76,9 @@ pub fn move_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
     }
     let mut effects = vec![Effect::Move { entity_id: entity.index, pos }];
     if entity.has_ability(Ability::VehicleMove) {
-        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos, volume: 15, from_player: entity.kind == EntityKind::Player }));
+        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos, volume: 20, from_player: entity.kind == EntityKind::Player }));
     } else if !entity.has_ability(Ability::Stealth) {
-        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos, volume: 5, from_player: entity.kind == EntityKind::Player }));
+        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos, volume: 7, from_player: entity.kind == EntityKind::Player }));
     }
     effects
 }
@@ -96,7 +96,7 @@ pub fn turn_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Eff
         if ok {
             return vec![
                 Effect::SetFacing { entity_id: entity.index, direction },
-                Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: entity.position, volume: 15, from_player: entity.kind == EntityKind::Player }),
+                Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos: entity.position, volume: 20, from_player: entity.kind == EntityKind::Player }),
             ];
         } else {
             return vec![log(entity, format!("{} tried to turn, but couldn't", entity.name))];
@@ -117,7 +117,7 @@ pub fn juke_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
         Effect::Move { entity_id: entity.index, pos },
     ];
     if !entity.has_ability(Ability::Stealth) {
-        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos, volume: 5, from_player: entity.kind == EntityKind::Player }));
+        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Footstep, pos, volume: 7, from_player: entity.kind == EntityKind::Player }));
     }
     effects
 }
@@ -150,9 +150,9 @@ pub fn rocket_jump_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> V
     };
     let origin = entity.position;
     vec![
-        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: origin, volume: 30, from_player: entity.kind == EntityKind::Player }),
+        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: origin, volume: 45, from_player: entity.kind == EntityKind::Player }),
         Effect::Move { entity_id: entity.index, pos: dest },
-        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: dest, volume: 30, from_player: entity.kind == EntityKind::Player }),
+        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: dest, volume: 45, from_player: entity.kind == EntityKind::Player }),
         Effect::ConsumeCharge { entity_id: entity.index, item_id },
     ]
 }
@@ -231,7 +231,7 @@ fn aimed_shots(entity: &Entity, map: &Map, entities: &[Entity], shots: u32, mult
     let damage = Damage::new(damage.physical * multiplier, damage.electrical * multiplier, damage.fire * multiplier, damage.piercing * multiplier);
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
-        Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 20, from_player: entity.kind == EntityKind::Player }),
+        Effect::Sound(SoundEvent { kind: SoundKind::Gunshot, pos: entity.position, volume: 25, from_player: entity.kind == EntityKind::Player }),
     ];
     effects.extend(shot_animation(map, entity.position, target_pos, fired as i32).map(Effect::Animation));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
@@ -276,11 +276,11 @@ pub fn burst_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec
     };
     let (damage, _range, shots) = match read_ammo(entity, slot, 5) {
         Some(v) => v,
-        None => return vec![log(entity, format!("{} pulled the trigger. 'Clickclickclickclickclick'.", entity.name))],
+        None => return vec![log(entity, format!("{} pulled the trigger. 'Click'.", entity.name))],
     };
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots },
-        Effect::Sound(SoundEvent { kind: SoundKind::Burst, pos: entity.position, volume: 25, from_player: entity.kind == EntityKind::Player }),
+        Effect::Sound(SoundEvent { kind: SoundKind::Burst, pos: entity.position, volume: 30, from_player: entity.kind == EntityKind::Player }),
     ];
     effects.extend(shot_animation(map, entity.position, target_pos, shots as i32).map(Effect::Animation));
     if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
@@ -304,7 +304,7 @@ pub fn rocket_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Ve
     };
     let mut effects = vec![
         Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
-        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: entity.position, volume: 30, from_player: entity.kind == EntityKind::Player }),
+        Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos: entity.position, volume: 60, from_player: entity.kind == EntityKind::Player }),
         Effect::DestroyWall(target_pos),
         Effect::Animation(rocket_animation(map, entity.position, target_pos, 1)),
     ];

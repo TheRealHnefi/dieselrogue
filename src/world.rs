@@ -677,7 +677,7 @@ impl World {
             }
             effects.push(Effect::Animation(explosion_animation(pos, radius)));
         }
-        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 25, from_player: false }));
+        effects.push(Effect::Sound(SoundEvent { kind: SoundKind::Explosion, pos, volume: 50, from_player: false }));
         effects
     }
 
