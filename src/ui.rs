@@ -222,7 +222,7 @@ pub fn draw_game_over_screen(context: &mut Rltk) {
 
     let mid = SCREEN_HEIGHT as i32 / 2;
     context.print_color_centered(mid - 2, FIRE_COLOR,     BG_COLOR, "GAME OVER");
-    context.print_color_centered(mid,     LINE_COLOR,     BG_COLOR, "The diesels fall silent.");
+    context.print_color_centered(mid,     LINE_COLOR,     BG_COLOR, "You failed to escape the compound.");
     context.print_color_centered(mid + 4, INACTIVE_COLOR, BG_COLOR, "Press any key to return to the main menu...");
 }
 
@@ -234,7 +234,7 @@ pub fn draw_victory_screen(context: &mut Rltk) {
 
     let mid = SCREEN_HEIGHT as i32 / 2;
     context.print_color_centered(mid - 2, LEVELUP_SELECT_COLOR, BG_COLOR, "YOU ESCAPED");
-    context.print_color_centered(mid,     LINE_COLOR,            BG_COLOR, "The diesels fade behind you.");
+    context.print_color_centered(mid,     LINE_COLOR,            BG_COLOR, "The compound fades behind you.");
     context.print_color_centered(mid + 4, INACTIVE_COLOR,        BG_COLOR, "Press any key to return to the main menu...");
 }
 
@@ -245,9 +245,12 @@ pub fn draw_welcome_splash(context: &mut Rltk) {
     context.cls();
 
     let lines = [
-        "You are a freelance operative working the fringe.",
-        "The job: retrieve a prototype from the Armek compound.",
-        "The pay: enough to disappear.",
+        "The world has been at war for longer than anyone cares to remember.",
+        "In this global conflict, you are a small piece with more significane than meets the eye,",
+        "and you have successfully infiltrated an enemy compound and completed your objective.",
+        "Now, you must escape. Fight, sneak or run your way to the edge of the compound.",
+        "Hundreds of enemy guards stand between you and the next sunrise. Their lives are inconsequential,",
+        "but their equipment can be of use.",
         "",
         "Good luck. You'll need it.",
     ];
