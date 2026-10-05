@@ -188,6 +188,22 @@ Picking a plan (first match wins):
         Flank!
     Rush!
 
+### Shared combat branches
+Checked every turn between the grenade block and the plan, in this order.
+Only the urgent grenade behaviours outrank them.
+
+Exposed inside the enemy's weapon range (maneuvering plans only — Rush already fights):
+    A single strafe leaves their range or breaks the sight line:
+        Strafe(escape tile)! (cover beats distance)
+    Switch plan to Rush! (time to kill is too low to spend turns maneuvering)
+Enemy visible and inside my weapon range:
+    Attack(enemy)! (aim and fire, regardless of plan)
+
+The escape strafe outranks the shot on purpose: a kiter that fired instead of
+backing out would stand and trade in the enemy's band, which is exactly what
+Keep range exists to avoid. A trapped AI switches to Rush, and Rush fires on
+sight, so standing ground still means shooting.
+
 ### Keep range
 Fight from the band between the enemy's reach and my own; never enter theirs.
     Enemy inside my range and outside theirs:
@@ -229,6 +245,8 @@ The existing chase: attack on sight, else run at the last seen position.
         Re-pick plan!
     Plan impossible (no flank spot or route, range band can't be held):
         Re-pick plan!
+    Exposed inside the enemy's weapon range with no one-strafe escape:
+        Switch to Rush!
 
 ### Strafing in combat
 A combat-active AI moves with strafe steps (move without turning) whenever the

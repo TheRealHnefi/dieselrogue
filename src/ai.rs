@@ -1029,6 +1029,22 @@ impl ActorAI {
         if !self.is_combat_ready(entity) {
             return Decision::GetReadyForCombat;
         }
+        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        // Exposed in the enemy's kill zone, a maneuvering plan takes the one-step
+        // escape if it exists (update_plan switched the plan to Rush when it doesn't).
+        if !matches!(self.plan.map(|p| p.kind), Some(PlanKind::Rush) | None) {
+            let enemy_range = self.plan.map_or(1, |p| p.enemy_range) as f32;
+            if dist <= enemy_range && has_los(entity.center(), last_seen, map) {
+                if let Some(tile) = escape_strafe(entity, map, last_seen, enemy_range) {
+                    return Decision::Strafe { toward: tile };
+                }
+            }
+        }
+        // A clear shot trumps plan movement: aim and fire whenever the enemy
+        // stands inside our own weapon range, whatever the plan says.
+        if dist <= wielded_range(entity) as f32 && self.can_see_target(entity, entities, target_id) {
+            return Decision::Engage { target_id, last_seen };
+        }
         match self.plan.map(|p| p.kind) {
             Some(PlanKind::KeepRange) =>
                 self.keep_range(entity, entities, target_id, last_seen),
@@ -1050,17 +1066,16 @@ impl ActorAI {
     }
 
     /// Keep range (doc/ai.md): fight from the band between the enemy's reach and
-    /// ours, backing off without looking away whenever they close.
-    fn keep_range(&self, entity: &Entity, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+    /// ours, backing off without looking away whenever they close. The shared
+    /// branches in `plan_combat` already fired when a shot was available and
+    /// escaped when exposed, so only the unseen-enemy movement remains here.
+    fn keep_range(&self, entity: &Entity, _entities: &[Entity], _target_id: usize, last_seen: Point) -> Decision {
         let enemy_range = self.plan.map_or(1, |p| p.enemy_range) as f32;
         let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
         if dist <= enemy_range + KITE_BUFFER {
             return Decision::Strafe { toward: away_point(entity.position, last_seen) };
         }
         if dist <= wielded_range(entity) as f32 {
-            if self.can_see_target(entity, entities, target_id) {
-                return Decision::Engage { target_id, last_seen };
-            }
             // In range but the sight line is fouled: sidestep, eyes on them.
             return Decision::Strafe { toward: last_seen };
         }
@@ -1146,6 +1161,19 @@ impl ActorAI {
         };
         if drastic {
             self.plan = Some(self.pick_plan(entity, map, last_seen, enemy_range, enemy_blast, nearby));
+        }
+
+        // Caught exposed inside the enemy's weapon range with no one-strafe
+        // escape: maneuvering is suicide at these times-to-kill — fight instead.
+        if let Some(plan) = &mut self.plan {
+            if !matches!(plan.kind, PlanKind::Rush) {
+                let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+                if dist <= enemy_range as f32
+                    && has_los(entity.center(), last_seen, map)
+                    && escape_strafe(entity, map, last_seen, enemy_range as f32).is_none() {
+                    plan.kind = PlanKind::Rush;
+                }
+            }
         }
 
         // Advance the flank once contact is broken (hide reached or sight line gone).
@@ -1299,6 +1327,30 @@ fn count_allies(entity: &Entity, allies: &[Point], range: f32) -> usize {
     allies.iter()
         .filter(|&&p| p != c && rltk::DistanceAlg::Pythagoras.distance2d(c, p) <= range)
         .count()
+}
+
+/// An adjacent free tile that leaves the enemy's weapon range or breaks its
+/// sight line — the one-step escape from the kill zone. Cover beats distance.
+fn escape_strafe(entity: &Entity, map: &Map, enemy: Point, enemy_range: f32) -> Option<Point> {
+    let deltas: [(i32, i32); 8] = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)];
+    let mut out_of_range: Option<(Point, f32)> = None;
+    for (dx, dy) in deltas {
+        let p = Point { x: entity.position.x + dx, y: entity.position.y + dy };
+        if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 {
+            continue;
+        }
+        if map.blocked(p.x, p.y) {
+            continue;
+        }
+        if !has_los(p, enemy, map) {
+            return Some(p);
+        }
+        let d = rltk::DistanceAlg::Pythagoras.distance2d(p, enemy);
+        if d > enemy_range && out_of_range.map_or(true, |(_, bd)| d > bd) {
+            out_of_range = Some((p, d));
+        }
+    }
+    out_of_range.map(|(p, _)| p)
 }
 
 /// A point directly away from `threat`, as a strafe target for backing off.
