@@ -136,9 +136,11 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
         Item::heavy_combat_suit,
         Item::helmet, Item::heavy_helmet,
     ];
-    let consumables_pool: &[MakeItem] = &[
+    let ammo_pool: &[MakeItem] = &[
         Item::ammo_bullets, Item::ammo_rockets,
         Item::ammo_batteries, Item::ammo_fuel,
+    ];
+    let healing_pool: &[MakeItem] = &[
         Item::medkit, Item::large_medkit, Item::elixir,
         Item::stimpack,
     ];
@@ -147,7 +149,8 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
     /// Higher means fewer items
     const EXCEPTIONAL_ITEM_SPARSITY: usize = 4;
     const EQUIPMENT_ITEM_SPARSITY: usize = 4;
-    const CONSUMABLE_ITEM_SPARSITY: usize = 4;
+    const AMMO_ITEM_SPARSITY: usize = 8;
+    const HEALING_ITEM_SPARSITY: usize = 3;
 
     let boring_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_room && !r.is_interesting).collect();
     let interesting_rooms: Vec<&Region> = spawn_map.regions.iter().filter(|r| r.is_interesting).collect();
@@ -175,15 +178,18 @@ pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumbe
 
     let exceptional_placed = place_items_in_rooms(world, exceptional_pool, &interesting_rooms, EXCEPTIONAL_ITEM_SPARSITY, rng);
     let equipment_placed = place_items_in_rooms(world, equipment_pool, &boring_rooms, EQUIPMENT_ITEM_SPARSITY, rng);
-    let consumables_placed = place_items_in_rooms(world, consumables_pool, &boring_rooms, CONSUMABLE_ITEM_SPARSITY, rng);
+    let ammo_placed = place_items_in_rooms(world, ammo_pool, &boring_rooms, AMMO_ITEM_SPARSITY, rng);
+    let healing_placed = place_items_in_rooms(world, healing_pool, &boring_rooms, HEALING_ITEM_SPARSITY, rng);
 
     {
         total_items_placed += exceptional_placed;
         total_items_placed += equipment_placed;
-        total_items_placed += consumables_placed;
+        total_items_placed += ammo_placed;
+        total_items_placed += healing_placed;
         tracing::debug!("Placed {} exceptional items", exceptional_placed);
         tracing::debug!("Placed {} equipment items", equipment_placed);
-        tracing::debug!("Placed {} consumable items", consumables_placed);
+        tracing::debug!("Placed {} ammo items", ammo_placed);
+        tracing::debug!("Placed {} healing items", healing_placed);
         tracing::debug!("Placed {} total items", total_items_placed);
     }
 }
