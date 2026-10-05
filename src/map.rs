@@ -1,5 +1,6 @@
 use rltk::{Point, RandomNumberGenerator};
 use std::cmp::{max, min};
+use std::collections::HashSet;
 use crate::entity::Pawn;
 use crate::item::Item;
 use crate::tile::TileType;
@@ -15,43 +16,53 @@ pub enum PatrolStyle {
     Rings,
 }
 
-/// Greedily collapse points within `radius` (Chebyshev) into one representative,
-/// keeping the distinct-waypoint count low.
-fn cluster_points(points: &[Point], radius: i32) -> Vec<Point> {
-    let mut reps: Vec<Point> = Vec::new();
-    for &p in points {
-        if reps.iter().all(|&r| (r.x - p.x).abs().max((r.y - p.y).abs()) > radius) {
-            reps.push(p);
+// --- Patrol route generation tunables (perimeter loops) ---
+/// Contour steps between waypoints on straight stretches. One patroller spawns
+/// per waypoint (see `place_patrolling_enemies`), so this also sets patrol density.
+const WAYPOINT_SPACING: usize = 28;
+/// Waypoints per loop are capped here; huge contours get a wider stride instead.
+const MAX_RING_WAYPOINTS: usize = 24;
+/// Loops that thin out below this many waypoints are degenerate and dropped.
+const MIN_RING_WAYPOINTS: usize = 4;
+/// Obstacle clusters smaller than this get no patrol ring (lamp posts, sheds).
+const MIN_HOLE_TILES: usize = 100;
+/// Patrol loops per region, biggest contours first.
+const MAX_ROUTES_PER_REGION: usize = 4;
+
+/// Clockwise Moore neighbourhood, starting west.
+const MOORE: [(i32, i32); 8] = [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1)];
+
+/// Moore-neighbour boundary trace of the connected component of `mask` cells
+/// containing `start` (which must be its topmost, then leftmost cell). Returns
+/// the component's boundary cells in clockwise walk order, plus every non-mask
+/// cell brushed along the way (`halo`) — the walkable ring when tracing an
+/// obstacle. `mask` must return false off-map.
+fn trace_boundary(start: Point, cells: usize, mask: impl Fn(Point) -> bool) -> (Vec<Point>, Vec<Point>) {
+    let mut boundary = vec![start];
+    let mut halo = vec![];
+    let mut cur = start;
+    let mut scan = 0; // scanning starts west: all cells above and left of `start` are non-mask
+    // A boundary cell is revisited at most a few times (1-wide spurs); cap the walk.
+    for _ in 0..4 * cells + 8 {
+        let mut next = None;
+        for k in 0..8 {
+            let di = (scan + k) % 8;
+            let n = Point { x: cur.x + MOORE[di].0, y: cur.y + MOORE[di].1 };
+            if mask(n) {
+                next = Some((di, n));
+                break;
+            }
+            halo.push(n);
         }
+        let Some((di, n)) = next else { break }; // isolated single cell
+        if n == start {
+            break; // loop closed
+        }
+        boundary.push(n);
+        cur = n;
+        scan = (di + 6) % 8; // resume behind-left of the move, keeping the wall on our right
     }
-    reps
-}
-
-/// Evenly subsample down to `max` points, preserving spread.
-// fn cap_waypoints(waypoints: &mut Vec<Point>, max: usize) {
-//     if waypoints.len() <= max || max == 0 { return; }
-//     let step = waypoints.len() as f32 / max as f32;
-//     *waypoints = (0..max).map(|i| waypoints[(i as f32 * step) as usize]).collect();
-// }
-
-/// Reorder into a greedy nearest-neighbour chain for a sensible walking order.
-fn order_nearest_neighbour(waypoints: &mut Vec<Point>) {
-    let n = waypoints.len();
-    for i in 1..n {
-        let prev = waypoints[i - 1];
-        let best = (i..n).min_by_key(|&j| {
-            let (dx, dy) = (waypoints[j].x - prev.x, waypoints[j].y - prev.y);
-            dx * dx + dy * dy
-        }).unwrap_or(i);
-        waypoints.swap(i, best);
-    }
-}
-
-/// Split an ordered waypoint list into up to `count` contiguous routes.
-fn split_routes(waypoints: &[Point], count: usize) -> Vec<Vec<Point>> {
-    let count = count.clamp(1, waypoints.len().max(1));
-    let per = (waypoints.len() + count - 1) / count;
-    waypoints.chunks(per.max(1)).map(|c| c.to_vec()).collect()
+    (boundary, halo)
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -345,14 +356,14 @@ impl Map {
         }
     }
 
-    /// Build gameplay patrol routes for large regions: road/door transitions for
-    /// outdoor regions, doorway-to-doorway loops for indoor ones. Route and
-    /// waypoint counts are bounded.
+    /// Build gameplay patrol routes as perimeter loops: every large region gets
+    /// a loop along the inside of its border walls, plus a ring around each
+    /// obstacle cluster (building, fenced yard) it encloses. Loops are traced
+    /// along the terrain contour — consecutive waypoints are walking neighbours,
+    /// never dead ends — and each is validated for mutual reachability before
+    /// registration; a loop that fails is dropped, not shipped.
     fn create_patrol_routes(&mut self, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
         const MIN_REGION_TILES: usize = 1024;
-        const TILES_PER_ROUTE:  usize = 40_000;
-        const MAX_ROUTES:       usize = 8;
-        //const MAX_WAYPOINTS:    usize = 6;
 
         // rng reserved for future jitter; deterministic layout for now.
         let _ = rng;
@@ -360,21 +371,14 @@ impl Map {
         for (ri, region) in spawn_map.regions.iter().enumerate() {
             if region.tiles.len() < MIN_REGION_TILES { continue; }
 
-            let mut waypoints = if region.is_room {
-                self.door_waypoints(ri, spawn_map)
-            } else {
-                self.road_waypoints(region)
-            };
-            if waypoints.len() < 2 { continue; }
+            let mut rings = vec![self.region_border_ring(ri, spawn_map, region)];
+            rings.extend(self.obstacle_rings(ri, spawn_map, region));
+            rings.sort_by_key(|r| std::cmp::Reverse(r.len()));
 
-            let route_count = (region.tiles.len() / TILES_PER_ROUTE).clamp(1, MAX_ROUTES);
-            // TODO: Could be useful to reduce number of waypoints
-            //cap_waypoints(&mut waypoints, route_count * MAX_WAYPOINTS);
-            order_nearest_neighbour(&mut waypoints);
-
-            for chunk in split_routes(&waypoints, route_count) {
-                if chunk.len() >= 2 {
-                    self.register_patrol_route(chunk);
+            for ring in rings.into_iter().take(MAX_ROUTES_PER_REGION) {
+                let route = self.thin_ring(&ring);
+                if route.len() >= MIN_RING_WAYPOINTS && self.ring_walkable(&route) {
+                    self.register_patrol_route(route);
                 }
             }
         }
@@ -383,59 +387,111 @@ impl Map {
         tracing::debug!("Created {} patrol routes", self.patrol_routes.len());
     }
 
-    /// Waypoints for an outdoor region: road tiles that transition into a doorway
-    /// or terminate into open ground, clustered to one point per site.
-    fn road_waypoints(&self, region: &Region) -> Vec<Point> {
-        const ROAD_WIDTH: i32 = 6;
-        let candidates: Vec<Point> = region.tiles.iter()
-            .map(|&idx| self.idx_pos(idx))
-            .filter(|&p| self.tile_at(p.x, p.y) == Some(TileType::Road))
-            .filter(|&p| self.is_road_transition(p, ROAD_WIDTH))
-            .collect();
-        cluster_points(&candidates, ROAD_WIDTH)
+    /// The ordered ring of region tiles along the region's border — the inside
+    /// of the walls that enclose it.
+    fn region_border_ring(&self, ri: usize, spawn_map: &SpawnMap, region: &Region) -> Vec<Point> {
+        let start = self.idx_pos(*region.tiles.iter().min().unwrap());
+        let in_region = |p: Point| {
+            p.x >= 0 && p.y >= 0 && p.x < self.width as i32 && p.y < self.height as i32
+                && spawn_map.tile_region[self.pos_idx(p)] == Some(ri)
+        };
+        trace_boundary(start, region.tiles.len(), in_region).0
     }
 
-    /// True if road tile `p` is a doorway approach or a road end-cap. Ground on
-    /// one side alone marks a road's flank too; an end-cap additionally has road
-    /// running `road_width` deep the opposite way (crossing the width hits ground
-    /// within that span, running down the length does not).
-    fn is_road_transition(&self, p: Point, road_width: i32) -> bool {
-        const DIRS: [(i32, i32); 4] = [(0, -1), (0, 1), (-1, 0), (1, 0)];
-        for (dx, dy) in DIRS {
-            match self.tile_at(p.x + dx, p.y + dy) {
-                Some(TileType::Doorway) => return true,
-                Some(TileType::Ground) => {
-                    let deep = (1..=road_width).all(|step|
-                        self.tile_at(p.x - dx * step, p.y - dy * step) == Some(TileType::Road));
-                    if deep { return true; }
+    /// A walkable ring around each obstacle cluster enclosed by the region:
+    /// non-region cells that cannot reach the region's bounding-box edge form a
+    /// hole (a building and its interior), and the ring is the region tiles
+    /// brushed while tracing the hole's boundary.
+    fn obstacle_rings(&self, ri: usize, spawn_map: &SpawnMap, region: &Region) -> Vec<Vec<Point>> {
+        let (mut min_x, mut min_y, mut max_x, mut max_y) = (i32::MAX, i32::MAX, 0, 0);
+        for &t in &region.tiles {
+            let p = self.idx_pos(t);
+            min_x = min_x.min(p.x); min_y = min_y.min(p.y);
+            max_x = max_x.max(p.x); max_y = max_y.max(p.y);
+        }
+        let box_w = (max_x - min_x + 1) as usize;
+        let local = |p: Point| (p.y - min_y) as usize * box_w + (p.x - min_x) as usize;
+        let in_region = |p: Point| spawn_map.tile_region[self.pos_idx(p)] == Some(ri);
+
+        let mut seen = vec![false; box_w * (max_y - min_y + 1) as usize];
+        let mut rings: Vec<Vec<Point>> = Vec::new();
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                let p = Point { x, y };
+                if seen[local(p)] || in_region(p) {
+                    continue;
                 }
-                _ => {}
+                // Flood this non-region component within the box.
+                seen[local(p)] = true;
+                let mut stack = vec![p];
+                let mut hole: Vec<Point> = Vec::new();
+                let mut touches_edge = false;
+                while let Some(c) = stack.pop() {
+                    hole.push(c);
+                    touches_edge |= c.x == min_x || c.y == min_y || c.x == max_x || c.y == max_y;
+                    for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                        let n = Point { x: c.x + dx, y: c.y + dy };
+                        if n.x < min_x || n.y < min_y || n.x > max_x || n.y > max_y { continue; }
+                        if seen[local(n)] || in_region(n) { continue; }
+                        seen[local(n)] = true;
+                        stack.push(n);
+                    }
+                }
+                // A component reaching the box edge is the outside, not a hole.
+                if touches_edge || hole.len() < MIN_HOLE_TILES {
+                    continue;
+                }
+
+                let hole_set: HashSet<usize> = hole.iter().map(|&h| self.pos_idx(h)).collect();
+                let in_hole = |h: Point| h.x >= min_x && h.y >= min_y && h.x <= max_x && h.y <= max_y
+                    && hole_set.contains(&self.pos_idx(h));
+                let start = *hole.iter().min_by_key(|h| (h.y, h.x)).unwrap();
+                let (_, halo) = trace_boundary(start, hole.len(), in_hole);
+                let mut ring: Vec<Point> = halo.into_iter()
+                    .filter(|&h| h.x >= 0 && h.y >= 0
+                        && h.x < self.width as i32 && h.y < self.height as i32
+                        && in_region(h))
+                    .collect();
+                ring.dedup();
+                rings.push(ring);
             }
         }
-        false
+        rings
     }
 
-    /// Waypoints for an indoor region: the middle doorway tile of each boundary.
-    fn door_waypoints(&self, region_idx: usize, spawn_map: &SpawnMap) -> Vec<Point> {
-        let door_positions: Vec<usize> = spawn_map.boundaries.iter()
-            .filter(|b| b.region_a == region_idx || b.region_b == region_idx)
-            .filter(|b| !b.door_tiles.is_empty())
-            //.map(|b| self.idx_pos(b.door_tiles[b.door_tiles.len() / 2]))
-            .map(|b| b.door_tiles[b.door_tiles.len() / 2])
-            .collect();
-
-        let mut waypoints: Vec<Point> = vec!();
-
-        for door in door_positions {
-            let exits = self.get_available_exits(door);
-            let waypoint = exits.iter().find(|exit| spawn_map.tile_region[exit.0] == Some(region_idx));
-            match waypoint {
-                Some((wp, _)) => waypoints.push(self.idx_pos(*wp)),
-                None => ()
-            }
+    /// Thin a traced contour into a waypoint loop: drop cramped cells (alcoves,
+    /// dead-end nooks), then keep roughly every WAYPOINT_SPACING-th survivor.
+    /// Legs between waypoints are walked with full pathfinding, so corners cut
+    /// here are recovered by the walker hugging the obstacle.
+    fn thin_ring(&self, ring: &[Point]) -> Vec<Point> {
+        let open: Vec<Point> = ring.iter().copied().filter(|&p| self.open_ground(p)).collect();
+        if open.len() < MIN_RING_WAYPOINTS {
+            return vec![];
         }
+        let stride = (open.len() / MAX_RING_WAYPOINTS + 1).max(WAYPOINT_SPACING)
+            .min((open.len() / MIN_RING_WAYPOINTS).max(1));
+        let mut out: Vec<Point> = open.into_iter().step_by(stride).collect();
+        out.dedup();
+        out
+    }
 
-        waypoints
+    /// Walkable terrain with at least two cardinal ways out — never a dead end.
+    fn open_ground(&self, p: Point) -> bool {
+        self.terrain_passable(p.x, p.y)
+            && [(1, 0), (-1, 0), (0, 1), (0, -1)].iter()
+                .filter(|(dx, dy)| self.terrain_passable(p.x + dx, p.y + dy))
+                .count() >= 2
+    }
+
+    /// True when every leg of the loop (including the wrap) is fully walkable
+    /// over static terrain. Generation-time guard against broken routes.
+    fn ring_walkable(&self, route: &[Point]) -> bool {
+        let mut path = Vec::new();
+        (0..route.len()).all(|i| {
+            let a = self.pos_idx(route[i]);
+            let b = self.pos_idx(route[(i + 1) % route.len()]);
+            a == b || crate::navigate(a, b, self, &mut path)
+        })
     }
 
     /// Bounds-checked tile lookup; `None` when off-map.
@@ -592,5 +648,47 @@ impl Map {
         let p1 = Point::new(idx1 % w, idx1 / w);
         let p2 = Point::new(idx2 % w, idx2 / w);
         rltk::DistanceAlg::Pythagoras.distance2d(p1, p2)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Route/waypoint/spawn stats over a few seeds — run explicitly when tuning
+    /// patrol generation (one patroller spawns per waypoint):
+    ///   cargo test --release -- --ignored --nocapture patrol_route_stats
+    #[test]
+    #[ignore]
+    fn patrol_route_stats() {
+        for seed in [1u64, 2, 3] {
+            let world = crate::World::new(16, seed, PatrolStyle::Roads);
+            let map = &world.map;
+            let waypoints: usize = map.patrol_routes.iter().map(|r| r.len()).sum();
+            let longest = map.patrol_routes.iter().map(|r| r.len()).max().unwrap_or(0);
+            let patrollers = world.entities.iter().filter(|e| matches!(&e.ai,
+                crate::AI::Actor(a) if matches!(a.profile, crate::Profile::Patrol { .. }))).count();
+            let actors = world.entities.iter().filter(|e| matches!(&e.ai, crate::AI::Actor(_))).count();
+            println!(
+                "seed {}: {} routes, {} waypoints, longest route {}; {} patrollers, {} AI actors total",
+                seed, map.patrol_routes.len(), waypoints, longest, patrollers, actors,
+            );
+        }
+    }
+
+    /// Every generated patrol route must be a loop of open, mutually reachable
+    /// waypoints — the property that keeps patrols out of dead-end corners.
+    #[test]
+    fn patrol_routes_are_walkable_loops() {
+        let mut rng = RandomNumberGenerator::seeded(7);
+        let (map, _) = Map::new_game_map(8, &mut rng, PatrolStyle::Roads);
+        assert!(!map.patrol_routes.is_empty(), "no patrol routes generated");
+        for (i, route) in map.patrol_routes.iter().enumerate() {
+            assert!(route.len() >= MIN_RING_WAYPOINTS, "route {} too short: {}", i, route.len());
+            for &wp in route {
+                assert!(map.open_ground(wp), "route {} waypoint {:?} is cramped", i, wp);
+            }
+            assert!(map.ring_walkable(route), "route {} has an unwalkable leg", i);
+        }
     }
 }
