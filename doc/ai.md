@@ -204,6 +204,13 @@ backing out would stand and trade in the enemy's band, which is exactly what
 Keep range exists to avoid. A trapped AI switches to Rush, and Rush fires on
 sight, so standing ground still means shooting.
 
+Finally, after the plan has chosen its move: strafing and idling preserve the
+facing, and the vision cone follows the facing, so a plan that only strafes
+could leave the AI blind to the enemy forever. Whenever such a move is chosen
+while neither the enemy nor its last position is in the cone:
+    Can turn to see the last position:
+        Rotate(towards last position)! (one turn re-locks the cone)
+
 ### Keep range
 Fight from the band between the enemy's reach and my own; never enter theirs.
     Enemy inside my range and outside theirs:
@@ -231,10 +238,12 @@ decay into searching.
     Rush!
 
 ### Rush
-The existing chase: attack on sight, else run at the last seen position.
+The existing chase: attack on sight, else run at the last seen position. The
+chase breaks off once the last position is reached — or seen standing empty,
+which confirms they're gone just as well.
     Can see enemy:
         Attack(enemy)!
-    Not yet at last known position:
+    Not yet at (or in plain view of) last known position:
         GoTo(last known position)!
     Decay to Alert, Shout!
 
@@ -278,6 +287,13 @@ Seeing:
         Alert(body position)!
     A door the player left open:
         Suspicious(door position)!
+Pain:
+    Damaged by the player without seeing them:
+        Assume they stand some distance straight behind — the one place the
+        vision cone guarantees we weren't looking.
+        In Combat:
+            Update last known position to the guess!
+        Alert(guess)!
 
 Priority when several happen at once: confirmed threats beat unconfirmed ones, then
 seen beats heard. An Alert guard only reacts to seeing the player (anything else would
@@ -315,6 +331,16 @@ Weapon in hand:
     Idle!
 Weapon in inventory:
     Equip weapon!
+Right arm disabled (or can't pick things up at all):
+    Flee(threat)! (can't fight — don't die fetching a gun we can't use)
+Loaded weapon lying within search radius:
+    Standing on it:
+        Pick it up!
+    GoTo(weapon)!
+Flee(threat)!
+
+The weapon search is omniscient within its radius — a stand-in for sweeping
+nearby buildings room by room (the route may pass doors either way).
 
 ### Investigate area(position)
 Position is in view:

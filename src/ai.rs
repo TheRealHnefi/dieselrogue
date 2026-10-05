@@ -57,6 +57,11 @@ const SWARM_ALLIES: usize = 2;
 const HIDE_SEARCH: i32 = 8;
 /// The flank approach point sits this far past the enemy's position.
 const FLANK_DEPTH: i32 = 3;
+/// Radius searched for a ground weapon when disarmed with nothing to equip.
+/// Omniscient within it — a stand-in for sweeping nearby buildings room by room.
+const WEAPON_SEARCH_RADIUS: i32 = 40;
+/// Hit by an unseen attacker: assume they stand this far straight behind us.
+const HURT_GUESS_DIST: i32 = 6;
 
 // --- Patrol search tunables (Alert state) ---
 /// A searching patroller re-raises the alarm every this many turns.
@@ -141,6 +146,8 @@ enum Decision {
     GoTo   { dest: Point, tolerance: u32 },
     /// Step toward a point without turning, keeping the vision cone where it is.
     Strafe { toward: Point },
+    /// Pick up the item on the tile we stand on (a fetched ground weapon).
+    PickUp,
     Face   { toward: Point },
     Flee   { threat: Point },
     Engage { target_id: usize, last_seen: Point },
@@ -263,6 +270,10 @@ pub struct ActorAI {
     /// The committed combat plan (Pursue tactic only). See doc/ai.md "Combat plans".
     #[serde(default)]
     plan:         Option<CombatPlan>,
+    /// Damaged by the player since our last turn (set by World). Consumed each
+    /// turn: pain from an unseen attacker points the search behind us.
+    #[serde(default)]
+    hurt:         bool,
     /// Per-actor RNG for the probabilistic idle/look leaves. Seeded lazily from the
     /// entity index (each actor owns its own stream, so the parallel AI pass never
     /// shares a generator). Not saved: a loaded game reseeds it lazily.
@@ -279,12 +290,17 @@ pub struct ActorAI {
 
 impl ActorAI {
     pub fn new(profile: Profile) -> Self {
-        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, plan: None, rng: None, detection: 0, bumped_at: None }
+        ActorAI { profile, alert: AlertLevel::Unaware, current_path: vec![], path_target: None, plan: None, hurt: false, rng: None, detection: 0, bumped_at: None }
     }
 
     /// Our move into `tile` was cancelled because another actor stepped for it too.
     pub fn note_bumped(&mut self, tile: Point) {
         self.bumped_at = Some(tile);
+    }
+
+    /// The player damaged us (seen or not); consumed next turn by `note_pain`.
+    pub fn note_hurt(&mut self) {
+        self.hurt = true;
     }
 
     /// Recognition progress in 0.0..=1.0, for the UI.
@@ -308,9 +324,16 @@ impl ActorAI {
 
         // Perceive: collect this turn stimuli and return perception.
         let perception = self.perceive(entity, entities, map, sounds, doors);
+        let saw_enemy = perception.as_ref().map_or(false, |p| p.confirmed_visually && p.confirmed_hostile);
 
         // Update beliefs according to perceptions
         self.update_beliefs(entity, entities, map, perception);
+
+        // Pain from an unseen attacker: nothing confirmed visually, but someone
+        // is shooting — assume they stand some distance straight behind us.
+        if std::mem::take(&mut self.hurt) && !saw_enemy {
+            self.note_pain(entity, map);
+        }
 
         // Commit to (or revise) a combat plan before deciding this turn's move.
         self.update_plan(entity, map, entities, allies);
@@ -489,6 +512,20 @@ impl ActorAI {
         }
     }
 
+    /// Hit by someone we can't see: point the search some distance straight
+    /// behind us — the one place the vision cone guarantees we weren't looking.
+    fn note_pain(&mut self, entity: &Entity, map: &Map) {
+        let (dx, dy) = entity.body.facing.delta_pos();
+        let guess = map.snap_to_walkable(Point {
+            x: entity.position.x - dx * HURT_GUESS_DIST,
+            y: entity.position.y - dy * HURT_GUESS_DIST,
+        });
+        match &mut self.alert {
+            AlertLevel::Combat { last_seen, .. } => *last_seen = guess,
+            _ => self.alert = AlertLevel::Alert { last_known: guess, search_ticks: 0 },
+        }
+    }
+
     fn update_target(&mut self, perception: Perception) {
         // Already engaging: a fresh sighting refreshes the target's position;
         // lesser stimuli (noise, corpses) are ignored so combat isn't pulled off.
@@ -535,9 +572,10 @@ impl ActorAI {
                 Profile::Guard { .. } =>
                     lost && self.far_from_anchor(entity.position)
                         && !entity.can_see(ls) && !self.can_turn_to_see(entity, map, ls),
-                // Patrol pursues hard: only breaks off (to shout + search) once it has
-                // reached where the enemy was last seen and still can't find them.
-                _ => lost && rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), ls) <= 1.5,
+                // Patrol pursues hard: it breaks off (to shout + search) once the
+                // last-seen spot is reached, or confirmed empty in plain view.
+                _ => lost && (rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), ls) <= 1.5
+                        || entity.can_see(ls)),
             };
             if give_up {
                 self.alert = AlertLevel::Alert { last_known: ls, search_ticks: 0 };
@@ -629,7 +667,7 @@ impl ActorAI {
             },
             AlertLevel::Suspicious { origin, .. } => {
                 if !self.is_combat_ready(entity) {
-                    Decision::GetReadyForCombat
+                    self.get_ready_decision(entity, map, *origin)
                 } else if self.far_from_anchor(pos) {
                     // Won't chase a hunch off its post — head back.
                     Decision::GoTo { dest: self.anchor().unwrap_or(*origin), tolerance: 0 }
@@ -639,7 +677,7 @@ impl ActorAI {
             },
             AlertLevel::Alert { last_known, search_ticks } => {
                 if !self.is_combat_ready(entity) {
-                    Decision::GetReadyForCombat
+                    self.get_ready_decision(entity, map, *last_known)
                 } else {
                     match &self.profile {
                         // A guard never forgets a confirmed threat, but holds near its
@@ -695,6 +733,7 @@ impl ActorAI {
             // fall back to pathing so the actor still repositions.
             Decision::Strafe { toward } => strafe_step(entity, map, toward)
                 .or_else(|| self.navigate_to(entity, toward, map, entities, 0)),
+            Decision::PickUp => Some(build_intent(&get_item_action_def(), None, Resolution::None)),
             Decision::Face { toward } => face_intent(entity, toward),
             Decision::Flee { threat } => {
                 let dest = self.flee_pos(entity, threat, map);
@@ -998,7 +1037,7 @@ impl ActorAI {
         }
         // The rest of the ladder needs a working firearm.
         if !self.is_combat_ready(entity) {
-            return Decision::GetReadyForCombat;
+            return self.get_ready_decision(entity, map, last_seen);
         }
         if self.can_see_target(entity, entities, target_id) {
             return Decision::Engage { target_id, last_seen };
@@ -1027,7 +1066,7 @@ impl ActorAI {
             }
         }
         if !self.is_combat_ready(entity) {
-            return Decision::GetReadyForCombat;
+            return self.get_ready_decision(entity, map, last_seen);
         }
         let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
         // Exposed in the enemy's kill zone, a maneuvering plan takes the one-step
@@ -1045,7 +1084,7 @@ impl ActorAI {
         if dist <= wielded_range(entity) as f32 && self.can_see_target(entity, entities, target_id) {
             return Decision::Engage { target_id, last_seen };
         }
-        match self.plan.map(|p| p.kind) {
+        let decision = match self.plan.map(|p| p.kind) {
             Some(PlanKind::KeepRange) =>
                 self.keep_range(entity, entities, target_id, last_seen),
             Some(PlanKind::Swarm) =>
@@ -1053,6 +1092,17 @@ impl ActorAI {
             Some(PlanKind::Flank { hide, flank, hidden }) =>
                 self.flank(entity, entities, target_id, last_seen, hide, flank, hidden),
             _ => self.rush(entity, entities, target_id, last_seen),
+        };
+        // Strafe and Idle preserve facing; if the cone has drifted off both the
+        // enemy and their last position, spend a turn re-locking it — otherwise
+        // a back-turned actor can strafe or stand forever without re-sighting.
+        match decision {
+            Decision::Strafe { .. } | Decision::Idle
+                if !self.can_see_target(entity, entities, target_id)
+                    && !entity.can_see(last_seen)
+                    && self.can_turn_to_see(entity, map, last_seen) =>
+                Decision::Face { toward: last_seen },
+            d => d,
         }
     }
 
@@ -1260,6 +1310,30 @@ impl ActorAI {
         best.map(|(p, _)| p)
     }
 
+    /// How to get battle-worthy (doc/ai.md "Equip or reload weapon"): reload or
+    /// equip from the inventory; failing that, fetch a weapon lying nearby — or
+    /// flee the threat when the gun arm is gone or there is nothing to fetch.
+    fn get_ready_decision(&self, entity: &Entity, map: &Map, threat: Point) -> Decision {
+        if self.can_rearm(entity, map) {
+            return Decision::GetReadyForCombat;
+        }
+        if right_arm_disabled(entity) || !entity.has_ability(Ability::PickUp) {
+            return Decision::Flee { threat };
+        }
+        match nearest_ground_weapon(entity, map) {
+            Some(pos) if pos == entity.position => Decision::PickUp,
+            Some(pos) => Decision::GoTo { dest: pos, tolerance: 0 },
+            None => Decision::Flee { threat },
+        }
+    }
+
+    /// Whether a reload or an equip can make us combat-ready.
+    fn can_rearm(&self, entity: &Entity, map: &Map) -> bool {
+        entity.get_available_actions(map).iter()
+            .any(|(a, slot)| a.id == ActionId::Reload && slot.is_some())
+            || !self.equippable_weapons(entity, map).is_empty()
+    }
+
     fn is_combat_ready(&self, entity: &Entity) -> bool {
         match entity.get_primary_weapon() {
             Some(weapon) => match weapon.kind {
@@ -1319,6 +1393,34 @@ fn own_best_range(entity: &Entity) -> u32 {
         })
         .max()
         .unwrap_or(1)
+}
+
+/// Whether the right arm — the gun arm — is out of action. Matched by part
+/// name; the body model has no part ids.
+fn right_arm_disabled(entity: &Entity) -> bool {
+    entity.body.parts.iter().any(|p| p.name == "R. arm" && p.damage > p.max_damage)
+}
+
+/// The nearest loaded firearm lying on the ground within WEAPON_SEARCH_RADIUS.
+/// Only runs for a disarmed actor with nothing left to equip.
+fn nearest_ground_weapon(entity: &Entity, map: &Map) -> Option<Point> {
+    let from = entity.position;
+    let mut best: Option<(Point, i32)> = None;
+    for dy in -WEAPON_SEARCH_RADIUS..=WEAPON_SEARCH_RADIUS {
+        for dx in -WEAPON_SEARCH_RADIUS..=WEAPON_SEARCH_RADIUS {
+            let p = Point { x: from.x + dx, y: from.y + dy };
+            if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 {
+                continue;
+            }
+            match map.items[map.xy_idx(p.x, p.y)].as_ref().map(|i| &i.kind) {
+                Some(ItemKind::Firearm { ammo, .. }) if *ammo >= 1 => {},
+                _ => continue,
+            }
+            let d = dx * dx + dy * dy;
+            if best.map_or(true, |(_, bd)| d < bd) { best = Some((p, d)); }
+        }
+    }
+    best.map(|(p, _)| p)
 }
 
 /// Combat-active allies within `range` of us, excluding ourselves.

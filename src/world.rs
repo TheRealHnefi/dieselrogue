@@ -761,6 +761,11 @@ impl World {
                 Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage, source} => {
                     if source.is_some() && *source == self.player_id {
                         self.entities[*id].hurt_by_player = true;
+                        // Pain is a stimulus: the AI reacts next turn even if it
+                        // never saw the shooter (see ActorAI::note_pain).
+                        if let AI::Actor(actor) = &mut self.entities[*id].ai {
+                            actor.note_hurt();
+                        }
                     }
                     let elec_penetrates = self.entities[*id].body.parts[*part_index].armor.electrical_penetrates(*damage);
                     self.handle_damage(*id, *part_index, *damage, &mut deathlist, log);
