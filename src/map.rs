@@ -364,27 +364,65 @@ impl Map {
     /// registration; a loop that fails is dropped, not shipped.
     fn create_patrol_routes(&mut self, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
         const MIN_REGION_TILES: usize = 1024;
-
-        // rng reserved for future jitter; deterministic layout for now.
-        let _ = rng;
+        /// Obstacle-ring waypoints drift up to this far from the building, so
+        /// patrols don't trace its outline tile by tile.
+        const RING_JITTER: i32 = 3;
 
         for (ri, region) in spawn_map.regions.iter().enumerate() {
             if region.tiles.len() < MIN_REGION_TILES { continue; }
 
-            let mut rings = vec![self.region_border_ring(ri, spawn_map, region)];
-            rings.extend(self.obstacle_rings(ri, spawn_map, region));
-            rings.sort_by_key(|r| std::cmp::Reverse(r.len()));
+            // (ring, hugs_obstacle): border loops follow walls on purpose;
+            // only rings around buildings get pushed outward.
+            let mut rings = vec![(self.region_border_ring(ri, spawn_map, region), false)];
+            rings.extend(self.obstacle_rings(ri, spawn_map, region).into_iter().map(|r| (r, true)));
+            rings.sort_by_key(|(r, _)| std::cmp::Reverse(r.len()));
 
-            for ring in rings.into_iter().take(MAX_ROUTES_PER_REGION) {
-                let route = self.thin_ring(&ring);
-                if route.len() >= MIN_RING_WAYPOINTS && self.ring_walkable(&route) {
-                    self.register_patrol_route(route);
+            let in_region = |p: Point| {
+                p.x >= 0 && p.y >= 0 && p.x < self.width as i32 && p.y < self.height as i32
+                    && spawn_map.tile_region[self.pos_idx(p)] == Some(ri)
+            };
+            let mut routes: Vec<Vec<Point>> = Vec::new();
+            for (ring, hugs_obstacle) in rings.into_iter().take(MAX_ROUTES_PER_REGION) {
+                let mut route = self.thin_ring(&ring);
+                if hugs_obstacle {
+                    for wp in route.iter_mut() {
+                        *wp = self.push_from_obstacle(*wp, rng.range(0, RING_JITTER + 1), &in_region);
+                    }
+                    route.dedup();
                 }
+                if route.len() >= MIN_RING_WAYPOINTS && self.ring_walkable(&route) {
+                    routes.push(route);
+                }
+            }
+            for route in routes {
+                self.register_patrol_route(route);
             }
         }
 
         #[cfg(debug_assertions)]
         tracing::debug!("Created {} patrol routes", self.patrol_routes.len());
+    }
+
+    /// Nudge a waypoint up to `dist` tiles along the outward normal of the
+    /// obstacle it hugs, stopping at anything that is not open region ground.
+    fn push_from_obstacle(&self, p: Point, dist: i32, in_region: &impl Fn(Point) -> bool) -> Point {
+        // Outward normal: away from the surrounding impassable tiles.
+        let (mut nx, mut ny) = (0i32, 0i32);
+        for (dx, dy) in MOORE {
+            if !self.terrain_passable(p.x + dx, p.y + dy) {
+                nx -= dx;
+                ny -= dy;
+            }
+        }
+        let (sx, sy) = (nx.signum(), ny.signum());
+        let mut cur = p;
+        for _ in 0..dist {
+            if sx == 0 && sy == 0 { break; }
+            let next = Point { x: cur.x + sx, y: cur.y + sy };
+            if !in_region(next) || !self.open_ground(next) { break; }
+            cur = next;
+        }
+        cur
     }
 
     /// The ordered ring of region tiles along the region's border — the inside
