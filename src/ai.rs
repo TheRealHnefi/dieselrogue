@@ -1312,12 +1312,13 @@ impl ActorAI {
 
     /// How to get battle-worthy (doc/ai.md "Equip or reload weapon"): reload or
     /// equip from the inventory; failing that, fetch a weapon lying nearby — or
-    /// flee the threat when the gun arm is gone or there is nothing to fetch.
+    /// flee the threat when no arm still works or there is nothing to fetch.
     fn get_ready_decision(&self, entity: &Entity, map: &Map, threat: Point) -> Decision {
         if self.can_rearm(entity, map) {
             return Decision::GetReadyForCombat;
         }
-        if right_arm_disabled(entity) || !entity.has_ability(Ability::PickUp) {
+        // PickUp lives on both arms, so this only fails with neither arm working.
+        if !entity.has_ability(Ability::PickUp) {
             return Decision::Flee { threat };
         }
         match nearest_ground_weapon(entity, map) {
@@ -1393,12 +1394,6 @@ fn own_best_range(entity: &Entity) -> u32 {
         })
         .max()
         .unwrap_or(1)
-}
-
-/// Whether the right arm — the gun arm — is out of action. Matched by part
-/// name; the body model has no part ids.
-fn right_arm_disabled(entity: &Entity) -> bool {
-    entity.body.parts.iter().any(|p| p.name == "R. arm" && p.damage > p.max_damage)
 }
 
 /// The nearest loaded firearm lying on the ground within WEAPON_SEARCH_RADIUS.

@@ -331,8 +331,8 @@ Weapon in hand:
     Idle!
 Weapon in inventory:
     Equip weapon!
-Right arm disabled (or can't pick things up at all):
-    Flee(threat)! (can't fight — don't die fetching a gun we can't use)
+No working arm (can't pick anything up):
+    Flee(threat)! (can't fight — don't die fetching a gun we can't lift)
 Loaded weapon lying within search radius:
     Standing on it:
         Pick it up!

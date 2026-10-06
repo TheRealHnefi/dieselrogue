@@ -792,7 +792,7 @@ pub fn level_up_input(state: &mut State, _context: &mut Rltk) -> RunState {
         },
         VirtualKeyCode::Return | VirtualKeyCode::Space => {
             let ability = state.level_up_options[state.level_up_selected].clone();
-            add_levelup_ability(&mut state.world, ability);
+            add_levelup_ability(state, ability);
             RunState::DeclareIntent
         },
         // No Esc: dismissing would forfeit the level and skip the enemies' intent declaration.
@@ -923,11 +923,19 @@ fn confirm_entity_target(state: &mut State) -> RunState {
     RunState::Resolve(ExecutionPhase::Idle)
 }
 
-fn add_levelup_ability(world: &mut World, ability: Ability) {
-    if let Ok(player) = world.get_player_mut() {
-        let part_idx = ability.default_body_part();
-        player.body.parts[part_idx].abilities.push(ability);
-        player.body.update_abilities();
+/// Store the picked ability on its body part. Picking onto a disabled part is
+/// allowed — the ability lies dormant (not in the active set, so not in the
+/// panel) and awakens via `update_abilities` once the part heals.
+fn add_levelup_ability(state: &mut State, ability: Ability) {
+    let Ok(player) = state.world.get_player_mut() else { return };
+    let part_idx = ability.default_body_part();
+    let part = &mut player.body.parts[part_idx];
+    let dormant = part.damage > part.max_damage;
+    let part_name = part.name.clone();
+    part.abilities.push(ability.clone());
+    player.body.update_abilities();
+    if dormant {
+        state.log(format!("{} will awaken once your {} recovers.", ability.to_string(), part_name));
     }
 }
 
