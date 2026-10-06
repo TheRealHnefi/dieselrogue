@@ -210,6 +210,9 @@ pub enum Effect {
     ClearAim    { entity_id: usize },
     /// Move entity to pos (updates pawns + clears aiming).
     Move        { entity_id: usize, pos: Point },
+    /// Move entity to pos once this batch's deaths have resolved, if the space
+    /// is clear by then — a run-over completing into a real move.
+    MoveIfClear { entity_id: usize, pos: Point },
     /// Change entity facing and refresh pawns (clears aiming).
     SetFacing   { entity_id: usize, direction: Direction },
     /// Decrement ammo in the weapon held in `slot` by `shots`.

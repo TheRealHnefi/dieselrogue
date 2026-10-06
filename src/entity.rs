@@ -228,6 +228,24 @@ impl Entity {
         return true;
     }
 
+    /// Like [`Entity::check_fit`], but ignoring pawns: does the terrain alone
+    /// admit the entity at `pos`? True while only other entities block the way.
+    pub fn fits_terrain(&self, pos: Point, map: &Map) -> bool {
+        for x in 0..self.size_x {
+            for y in 0..self.size_y {
+                let (tx, ty) = (pos.x + x as i32, pos.y + y as i32);
+                if tx < 0 || ty < 0 || tx >= map.width as i32 || ty >= map.height as i32 {
+                    return false;
+                }
+                match map.tiles[map.xy_idx(tx, ty)] {
+                    TileType::Wall | TileType::Fence | TileType::Window => return false,
+                    _ => {}
+                }
+            }
+        }
+        true
+    }
+
     /// Writes a [`Pawn`] snapshot of this entity into every map tile it occupies.
     /// Must be called after spawning or after [`Entity::clear_pawns`] + a position change.
     pub fn create_pawns(&self, map: &mut Map) {

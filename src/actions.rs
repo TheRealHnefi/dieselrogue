@@ -83,6 +83,43 @@ pub fn move_action(entity: &Entity, map: &Map, _entities: &[Entity]) -> Vec<Effe
     effects
 }
 
+/// Run over: crush everything standing where the vehicle is about to move, then
+/// take the ground if nothing solid remains (Effect::MoveIfClear). Each victim
+/// is hit on every body part; the piercing share ignores armor (unblockable).
+pub fn run_over_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
+    let IntentData::Target(pos) = entity.intent.data else {
+        unreachable!("run_over_action called with non-target intent")
+    };
+    let crush = Damage::new(10, 0, 0, 5);
+
+    let mut effects = vec![
+        Effect::Sound(SoundEvent { kind: SoundKind::Engine, pos, volume: 20, from_player: entity.kind == EntityKind::Player }),
+    ];
+    // Everyone on the ground the vehicle is about to sweep (its own tiles excluded).
+    let mut victims: Vec<usize> = vec![];
+    for dx in 0..entity.size_x as i32 {
+        for dy in 0..entity.size_y as i32 {
+            let t = Point { x: pos.x + dx, y: pos.y + dy };
+            if t.x < 0 || t.y < 0 || t.x >= map.width as i32 || t.y >= map.height as i32 {
+                continue;
+            }
+            if let Some(pawn) = &map.pawns[map.pos_idx(t)] {
+                if pawn.entity_id != entity.index && !victims.contains(&pawn.entity_id) {
+                    victims.push(pawn.entity_id);
+                }
+            }
+        }
+    }
+    for victim in victims {
+        effects.push(log_vs(entity, victim, format!("{} ran over {}", entity.name, entities[victim].name)));
+        for part in 0..entities[victim].body.parts.len() {
+            effects.push(Effect::Damage { entity_id: victim, bodypart_index: part, raw_damage: crush, source: Some(entity.index) });
+        }
+    }
+    effects.push(Effect::MoveIfClear { entity_id: entity.index, pos });
+    effects
+}
+
 pub fn turn_action(entity: &Entity, _map: &Map, _entities: &[Entity]) -> Vec<Effect> {
     let IntentData::Direction(direction) = entity.intent.data else {
         unreachable!("turn_action called with non-direction intent")

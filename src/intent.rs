@@ -287,9 +287,17 @@ pub fn resolve_step(entity: &Entity, direction: Direction, map: &Map, entities: 
         }
     } else if entity.check_fit(target, map) {
         Ok(Some(move_intent(target)))
+    } else if entity.fits_terrain(target, map) {
+        // Only pawns block the vehicle: crush them, and roll on if that clears the way.
+        Ok(Some(run_over_intent(target)))
     } else {
         Ok(None)
     }
+}
+
+/// A vehicle crushing whatever stands where it is about to move.
+pub fn run_over_intent(target: Point) -> Intent {
+    Intent { phase: ExecutionPhase::Movement, data: IntentData::Target(target), action: actions::run_over_action }
 }
 
 /// Turns toward `direction`. Vehicles turn only 45° per turn, so they take one

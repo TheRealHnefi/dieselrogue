@@ -756,6 +756,7 @@ impl World {
     fn resolve_effects(&mut self, effects: &Vec<Effect>, log: &mut GameLog) -> Vec<Animation> {
         let mut animations = vec!();
         let mut deathlist: Vec<usize> = vec!();
+        let mut pending_moves: Vec<(usize, Point)> = vec!();
         for effect in effects.iter() {
             match effect {
                 Effect::Damage{entity_id: id, bodypart_index: part_index, raw_damage: damage, source} => {
@@ -825,6 +826,8 @@ impl World {
                     self.entities[*entity_id].spoil_aim();
                     self.entities[*entity_id].clear_scanning();
                 },
+                Effect::MoveIfClear { entity_id, pos } =>
+                    pending_moves.push((*entity_id, *pos)),
                 Effect::SetFacing { entity_id, direction } => {
                     self.entities[*entity_id].body.facing = *direction;
                     let pos = self.entities[*entity_id].position;
@@ -1023,7 +1026,7 @@ impl World {
                 },
             }
         }
-        self.post_resolve(deathlist);
+        self.post_resolve(deathlist, pending_moves);
         animations
     }
 
@@ -1378,7 +1381,7 @@ impl World {
         }
     }
 
-    fn post_resolve(&mut self, deathlist: Vec<usize>) {
+    fn post_resolve(&mut self, deathlist: Vec<usize>, pending_moves: Vec<(usize, Point)>) {
         struct DeathInfo {
             sprite: Sprite,
             position: Point,
@@ -1416,6 +1419,17 @@ impl World {
                 if !deathlist.contains(&pilot_id) {
                     self.eject_driver(pilot_id, vehicle_id);
                 }
+            }
+        }
+
+        // Run-over moves execute: the casualties' pawns are gone, so the vehicle
+        // takes the ground it cleared — unless someone solid still stands there.
+        // (Entity indices are still pre-remap here, matching the effect's ids.)
+        for (id, pos) in pending_moves {
+            if !deathlist.contains(&id) && self.entities[id].check_fit(pos, &self.map) {
+                self.entities[id].set_position(pos, &mut self.map);
+                self.entities[id].spoil_aim();
+                self.entities[id].clear_scanning();
             }
         }
 
@@ -1753,7 +1767,7 @@ mod tests {
         let deathlist: Vec<usize> = vec![1,3,4];
 
         // execute the doomed ones
-        world.post_resolve(deathlist.clone());
+        world.post_resolve(deathlist.clone(), vec![]);
 
         // check that number of survivors is correct
         assert!(world.entities.len() == number_of_entities - deathlist.len());
@@ -1800,7 +1814,7 @@ mod tests {
         world.entities[2].driving = DrivingState::Driving(3);
 
         // Lower indices die, so 2 shifts down to 1; 3 dies outright.
-        world.post_resolve(vec![1, 3]);
+        world.post_resolve(vec![1, 3], vec![]);
 
         let target = aim_target(&world, 0).expect("aim should survive compaction");
         assert_eq!(world.entities[target].name, "2");
@@ -1811,7 +1825,7 @@ mod tests {
         assert!(world.entities[1].driving == DrivingState::None, "link to a dead vehicle should be cut");
 
         // Once the target itself dies, aim is cleared and the hunter falls back to searching.
-        world.post_resolve(vec![1]);
+        world.post_resolve(vec![1], vec![]);
         assert!(aim_target(&world, 0).is_none());
         assert!(matches!(alert_of(&world, 0), AlertLevel::Alert { .. }));
     }
@@ -1833,7 +1847,7 @@ mod tests {
         world.entities[1].body.inventory.push(grenade);
         world.sync_active_item(99, ItemLocation::InInventory(1));
 
-        world.post_resolve(vec![0, 1]);
+        world.post_resolve(vec![0, 1], vec![]);
 
         let floor_item = world.map.items[world.map.pos_idx(victim_pos)].as_ref().unwrap();
         assert_eq!(floor_item.id, floor_item_id, "corpse must not overwrite an item");
