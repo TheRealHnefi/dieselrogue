@@ -772,9 +772,15 @@ impl ActorAI {
         }
     }
 
-    /// Combat from a tank: shoot on sight, else swing the turret toward the last
-    /// sighting, else drive there. Falling back to Alert happens in `decay_alertness`.
+    /// Combat from a tank: crush an enemy within tread reach, shoot on sight,
+    /// else swing the turret toward the last sighting, else drive there.
+    /// Falling back to Alert happens in `decay_alertness`.
     fn tank_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], target_id: usize, last_seen: Point) -> Decision {
+        // Crushing beats shooting: an enemy one move away is run over, friendlies
+        // caught in the same sweep notwithstanding. Needs no ammo either.
+        if ram_available(entity, map, entities) {
+            return Decision::GoTo { dest: last_seen, tolerance: 0 };
+        }
         if self.is_combat_ready(entity) && self.can_see_target(entity, entities, target_id) {
             return Decision::Engage { target_id, last_seen };
         }
@@ -885,7 +891,7 @@ impl ActorAI {
             return None;
         }
         if entity.has_ability(Ability::VehicleMove) {
-            let dir = vehicle_step(entity, destination, map)?;
+            let dir = vehicle_step(entity, destination, map, entities)?;
             return resolve_step(entity, dir, map, entities).ok().flatten();
         }
         if !entity.has_ability(Ability::HumanMove) {
@@ -1504,17 +1510,40 @@ fn footprint_ring(entity: &Entity) -> impl Iterator<Item = Point> + '_ {
         .map(move |(dx, dy)| Point { x: entity.position.x + dx, y: entity.position.y + dy })
 }
 
+/// Whether moving the vehicle's top-left corner to `pos` would sweep over the
+/// player (on foot or in their own vehicle).
+fn sweeps_player(entity: &Entity, pos: Point, map: &Map, entities: &[Entity]) -> bool {
+    (0..entity.size_x as i32).any(|dx| (0..entity.size_y as i32).any(|dy| {
+        let t = Point { x: pos.x + dx, y: pos.y + dy };
+        t.x >= 0 && t.y >= 0 && t.x < map.width as i32 && t.y < map.height as i32
+            && map.pawns[map.pos_idx(t)].as_ref().is_some_and(|p|
+                p.entity_id != entity.index && entities[p.entity_id].kind == EntityKind::Player)
+    }))
+}
+
+/// Whether any single move would crush the player.
+fn ram_available(entity: &Entity, map: &Map, entities: &[Entity]) -> bool {
+    Direction::ALL.iter().any(|dir| {
+        let (dx, dy) = dir.delta_pos();
+        let pos = Point { x: entity.position.x + dx, y: entity.position.y + dy };
+        entity.fits_terrain(pos, map) && sweeps_player(entity, pos, map, entities)
+    })
+}
+
 /// Greedy step for a multi-tile vehicle: the direction whose move fits and brings its
 /// center strictly closer to `dest`. The tile pathfinders assume 1×1 walkers (and see
 /// the vehicle's own body as blocking), so vehicles don't use them; a vehicle with no
-/// improving move waits.
-fn vehicle_step(entity: &Entity, dest: Point, map: &Map) -> Option<Direction> {
+/// improving move waits. A move blocked only by pawns counts as fitting when the
+/// player is among them — the tank drives on and crushes the sweep (resolve_step
+/// turns it into a run-over); blocked by friendlies alone, it still waits.
+fn vehicle_step(entity: &Entity, dest: Point, map: &Map, entities: &[Entity]) -> Option<Direction> {
     let center_offset = Point { x: entity.center().x - entity.position.x, y: entity.center().y - entity.position.y };
     let mut best = (sq_dist(entity.center(), dest), None);
     for dir in Direction::ALL {
         let (dx, dy) = dir.delta_pos();
         let pos = Point { x: entity.position.x + dx, y: entity.position.y + dy };
-        if !entity.check_fit(pos, map) {
+        if !entity.check_fit(pos, map)
+            && !(entity.fits_terrain(pos, map) && sweeps_player(entity, pos, map, entities)) {
             continue;
         }
         let d = sq_dist(Point { x: pos.x + center_offset.x, y: pos.y + center_offset.y }, dest);

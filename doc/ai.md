@@ -155,6 +155,8 @@ Alert:
     Search area(last known position)!
 
 Combat:
+    A single move would run the enemy over:
+        GoTo(enemy)! (crush them — friendlies caught in the sweep are crushed too; needs no ammo)
     Can see enemy:
         Attack(enemy)!
     Can turn to see last known enemy position:
@@ -392,7 +394,9 @@ GoTo(tank)!
 ### While driving: Rotate and GoTo
 A tank turns only 45° per turn, so Rotate(direction) turns one step toward direction
 and GoTo turns before each move just like on foot. A tank cannot open doors or squeeze
-through narrow gaps; if the path is blocked it waits (Idle!) rather than bumping.
+through narrow gaps. When the path is blocked by terrain or by friendlies alone it
+waits (Idle!) rather than bumping — but when the enemy stands in the swept tiles, it
+drives on and runs over everything standing there (friendlies included).
 
 ### Open door
 Pathfinding leads through door:
