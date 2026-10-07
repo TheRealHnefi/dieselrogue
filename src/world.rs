@@ -988,7 +988,7 @@ impl World {
                                     if self.entities[*entity_id].is_visible(&self.map) {
                                         log.log_deed(Some(*entity_id) == self.player_id, format!("{} unequipped {}", self.entities[*entity_id].name, d.name));
                                     }
-                                    self.entities[*entity_id].body.inventory.push(d);
+                                    self.stow_or_drop(*entity_id, d, log);
                                 }
                             },
                             Err(_) => self.entities[*entity_id].body.inventory.push(item),
@@ -1019,7 +1019,7 @@ impl World {
                             if self.entities[*entity_id].is_visible(&self.map) {
                                 log.log_deed(Some(*entity_id) == self.player_id, format!("{} unequipped {}", self.entities[*entity_id].name, item.name));
                             }
-                            self.entities[*entity_id].body.inventory.push(item);
+                            self.stow_or_drop(*entity_id, item, log);
                             self.entities[*entity_id].body.update_armor();
                         }
                     }
@@ -1579,6 +1579,20 @@ impl World {
         }
         let idx = self.map.pos_idx(drop_pos);
         self.map.items[idx] = Some(item);
+    }
+
+    /// Puts an unequipped item in the entity's inventory, or on the ground when
+    /// the inventory is full.
+    fn stow_or_drop(&mut self, entity_id: usize, item: Item, log: &mut GameLog) {
+        if self.entities[entity_id].body.inventory.len() < crate::components::INVENTORY_MAX {
+            self.entities[entity_id].body.inventory.push(item);
+        } else {
+            if self.entities[entity_id].is_visible(&self.map) {
+                log.log_deed(Some(entity_id) == self.player_id, format!("{} dropped {} (inventory full)", self.entities[entity_id].name, item.name));
+            }
+            let pos = self.entities[entity_id].position;
+            self.drop_existing_item(pos, item);
+        }
     }
 
     /// Apply death effects

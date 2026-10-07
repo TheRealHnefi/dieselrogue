@@ -269,21 +269,22 @@ impl Body {
     }
 
     pub fn unequip(&mut self, slot: SlotType) -> Option<Item> {
-        for self_slot in &mut self.item_slots {
-            if self_slot.slot_type == slot {
-                let removed_item = self_slot.item.take();
-                match &removed_item {
-                    Some(item) => {
-                        for proxy_slot in &item.equip_slots {
-                            self.clear_slot(*proxy_slot);
-                        }
-                    },
-                    None => ()
-                }
-                return removed_item;
-            }
+        let removed_item = self.item_slots.iter_mut()
+            .find(|s| s.slot_type == slot)
+            .and_then(|s| s.item.take())?;
+        // A proxy stands in for the real item held in another slot: destroy the
+        // proxy and return the real item so it is never lost.
+        let item = if removed_item.proxy {
+            self.item_slots.iter_mut()
+                .find(|s| s.item.as_ref().map_or(false, |it| it.id == removed_item.id && !it.proxy))
+                .and_then(|s| s.item.take())?
+        } else {
+            removed_item
+        };
+        for proxy_slot in &item.equip_slots {
+            self.clear_slot(*proxy_slot);
         }
-        None
+        Some(item)
     }
 
     pub fn get_item(&self, slot: SlotType) -> Option<&Item> {
