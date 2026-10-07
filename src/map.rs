@@ -532,14 +532,6 @@ impl Map {
         })
     }
 
-    /// Bounds-checked tile lookup; `None` when off-map.
-    fn tile_at(&self, x: i32, y: i32) -> Option<TileType> {
-        if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
-            return None;
-        }
-        Some(self.tiles[self.xy_idx(x, y)])
-    }
-
     /// Nearest walkable-terrain tile to `p` via an expanding ring search. Falls
     /// back to the clamped point if none is found.
     pub fn snap_to_walkable(&self, p: Point) -> Point {

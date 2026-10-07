@@ -140,6 +140,19 @@ fn install_crash_log() {
     }));
 }
 
+// Fonts are baked into the executable so the game runs without the PNGs on disk.
+rltk::embedded_resource!(FONT_8X8,   "../resources/CGA8x8thick.png");
+rltk::embedded_resource!(FONT_10X10, "../resources/rexpaint_cp437_10x10.png");
+rltk::embedded_resource!(FONT_12X12, "../resources/Alloy_curses_12x12.png");
+
+/// Embedded-resource lookups normalize to forward slashes, so the link keys must
+/// use forward slashes regardless of platform.
+fn link_embedded_fonts() {
+    rltk::link_resource!(FONT_8X8,   "resources/CGA8x8thick.png");
+    rltk::link_resource!(FONT_10X10, "resources/rexpaint_cp437_10x10.png");
+    rltk::link_resource!(FONT_12X12, "resources/Alloy_curses_12x12.png");
+}
+
 /// Resources are loaded relative to the working directory; when launched from
 /// elsewhere (e.g. a shortcut), fall back to the executable's own folder.
 fn use_exe_dir_if_needed() {
@@ -155,6 +168,7 @@ fn use_exe_dir_if_needed() {
 
 fn main() -> rltk::BError {
     use_exe_dir_if_needed();
+    link_embedded_fonts();
     install_crash_log();
 
     #[cfg(debug_assertions)]
