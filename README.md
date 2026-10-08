@@ -13,9 +13,7 @@ The game is implemented in Rust, using RLTK.
 
 ## Current state
 
-Most of the systems are in place, but the game itself is not really playable. Maps, AI and items
-are placeholders and there is much QoL left to do. However, performance can be tested with a few
-thousand active agents. Note that parallel agent execution can be activated with F10.
+Most of the systems are in place and most bugs are fixed. Some balancing and niceties remain, but the game is playable from start to finish.
 
 ## Screenshots
 
