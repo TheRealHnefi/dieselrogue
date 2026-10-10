@@ -661,7 +661,7 @@ impl World {
                 let dx = entity.position.x - pos.x;
                 let dy = entity.position.y - pos.y;
                 if dx * dx + dy * dy <= r * r && entity.can_see(pos) {
-                    effects.push(Effect::ApplyStatus { target_id: entity.index, status: StatusEffect::Blind(5) });
+                    effects.push(Effect::ApplyStatus { target_id: entity.index, status: StatusEffect::Blind(7) });
                 }
             }
             effects.push(Effect::Animation(flashbang_animation(pos, radius)));
@@ -771,7 +771,7 @@ impl World {
                     let elec_penetrates = self.entities[*id].body.parts[*part_index].armor.electrical_penetrates(*damage);
                     self.handle_damage(*id, *part_index, *damage, &mut deathlist, log);
                     if damage.fire > 0 {
-                        self.entities[*id].apply_status_effect(&StatusEffect::Burning(5));
+                        self.entities[*id].apply_status_effect(&StatusEffect::Burning(7));
                     }
                     if elec_penetrates {
                         self.entities[*id].apply_status_effect(&StatusEffect::Shocked(2));

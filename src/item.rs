@@ -662,7 +662,7 @@ impl Item {
         EntityAction { id: ActionId::Recon,         name: "Recon".to_string(),            targeting: Targeting::Positional { max_range: None }, phase: ExecutionPhase::Instant, precondition: precondition_ok, action: actions::recon_action }
     }
     fn throw_action() -> EntityAction {
-        EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(5) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
+        EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(7) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
     }
 
     fn rarity_to_color(rarity: u8) -> rltk::RGB {
