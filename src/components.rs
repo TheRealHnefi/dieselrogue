@@ -34,6 +34,7 @@ pub const COLOR_NAMES: [&str; 16] = [
 pub enum PaperDoll {
     Player,
     MaleSilhouette,
+    Soldier,
     Tank,
 }
 

@@ -2,6 +2,7 @@ use rltk::rex::XpFile;
 use crate::PaperDoll;
 
 rltk::embedded_resource!(MALE_SILHOUETTE, "../resources/male_silhouette.xp");
+rltk::embedded_resource!(SOLDIER, "../resources/soldier.xp");
 rltk::embedded_resource!(PLAYER_DOLL, "../resources/player.xp");
 rltk::embedded_resource!(TANK_DOLL, "../resources/tank.xp");
 rltk::embedded_resource!(TITLE_SCREEN, "../resources/title.xp");
@@ -9,6 +10,7 @@ rltk::embedded_resource!(TITLE_SCREEN, "../resources/title.xp");
 pub struct RexAssets {
     pub title_screen: XpFile,
     pub male_silhouette: XpFile,
+    pub soldier: XpFile,
     pub player_doll: XpFile,
     pub tank_doll: XpFile,
 }
@@ -16,6 +18,7 @@ pub struct RexAssets {
 impl RexAssets {
     pub fn new() -> RexAssets {
         rltk::link_resource!(MALE_SILHOUETTE, "male_silhouette.xp");
+        rltk::link_resource!(SOLDIER, "soldier.xp");
         rltk::link_resource!(PLAYER_DOLL, "player.xp");
         rltk::link_resource!(TANK_DOLL, "tank.xp");
         rltk::link_resource!(TITLE_SCREEN, "title.xp");
@@ -23,6 +26,7 @@ impl RexAssets {
         RexAssets {
             title_screen:    XpFile::from_resource("title.xp").unwrap(),
             male_silhouette: XpFile::from_resource("male_silhouette.xp").unwrap(),
+            soldier:         XpFile::from_resource("soldier.xp").unwrap(),
             player_doll:     XpFile::from_resource("player.xp").unwrap(),
             tank_doll:       XpFile::from_resource("tank.xp").unwrap(),
         }
@@ -32,6 +36,7 @@ impl RexAssets {
         match doll {
             PaperDoll::Player         => &self.player_doll,
             PaperDoll::MaleSilhouette => &self.male_silhouette,
+            PaperDoll::Soldier        => &self.soldier,
             PaperDoll::Tank           => &self.tank_doll,
         }
     }
