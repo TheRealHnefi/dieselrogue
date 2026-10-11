@@ -223,7 +223,6 @@ impl World {
 
         let mut player = Entity::human(0, nearest_pos, facing, name);
         player.kind = EntityKind::Player;
-        player.paper_doll = Some(PaperDoll::Player);
         player.body.update_abilities();
         player.color = Some(15); // Gold
 
@@ -339,7 +338,6 @@ impl World {
         let idx = self.entities.len();
         let mut entity = Entity::human(idx, actual_pos, facing, name);
         entity.color = Some(color);
-        entity.paper_doll = Some(PaperDoll::Soldier);
         entity.create_pawns(&mut self.map);
         self.entities.push(entity);
         Ok(idx)
@@ -374,7 +372,6 @@ impl World {
         self.next_item_id += 1;
         let _ = tank.body.equip(cannon);
 
-        tank.paper_doll = Some(PaperDoll::Tank);
         tank.create_pawns(&mut self.map);
         self.entities.push(tank);
 
@@ -1673,7 +1670,6 @@ mod tests {
         let actual_pos = world.map.nearest_free_pawn_position(pos)?;
         let mut entity = Entity::human(world.entities.len(), actual_pos, facing, name);
         entity.ai = ai;
-        entity.paper_doll = Some(PaperDoll::Soldier);
         entity.create_pawns(&mut world.map);
         world.entities.push(entity);
 

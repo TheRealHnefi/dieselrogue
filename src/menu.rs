@@ -6,7 +6,6 @@ use crate::state::*;
 use crate::World;
 use crate::SlotType;
 use crate::{FontSize, Settings, Bindings, RebindTarget, key_to_str};
-use crate::PaperDoll;
 
 /**
  * Menu overview:
@@ -24,7 +23,6 @@ pub trait Menu {
     fn no_selectable_exists(&self) -> bool;
     fn get_action(&self) -> MenuAction;
     fn draw(&self, context: &mut Rltk, show_cursor: bool);
-    fn paper_doll_kind(&self) -> Option<PaperDoll> { None }
     /// Returns (x, y, width, height) of the menu box, matching what draw() renders.
     fn bounds(&self) -> Option<(i32, i32, i32, i32)> { None }
 }
@@ -70,7 +68,6 @@ pub struct MenuPanel<T: MenuRow> {
     pub rows: Vec<T>,
     pub selected_row: usize,
     no_selectable_rows: bool,
-    pub paper_doll: Option<PaperDoll>,
 }
 
 pub struct SystemRow {
@@ -317,7 +314,6 @@ fn confirm_menu(yes_text: &str, on_yes: fn(&mut State) -> RunState) -> MenuPanel
         ],
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     }
 }
 
@@ -338,7 +334,6 @@ fn action_confirm_quit(state: &mut State) -> RunState {
         ],
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     }));
     RunState::AwaitingMenuInput
 }
@@ -369,7 +364,6 @@ pub fn main_menu() -> MenuPanel<SystemRow> {
         ],
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     }
 }
 
@@ -430,7 +424,6 @@ pub fn keybind_menu(bindings: &Bindings) -> MenuPanel<SystemRow> {
         ],
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     }
 }
 
@@ -461,7 +454,6 @@ pub fn settings_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Op
         ],
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     }
 }
 
@@ -488,7 +480,6 @@ pub fn inventory_action_menu(item: Item, state: &State) -> MenuPanel<ItemActionR
         rows: action_rows,
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     }
 }
 
@@ -527,7 +518,6 @@ pub fn equipment_action_menu(slot: SlotType, state: &State) -> MenuPanel<Equippe
         rows: action_rows,
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     }
 }
 
@@ -574,7 +564,6 @@ pub fn ability_menu(world: &World) -> MenuPanel<Box<dyn MenuRow>> {
         rows,
         selected_row: 0,
         no_selectable_rows,
-        paper_doll: None,
     }
 }
 
@@ -605,7 +594,6 @@ pub fn targeting_menu(world: &World, position: Point) -> Option<MenuPanel<Target
         rows: targeting_rows,
         selected_row: 0,
         no_selectable_rows: false,
-        paper_doll: None,
     })
 }
 
@@ -635,7 +623,6 @@ pub fn entity_equipment_view(entity: &Entity) -> MenuPanel<EntityViewRow> {
         rows,
         selected_row: 0,
         no_selectable_rows: true,
-        paper_doll: entity.paper_doll,
     }
 }
 
@@ -670,10 +657,6 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
 
     fn no_selectable_exists(&self) -> bool {
         self.no_selectable_rows
-    }
-
-    fn paper_doll_kind(&self) -> Option<PaperDoll> {
-        self.paper_doll
     }
 
     fn bounds(&self) -> Option<(i32, i32, i32, i32)> {

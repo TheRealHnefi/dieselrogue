@@ -56,7 +56,6 @@ pub struct Entity {
     pub viewshed: Viewshed,
     pub ai: AI,
     pub color: Option<usize>,
-    pub paper_doll: Option<PaperDoll>,
     /// Actions the entity can perform independent of items — choosable by both
     /// the player menu and the AI. Filtered by each action's precondition at
     /// query time via `get_available_actions`.
@@ -132,7 +131,6 @@ impl Entity {
             viewshed: Viewshed::new(20, FieldOfView::Fov180),
             ai: AI::None,
             color: None,
-            paper_doll: None,
             innate_actions: human_innate_actions(),
             xp_value: 1000,
             hurt_by_player: false,
@@ -154,7 +152,6 @@ impl Entity {
             viewshed: Viewshed::new(20, FieldOfView::Fov90),
             ai: AI::None,
             color: None,
-            paper_doll: None,
             innate_actions: vec![],
             xp_value: 1000,
             hurt_by_player: false,
@@ -189,7 +186,6 @@ impl Entity {
             viewshed: Viewshed::new(0, FieldOfView::Fov360),
             ai: AI::None,
             color: None,
-            paper_doll: None,
             innate_actions: vec![],
             xp_value: 0,
             hurt_by_player: false,
