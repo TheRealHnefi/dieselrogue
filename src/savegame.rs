@@ -86,7 +86,7 @@ fn load_from(path: &str) -> Result<SaveData, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rltk::Point;
+    use crate::Point;
     use crate::{ActionId, ActorAI, AlertLevel, AI, CombatTactic, Direction, Item, ItemKind, Profile};
 
     /// A scratch save path of its own per test, so tests never touch the real slot.

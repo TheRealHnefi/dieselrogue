@@ -1,4 +1,4 @@
-use rltk::Point;
+use crate::Point;
 use std::hash::{Hash, Hasher};
 use crate::{Animation, GameError, Item, Error};
 
@@ -134,33 +134,33 @@ impl Direction {
 
 #[derive (Copy, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Renderable {
-    pub glyph: rltk::FontCharType,
-    pub color: rltk::RGB,
-    pub background: rltk::RGB
+    pub glyph: crate::FontCharType,
+    pub color: crate::RGB,
+    pub background: crate::RGB
 }
 
 impl Renderable {
-    pub fn new_glyph(character: rltk::FontCharType) -> Self {
+    pub fn new_glyph(character: crate::FontCharType) -> Self {
         Self {
             glyph: character,
-            color: rltk::RGB::named(rltk::YELLOW),
-            background: rltk::RGB::named(rltk::BLACK)
+            color: crate::RGB::named(crate::YELLOW),
+            background: crate::RGB::named(crate::BLACK)
         }
     }
 
     pub fn new_char(character: char) -> Self {
         Self {
-            glyph: rltk::to_cp437(character),
-            color: rltk::RGB::named(rltk::YELLOW),
-            background: rltk::RGB::named(rltk::BLACK)
+            glyph: crate::to_cp437(character),
+            color: crate::RGB::named(crate::YELLOW),
+            background: crate::RGB::named(crate::BLACK)
         }
     }
 
-    pub fn new_colored_char(character: char, color: rltk::RGB) -> Self {
+    pub fn new_colored_char(character: char, color: crate::RGB) -> Self {
         Self {
-            glyph: rltk::to_cp437(character),
+            glyph: crate::to_cp437(character),
             color: color,
-            background: rltk::RGB::named(rltk::BLACK)
+            background: crate::RGB::named(crate::BLACK)
         }
     }
 }

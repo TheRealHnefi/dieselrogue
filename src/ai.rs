@@ -1,4 +1,4 @@
-use rltk::{Point, RandomNumberGenerator};
+use crate::{Point, RandomNumberGenerator};
 use crate::ActionSource::InventoryItem;
 use crate::Map;
 use crate::{navigate_cached, greedy_step};
@@ -107,7 +107,7 @@ impl Perception {
 fn notice_open_door(entity: &Entity, doors: &[Point]) -> Option<Perception> {
     let range = entity.viewshed.range as f32;
     doors.iter()
-        .find(|&&door| rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), door) <= range && entity.can_see(door))
+        .find(|&&door| crate::DistanceAlg::Pythagoras.distance2d(entity.center(), door) <= range && entity.can_see(door))
         .map(|&origin| Perception {
             confirmed_hostile: false,
             confirmed_origin: false,
@@ -409,7 +409,7 @@ impl ActorAI {
             if s.kind == SoundKind::Footstep && !s.from_player {
                 continue;
             }
-            let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
+            let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), s.pos);
             if dist > s.volume as f32 || entity.center() == s.pos {
                 continue;
             }
@@ -482,7 +482,7 @@ impl ActorAI {
             self.detection = self.detection.saturating_sub(1);
             return None;
         };
-        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), origin);
+        let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), origin);
         let mut gain = if dist <= DETECT_INSTANT_RADIUS {
             DETECT_THRESHOLD
         } else {
@@ -574,7 +574,7 @@ impl ActorAI {
                         && !entity.can_see(ls) && !self.can_turn_to_see(entity, map, ls),
                 // Patrol pursues hard: it breaks off (to shout + search) once the
                 // last-seen spot is reached, or confirmed empty in plain view.
-                _ => lost && (rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), ls) <= 1.5
+                _ => lost && (crate::DistanceAlg::Pythagoras.distance2d(entity.center(), ls) <= 1.5
                         || entity.can_see(ls)),
             };
             if give_up {
@@ -831,7 +831,7 @@ impl ActorAI {
             // Ranged: fire if aim is ready, else spend the turn acquiring it
             // (fire actions require an active aim status, same as the player menu).
             if let Some((slot, range, damage)) = find_weapon(entity) {
-                let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
+                let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), tc);
                 if dist <= range as f32 {
                     let available = entity.get_available_actions(map);
                     let fire = available.iter().find(|(a, s)| *s == Some(slot) && matches!(a.targeting, Targeting::UseExistingAim { .. }));
@@ -946,7 +946,7 @@ impl ActorAI {
     /// actors without a post.
     fn far_from_anchor(&self, pos: Point) -> bool {
         let leash = if matches!(self.profile, Profile::Pilot { .. }) { PILOT_LEASH } else { NEAR_ANCHOR_RADIUS };
-        self.anchor().map_or(false, |a| rltk::DistanceAlg::Pythagoras.distance2d(pos, a) > leash)
+        self.anchor().map_or(false, |a| crate::DistanceAlg::Pythagoras.distance2d(pos, a) > leash)
     }
 
     /// Reload the equipped weapon if that action is available (its precondition
@@ -991,7 +991,7 @@ impl ActorAI {
     fn throw_primed(&self, entity: &Entity, map: &Map, item_id: usize, radius: u32, target: Option<Point>) -> Decision {
         let (from, center) = (entity.position, entity.center());
         if let Some(t) = target {
-            let in_range = rltk::DistanceAlg::Pythagoras.distance2d(center, t) <= GRENADE_THROW_RANGE as f32;
+            let in_range = crate::DistanceAlg::Pythagoras.distance2d(center, t) <= GRENADE_THROW_RANGE as f32;
             if in_range && has_los(center, t, map) {
                 return Decision::ThrowGrenade { item_id, target: t };
             }
@@ -1014,8 +1014,8 @@ impl ActorAI {
                 let p = Point { x: from.x + dx, y: from.y + dy };
                 if p == from { continue; }
                 if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 { continue; }
-                if rltk::DistanceAlg::Pythagoras.distance2d(from, p) > GRENADE_THROW_RANGE as f32 { continue; }
-                if rltk::DistanceAlg::Pythagoras.distance2d(from, p) <= radius as f32 { continue; }
+                if crate::DistanceAlg::Pythagoras.distance2d(from, p) > GRENADE_THROW_RANGE as f32 { continue; }
+                if crate::DistanceAlg::Pythagoras.distance2d(from, p) <= radius as f32 { continue; }
                 if !has_los(from, p, map) { continue; }
                 let score = match toward {
                     Some(t) => -sq_dist(p, t), // nearest the enemy
@@ -1036,7 +1036,7 @@ impl ActorAI {
         // have a clear lob to it. The Always block throws it next turn.
         if let Some(item_id) = carries_grenade(entity) {
             let center = entity.center();
-            if rltk::DistanceAlg::Pythagoras.distance2d(center, last_seen) <= GRENADE_THROW_RANGE as f32
+            if crate::DistanceAlg::Pythagoras.distance2d(center, last_seen) <= GRENADE_THROW_RANGE as f32
                 && has_los(center, last_seen, map) {
                 return Decision::PrimeGrenade { item_id };
             }
@@ -1066,7 +1066,7 @@ impl ActorAI {
     fn plan_combat(&self, entity: &Entity, map: &Map, entities: &[Entity], allies: &[Point], target_id: usize, last_seen: Point) -> Decision {
         if let Some(item_id) = carries_grenade(entity) {
             let center = entity.center();
-            if rltk::DistanceAlg::Pythagoras.distance2d(center, last_seen) <= GRENADE_THROW_RANGE as f32
+            if crate::DistanceAlg::Pythagoras.distance2d(center, last_seen) <= GRENADE_THROW_RANGE as f32
                 && has_los(center, last_seen, map) {
                 return Decision::PrimeGrenade { item_id };
             }
@@ -1074,7 +1074,7 @@ impl ActorAI {
         if !self.is_combat_ready(entity) {
             return self.get_ready_decision(entity, map, last_seen);
         }
-        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
         // Exposed in the enemy's kill zone, a maneuvering plan takes the one-step
         // escape if it exists (update_plan switched the plan to Rush when it doesn't).
         if !matches!(self.plan.map(|p| p.kind), Some(PlanKind::Rush) | None) {
@@ -1127,7 +1127,7 @@ impl ActorAI {
     /// escaped when exposed, so only the unseen-enemy movement remains here.
     fn keep_range(&self, entity: &Entity, _entities: &[Entity], _target_id: usize, last_seen: Point) -> Decision {
         let enemy_range = self.plan.map_or(1, |p| p.enemy_range) as f32;
-        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
         if dist <= enemy_range + KITE_BUFFER {
             return Decision::Strafe { toward: away_point(entity.position, last_seen) };
         }
@@ -1143,12 +1143,12 @@ impl ActorAI {
     fn swarm(&self, entity: &Entity, map: &Map, entities: &[Entity], allies: &[Point], target_id: usize, last_seen: Point) -> Decision {
         let staged = allies.iter()
             .filter(|&&p| p != entity.center()
-                && rltk::DistanceAlg::Pythagoras.distance2d(p, last_seen) <= STANDOFF_DIST + 1.0)
+                && crate::DistanceAlg::Pythagoras.distance2d(p, last_seen) <= STANDOFF_DIST + 1.0)
             .count();
         if staged >= SWARM_ALLIES {
             return self.rush(entity, entities, target_id, last_seen);
         }
-        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
         if dist > STANDOFF_DIST {
             return Decision::GoTo { dest: last_seen, tolerance: 0 };
         }
@@ -1223,7 +1223,7 @@ impl ActorAI {
         // escape: maneuvering is suicide at these times-to-kill — fight instead.
         if let Some(plan) = &mut self.plan {
             if !matches!(plan.kind, PlanKind::Rush) {
-                let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+                let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
                 if dist <= enemy_range as f32
                     && has_los(entity.center(), last_seen, map)
                     && escape_strafe(entity, map, last_seen, enemy_range as f32).is_none() {
@@ -1245,7 +1245,7 @@ impl ActorAI {
     /// The first matching plan for the situation (doc/ai.md "Picking a plan").
     fn pick_plan(&self, entity: &Entity, map: &Map, last_seen: Point, enemy_range: u32, enemy_blast: bool, nearby: usize) -> CombatPlan {
         let snapshot = |kind| CombatPlan { kind, enemy_range, enemy_blast, allies: nearby.min(u8::MAX as usize) as u8 };
-        let dist = rltk::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
+        let dist = crate::DistanceAlg::Pythagoras.distance2d(entity.center(), last_seen);
         if own_best_range(entity) >= enemy_range + KITE_MARGIN && dist > enemy_range as f32 {
             return snapshot(PlanKind::KeepRange);
         }
@@ -1290,7 +1290,7 @@ impl ActorAI {
     /// facing is the only thing turning changes).
     fn can_turn_to_see(&self, entity: &Entity, map: &Map, target: Point) -> bool {
         let from = entity.center();
-        rltk::DistanceAlg::Pythagoras.distance2d(from, target) <= entity.viewshed.range as f32
+        crate::DistanceAlg::Pythagoras.distance2d(from, target) <= entity.viewshed.range as f32
             && has_los(from, target, map)
     }
 
@@ -1307,7 +1307,7 @@ impl ActorAI {
                 let p = Point { x: from.x + dx, y: from.y + dy };
                 if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 { continue; }
                 if map.blocked(p.x, p.y) { continue; }
-                if rltk::DistanceAlg::Pythagoras.distance2d(p, target) > range { continue; }
+                if crate::DistanceAlg::Pythagoras.distance2d(p, target) > range { continue; }
                 if !has_los(p, target, map) { continue; }
                 let d = dx * dx + dy * dy;
                 if best.map_or(true, |(_, bd)| d < bd) { best = Some((p, d)); }
@@ -1428,7 +1428,7 @@ fn nearest_ground_weapon(entity: &Entity, map: &Map) -> Option<Point> {
 fn count_allies(entity: &Entity, allies: &[Point], range: f32) -> usize {
     let c = entity.center();
     allies.iter()
-        .filter(|&&p| p != c && rltk::DistanceAlg::Pythagoras.distance2d(c, p) <= range)
+        .filter(|&&p| p != c && crate::DistanceAlg::Pythagoras.distance2d(c, p) <= range)
         .count()
 }
 
@@ -1448,7 +1448,7 @@ fn escape_strafe(entity: &Entity, map: &Map, enemy: Point, enemy_range: f32) -> 
         if !has_los(p, enemy, map) {
             return Some(p);
         }
-        let d = rltk::DistanceAlg::Pythagoras.distance2d(p, enemy);
+        let d = crate::DistanceAlg::Pythagoras.distance2d(p, enemy);
         if d > enemy_range && out_of_range.map_or(true, |(_, bd)| d > bd) {
             out_of_range = Some((p, d));
         }
@@ -1471,7 +1471,7 @@ fn flank_point(from: Point, enemy: Point, map: &Map) -> Point {
 /// vision cone stays put. None when no adjacent tile improves on standing still.
 fn strafe_step(entity: &Entity, map: &Map, toward: Point) -> Option<Intent> {
     let deltas: [(i32, i32); 8] = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)];
-    let mut best = (rltk::DistanceAlg::Pythagoras.distance2d(entity.position, toward), None);
+    let mut best = (crate::DistanceAlg::Pythagoras.distance2d(entity.position, toward), None);
     for (dx, dy) in deltas {
         let p = Point { x: entity.position.x + dx, y: entity.position.y + dy };
         if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 {
@@ -1480,7 +1480,7 @@ fn strafe_step(entity: &Entity, map: &Map, toward: Point) -> Option<Intent> {
         if map.blocked(p.x, p.y) {
             continue;
         }
-        let d = rltk::DistanceAlg::Pythagoras.distance2d(p, toward);
+        let d = crate::DistanceAlg::Pythagoras.distance2d(p, toward);
         if d < best.0 {
             best = (d, Some(p));
         }
@@ -1680,7 +1680,7 @@ fn prime_grenade_intent(entity: &Entity, item_id: usize) -> Option<Intent> {
 /// The nearest live grenade whose blast reaches `from` (within radius + margin).
 fn nearest_grenade(from: Point, grenades: &[(Point, u32)]) -> Option<Point> {
     grenades.iter()
-        .filter(|(pos, radius)| rltk::DistanceAlg::Pythagoras.distance2d(from, *pos)
+        .filter(|(pos, radius)| crate::DistanceAlg::Pythagoras.distance2d(from, *pos)
             <= *radius as f32 + GRENADE_FLEE_MARGIN)
         .min_by_key(|(pos, _)| sq_dist(*pos, from))
         .map(|(pos, _)| *pos)
@@ -1695,7 +1695,7 @@ fn throw_grenade_intent(entity: &Entity, item_id: usize, target: Point) -> Optio
 
 /// Clear line of sight between two tiles: no opaque tile strictly between them.
 fn has_los(from: Point, to: Point, map: &Map) -> bool {
-    let ray = rltk::line2d(rltk::LineAlg::Bresenham, from, to);
+    let ray = crate::line2d(crate::LineAlg::Bresenham, from, to);
     let n = ray.len();
     if n <= 2 { return true; }
     !ray[1..n - 1].iter().any(|p| map.is_opaque(map.pos_idx(*p)))

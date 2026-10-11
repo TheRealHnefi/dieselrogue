@@ -1,4 +1,4 @@
-use rltk::Point;
+use crate::Point;
 use crate::Entity;
 use crate::Item;
 use crate::Map;
@@ -387,7 +387,7 @@ pub fn fan_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
             if tile_dist < 0.5 || tile_dist > range as f32 { continue; }
             if (dir_x * tdx + dir_y * tdy) / tile_dist < HALF_ARC_COS { continue; }
             let tile_pos = Point::new(tx, ty);
-            let ray = rltk::line2d(rltk::LineAlg::Bresenham, src, tile_pos);
+            let ray = crate::line2d(crate::LineAlg::Bresenham, src, tile_pos);
             let n = ray.len();
             if ray[1..n.saturating_sub(1)].iter().any(|p| map.blocked(p.x, p.y)) { continue; }
             if let Some(pawn) = &map.pawns[map.pos_idx(tile_pos)] {

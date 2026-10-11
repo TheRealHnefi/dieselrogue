@@ -1,4 +1,4 @@
-use rltk::Point;
+use crate::Point;
 use crate::Item;
 use crate::Entity;
 use crate::Map;

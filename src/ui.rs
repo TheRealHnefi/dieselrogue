@@ -1,4 +1,4 @@
-use rltk::prelude::*;
+use crate::{Point, RGB, Context};
 use std::cmp::max;
 use crate::components::*;
 use crate::state::*;
@@ -11,7 +11,7 @@ use crate::RebindTarget;
 use crate::Item;
 use crate::LogKind;
 
-const LEVELUP_SELECT_COLOR: rltk::RGB = RGB { r: 0.9, g: 0.7, b: 0.0 };
+const LEVELUP_SELECT_COLOR: crate::RGB = RGB { r: 0.9, g: 0.7, b: 0.0 };
 const LEVELUP_LIST_X: i32 = 4;
 const LEVELUP_DESC_X: i32 = 28;
 const LEVELUP_DESC_INNER_WIDTH: usize = 54;
@@ -52,24 +52,24 @@ const INVENTORY_NAME_COLUMN_WIDTH: usize = 22;
 const ABILITIES_PANEL_WIDTH: usize = UI_WIDTH - NOISE_PANEL_WIDTH;
 const LABEL_OFFSET: usize = 2;
 
-const LINE_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
-const BG_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.0, b: 0.0};
-const LABEL_COLOR: rltk::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
-const INACTIVE_COLOR: rltk::RGB = RGB {r: 0.4, g: 0.4, b: 0.4};
-const PHYS_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
-const FIRE_COLOR: rltk::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
-const ELEC_COLOR: rltk::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
-const ENERGY_COLOR: rltk::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
-const HEALTH_COLOR: rltk::RGB = RGB {r: 0.85, g: 0.15, b: 0.15};
-const ENEMY_LOG_COLOR: rltk::RGB = RGB {r: 1.0, g: 0.35, b: 0.35};
-const XP_COLOR: rltk::RGB = RGB {r: 0.9, g: 0.8, b: 0.1};
+const LINE_COLOR: crate::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
+const BG_COLOR: crate::RGB = RGB {r: 0.0, g: 0.0, b: 0.0};
+const LABEL_COLOR: crate::RGB = RGB {r: 1.0, g: 1.0, b: 1.0};
+const INACTIVE_COLOR: crate::RGB = RGB {r: 0.4, g: 0.4, b: 0.4};
+const PHYS_COLOR: crate::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
+const FIRE_COLOR: crate::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
+const ELEC_COLOR: crate::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
+const ENERGY_COLOR: crate::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
+const HEALTH_COLOR: crate::RGB = RGB {r: 0.85, g: 0.15, b: 0.15};
+const ENEMY_LOG_COLOR: crate::RGB = RGB {r: 1.0, g: 0.35, b: 0.35};
+const XP_COLOR: crate::RGB = RGB {r: 0.9, g: 0.8, b: 0.1};
 
-const WALL_COLOR: rltk::RGB = RGB {r: 0.7, g: 0.6, b: 0.4};
-const GROUND_COLOR: rltk::RGB = RGB {r: 0.3, g: 0.6, b: 0.1};
-const ROAD_COLOR: rltk::RGB = RGB {r: 0.3, g: 0.3, b: 0.1};
-const FLOOR_COLOR: rltk::RGB = RGB {r: 0.5, g: 0.3, b: 0.1};
+const WALL_COLOR: crate::RGB = RGB {r: 0.7, g: 0.6, b: 0.4};
+const GROUND_COLOR: crate::RGB = RGB {r: 0.3, g: 0.6, b: 0.1};
+const ROAD_COLOR: crate::RGB = RGB {r: 0.3, g: 0.3, b: 0.1};
+const FLOOR_COLOR: crate::RGB = RGB {r: 0.5, g: 0.3, b: 0.1};
 
-pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
+pub fn draw_menu(state: &State, context: &mut Context, monotime: u128) {
     context.set_active_console(UI_CONSOLE_INDEX);
 
     let show_cursor = (monotime / 250) % 2 == 0;
@@ -78,7 +78,7 @@ pub fn draw_menu(state: &State, context: &mut Rltk, monotime: u128) {
     }
 }
 
-pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
+pub fn draw_welcome_screen(state: &State, context: &mut Context) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
     context.set_active_console(UI_CONSOLE_INDEX);
@@ -122,7 +122,7 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
     }
 
     if let Some(message) = &state.title_message {
-        context.print_color_centered(box_y + items.len() as i32 + 3, RGB::named(rltk::RED), BG_COLOR, message.as_str());
+        context.print_color_centered(box_y + items.len() as i32 + 3, RGB::named(crate::RED), BG_COLOR, message.as_str());
     }
 
     context.print_color_centered(
@@ -133,7 +133,7 @@ pub fn draw_welcome_screen(state: &State, context: &mut Rltk) {
     );
 }
 
-pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, context: &mut Rltk) {
+pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, context: &mut Context) {
     context.set_active_console(UI_CONSOLE_INDEX);
     let name = match target {
         RebindTarget::Wait =>            "Wait",
@@ -170,7 +170,7 @@ pub fn draw_rebind_prompt(target: RebindTarget, conflict: Option<&'static str>, 
     context.print_color_centered(29, color, BG_COLOR, &text);
 }
 
-pub fn draw_game_over_screen(context: &mut Rltk) {
+pub fn draw_game_over_screen(context: &mut Context) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
     context.set_active_console(UI_CONSOLE_INDEX);
@@ -182,7 +182,7 @@ pub fn draw_game_over_screen(context: &mut Rltk) {
     context.print_color_centered(mid + 4, INACTIVE_COLOR, BG_COLOR, "Press any key to return to the main menu...");
 }
 
-pub fn draw_victory_screen(context: &mut Rltk) {
+pub fn draw_victory_screen(context: &mut Context) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
     context.set_active_console(UI_CONSOLE_INDEX);
@@ -194,7 +194,7 @@ pub fn draw_victory_screen(context: &mut Rltk) {
     context.print_color_centered(mid + 4, INACTIVE_COLOR,        BG_COLOR, "Press any key to return to the main menu...");
 }
 
-pub fn draw_welcome_splash(context: &mut Rltk) {
+pub fn draw_welcome_splash(context: &mut Context) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
     context.set_active_console(UI_CONSOLE_INDEX);
@@ -225,7 +225,7 @@ pub fn draw_welcome_splash(context: &mut Rltk) {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
+pub fn draw_main_screen(state: &mut State, context: &mut Context, monotime: u128) {
     let blink = (monotime / 250) % 2 == 0;
     let viewport = state.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);
 
@@ -233,7 +233,7 @@ pub fn draw_main_screen(state: &mut State, context: &mut Rltk, monotime: u128) {
     draw_main_ui(state, viewport, context, blink);
 }
 
-fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bool) {
+fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Context, blink: bool) {
     context.set_active_console(UI_CONSOLE_INDEX);
     context.cls();
 
@@ -256,8 +256,8 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
                 not_visible || out_of_range
             } else { false }
         }).unwrap_or(false);
-        let cursor_color = if invalid_target { RGB::named(rltk::RED) } else { RGB::named(rltk::PINK) };
-        context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(rltk::BLACK), rltk::to_cp437('█'));
+        let cursor_color = if invalid_target { RGB::named(crate::RED) } else { RGB::named(crate::PINK) };
+        context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(crate::BLACK), crate::to_cp437('█'));
     }
     draw_targeting_range(state, viewport, context);
     draw_aim_markers(state, viewport, context);
@@ -274,7 +274,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Rltk, blink: bo
     draw_panel_contents(state, context);
 }
 
-fn draw_panel_geometry(context: &mut Rltk) {
+fn draw_panel_geometry(context: &mut Context) {
     let mut offset = UI_Y_OFFSET;
     // Draw scaffolding
     context.draw_hollow_box_double(UI_X_OFFSET, offset, UI_WIDTH, LOCATION_PANEL_HEIGHT, LINE_COLOR, BG_COLOR);
@@ -301,33 +301,33 @@ fn draw_panel_geometry(context: &mut Rltk) {
 
     // Draw crossing points
     offset = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT;
-    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(UI_X_OFFSET + HEALTH_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╦'));
-    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╠'));
+    context.set(UI_X_OFFSET + HEALTH_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╦'));
+    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╣'));
     offset += HEALTH_AND_STATUS_PANEL_HEIGHT;
 
     // Health/status split ends here; ground item panel is full-width below.
-    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(UI_X_OFFSET + HEALTH_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╩'));
-    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╠'));
+    context.set(UI_X_OFFSET + HEALTH_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╩'));
+    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╣'));
     offset += GROUND_ITEM_PANEL_HEIGHT;
 
-    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╠'));
+    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╣'));
     offset += INVENTORY_PANEL_HEIGHT;
 
-    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╠'));
+    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╣'));
     offset += EQUIPMENT_PANEL_HEIGHT;
 
-    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(UI_X_OFFSET + ABILITIES_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╦'));
-    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╠'));
+    context.set(UI_X_OFFSET + ABILITIES_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╦'));
+    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╣'));
     offset += ABILITIES_PANEL_HEIGHT;
 
-    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(UI_X_OFFSET + ABILITIES_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╩'));
-    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    context.set(UI_X_OFFSET, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╠'));
+    context.set(UI_X_OFFSET + ABILITIES_PANEL_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╩'));
+    context.set(UI_X_OFFSET + UI_WIDTH, offset, LINE_COLOR, BG_COLOR, crate::to_cp437('╣'));
 
     // Draw titles
     offset = UI_Y_OFFSET;
@@ -354,7 +354,7 @@ fn draw_panel_geometry(context: &mut Rltk) {
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset, LABEL_COLOR, BG_COLOR, "╣ Log ╠");
 }
 
-fn draw_panel_contents(state: &State, context: &mut Rltk) {
+fn draw_panel_contents(state: &State, context: &mut Context) {
     let mut offset_y = UI_Y_OFFSET + 2;
     let player = match state.world.get_player() {
         Ok(player) => player,
@@ -365,10 +365,10 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, format!("Level: {}", state.world.player_level));
     context.print_color(UI_X_OFFSET + LABEL_OFFSET + 24, offset_y, LABEL_COLOR, BG_COLOR, format!("Turn: {}", state.turn));
     if cfg!(debug_assertions) && state.world.parallel_ai {
-        context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5 - 1 - 8, offset_y, RGB::named(rltk::GREEN), BG_COLOR, "PARALLEL");
+        context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5 - 1 - 8, offset_y, RGB::named(crate::GREEN), BG_COLOR, "PARALLEL");
     }
     if state.world.debug_mode {
-        context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5, offset_y, RGB::named(rltk::RED), BG_COLOR, "DEBUG");
+        context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 5, offset_y, RGB::named(crate::RED), BG_COLOR, "DEBUG");
     }
     offset_y += 1;
 
@@ -383,7 +383,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     let xp_bar_x = UI_X_OFFSET + LABEL_OFFSET + 3;
     for i in 0..XP_BAR_WIDTH {
         let (ch, color) = if i < xp_filled { ('█', XP_COLOR) } else { ('░', INACTIVE_COLOR) };
-        context.set(xp_bar_x + i, offset_y, color, BG_COLOR, rltk::to_cp437(ch));
+        context.set(xp_bar_x + i, offset_y, color, BG_COLOR, crate::to_cp437(ch));
     }
 
     let pos = player.center();
@@ -393,7 +393,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
             format!("Cursor: {},{}", state.cursor_pos.x, state.cursor_pos.y));
     }
     if state.freelook {
-        context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 8, offset_y, RGB::named(rltk::CYAN), BG_COLOR, "FREELOOK");
+        context.print_color(UI_X_OFFSET + UI_WIDTH - 1 - 8, offset_y, RGB::named(crate::CYAN), BG_COLOR, "FREELOOK");
     }
 
     // Health panel
@@ -427,7 +427,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
         let bar_x = UI_X_OFFSET + LABEL_OFFSET + 7;
         for i in 0..BAR_WIDTH {
             let (ch, c) = if i < filled { ('█', color) } else { ('░', INACTIVE_COLOR) };
-            context.set(bar_x + i, y, c, BG_COLOR, rltk::to_cp437(ch));
+            context.set(bar_x + i, y, c, BG_COLOR, crate::to_cp437(ch));
         }
         context.print_color(bar_x + BAR_WIDTH + 1, y, LABEL_COLOR, BG_COLOR, format!("{}/{}", value, max));
     };
@@ -452,7 +452,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
 
     // Ground item panel
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + 2;
-    let player_tile = state.world.map.pos_idx(state.world.get_player().map(|p| p.position).unwrap_or(rltk::Point::zero()));
+    let player_tile = state.world.map.pos_idx(state.world.get_player().map(|p| p.position).unwrap_or(crate::Point::zero()));
     if let Some(ground_item) = &state.world.map.items[player_tile] {
         context.print_color(UI_X_OFFSET + LABEL_OFFSET, offset_y, LABEL_COLOR, BG_COLOR, &ground_item.name);
     } else {
@@ -468,7 +468,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     for (i, item) in player.body.inventory.iter().enumerate() {
         debug_assert!(i < crate::components::INVENTORY_MAX);
         if inv_browsing && i == state.inventory_selected {
-            context.print_color(UI_X_OFFSET + LABEL_OFFSET - 1, offset_y + i, RGB::named(rltk::YELLOW), BG_COLOR, "►");
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET - 1, offset_y + i, RGB::named(crate::YELLOW), BG_COLOR, "►");
         }
         print_item_info(context, item, UI_X_OFFSET + LABEL_OFFSET, offset_y + i);
     }
@@ -481,7 +481,7 @@ fn draw_panel_contents(state: &State, context: &mut Rltk) {
     offset_y = UI_Y_OFFSET + LOCATION_PANEL_HEIGHT + HEALTH_AND_STATUS_PANEL_HEIGHT + GROUND_ITEM_PANEL_HEIGHT + INVENTORY_PANEL_HEIGHT + 2;
     for (i, slot) in player.body.item_slots.iter().enumerate() {
         if eq_browsing && i == state.equipment_selected {
-            context.print_color(UI_X_OFFSET + LABEL_OFFSET - 1, offset_y + i, RGB::named(rltk::YELLOW), BG_COLOR, "►");
+            context.print_color(UI_X_OFFSET + LABEL_OFFSET - 1, offset_y + i, RGB::named(crate::YELLOW), BG_COLOR, "►");
         }
         let mut slot_label = slot.slot_type.to_string();
         slot_label.push(':');
@@ -557,20 +557,20 @@ pub fn equipment_row_pos(index: usize) -> (i32, i32) {
 }
 
 /// Prints a colored number at (x, y) and returns the x just past it.
-fn print_num(context: &mut Rltk, x: usize, y: usize, color: RGB, n: u32) -> usize {
+fn print_num(context: &mut Context, x: usize, y: usize, color: RGB, n: u32) -> usize {
     let s = n.to_string();
     context.print_color(x, y, color, BG_COLOR, &s);
     x + s.len()
 }
 
 /// Prints a "\" separator and returns the x just past it.
-fn print_sep(context: &mut Rltk, x: usize, y: usize) -> usize {
+fn print_sep(context: &mut Context, x: usize, y: usize) -> usize {
     context.print_color(x, y, LABEL_COLOR, BG_COLOR, "\\");
     x + 1
 }
 
 /// Prints "phys\elec\fire\pierce" with per-type colors; returns the x just past it.
-fn print_damage(context: &mut Rltk, mut x: usize, y: usize, d: &Damage) -> usize {
+fn print_damage(context: &mut Context, mut x: usize, y: usize, d: &Damage) -> usize {
     x = print_num(context, x, y, PHYS_COLOR, d.physical);
     x = print_sep(context, x, y);
     x = print_num(context, x, y, ELEC_COLOR, d.electrical);
@@ -581,7 +581,7 @@ fn print_damage(context: &mut Rltk, mut x: usize, y: usize, d: &Damage) -> usize
 }
 
 /// Prints "phys\elec\fire" with per-type colors; returns the x just past it.
-fn print_triple(context: &mut Rltk, mut x: usize, y: usize, p: u32, e: u32, f: u32) -> usize {
+fn print_triple(context: &mut Context, mut x: usize, y: usize, p: u32, e: u32, f: u32) -> usize {
     x = print_num(context, x, y, PHYS_COLOR, p);
     x = print_sep(context, x, y);
     x = print_num(context, x, y, ELEC_COLOR, e);
@@ -589,7 +589,7 @@ fn print_triple(context: &mut Rltk, mut x: usize, y: usize, p: u32, e: u32, f: u
     print_num(context, x, y, FIRE_COLOR, f)
 }
 
-fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: usize) {
+fn print_item_info(context: &mut Context, item: &Item, offset_x: usize, offset_y: usize) {
     let mut x = offset_x;
     // Truncate the name so it can never run into the stats column.
     let name: String = item.name.chars().take(INVENTORY_NAME_COLUMN_WIDTH - 1).collect();
@@ -626,7 +626,7 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
         },
         ItemKind::Key { color } => {
             let (r, g, b) = crate::components::COLORS[*color];
-            let key_color = rltk::RGB::from_u8(r, g, b);
+            let key_color = crate::RGB::from_u8(r, g, b);
             context.print_color(x, offset_y, key_color, BG_COLOR, crate::components::COLOR_NAMES[*color]);
         },
         ItemKind::Ammo { kind, charges, .. } => {
@@ -650,22 +650,22 @@ fn print_item_info(context: &mut Rltk, item: &Item, offset_x: usize, offset_y: u
     }
 }
 
-fn sound_direction_glyph(player_pos: rltk::Point, sound_pos: rltk::Point) -> rltk::FontCharType {
+fn sound_direction_glyph(player_pos: crate::Point, sound_pos: crate::Point) -> crate::FontCharType {
     let dx = sound_pos.x - player_pos.x;
     let dy = sound_pos.y - player_pos.y;
     if dx == 0 && dy == 0 {
-        return rltk::to_cp437('•');
+        return crate::to_cp437('•');
     }
     let angle = (dy as f32).atan2(dx as f32).to_degrees();
     match angle as i32 {
-        -180..=-158 | 158..=180 => rltk::to_cp437('◄'),
-        -157..=-113              => rltk::to_cp437('┌'),
-        -112..=-68               => rltk::to_cp437('▲'),
-        -67..=-23                => rltk::to_cp437('┐'),
-        -22..=22                 => rltk::to_cp437('►'),
-        23..=67                  => rltk::to_cp437('┘'),
-        68..=112                 => rltk::to_cp437('▼'),
-        _                        => rltk::to_cp437('└'),
+        -180..=-158 | 158..=180 => crate::to_cp437('◄'),
+        -157..=-113              => crate::to_cp437('┌'),
+        -112..=-68               => crate::to_cp437('▲'),
+        -67..=-23                => crate::to_cp437('┐'),
+        -22..=22                 => crate::to_cp437('►'),
+        23..=67                  => crate::to_cp437('┘'),
+        68..=112                 => crate::to_cp437('▼'),
+        _                        => crate::to_cp437('└'),
     }
 }
 
@@ -676,7 +676,7 @@ fn loudness_label(dist: f32) -> &'static str {
     else                 { "Faint"   }
 }
 
-fn sound_color(kind: &SoundKind, dist: f32) -> rltk::RGB {
+fn sound_color(kind: &SoundKind, dist: f32) -> crate::RGB {
     let base = match kind {
         SoundKind::Gunshot   => RGB { r: 0.8, g: 0.8, b: 0.8 },
         SoundKind::Burst     => RGB { r: 1.0, g: 1.0, b: 0.6 },
@@ -689,7 +689,7 @@ fn sound_color(kind: &SoundKind, dist: f32) -> rltk::RGB {
     RGB { r: base.r * fade, g: base.g * fade, b: base.b * fade }
 }
 
-fn draw_noise_panel(state: &State, context: &mut Rltk) {
+fn draw_noise_panel(state: &State, context: &mut Context) {
     let player = match state.world.get_player() {
         Ok(p) => p,
         Err(_) => return,
@@ -716,7 +716,7 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
     // Collect audible sounds with distance and noise contribution.
     let mut audible: Vec<(&SoundEvent, f32, u32)> = state.world.sounds_last_turn.iter()
         .filter_map(|s| {
-            let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_pos, s.pos);
+            let dist = crate::DistanceAlg::Pythagoras.distance2d(player_pos, s.pos);
             if dist <= s.volume as f32 {
                 let noise = (s.volume as f32 - dist).max(0.0) as u32;
                 Some((s, dist, noise))
@@ -760,7 +760,7 @@ fn draw_noise_panel(state: &State, context: &mut Rltk) {
     }
 }
 
-fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
+fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Context) {
     let pos = state.cursor_pos;
     if pos.x < viewport.x1 || pos.x >= viewport.x2 || pos.y < viewport.y1 || pos.y >= viewport.y2 {
         return;
@@ -814,7 +814,7 @@ fn draw_look_tooltip(state: &State, viewport: Rect, context: &mut Rltk) {
     let extra_rows = status_line.is_some() as i32 + intent_desc.is_some() as i32;
     let box_height = 2 + extra_rows;
     context.draw_box(label_x - 2, cy - 1, max_len + 3, box_height,
-        RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+        RGB::named(crate::WHITE), RGB::named(crate::BLACK));
     context.print_color(label_x, cy, LABEL_COLOR, BG_COLOR, &name);
     let mut row = cy + 1;
     if let Some(status) = status_line {
@@ -836,7 +836,7 @@ fn flame_background(monotime: u128) -> RGB {
     }
 }
 
-fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, monotime: u128, debug_mode: bool) {
+fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Context, monotime: u128, debug_mode: bool) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
 
@@ -850,23 +850,23 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
                     TileType::Road => render_open_tile(map, entities, index, monotime, '_', ROAD_COLOR, debug_mode),
                     TileType::Doorway => render_open_tile(map, entities, index, monotime, ' ', FLOOR_COLOR, debug_mode),
                     TileType::Wall => Renderable {
-                        glyph: rltk::to_cp437('█'),
+                        glyph: crate::to_cp437('█'),
                         color: WALL_COLOR,
-                        background: rltk::RGB::named(rltk::BLACK)
+                        background: crate::RGB::named(crate::BLACK)
                     },
                     TileType::Fence => Renderable {
-                        glyph: rltk::to_cp437('#'),
+                        glyph: crate::to_cp437('#'),
                         color: WALL_COLOR,
-                        background: rltk::RGB::named(rltk::BLACK)
+                        background: crate::RGB::named(crate::BLACK)
                     },
                     TileType::Window => Renderable {
                         glyph: 8,
                         color: WALL_COLOR,
-                        background: rltk::RGB::named(rltk::BLACK)
+                        background: crate::RGB::named(crate::BLACK)
                     }
                 };
                 if !debug_mode && !map.visible_tiles[index] {
-                    renderable.color = rltk::RGB::from_u8(30, 30, 30);
+                    renderable.color = crate::RGB::from_u8(30, 30, 30);
                 }
                 context.set(x - viewport.x1, y - viewport.y1, renderable.color, renderable.background, renderable.glyph);
             }
@@ -877,7 +877,7 @@ fn draw_map(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, 
 /// Draws each directional actor's facing arrow one tile ahead of it, in the direction
 /// it faces. Runs on the UI console (above the map), so the arrow alpha-blends over
 /// whatever tile it lands on.
-fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Rltk, debug_mode: bool) {
+fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, context: &mut Context, debug_mode: bool) {
     const ARROW_ALPHA: f32 = 0.85;
     for x in viewport.x1..viewport.x2 {
         for y in viewport.y1..viewport.y2 {
@@ -899,19 +899,19 @@ fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, contex
             let color = match entity.color {
                 Some(c) => {
                     let (r, g, b) = crate::components::COLORS[c];
-                    rltk::RGBA::from_u8(r, g, b, (ARROW_ALPHA * 255.0) as u8)
+                    crate::RGBA::from_u8(r, g, b, (ARROW_ALPHA * 255.0) as u8)
                 }
-                None => rltk::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, ARROW_ALPHA),
+                None => crate::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, ARROW_ALPHA),
             };
             // set_fancy inverts y as (height - y), one row higher than set's (height - 1 - y),
             // so shift down by one tile to align the overlay with the map cell.
             context.set_fancy(
-                rltk::PointF::new((ax - viewport.x1) as f32, (ay - viewport.y1 + 1) as f32),
+                crate::PointF::new((ax - viewport.x1) as f32, (ay - viewport.y1 + 1) as f32),
                 0,
-                rltk::Radians(0.0),
-                rltk::PointF::new(1.0, 1.0),
+                crate::Radians(0.0),
+                crate::PointF::new(1.0, 1.0),
                 color,
-                rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0),
+                crate::RGBA::from_f32(0.0, 0.0, 0.0, 0.0),
                 arrow,
             );
         }
@@ -919,7 +919,7 @@ fn draw_direction_overlay(map: &Map, entities: &[Entity], viewport: Rect, contex
 }
 
 // Tint the tiles a range-limited targeting ability can legally hit (visible & in range).
-fn draw_targeting_range(state: &State, viewport: Rect, context: &mut Rltk) {
+fn draw_targeting_range(state: &State, viewport: Rect, context: &mut Context) {
     // Only while actively targeting; the cursor is gated the same way, and aborting
     // (Escape) leaves pending_action set, so gating on it alone would leave the tint stuck.
     if state.run_state != RunState::AwaitingPositionalTargetingInput
@@ -936,8 +936,8 @@ fn draw_targeting_range(state: &State, viewport: Rect, context: &mut Rltk) {
     let max_range = player.action_range(&pending.entity_action);
     let origin = player.position;
 
-    let tint = rltk::RGBA::from_f32(0.4, 0.8, 0.5, 0.18);
-    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    let tint = crate::RGBA::from_f32(0.4, 0.8, 0.5, 0.18);
+    let transparent = crate::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
     for y in viewport.y1.max(0)..viewport.y2 {
         for x in viewport.x1.max(0)..viewport.x2 {
             let pos = Point::new(x, y);
@@ -954,19 +954,19 @@ fn draw_targeting_range(state: &State, viewport: Rect, context: &mut Rltk) {
             }
             // set_fancy inverts y (see draw_direction_overlay); shift down one tile to align.
             context.set_fancy(
-                rltk::PointF::new((x - viewport.x1) as f32, (y - viewport.y1 + 1) as f32),
+                crate::PointF::new((x - viewport.x1) as f32, (y - viewport.y1 + 1) as f32),
                 0,
-                rltk::Radians(0.0),
-                rltk::PointF::new(1.0, 1.0),
+                crate::Radians(0.0),
+                crate::PointF::new(1.0, 1.0),
                 transparent,
                 tint,
-                rltk::to_cp437(' '),
+                crate::to_cp437(' '),
             );
         }
     }
 }
 
-fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
+fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Context) {
     if state.run_state != RunState::Looking {
         return;
     }
@@ -985,8 +985,8 @@ fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
         }
     }
 
-    let tint = rltk::RGBA::from_f32(0.8, 0.8, 0.8, 0.22);
-    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    let tint = crate::RGBA::from_f32(0.8, 0.8, 0.8, 0.22);
+    let transparent = crate::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
     for idx in seen {
         if !map.revealed_tiles[idx] {
             continue; // don't paint over unexplored void
@@ -997,19 +997,19 @@ fn draw_enemy_viewsheds(state: &State, viewport: Rect, context: &mut Rltk) {
         }
         // set_fancy inverts y (see draw_direction_overlay); shift down one tile to align.
         context.set_fancy(
-            rltk::PointF::new((pos.x - viewport.x1) as f32, (pos.y - viewport.y1 + 1) as f32),
+            crate::PointF::new((pos.x - viewport.x1) as f32, (pos.y - viewport.y1 + 1) as f32),
             0,
-            rltk::Radians(0.0),
-            rltk::PointF::new(1.0, 1.0),
+            crate::Radians(0.0),
+            crate::PointF::new(1.0, 1.0),
             transparent,
             tint,
-            rltk::to_cp437(' '),
+            crate::to_cp437(' '),
         );
     }
 }
 
 // Above each visible guard: '?' while it is recognising the player, '!' once it is fighting them.
-fn draw_detection_markers(state: &State, viewport: Rect, context: &mut Rltk) {
+fn draw_detection_markers(state: &State, viewport: Rect, context: &mut Context) {
     let map = &state.world.map;
     for entity in &state.world.entities {
         let crate::AI::Actor(ai) = &entity.ai else { continue };
@@ -1017,22 +1017,22 @@ fn draw_detection_markers(state: &State, viewport: Rect, context: &mut Rltk) {
             continue;
         }
         let (glyph, color) = match ai.alert {
-            crate::AlertLevel::Combat { .. } => ('!', RGB::named(rltk::RED)),
-            _ if ai.detection_level() > 0.0  => ('?', RGB::named(rltk::YELLOW)),
+            crate::AlertLevel::Combat { .. } => ('!', RGB::named(crate::RED)),
+            _ if ai.detection_level() > 0.0  => ('?', RGB::named(crate::YELLOW)),
             _ => continue,
         };
         let (x, y) = (entity.position.x, entity.position.y - 1);
         if x < viewport.x1 || x >= viewport.x2 || y < viewport.y1 || y >= viewport.y2 {
             continue;
         }
-        context.set(x - viewport.x1, y - viewport.y1, color, RGB::named(rltk::BLACK), rltk::to_cp437(glyph));
+        context.set(x - viewport.x1, y - viewport.y1, color, RGB::named(crate::BLACK), crate::to_cp437(glyph));
     }
 }
 
 // Marks aimed-at tiles: always the player's own aim; visible enemies' aim only with Precognition.
-fn draw_aim_markers(state: &State, viewport: Rect, context: &mut Rltk) {
-    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
-    let marker = rltk::RGBA::from_f32(1.0, 0.55, 0.1, 0.7);
+fn draw_aim_markers(state: &State, viewport: Rect, context: &mut Context) {
+    let transparent = crate::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    let marker = crate::RGBA::from_f32(1.0, 0.55, 0.1, 0.7);
     let map = &state.world.map;
 
     let mut mark = |pos: Point| {
@@ -1041,13 +1041,13 @@ fn draw_aim_markers(state: &State, viewport: Rect, context: &mut Rltk) {
         }
         // set_fancy inverts y (see draw_direction_overlay); shift down one tile to align.
         context.set_fancy(
-            rltk::PointF::new((pos.x - viewport.x1) as f32, (pos.y - viewport.y1 + 1) as f32),
+            crate::PointF::new((pos.x - viewport.x1) as f32, (pos.y - viewport.y1 + 1) as f32),
             0,
-            rltk::Radians(0.0),
-            rltk::PointF::new(1.0, 1.0),
+            crate::Radians(0.0),
+            crate::PointF::new(1.0, 1.0),
             marker,
             transparent,
-            rltk::to_cp437('X'),
+            crate::to_cp437('X'),
         );
     };
 
@@ -1073,7 +1073,7 @@ fn draw_aim_markers(state: &State, viewport: Rect, context: &mut Rltk) {
     }
 }
 
-fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
+fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Context) {
     if state.run_state != RunState::Looking {
         return;
     }
@@ -1083,7 +1083,7 @@ fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
     }
 
     const GHOST_ALPHA: f32 = 0.8;
-    let transparent = rltk::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
+    let transparent = crate::RGBA::from_f32(0.0, 0.0, 0.0, 0.0);
     let map = &state.world.map;
     for entity in &state.world.entities {
         if entity.kind != crate::entity::EntityKind::Actor {
@@ -1104,9 +1104,9 @@ fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
         let color = match entity.color {
             Some(c) => {
                 let (r, g, b) = crate::components::COLORS[c];
-                rltk::RGBA::from_u8(r, g, b, (GHOST_ALPHA * 255.0) as u8)
+                crate::RGBA::from_u8(r, g, b, (GHOST_ALPHA * 255.0) as u8)
             }
-            None => rltk::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, GHOST_ALPHA),
+            None => crate::RGBA::from_f32(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, GHOST_ALPHA),
         };
 
         // Redraw the actor's whole footprint, shifted to its predicted position.
@@ -1120,10 +1120,10 @@ fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
                 let glyph = entity.sprite.glyph(entity.body.facing, sx + sy * entity.size_x);
                 // set_fancy inverts y (see draw_direction_overlay); shift down one tile.
                 context.set_fancy(
-                    rltk::PointF::new((tx - viewport.x1) as f32, (ty - viewport.y1 + 1) as f32),
+                    crate::PointF::new((tx - viewport.x1) as f32, (ty - viewport.y1 + 1) as f32),
                     0,
-                    rltk::Radians(0.0),
-                    rltk::PointF::new(1.0, 1.0),
+                    crate::Radians(0.0),
+                    crate::PointF::new(1.0, 1.0),
                     color,
                     transparent,
                     glyph,
@@ -1133,11 +1133,11 @@ fn draw_precognition_ghosts(state: &State, viewport: Rect, context: &mut Rltk) {
     }
 }
 
-fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, monotime: u128, empty_character: char, empty_color: rltk::RGB, debug_mode: bool) -> Renderable {
+fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, monotime: u128, empty_character: char, empty_color: crate::RGB, debug_mode: bool) -> Renderable {
     let empty = Renderable {
-        glyph: rltk::to_cp437(empty_character),
+        glyph: crate::to_cp437(empty_character),
         color: empty_color,
-        background: rltk::RGB::named(rltk::BLACK),
+        background: crate::RGB::named(crate::BLACK),
     };
     if !debug_mode && !map.visible_tiles[tile_index] {
         return empty;
@@ -1148,14 +1148,14 @@ fn render_open_tile(map: &Map, entities: &[Entity], tile_index: usize, monotime:
             let burning = entity.body.get_status_effect(&StatusEffect::Burning(0)).is_some();
             let color = if let Some(c) = entity.color {
                 let (r, g, b) = crate::components::COLORS[c];
-                rltk::RGB::from_u8(r, g, b)
+                crate::RGB::from_u8(r, g, b)
             } else {
                 WALL_COLOR
             };
             Renderable {
                 glyph: entity.sprite.glyph(entity.body.facing, pawn.sprite_index),
                 color,
-                background: if burning { flame_background(monotime) } else { rltk::RGB::named(rltk::BLACK) },
+                background: if burning { flame_background(monotime) } else { crate::RGB::named(crate::BLACK) },
             }
         },
         None => match &map.items[tile_index] {
@@ -1185,7 +1185,7 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
     lines
 }
 
-pub fn draw_level_up_screen(state: &State, context: &mut Rltk) {
+pub fn draw_level_up_screen(state: &State, context: &mut Context) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
 
     let options = &state.level_up_options;
@@ -1256,7 +1256,7 @@ pub fn draw_level_up_screen(state: &State, context: &mut Rltk) {
     }
 }
 
-fn draw_help_column(context: &mut Rltk, x: i32, start_y: i32, sections: &[(&str, Vec<String>)]) {
+fn draw_help_column(context: &mut Context, x: i32, start_y: i32, sections: &[(&str, Vec<String>)]) {
     let mut y = start_y;
     for (title, lines) in sections {
         context.print_color(x, y, LABEL_COLOR, BG_COLOR, *title);
@@ -1269,7 +1269,7 @@ fn draw_help_column(context: &mut Rltk, x: i32, start_y: i32, sections: &[(&str,
     }
 }
 
-pub fn draw_help_screen(state: &State, context: &mut Rltk) {
+pub fn draw_help_screen(state: &State, context: &mut Context) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
     context.set_active_console(UI_CONSOLE_INDEX);
@@ -1288,24 +1288,24 @@ pub fn draw_help_screen(state: &State, context: &mut Rltk) {
 
     // Horizontal separator at y=5
     for x in 1..w - 1 {
-        context.set(x, 5, LINE_COLOR, BG_COLOR, rltk::to_cp437('═'));
+        context.set(x, 5, LINE_COLOR, BG_COLOR, crate::to_cp437('═'));
     }
-    context.set(0,     5, LINE_COLOR, BG_COLOR, rltk::to_cp437('╠'));
-    context.set(w - 1, 5, LINE_COLOR, BG_COLOR, rltk::to_cp437('╣'));
+    context.set(0,     5, LINE_COLOR, BG_COLOR, crate::to_cp437('╠'));
+    context.set(w - 1, 5, LINE_COLOR, BG_COLOR, crate::to_cp437('╣'));
 
     // Vertical mid-column divider — starts at the separator, not the top border.
     let mid = w / 2;
     for y in 6..h - 1 {
-        context.set(mid, y, LINE_COLOR, BG_COLOR, rltk::to_cp437('║'));
+        context.set(mid, y, LINE_COLOR, BG_COLOR, crate::to_cp437('║'));
     }
-    context.set(mid, 5,     LINE_COLOR, BG_COLOR, rltk::to_cp437('╦'));
-    context.set(mid, h - 1, LINE_COLOR, BG_COLOR, rltk::to_cp437('╩'));
+    context.set(mid, 5,     LINE_COLOR, BG_COLOR, crate::to_cp437('╦'));
+    context.set(mid, h - 1, LINE_COLOR, BG_COLOR, crate::to_cp437('╩'));
 
     let lx    = 2i32;
     let rx    = mid + 2;
     let top_y = 7i32;
 
-    let k = |key: rltk::VirtualKeyCode| -> String { crate::key_to_str(key).to_string() };
+    let k = |key: crate::VirtualKeyCode| -> String { crate::key_to_str(key).to_string() };
 
     let left: Vec<(&str, Vec<String>)> = vec![
         ("OBJECTIVE", vec![

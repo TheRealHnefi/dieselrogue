@@ -1,5 +1,5 @@
 use std::fs;
-use rltk::RandomNumberGenerator;
+use crate::RandomNumberGenerator;
 use crate::components::Direction;
 use crate::tile::TileType;
 

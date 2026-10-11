@@ -1,6 +1,6 @@
-use rltk::rex::XpFile;
+use crate::rex::XpFile;
 
-rltk::embedded_resource!(TITLE_SCREEN, "../resources/title.xp");
+crate::embedded_resource!(TITLE_SCREEN, "../resources/title.xp");
 
 pub struct RexAssets {
     pub title_screen: XpFile,
@@ -8,7 +8,7 @@ pub struct RexAssets {
 
 impl RexAssets {
     pub fn new() -> RexAssets {
-        rltk::link_resource!(TITLE_SCREEN, "title.xp");
+        crate::link_resource!(TITLE_SCREEN, "title.xp");
 
         RexAssets {
             title_screen:    XpFile::from_resource("title.xp").unwrap(),

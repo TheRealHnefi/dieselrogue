@@ -1,5 +1,5 @@
-use rltk::Point;
-use rltk::RGB;
+use crate::Point;
+use crate::RGB;
 use crate::components::*;
 use crate::entity::Entity;
 use crate::Ability;
@@ -168,31 +168,31 @@ impl Item {
     // ---- Ammunition -------------------------------------------------------
 
     pub fn ammo_bullets() -> Self {
-        Item::make_ammo(AmmoKind::Bullets,   "Bullets",   rltk::RGB::from_f32(0.85, 0.70, 0.20), 30)
+        Item::make_ammo(AmmoKind::Bullets,   "Bullets",   crate::RGB::from_f32(0.85, 0.70, 0.20), 30)
     }
     pub fn ammo_rockets() -> Self {
-        Item::make_ammo(AmmoKind::Rockets,   "Rockets",   rltk::RGB::from_f32(0.80, 0.20, 0.10),  3)
+        Item::make_ammo(AmmoKind::Rockets,   "Rockets",   crate::RGB::from_f32(0.80, 0.20, 0.10),  3)
     }
     pub fn ammo_batteries() -> Self {
-        Item::make_ammo(AmmoKind::Batteries, "Batteries", rltk::RGB::from_f32(0.20, 0.80, 0.90), 12)
+        Item::make_ammo(AmmoKind::Batteries, "Batteries", crate::RGB::from_f32(0.20, 0.80, 0.90), 12)
     }
     pub fn ammo_fuel() -> Self {
-        Item::make_ammo(AmmoKind::Fuel,      "Fuel",      rltk::RGB::from_f32(0.90, 0.50, 0.10), 5)
+        Item::make_ammo(AmmoKind::Fuel,      "Fuel",      crate::RGB::from_f32(0.90, 0.50, 0.10), 5)
     }
 
     // ---- Healing ----------------------------------------------------------
 
     /// Regenerates one chosen body part for 10 turns.
     pub fn medkit() -> Self {
-        Item::make_healing("Medkit", '+', rltk::RGB::from_f32(0.9, 0.2, 0.2), 10, false, 0)
+        Item::make_healing("Medkit", '+', crate::RGB::from_f32(0.9, 0.2, 0.2), 10, false, 0)
     }
     /// Regenerates one chosen body part for 20 turns (double a Medkit).
     pub fn large_medkit() -> Self {
-        Item::make_healing("Large medkit", '+', rltk::RGB::from_f32(1.0, 0.3, 0.3), 20, false, 1)
+        Item::make_healing("Large medkit", '+', crate::RGB::from_f32(1.0, 0.3, 0.3), 20, false, 1)
     }
     /// Regenerates every body part for 10 turns.
     pub fn elixir() -> Self {
-        Item::make_healing("Elixir", '!', rltk::RGB::from_f32(0.8, 0.2, 0.9), 10, true, 2)
+        Item::make_healing("Elixir", '!', crate::RGB::from_f32(0.8, 0.2, 0.9), 10, true, 2)
     }
 
     /// Instantly restores 50 energy.
@@ -200,7 +200,7 @@ impl Item {
         let rarity = 1;
         Item {
             id: 0, rarity,
-            renderable: Renderable::new_colored_char('!', rltk::RGB::from_f32(0.9, 0.85, 0.2)),
+            renderable: Renderable::new_colored_char('!', crate::RGB::from_f32(0.9, 0.85, 0.2)),
             name: String::from("Stimpack"),
             inventory_actions: vec![Item::stim_action(), Item::drop_action()],
             equip_actions: vec![],
@@ -422,8 +422,8 @@ impl Item {
             id: 0, rarity: 0,
             renderable: Renderable {
                 glyph: 1,
-                color: rltk::RGB::from_f32(0.5, 0.2, 0.0),
-                background: rltk::RGB::named(rltk::BLACK),
+                color: crate::RGB::from_f32(0.5, 0.2, 0.0),
+                background: crate::RGB::named(crate::BLACK),
             },
             name: String::from("Corpse"),
             inventory_actions: vec![Item::drop_action()],
@@ -440,9 +440,9 @@ impl Item {
         Item {
             id: 0, rarity: 0,
             renderable: Renderable {
-                glyph: rltk::to_cp437('≈'),
-                color: rltk::RGB::from_f32(0.5, 0.5, 0.5),
-                background: rltk::RGB::named(rltk::BLACK),
+                glyph: crate::to_cp437('≈'),
+                color: crate::RGB::from_f32(0.5, 0.5, 0.5),
+                background: crate::RGB::named(crate::BLACK),
             },
             name: String::from("Rubble"),
             inventory_actions: vec![],
@@ -459,7 +459,7 @@ impl Item {
         let (r, g, b) = crate::components::COLORS[color];
         Item {
             id: 0, rarity: 0,
-            renderable: Renderable::new_colored_char('k', rltk::RGB::from_u8(r, g, b)),
+            renderable: Renderable::new_colored_char('k', crate::RGB::from_u8(r, g, b)),
             name: format!("{} key", crate::components::COLOR_NAMES[color]),
             inventory_actions: vec![Item::drop_action()],
             equip_actions: vec![],
@@ -534,7 +534,7 @@ impl Item {
         }
     }
 
-    fn make_ammo(kind: AmmoKind, name: &str, color: rltk::RGB, charges: u32) -> Item {
+    fn make_ammo(kind: AmmoKind, name: &str, color: crate::RGB, charges: u32) -> Item {
         Item {
             id: 0,
             rarity: 0,
@@ -571,7 +571,7 @@ impl Item {
 
     /// Build a healing consumable. `all_parts` picks the targeting: `false` prompts for
     /// one body part (medkits), `true` regenerates the whole body at once (elixir).
-    fn make_healing(name: &str, glyph: char, color: rltk::RGB, turns: u32, all_parts: bool, rarity: u8) -> Item {
+    fn make_healing(name: &str, glyph: char, color: crate::RGB, turns: u32, all_parts: bool, rarity: u8) -> Item {
         let use_action = if all_parts { Item::heal_all_action() } else { Item::heal_part_action() };
         Item {
             id: 0,
@@ -665,7 +665,7 @@ impl Item {
         EntityAction { id: ActionId::Throw,         name: "Throw".to_string(),            targeting: Targeting::Positional { max_range: Some(7) }, phase: ExecutionPhase::Attack,    precondition: precondition_ok,        action: actions::throw_grenade_action }
     }
 
-    fn rarity_to_color(rarity: u8) -> rltk::RGB {
+    fn rarity_to_color(rarity: u8) -> crate::RGB {
         let (r, g, b) = match rarity {
             0 => COLORS[14], // Gray
             1 => COLORS[4], // Green

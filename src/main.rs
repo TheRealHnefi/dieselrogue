@@ -1,6 +1,8 @@
 // No console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod engine;
+pub use engine::*;
 mod state;
 pub use state::*;
 mod world;
@@ -61,7 +63,7 @@ mod savegame;
 
 use std::time::Instant;
 use tracing::{span, Subscriber};
-use tracing_subscriber::{layer::Context, registry::LookupSpan, Layer};
+use tracing_subscriber::{layer::Context as TracingContext, registry::LookupSpan, Layer};
 use tracing_subscriber::prelude::*;
 
 struct SpanStart(Instant);
@@ -71,13 +73,13 @@ struct SlowSpanLayer {
 }
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for SlowSpanLayer {
-    fn on_new_span(&self, _: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, _: &span::Attributes<'_>, id: &span::Id, ctx: TracingContext<'_, S>) {
         if let Some(span) = ctx.span(id) {
             span.extensions_mut().insert(SpanStart(Instant::now()));
         }
     }
 
-    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+    fn on_close(&self, id: span::Id, ctx: TracingContext<'_, S>) {
         if let Some(span) = ctx.span(&id) {
             if let Some(start) = span.extensions().get::<SpanStart>() {
                 let elapsed_ms = start.0.elapsed().as_millis();
@@ -141,16 +143,16 @@ fn install_crash_log() {
 }
 
 // Fonts are baked into the executable so the game runs without the PNGs on disk.
-rltk::embedded_resource!(FONT_8X8,   "../resources/CGA8x8thick.png");
-rltk::embedded_resource!(FONT_10X10, "../resources/rexpaint_cp437_10x10.png");
-rltk::embedded_resource!(FONT_12X12, "../resources/Alloy_curses_12x12.png");
+crate::embedded_resource!(FONT_8X8,   "../resources/CGA8x8thick.png");
+crate::embedded_resource!(FONT_10X10, "../resources/rexpaint_cp437_10x10.png");
+crate::embedded_resource!(FONT_12X12, "../resources/Alloy_curses_12x12.png");
 
 /// Embedded-resource lookups normalize to forward slashes, so the link keys must
 /// use forward slashes regardless of platform.
 fn link_embedded_fonts() {
-    rltk::link_resource!(FONT_8X8,   "resources/CGA8x8thick.png");
-    rltk::link_resource!(FONT_10X10, "resources/rexpaint_cp437_10x10.png");
-    rltk::link_resource!(FONT_12X12, "resources/Alloy_curses_12x12.png");
+    crate::link_resource!(FONT_8X8,   "resources/CGA8x8thick.png");
+    crate::link_resource!(FONT_10X10, "resources/rexpaint_cp437_10x10.png");
+    crate::link_resource!(FONT_12X12, "resources/Alloy_curses_12x12.png");
 }
 
 /// Resources are loaded relative to the working directory; when launched from
@@ -166,7 +168,7 @@ fn use_exe_dir_if_needed() {
     }
 }
 
-fn main() -> rltk::BError {
+fn main() -> Result<(), crate::BError> {
     use_exe_dir_if_needed();
     link_embedded_fonts();
     install_crash_log();
@@ -192,7 +194,7 @@ fn main() -> rltk::BError {
     let font_file      = settings.font_size.font_file();
     let font_native_px = settings.font_size.font_native_px();
 
-    let mut builder = rltk::RltkBuilder::new()
+    let mut builder = crate::ContextBuilder::new()
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
         .with_fancy_console(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT, font_file)
         .with_dimensions(ui::SCREEN_WIDTH, ui::SCREEN_HEIGHT)
@@ -218,5 +220,5 @@ fn main() -> rltk::BError {
         State::new_welcome_state(seed, settings.bindings)
     };
 
-    rltk::main_loop(context, state)
+    crate::main_loop(context, state)
 }

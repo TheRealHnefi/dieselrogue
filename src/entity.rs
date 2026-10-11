@@ -1,4 +1,4 @@
-use rltk::Point;
+use crate::Point;
 use crate::components::*;
 use crate::ai::*;
 use crate::intent::*;

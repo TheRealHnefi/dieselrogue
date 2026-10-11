@@ -1,4 +1,4 @@
-use rltk::{Point, RandomNumberGenerator};
+use crate::{Point, RandomNumberGenerator};
 use std::cmp::{max, min};
 use std::collections::HashSet;
 use crate::entity::Pawn;
@@ -613,14 +613,14 @@ impl Map {
 
     /// Exits for AI navigation: like [`Map::get_available_exits`], but closed
     /// doors count as passable at a surcharge (facing + opening costs turns).
-    pub fn nav_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
+    pub fn nav_exits(&self, idx: usize) -> Vec<(usize, f32)> {
         const DOOR_COST: f32 = 2.0;
         const STEPS: [(i32, i32, f32); 8] = [
             (-1,  0, 1.0),  (1,  0, 1.0),  (0, -1, 1.0),  (0, 1, 1.0),
             (-1, -1, 1.45), (1, -1, 1.45), (-1, 1, 1.45), (1, 1, 1.45),
         ];
 
-        let mut exits = rltk::SmallVec::new();
+        let mut exits = Vec::new();
         let w = self.width as i32;
         let x = idx as i32 % w;
         let y = idx as i32 / w;
@@ -654,8 +654,8 @@ impl Map {
 
     /// Checks for available exits for pathfinding, with a pathfinding cost. Treats
     /// diagonals as more costly to serve as a conservative heuristic.
-    pub fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
-        let mut exits = rltk::SmallVec::new();
+    pub fn get_available_exits(&self, idx: usize) -> Vec<(usize, f32)> {
+        let mut exits = Vec::new();
         let x = idx as i32 % self.width as i32;
         let y = idx as i32 / self.width as i32;
         let w = self.width as usize;
@@ -677,7 +677,7 @@ impl Map {
         let w = self.width as usize;
         let p1 = Point::new(idx1 % w, idx1 / w);
         let p2 = Point::new(idx2 % w, idx2 / w);
-        rltk::DistanceAlg::Pythagoras.distance2d(p1, p2)
+        crate::DistanceAlg::Pythagoras.distance2d(p1, p2)
     }
 }
 

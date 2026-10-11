@@ -1,4 +1,4 @@
-use rltk::{VirtualKeyCode, Rltk, Point};
+use crate::{VirtualKeyCode, Context, Point};
 use super::*;
 use std::cmp::*;
 
@@ -7,7 +7,7 @@ pub fn title_items(has_save: bool) -> &'static [&'static str] {
     if has_save { &["Continue", "New Game", "Settings", "Quit"] } else { &["New Game", "Settings", "Quit"] }
 }
 
-pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn welcome_screen_input(state: &mut State, _context: &mut Context) -> RunState {
     let key = match state.last_input.take() {
         Some(k) => k,
         None => return RunState::WelcomeScreen,
@@ -54,7 +54,7 @@ pub fn welcome_screen_input(state: &mut State, _context: &mut Rltk) -> RunState 
     }
 }
 
-pub fn game_over_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn game_over_input(state: &mut State, _context: &mut Context) -> RunState {
     match state.last_input.take() {
         None => RunState::GameOver,
         Some(_) => {
@@ -69,7 +69,7 @@ pub fn game_over_input(state: &mut State, _context: &mut Rltk) -> RunState {
     }
 }
 
-pub fn welcome_splash_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn welcome_splash_input(state: &mut State, _context: &mut Context) -> RunState {
     match state.last_input.take() {
         Some(_) => {
             // One slot: a new run replaces any saved one.
@@ -124,7 +124,7 @@ fn move_in_direction(state: &mut State, dir: Direction) -> RunState {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn main_screen_input(state: &mut State, _context: &mut Context) -> RunState {
     let b = state.bindings;
     // Clear any lingering menu-return target (e.g. from inventory browsing) so a
     // later menu's Esc returns here rather than to a stale state.
@@ -258,7 +258,7 @@ pub fn main_screen_input(state: &mut State, _context: &mut Rltk) -> RunState {
     }
 }
 
-pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn positional_targeting_input(state: &mut State, _context: &mut Context) -> RunState {
     let b = state.bindings;
     match state.last_input.take() {
         Some(key) => match key {
@@ -338,7 +338,7 @@ pub fn positional_targeting_input(state: &mut State, _context: &mut Rltk) -> Run
     RunState::AwaitingPositionalTargetingInput
 }
 
-pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn menu_input(state: &mut State, _context: &mut Context) -> RunState {
     assert!(!state.menu_stack.is_empty());
     let index = state.menu_stack.len() - 1;
     let menu = &mut state.menu_stack[index];
@@ -408,7 +408,7 @@ pub fn menu_input(state: &mut State, _context: &mut Rltk) -> RunState {
     }
 }
 
-pub fn rebind_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn rebind_input(state: &mut State, _context: &mut Context) -> RunState {
     let target = match state.run_state {
         RunState::AwaitingRebind(t, _) => t,
         _ => return RunState::AwaitingMenuInput,
@@ -546,7 +546,7 @@ fn start_self_bodypart_targeting(pending: PendingAction, state: &mut State) -> R
 
 /// Navigate the side-panel inventory list directly: up/down move the highlight,
 /// Enter opens the item's action menu (returning here on cancel), Esc exits.
-pub fn browse_inventory_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn browse_inventory_input(state: &mut State, _context: &mut Context) -> RunState {
     let inventory_len = state.world.get_player()
         .map(|p| p.body.inventory.len())
         .unwrap_or(0);
@@ -609,7 +609,7 @@ fn first_selectable_slot(world: &World) -> Option<usize> {
 /// Navigate the side-panel equipment list directly: up/down move the highlight over
 /// unequippable slots, Enter opens the slot's action menu (returning here on cancel),
 /// Esc exits.
-pub fn browse_equipment_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn browse_equipment_input(state: &mut State, _context: &mut Context) -> RunState {
     let slots_len = state.world.get_player()
         .map(|p| p.body.item_slots.len())
         .unwrap_or(0);
@@ -660,7 +660,7 @@ pub fn browse_equipment_input(state: &mut State, _context: &mut Rltk) -> RunStat
     }
 }
 
-pub fn looking_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn looking_input(state: &mut State, _context: &mut Context) -> RunState {
     let b = state.bindings;
     if let Some(key) = state.last_input.take() {
         match key {
@@ -733,7 +733,7 @@ fn start_directional_action(state: &mut State, action: EntityAction, source: Opt
     RunState::AwaitingDirectionalTargetingInput
 }
 
-pub fn directional_targeting_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn directional_targeting_input(state: &mut State, _context: &mut Context) -> RunState {
     let key = match state.last_input.take() {
         Some(k) => k,
         None => return RunState::AwaitingDirectionalTargetingInput,
@@ -766,7 +766,7 @@ pub fn directional_targeting_input(state: &mut State, _context: &mut Rltk) -> Ru
     RunState::Resolve(ExecutionPhase::Idle)
 }
 
-pub fn level_up_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn level_up_input(state: &mut State, _context: &mut Context) -> RunState {
     let key = match state.last_input.take() {
         Some(k) => k,
         None => return RunState::AwaitingLevelUpInput,
@@ -800,7 +800,7 @@ pub fn level_up_input(state: &mut State, _context: &mut Rltk) -> RunState {
     }
 }
 
-pub fn entity_targeting_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn entity_targeting_input(state: &mut State, _context: &mut Context) -> RunState {
     if let Some(key) = state.last_input.take() {
         match key {
             VirtualKeyCode::Left  | VirtualKeyCode::Numpad4 |
@@ -882,7 +882,7 @@ fn collect_entity_targets(world: &World, max_range: Option<u32>) -> Vec<usize> {
         };
 
         if let Some(range) = max_range {
-            let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_center, entity.center());
+            let dist = crate::DistanceAlg::Pythagoras.distance2d(player_center, entity.center());
             if dist > range as f32 { continue; }
         }
 
@@ -961,7 +961,7 @@ fn handle_strafe_input(world: &mut World, direction: Direction, log: &mut GameLo
     }
 }
 
-pub fn victory_input(state: &mut State, _context: &mut Rltk) -> RunState {
+pub fn victory_input(state: &mut State, _context: &mut Context) -> RunState {
     match state.last_input.take() {
         None => RunState::Victory,
         Some(_) => {

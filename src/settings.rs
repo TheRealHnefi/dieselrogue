@@ -1,5 +1,5 @@
 use std::fs;
-use rltk::VirtualKeyCode;
+use crate::VirtualKeyCode;
 
 const SETTINGS_PATH: &str = "settings.json";
 

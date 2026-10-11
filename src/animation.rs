@@ -1,10 +1,10 @@
-use rltk::{RGB, Rltk, Point};
+use crate::{RGB, Context, Point};
 use crate::Renderable;
 use crate::Rect;
 use crate::Map;
 use crate::MAIN_CONSOLE_INDEX;
 
-fn particle(glyph: rltk::FontCharType, color: RGB, background: RGB) -> Particle {
+fn particle(glyph: crate::FontCharType, color: RGB, background: RGB) -> Particle {
     Particle::Complete(Renderable { glyph, color, background })
 }
 
@@ -14,23 +14,23 @@ fn blank_frame(duration_ms: u32) -> Frame {
 }
 
 /// The streak glyph matching the path's dominant direction.
-fn streak_glyph(from: Point, to: Point) -> rltk::FontCharType {
+fn streak_glyph(from: Point, to: Point) -> crate::FontCharType {
     let (dx, dy) = (to.x - from.x, to.y - from.y);
     if dy == 0 || dx.abs() > 2 * dy.abs() {
-        rltk::to_cp437('─')
+        crate::to_cp437('─')
     } else if dx == 0 || dy.abs() > 2 * dx.abs() {
-        rltk::to_cp437('│')
+        crate::to_cp437('│')
     } else if dx * dy > 0 {
-        rltk::to_cp437('\\')
+        crate::to_cp437('\\')
     } else {
-        rltk::to_cp437('/')
+        crate::to_cp437('/')
     }
 }
 
 /// Gunfire as a tracer: the visible part of the bullet path flashes once per
 /// shot, then fades. `None` when the player would see none of it.
 pub fn shot_animation(map: &Map, start_pos: Point, target_pos: Point, number_of_shots: i32) -> Option<Animation> {
-    let path = rltk::line2d(rltk::LineAlg::Bresenham, start_pos, target_pos);
+    let path = crate::line2d(crate::LineAlg::Bresenham, start_pos, target_pos);
     if path.len() < 2 {
         return None;
     }
@@ -40,8 +40,8 @@ pub fn shot_animation(map: &Map, start_pos: Point, target_pos: Point, number_of_
     }
 
     let glyph  = streak_glyph(start_pos, target_pos);
-    let bright = particle(glyph, RGB::from_f32(1.0, 0.9, 0.3), RGB::named(rltk::BLACK));
-    let fade   = particle(glyph, RGB::from_f32(0.6, 0.35, 0.1), RGB::named(rltk::BLACK));
+    let bright = particle(glyph, RGB::from_f32(1.0, 0.9, 0.3), RGB::named(crate::BLACK));
+    let fade   = particle(glyph, RGB::from_f32(0.6, 0.35, 0.1), RGB::named(crate::BLACK));
 
     let mut frames = vec![];
     for _ in 0..number_of_shots.max(1) {
@@ -55,11 +55,11 @@ pub fn shot_animation(map: &Map, start_pos: Point, target_pos: Point, number_of_
 /// A thrown item stepping tile by tile to its target. Hidden steps keep their
 /// timing but show nothing. `None` when no step is visible.
 pub fn throw_animation(map: &Map, start_pos: Point, target_pos: Point) -> Option<Animation> {
-    let path = rltk::line2d(rltk::LineAlg::Bresenham, start_pos, target_pos);
+    let path = crate::line2d(crate::LineAlg::Bresenham, start_pos, target_pos);
     if path.len() < 2 || !path[1..].iter().any(|&p| map.is_visible(p)) {
         return None;
     }
-    let lobbed = particle(rltk::to_cp437('o'), RGB::from_f32(0.85, 0.85, 0.85), RGB::named(rltk::BLACK));
+    let lobbed = particle(crate::to_cp437('o'), RGB::from_f32(0.85, 0.85, 0.85), RGB::named(crate::BLACK));
     let frames = path[1..].iter().map(|&p| {
         if map.is_visible(p) {
             Frame { particles: vec![lobbed.clone()], positions: vec![p], duration_ms: 40 }
@@ -74,10 +74,10 @@ pub fn throw_animation(map: &Map, start_pos: Point, target_pos: Point) -> Option
 /// ending in the impact explosion.
 pub fn rocket_animation(map: &Map, start_pos: Point, target_pos: Point, radius: u32) -> Animation {
     const TRAIL_LEN: usize = 3;
-    let path  = rltk::line2d(rltk::LineAlg::Bresenham, start_pos, target_pos);
+    let path  = crate::line2d(crate::LineAlg::Bresenham, start_pos, target_pos);
     let glyph = streak_glyph(start_pos, target_pos);
-    let head  = particle(rltk::to_cp437('*'), RGB::named(rltk::YELLOW), RGB::named(rltk::RED));
-    let trail = particle(glyph, RGB::from_f32(0.9, 0.5, 0.1), RGB::named(rltk::BLACK));
+    let head  = particle(crate::to_cp437('*'), RGB::named(crate::YELLOW), RGB::named(crate::RED));
+    let trail = particle(glyph, RGB::from_f32(0.9, 0.5, 0.1), RGB::named(crate::BLACK));
 
     let mut frames = vec![];
     for i in 1..path.len() {
@@ -100,8 +100,8 @@ pub fn rocket_animation(map: &Map, start_pos: Point, target_pos: Point, radius: 
 }
 
 pub fn fan_fire_animation(positions: Vec<Point>) -> Animation {
-    let particle_a = particle(rltk::to_cp437('^'), RGB::named(rltk::YELLOW), RGB::named(rltk::RED));
-    let particle_b = particle(rltk::to_cp437('*'), RGB::named(rltk::RED), RGB::named(rltk::YELLOW));
+    let particle_a = particle(crate::to_cp437('^'), RGB::named(crate::YELLOW), RGB::named(crate::RED));
+    let particle_b = particle(crate::to_cp437('*'), RGB::named(crate::RED), RGB::named(crate::YELLOW));
 
     let frame_1 = Frame {
         particles: vec![particle_a; positions.len()],
@@ -130,8 +130,8 @@ fn chebyshev_ring(pos: Point, radius: i32) -> Vec<Point> {
 }
 
 pub fn flashbang_animation(pos: Point, radius: u32) -> Animation {
-    let bright = particle(rltk::to_cp437('█'), RGB::named(rltk::WHITE), RGB::named(rltk::WHITE));
-    let fade   = particle(rltk::to_cp437('█'), RGB::from_f32(0.8, 0.8, 0.8), RGB::from_f32(0.65, 0.65, 0.65));
+    let bright = particle(crate::to_cp437('█'), RGB::named(crate::WHITE), RGB::named(crate::WHITE));
+    let fade   = particle(crate::to_cp437('█'), RGB::from_f32(0.8, 0.8, 0.8), RGB::from_f32(0.65, 0.65, 0.65));
 
     let mut frames = vec![
         Frame { particles: vec![bright.clone()], positions: vec![pos], duration_ms: 80 },
@@ -149,7 +149,7 @@ pub fn flashbang_animation(pos: Point, radius: u32) -> Animation {
 /// The expanding-ring explosion frames, shared by [`explosion_animation`] and
 /// the tail of [`rocket_animation`].
 fn explosion_frames(pos: Point, radius: u32) -> Vec<Frame> {
-    let blast = particle(rltk::to_cp437('*'), RGB::named(rltk::RED), RGB::named(rltk::YELLOW));
+    let blast = particle(crate::to_cp437('*'), RGB::named(crate::RED), RGB::named(crate::YELLOW));
 
     let mut frames = vec![
         Frame { particles: vec![blast.clone()], positions: vec![pos], duration_ms: 250 },
@@ -168,7 +168,7 @@ pub fn explosion_animation(pos: Point, radius: u32) -> Animation {
 #[derive(Clone)]
 enum Particle {
     Complete(Renderable)
-    // Background-only particle makes sense, but does not work with rltk::fancy_console
+    // Background-only particle makes sense, but does not work with fancy consoles
 }
 
 #[derive(Clone)]
@@ -209,7 +209,7 @@ impl AnimationSystem {
         }
     }
 
-    pub fn render(&mut self, viewport: Rect, monotime: u128, context: &mut Rltk) -> bool {
+    pub fn render(&mut self, viewport: Rect, monotime: u128, context: &mut Context) -> bool {
         context.set_active_console(MAIN_CONSOLE_INDEX);
         let delta_time = (monotime - self.start_time) as u32;
         self.start_time = monotime;
@@ -231,7 +231,7 @@ impl Animation {
         Animation { frames, current_frame: 0, time_spent_in_current_frame: 0, done: false }
     }
 
-    pub fn render(&mut self, viewport: Rect, delta_time: u32, context: &mut Rltk) {
+    pub fn render(&mut self, viewport: Rect, delta_time: u32, context: &mut Context) {
         // The system keeps rendering every animation until ALL are done, so a
         // finished one (current_frame == frames.len()) must stay inert.
         if self.done {

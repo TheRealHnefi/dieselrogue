@@ -1,4 +1,4 @@
-use rltk::{Rltk, GameState, Point, VirtualKeyCode};
+use crate::{Context, GameState, Point, VirtualKeyCode};
 use crate::Bindings;
 use crate::RebindTarget;
 use std::cmp::max;
@@ -75,10 +75,14 @@ pub struct State {
 
     pub rex_assets: RexAssets,
 
-    /// Font size chosen in the menu but not yet applied (requires restart).
+    /// Font size chosen in the menu, applied to the window on the next tick.
     pub pending_font_size: Option<FontSize>,
-    /// Fullscreen toggle chosen in the menu but not yet applied (requires restart).
+    /// Fullscreen toggle chosen in the menu, applied on the next tick.
     pub pending_fullscreen: Option<bool>,
+    /// Font size currently applied to the window.
+    applied_font_size: FontSize,
+    /// Fullscreen mode currently applied to the window.
+    applied_fullscreen: bool,
 
     /// Last key pressed, captured every tick before the state machine runs.
     /// Persists across non-input states so a press during AI/resolve is not dropped.
@@ -128,6 +132,8 @@ impl State {
             rex_assets: RexAssets::new(),
             pending_font_size: None,
             pending_fullscreen: None,
+            applied_font_size: crate::Settings::load().font_size,
+            applied_fullscreen: crate::Settings::load().fullscreen,
             last_input: None,
             strafe_held: false,
             has_save: crate::savegame::exists(),
@@ -192,6 +198,8 @@ impl State {
             rex_assets: RexAssets::new(),
             pending_font_size: None,
             pending_fullscreen: None,
+            applied_font_size: crate::Settings::load().font_size,
+            applied_fullscreen: crate::Settings::load().fullscreen,
             last_input: None,
             strafe_held: false,
             has_save: false,
@@ -228,6 +236,8 @@ impl State {
             rex_assets: RexAssets::new(),
             pending_font_size: None,
             pending_fullscreen: None,
+            applied_font_size: crate::Settings::load().font_size,
+            applied_fullscreen: crate::Settings::load().fullscreen,
             last_input: None,
             strafe_held: false,
             has_save: false,
@@ -239,12 +249,33 @@ impl State {
     pub fn log(&mut self, message: String) {
         self.log.log(message);
     }
+
+    /// Applies menu-chosen display settings (font size, fullscreen) to the
+    /// window immediately, without a restart.
+    fn apply_display_settings(&mut self, context: &mut Context) {
+        let fullscreen = self.pending_fullscreen.unwrap_or(self.applied_fullscreen);
+        if fullscreen != self.applied_fullscreen {
+            match context.set_fullscreen(fullscreen) {
+                Ok(()) => self.applied_fullscreen = fullscreen,
+                Err(e) => tracing::warn!("failed to apply fullscreen: {}", e.message),
+            }
+        }
+        let font_size = self.pending_font_size.unwrap_or(self.applied_font_size);
+        if font_size != self.applied_font_size {
+            let native = font_size.font_native_px();
+            let tile = font_size.tile_px();
+            match context.set_font(font_size.font_file(), native, native, tile, tile) {
+                Ok(()) => self.applied_font_size = font_size,
+                Err(e) => tracing::warn!("failed to apply font size: {}", e.message),
+            }
+        }
+    }
 }
 
 impl GameState for State {
     // Runs every frame.
     #[tracing::instrument(skip_all)]
-    fn tick(&mut self, context: &mut Rltk) {
+    fn tick(&mut self, context: &mut Context) {
         if context.key.is_some() {
             self.last_input = context.key;
         }
@@ -273,6 +304,8 @@ impl GameState for State {
                 self.run_state = RunState::HelpScreen;
             }
         }
+
+        self.apply_display_settings(context);
 
         let monotime = self.start_tick.elapsed().as_millis();
 
@@ -443,7 +476,7 @@ impl State {
     }
 
     #[tracing::instrument(skip_all)]
-    fn animate(&mut self, phase: ExecutionPhase, monotime: u128, context: &mut Rltk) {
+    fn animate(&mut self, phase: ExecutionPhase, monotime: u128, context: &mut Context) {
         let animation_done = self.animation_system.render(
             self.get_viewport(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32),
             monotime,

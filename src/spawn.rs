@@ -1,4 +1,4 @@
-use rltk::{Point, RandomNumberGenerator};
+use crate::{Point, RandomNumberGenerator};
 use std::collections::HashMap;
 use crate::{Map, TileType, World, Direction, CombatTactic, Item, EntityKind, BLOCK_SIZE, AI, ActorAI, Profile};
 use crate::item::MakeItem;

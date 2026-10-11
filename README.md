@@ -9,7 +9,7 @@ simultaneously and actions are entirely deterministic.
 
 The interface consists of traditional, ASCII-like tiles using a modified CP437 font.
 
-The game is implemented in Rust, using RLTK.
+The game is implemented in Rust, using a software renderer inspired by RLTK.
 
 ## Current state
 

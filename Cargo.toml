@@ -11,7 +11,6 @@ winres = "0.1"
 [dependencies]
 strum = { version = "0.26", features = ["derive"] }
 rayon = "1"
-rltk = {version = "*", features = ["serde"]}
 serde = {version = "1.0.125", features = ["derive"]}
 serde_json = "1.0.39"
 puffin = "0.20"
@@ -20,4 +19,5 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 image = "0.24"
 flate2 = "1"
+minifb = "0.29"
 

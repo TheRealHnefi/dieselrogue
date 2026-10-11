@@ -1,4 +1,4 @@
-use rltk::{Rltk, RGB, Point};
+use crate::{Context, RGB, Point};
 use crate::entity::Entity;
 use crate::item::*;
 use crate::intent::*;
@@ -22,7 +22,7 @@ pub trait Menu {
     fn select_previous(&mut self);
     fn no_selectable_exists(&self) -> bool;
     fn get_action(&self) -> MenuAction;
-    fn draw(&self, context: &mut Rltk, show_cursor: bool);
+    fn draw(&self, context: &mut Context, show_cursor: bool);
     /// Returns (x, y, width, height) of the menu box, matching what draw() renders.
     fn bounds(&self) -> Option<(i32, i32, i32, i32)> { None }
 }
@@ -431,18 +431,10 @@ pub fn settings_menu(pending_font_size: Option<FontSize>, pending_fullscreen: Op
     let settings = Settings::load();
 
     let current_size = pending_font_size.unwrap_or(settings.font_size);
-    let font_label = if pending_font_size.is_some() {
-        format!("Font size: {} (restart to apply)", current_size.label())
-    } else {
-        format!("Font size: {}", current_size.label())
-    };
+    let font_label = format!("Font size: {}", current_size.label());
 
     let current_fs = pending_fullscreen.unwrap_or(settings.fullscreen);
-    let fs_label = if pending_fullscreen.is_some() {
-        format!("Fullscreen: {} (restart to apply)", if current_fs { "On" } else { "Off" })
-    } else {
-        format!("Fullscreen: {}", if current_fs { "On" } else { "Off" })
-    };
+    let fs_label = format!("Fullscreen: {}", if current_fs { "On" } else { "Off" });
 
     MenuPanel {
         x: 35,
@@ -670,24 +662,24 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
         return self.rows[self.selected_row].get_action();
     }
 
-    fn draw(&self, context: &mut Rltk, show_cursor: bool) {
+    fn draw(&self, context: &mut Context, show_cursor: bool) {
         let mut width = 0;
         for row in &self.rows {
             if row.get_text().len() > width {
                 width = row.get_text().len();
             }
         }
-        context.draw_box(self.x, self.y, width + 3, self.rows.len() + 1, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+        context.draw_box(self.x, self.y, width + 3, self.rows.len() + 1, RGB::named(crate::WHITE), RGB::named(crate::BLACK));
         for (i, row) in self.rows.iter().enumerate() {
             let fg = if self.rows[i].selectable() {
-                RGB::named(rltk::WHITE)
+                RGB::named(crate::WHITE)
             } else {
-                RGB::named(rltk::DARKGRAY)
+                RGB::named(crate::DARKGRAY)
             };
             if show_cursor && self.selected_row == i && !self.no_selectable_exists() {
-                context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(rltk::MAGENTA), row.get_text());
+                context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(crate::MAGENTA), row.get_text());
             } else {
-                context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(rltk::BLACK), row.get_text());
+                context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(crate::BLACK), row.get_text());
             }
         }
     }

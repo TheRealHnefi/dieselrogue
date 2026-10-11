@@ -1,5 +1,5 @@
 use super::*;
-use rltk::{Point, RandomNumberGenerator};
+use crate::{Point, RandomNumberGenerator};
 use strum::IntoEnumIterator;
 use std::collections::HashMap;
 use crate::animation::explosion_animation;
@@ -1358,7 +1358,7 @@ impl World {
                     true
                 } else {
                     let player_center = self.entities[player_id].center();
-                    let dist = rltk::DistanceAlg::Pythagoras.distance2d(player_center, target_center);
+                    let dist = crate::DistanceAlg::Pythagoras.distance2d(player_center, target_center);
                     dist > range as f32
                 }
             }
@@ -1380,7 +1380,7 @@ impl World {
                     if dx > vol || dy > vol {
                         return None;
                     }
-                    let dist = rltk::DistanceAlg::Pythagoras.distance2d(pos, s.pos);
+                    let dist = crate::DistanceAlg::Pythagoras.distance2d(pos, s.pos);
                     if dist <= s.volume as f32 {
                         Some((s.volume as f32 - dist).max(0.0) as u32)
                     } else {
