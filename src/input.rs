@@ -927,7 +927,7 @@ fn confirm_entity_target(state: &mut State) -> RunState {
 /// allowed — the ability lies dormant (not in the active set, so not in the
 /// panel) and awakens via `update_abilities` once the part heals.
 fn add_levelup_ability(state: &mut State, ability: Ability) {
-    let Ok(player) = state.world.get_player_mut() else { return };
+    let Ok(player) = state.world.get_actual_player_mut() else { return };
     let part_idx = ability.default_body_part();
     let part = &mut player.body.parts[part_idx];
     let dormant = part.damage > part.max_damage;

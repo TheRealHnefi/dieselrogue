@@ -416,6 +416,25 @@ impl World {
         }
     }
 
+    /// Returns the actual player entity (the human body), regardless of whether
+    /// they are currently piloting a vehicle. When piloting, `get_player()` returns
+    /// the vehicle, but this returns the pilot entity.
+    pub fn get_actual_player_mut(&mut self) -> Result<&mut Entity, GameError> {
+        let player_id = self.player_id.ok_or_else(|| GameError {
+            error: Error::BadPrecondition,
+            message: format!("No player exists")
+        })?;
+        
+        // Check if the player is driving a vehicle
+        let entity = &self.entities[player_id];
+        let actual_id = match entity.driving {
+            DrivingState::DrivenBy(pilot_id) => pilot_id,
+            _ => player_id,
+        };
+        
+        Ok(&mut self.entities[actual_id])
+    }
+
     /// Up to three abilities to choose from at a level-up, drawn from different
     /// categories where possible. Seeded by the run and level, so a given level-up
     /// always offers the same choice.
