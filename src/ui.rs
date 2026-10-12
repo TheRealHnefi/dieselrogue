@@ -84,9 +84,7 @@ pub fn draw_welcome_screen(state: &State, context: &mut Context) {
     context.set_active_console(UI_CONSOLE_INDEX);
     context.cls();
 
-    context.print_color_centered(30, LINE_COLOR, BG_COLOR, "DIESELROGUE");
-    context.print_color_centered(31, INACTIVE_COLOR, BG_COLOR, "a dieselpunk roguelike");
-
+    // Static title art (lettering, ornament, subtitle) comes from title.xp.
     let welcome_image = &state.rex_assets.title_screen.layers[0];
     for x in 0..SCREEN_WIDTH {
       for y in 0..SCREEN_HEIGHT {

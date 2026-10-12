@@ -1259,7 +1259,7 @@ pub fn load_resource(path: &str) -> std::io::Result<Vec<u8>> {
 ///   column-major (every row of column 0, then every row of column 1, ...)
 ///   per cell: u32 glyph, u8 fg_r, u8 fg_g, u8 fg_b, u8 bg_r, u8 bg_g, u8 bg_b
 pub mod rex {
-    use std::io::{self, Read};
+    use std::io::{self, Read, Write};
 
     /// 8-bit RGB color as stored in a `.xp` file. Interface based on RLTK's `rex::XpColor`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1411,6 +1411,38 @@ pub mod rex {
                 });
             }
             Ok(XpFile { version, layers })
+        }
+
+        /// Writes the image to a byte stream (uncompressed). Inverse of
+        /// [`XpFile::read`].
+        pub fn write<W: Write>(&self, w: &mut W) -> io::Result<()> {
+            w.write_all(&self.version.to_le_bytes())?;
+            w.write_all(&(self.layers.len() as u32).to_le_bytes())?;
+            for layer in &self.layers {
+                w.write_all(&(layer.width as u32).to_le_bytes())?;
+                w.write_all(&(layer.height as u32).to_le_bytes())?;
+                for x in 0..layer.width {
+                    // Column-major: x is the outer loop, y the inner one.
+                    for y in 0..layer.height {
+                        let cell = &layer.cells[x * layer.height + y];
+                        w.write_all(&cell.ch.to_le_bytes())?;
+                        w.write_all(&[cell.fg.r, cell.fg.g, cell.fg.b])?;
+                        w.write_all(&[cell.bg.r, cell.bg.g, cell.bg.b])?;
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        /// Serializes the image as gzip-compressed `.xp` bytes, ready to be
+        /// written to a file. Inverse of [`XpFile::from_bytes`].
+        pub fn to_gzipped_bytes(&self) -> io::Result<Vec<u8>> {
+            let mut raw = Vec::new();
+            self.write(&mut raw)?;
+            let mut encoder =
+                flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+            encoder.write_all(&raw)?;
+            encoder.finish()
         }
     }
 }
@@ -2885,7 +2917,11 @@ mod tests {
         crate::embedded_resource!(TEST_MACRO_RESOURCE, "../resources/title.xp");
         crate::link_resource!(TEST_MACRO_RESOURCE, "test/title_macro.xp");
         let bytes = embedded_resource("test/title_macro.xp").unwrap();
-        assert!(bytes.len() > 1000);
+        // The embedded resource is the real title screen: a full 160x90
+        // single-layer .xp (the raw form is 16 + 160*90*10 bytes, gzipped).
+        let xp = rex::XpFile::from_bytes(bytes).unwrap();
+        assert_eq!(xp.layers.len(), 1);
+        assert_eq!((xp.layers[0].width, xp.layers[0].height), (160, 90));
     }
 
     // ── rex::XpColor ──
@@ -3000,6 +3036,32 @@ mod tests {
     }
 
     #[test]
+    fn xpfile_write_read_round_trip() {
+        let mut xp = rex::XpFile::new(3, 2);
+        {
+            let cell = xp.layers[0].get_mut(1, 1).unwrap();
+            cell.ch = 219;
+            cell.fg = rex::XpColor::new(232, 193, 90);
+            cell.bg = rex::XpColor::new(1, 2, 3);
+        }
+        let mut raw = Vec::new();
+        xp.write(&mut raw).unwrap();
+        let back = rex::XpFile::read(&mut &raw[..]).unwrap();
+        assert_eq!(xp, back);
+    }
+
+    #[test]
+    fn xpfile_gzip_round_trip() {
+        let mut xp = rex::XpFile::new(4, 3);
+        let cell = xp.layers[0].get_mut(2, 1).unwrap();
+        cell.ch = 205;
+        cell.fg = rex::XpColor::new(192, 192, 192);
+        let bytes = xp.to_gzipped_bytes().unwrap();
+        let back = rex::XpFile::from_bytes(&bytes).unwrap();
+        assert_eq!(xp, back);
+    }
+
+    #[test]
     fn xpfile_read_truncated_is_error() {
         // Header promises 2x2 = 4 cells, but only 1 is present.
         let raw = build_xp_raw(2, 2, &[cell_bytes(65, (0, 0, 0), (0, 0, 0))]);
@@ -3024,10 +3086,26 @@ mod tests {
         assert_eq!(xp.layers.len(), 1);
         let layer = &xp.layers[0];
         assert_eq!((layer.width, layer.height), (160, 90));
-        // png2rex writes upper-half-block glyphs (223) with per-pixel colors.
-        assert_eq!(layer.get(0, 0).unwrap().ch, 223);
         assert!(layer.get(160, 0).is_none());
         assert!(layer.get(0, 90).is_none());
+        // Deco title (see src/bin/gen_title.rs): blank background, brass
+        // lettering with a vertical gradient, silver ornament lines.
+        assert_eq!(layer.get(0, 0).unwrap().ch, 0);
+        let art = layer.get(24, 26).unwrap(); // D top bar, light brass
+        assert_eq!(art.ch, 219);
+        assert_eq!(art.fg, rex::XpColor::new(232, 193, 90));
+        let art_bottom = layer.get(24, 32).unwrap(); // D bottom bar, dark brass
+        assert_eq!(art_bottom.ch, 219);
+        assert_eq!(art_bottom.fg, rex::XpColor::new(143, 107, 26));
+        let line = layer.get(12, 24).unwrap(); // ornament line, silver
+        assert_eq!(line.ch, 205);
+        assert_eq!(line.fg, rex::XpColor::new(192, 192, 192));
+        let diamond = layer.get(79, 24).unwrap(); // centered diamond, brass
+        assert_eq!(diamond.ch, 4);
+        assert_eq!(diamond.fg, rex::XpColor::new(201, 162, 39));
+        let subtitle = layer.get(69, 37).unwrap(); // subtitle text, silver
+        assert_eq!(subtitle.ch, 'a' as u32);
+        assert_eq!(subtitle.fg, rex::XpColor::new(184, 184, 184));
     }
 
     #[test]
@@ -3507,10 +3585,13 @@ mod tests {
             }
         }
         ctx.render_framebuffer();
-        // The title art covers the screen; most pixels must be non-black.
+        // The deco title renders: full-block art cells show as solid brass
+        // (center pixel of art cell (24, 26), 8px tiles, light brass).
+        let w = ctx.width_pixels as usize;
+        assert_eq!(ctx.framebuffer[(26 * 8 + 4) * w + (24 * 8 + 4)], 0xE8C15A);
         let non_black = ctx.framebuffer.iter().filter(|&&p| p != 0).count();
         assert!(
-            non_black > ctx.framebuffer.len() / 10,
+            non_black > ctx.framebuffer.len() / 100,
             "only {} of {} pixels are non-black",
             non_black,
             ctx.framebuffer.len()
