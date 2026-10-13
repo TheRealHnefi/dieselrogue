@@ -117,6 +117,59 @@ pub fn fan_fire_animation(positions: Vec<Point>) -> Animation {
     Animation::from_frames(vec![frame_1, frame_2])
 }
 
+/// The zig-zag lightning line through `waypoints` (shooter, then each victim).
+/// Every third interior tile of a segment is nudged one tile perpendicular to
+/// it, the rest stay on the line; `phase` shifts which tiles are nudged, so
+/// consecutive frames crackle. Only tiles the player can see are kept.
+fn lightning_path(map: &Map, waypoints: &[Point], phase: usize) -> Vec<Point> {
+    let in_map = |p: &Point| p.x >= 0 && p.y >= 0 && p.x < map.width as i32 && p.y < map.height as i32;
+    let mut pts = vec![];
+    for pair in waypoints.windows(2) {
+        let (from, to) = (pair[0], pair[1]);
+        let perp = Point { x: -(to.y - from.y).signum(), y: (to.x - from.x).signum() };
+        let path = crate::line2d(crate::LineAlg::Bresenham, from, to);
+        for (i, &p) in path.iter().enumerate() {
+            let p = if i == 0 || i + 1 == path.len() || (i + phase) % 3 != 1 {
+                p
+            } else {
+                Point { x: p.x + perp.x, y: p.y + perp.y }
+            };
+            if in_map(&p) && map.is_visible(p) {
+                pts.push(p);
+            }
+        }
+    }
+    pts
+}
+
+/// Chain lightning as a jagged arc flickering between two zig-zag variants of
+/// the path, then fading. `None` when the player would see none of it.
+pub fn chain_lightning_animation(map: &Map, waypoints: Vec<Point>) -> Option<Animation> {
+    let glyph = crate::to_cp437('≈');
+    let flash = particle(glyph, RGB::named(crate::WHITE), RGB::from_f32(0.45, 0.85, 1.0));
+    let arc   = particle(glyph, RGB::from_f32(0.45, 0.85, 1.0), RGB::named(crate::BLACK));
+    let fade  = particle(glyph, RGB::from_f32(0.2, 0.45, 0.8), RGB::named(crate::BLACK));
+
+    let zig_a = lightning_path(map, &waypoints, 0);
+    let zig_b = lightning_path(map, &waypoints, 1);
+    if zig_a.is_empty() && zig_b.is_empty() {
+        return None;
+    }
+    let frame = |p: &Particle, positions: &[Point], ms: u32| Frame {
+        particles: vec![p.clone(); positions.len()],
+        positions: positions.to_vec(),
+        duration_ms: ms,
+    };
+    Some(Animation::from_frames(vec![
+        frame(&flash, &zig_a, 60),
+        blank_frame(25),
+        frame(&arc, &zig_b, 60),
+        blank_frame(25),
+        frame(&arc, &zig_a, 60),
+        frame(&fade, &zig_b, 90),
+    ]))
+}
+
 fn chebyshev_ring(pos: Point, radius: i32) -> Vec<Point> {
     let mut pts = vec![];
     for dx in -radius..=radius {

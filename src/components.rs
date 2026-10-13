@@ -252,6 +252,7 @@ pub enum SoundKind {
     Footstep,
     Engine,
     Shout,
+    Zap,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -428,7 +429,16 @@ impl AmmoKind {
 
 #[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ItemKind {
-    Firearm {ammo: u32, max_ammo: u32, ammo_kind: AmmoKind, damage: Damage, range: u32},
+    Firearm {
+        ammo: u32,
+        max_ammo: u32,
+        ammo_kind: AmmoKind,
+        damage: Damage,
+        range: u32,
+        /// Shock weapons: the maximum number of enemies one shot can hit by chaining
+        /// lightning from victim to victim. 0 = ordinary single-target weapon.
+        chain_targets: u32,
+    },
     MeleeWeapon {damage: Damage},
     Wearable {armor: Armor},
     FusedExplosive {damage: Damage, timeout: u32, radius: u32, flash: bool},

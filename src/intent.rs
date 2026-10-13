@@ -54,6 +54,7 @@ pub enum ActionId {
     FireBurst,
     FireRocket,
     FanFire,
+    ChainFire,
     Prime,
     Throw,
     Reload,

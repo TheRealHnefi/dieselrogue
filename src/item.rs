@@ -98,6 +98,7 @@ enum FireMode {
     SingleAndBurst,   // aim + fire shot + fire burst
     Rocket,           // aim + fire rocket
     Fan,              // aim + fan fire
+    Chain { targets: u32 }, // aim + chain lightning; targets caps how many enemies one shot hits
 }
 
 /// All varying parameters needed to construct a firearm Item.
@@ -126,7 +127,7 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Flare gun",            glyph: 'F', fire_mode: FireMode::Single,         two_handed: false, ammo: 1,   ammo_kind: AmmoKind::Fuel,      damage: Damage::new( 0,  0, 10, 0), range: 5,  rarity: 0 })
     }
     pub fn shock_pistol() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'S', fire_mode: FireMode::Single,         two_handed: false, ammo: 5,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  5,  0, 0), range: 3,  rarity: 1 })
+        Item::make_firearm(FirearmDef { name: "Shock pistol",         glyph: 'S', fire_mode: FireMode::Chain { targets: 3 }, two_handed: false, ammo: 5,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  5,  0, 0), range: 3,  rarity: 1 })
     }
     pub fn submachine_gun() -> Self {
         Item::make_firearm(FirearmDef { name: "SMG",                  glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: false, ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(7,  0,  0, 0), range: 5,  rarity: 1 })
@@ -150,10 +151,10 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Rotary machine gun",   glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 100, ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 5), range: 10, rarity: 3 })
     }
     pub fn shock_carbine() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 15,  ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  5,  0, 0), range: 7,  rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Shock carbine",        glyph: 'S', fire_mode: FireMode::Chain { targets: 4 }, two_handed: true,  ammo: 15,  ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0,  5,  0, 0), range: 7,  rarity: 2 })
     }
     pub fn shock_cannon() -> Self {
-        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'S', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 2,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0, 25,  0, 0), range: 11,  rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Shock cannon",         glyph: 'S', fire_mode: FireMode::Chain { targets: 6 }, two_handed: true,  ammo: 2,   ammo_kind: AmmoKind::Batteries, damage: Damage::new( 0, 25,  0, 0), range: 11,  rarity: 3 })
     }
     pub fn flamethrower() -> Self {
         Item::make_firearm(FirearmDef { name: "Flamethrower",         glyph: 'F', fire_mode: FireMode::Fan,            two_handed: true,  ammo: 10,  ammo_kind: AmmoKind::Fuel,      damage: Damage::new( 0,  0,  5, 0), range: 9, rarity: 2 })
@@ -410,7 +411,7 @@ impl Item {
             inventory_actions: vec![],
             equip_actions: vec![Item::aim_action(range), Item::aim_at_entity_action(range), Item::fire_action()],
             equip_slots: vec![SlotType::TurretMount],
-            kind: ItemKind::Firearm { ammo: ammo, max_ammo: ammo, ammo_kind: AmmoKind::Rockets, damage: Damage::new(500, 0, 0, 0), range: range },
+            kind: ItemKind::Firearm { ammo: ammo, max_ammo: ammo, ammo_kind: AmmoKind::Rockets, damage: Damage::new(500, 0, 0, 0), range: range, chain_targets: 0 },
             proxy: false,
             locked: true,
             active: false,
@@ -508,6 +509,7 @@ impl Item {
             FireMode::SingleAndBurst => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_action(), Item::fire_burst_action()],
             FireMode::Rocket         => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fire_rocket_action()],
             FireMode::Fan            => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::fan_fire_action()],
+            FireMode::Chain { .. }     => vec![Item::aim_action(def.range), Item::aim_at_entity_action(def.range), Item::chain_fire_action()],
         });
         // Ability-gated shots for weapons that fire single aimed rounds.
         if matches!(def.fire_mode, FireMode::Single | FireMode::SingleScoped | FireMode::SingleAndBurst) {
@@ -527,7 +529,8 @@ impl Item {
             inventory_actions: vec![Item::equip_action(), Item::quick_draw_action(def.range), Item::reload_action(), Item::drop_action()],
             equip_actions,
             equip_slots,
-            kind: ItemKind::Firearm { ammo: def.ammo, max_ammo: def.ammo, ammo_kind: def.ammo_kind, damage: def.damage, range: def.range },
+            kind: ItemKind::Firearm { ammo: def.ammo, max_ammo: def.ammo, ammo_kind: def.ammo_kind, damage: def.damage, range: def.range,
+                chain_targets: match def.fire_mode { FireMode::Chain { targets } => targets, _ => 0 } },
             proxy: false,
             locked: false,
             active: false,
@@ -608,6 +611,9 @@ impl Item {
     }
     fn fan_fire_action() -> EntityAction {
         EntityAction { id: ActionId::FanFire,       name: "Fan fire".to_string(),         targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::fan_fire_action      }
+    }
+    fn chain_fire_action() -> EntityAction {
+        EntityAction { id: ActionId::ChainFire,     name: "Chain lightning".to_string(),  targeting: Targeting::UseExistingAim { ask_bodypart: false }, phase: ExecutionPhase::Attack, precondition: precondition_is_aiming, action: actions::chain_fire_action    }
     }
     fn called_shot_action() -> EntityAction {
         EntityAction { id: ActionId::CalledShot,    name: "Called shot".to_string(),      targeting: Targeting::UseExistingAim { ask_bodypart: true  }, phase: ExecutionPhase::Attack, precondition: |e, m, i| e.has_ability(Ability::CalledShot) && precondition_is_aiming(e, m, i), action: actions::called_shot_action }

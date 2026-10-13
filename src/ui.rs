@@ -682,6 +682,7 @@ fn sound_color(kind: &SoundKind, dist: f32) -> crate::RGB {
         SoundKind::Footstep  => RGB { r: 0.5, g: 0.5, b: 0.5 },
         SoundKind::Engine    => RGB { r: 0.4, g: 0.8, b: 0.4 },
         SoundKind::Shout     => RGB { r: 0.9, g: 0.7, b: 0.3 },
+        SoundKind::Zap       => RGB { r: 0.5, g: 0.9, b: 1.0 },
     };
     let fade = if dist <= 3.0 { 1.0 } else if dist <= 8.0 { 0.75 } else if dist <= 15.0 { 0.5 } else { 0.3 };
     RGB { r: base.r * fade, g: base.g * fade, b: base.b * fade }
@@ -740,6 +741,7 @@ fn draw_noise_panel(state: &State, context: &mut Context) {
             SoundKind::Footstep  => "footstep",
             SoundKind::Engine    => "engine",
             SoundKind::Shout     => "shout",
+            SoundKind::Zap       => "zap",
         };
         let color = sound_color(&sound.kind, *dist);
         let text = format!("{} {}", loudness, kind_str);

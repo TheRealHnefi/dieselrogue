@@ -407,6 +407,83 @@ pub fn fan_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<E
 }
 
 // ---------------------------------------------------------------------------
+// Chain lightning
+// ---------------------------------------------------------------------------
+
+/// The nearest pawn the arc can jump to from `from`: within `range`, not the
+/// shooter, not already hit, and with an unobstructed line between the two
+/// (walls, fences, windows and other pawns block — the same rule fan fire uses).
+fn nearest_chain_target(map: &Map, from: Point, range: u32, hit_ids: &[usize], shooter_id: usize) -> Option<(usize, Point)> {
+    let range_i = range as i32;
+    let mut best: Option<(f32, usize, Point)> = None;
+    for dy in -range_i..=range_i {
+        for dx in -range_i..=range_i {
+            let p = Point { x: from.x + dx, y: from.y + dy };
+            if p.x < 0 || p.y < 0 || p.x >= map.width as i32 || p.y >= map.height as i32 { continue; }
+            let dist = ((dx * dx + dy * dy) as f32).sqrt();
+            if dist > range as f32 { continue; }
+            let Some(pawn) = &map.pawns[map.pos_idx(p)] else { continue };
+            if pawn.entity_id == shooter_id || hit_ids.contains(&pawn.entity_id) { continue; }
+            let ray = crate::line2d(crate::LineAlg::Bresenham, from, p);
+            if ray[1..ray.len().saturating_sub(1)].iter().any(|&t| map.blocked(t.x, t.y)) { continue; }
+            if best.as_ref().map_or(true, |(bd, _, _)| dist < *bd) {
+                best = Some((dist, pawn.entity_id, p));
+            }
+        }
+    }
+    best.map(|(_, id, p)| (id, p))
+}
+
+/// Chain lightning (shock weapons): the shot hits the enemy on the aimed tile,
+/// then arcs to the nearest new enemy within the weapon's range of the last one
+/// hit, as long as the line between them is unobstructed. No enemy is hit
+/// twice; the weapon's `chain_targets` caps how many one shot can reach. A
+/// missed shot grounds the arc at the aimed tile with no damage.
+pub fn chain_fire_action(entity: &Entity, map: &Map, entities: &[Entity]) -> Vec<Effect> {
+    let (slot, target_pos, _) = match extract_fire_intent(entity) {
+        Some(v) => v,
+        None => unreachable!("chain_fire_action called with non-fire intent"),
+    };
+    let (damage, range, fired) = match read_ammo(entity, slot, 1) {
+        Some(v) => v,
+        None => return vec![log(entity, format!("{} pulled the trigger. 'Click'.", entity.name))],
+    };
+    let chain_targets = entity.get_equipped_item_ref(slot)
+        .map_or(0, |item| match &item.kind {
+            ItemKind::Firearm { chain_targets, .. } => *chain_targets,
+            _ => 0,
+        });
+    let mut effects = vec![
+        Effect::ConsumeAmmo { entity_id: entity.index, slot, shots: fired },
+        Effect::Sound(SoundEvent { kind: SoundKind::Zap, pos: entity.position, volume: 20, from_player: entity.kind == EntityKind::Player }),
+    ];
+
+    let mut waypoints = vec![entity.position, target_pos];
+    let mut hit_ids: Vec<usize> = vec![];
+    if let Some(pawn) = &map.pawns[map.pos_idx(target_pos)] {
+        let first_id = pawn.entity_id;
+        effects.push(log_vs(entity, first_id, format!("{} shocked {}", entity.name, entities[first_id].name)));
+        hit_ids.push(first_id);
+        let mut current = target_pos;
+        while hit_ids.len() < chain_targets as usize {
+            let Some((next_id, next_pos)) = nearest_chain_target(map, current, range, &hit_ids, entity.index) else { break };
+            effects.push(log_vs(entity, next_id, format!("{}'s shock arced to {}", entity.name, entities[next_id].name)));
+            hit_ids.push(next_id);
+            waypoints.push(next_pos);
+            current = next_pos;
+        }
+    }
+    for &victim_id in &hit_ids {
+        for part in 0..entities[victim_id].body.parts.len() {
+            effects.push(Effect::Damage { entity_id: victim_id, bodypart_index: part, raw_damage: damage, source: Some(entity.index) });
+        }
+        effects.extend(suppress(entity, victim_id));
+    }
+    effects.extend(chain_lightning_animation(map, waypoints).map(Effect::Animation));
+    effects
+}
+
+// ---------------------------------------------------------------------------
 // Aim
 // ---------------------------------------------------------------------------
 

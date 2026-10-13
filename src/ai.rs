@@ -415,7 +415,7 @@ impl ActorAI {
             }
 
             let candidate = match s.kind {
-                SoundKind::Shout | SoundKind::Gunshot | SoundKind::Burst | SoundKind::Explosion =>
+                SoundKind::Shout | SoundKind::Gunshot | SoundKind::Burst | SoundKind::Explosion | SoundKind::Zap =>
                     Perception {
                         confirmed_hostile: true,
                         confirmed_origin: false,

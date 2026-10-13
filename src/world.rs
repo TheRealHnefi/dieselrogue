@@ -81,6 +81,7 @@ impl World {
 
         world.init_static_entities();
 
+
         // Region depths from the player's starting tile, used for placement weighting.
         // Note that this needs recalculating as below since player_pos may be impassable.
         let player_tile = world.get_player()
@@ -2073,8 +2074,62 @@ mod tests {
             _ => panic!("weapon is not a firearm"),
         };
         assert_eq!(ammo, 5, "gun receives only what the box held");
-        assert!(!player.body.inventory.iter().any(|i| matches!(i.kind, ItemKind::Ammo { .. })),
+        assert!(!player.body.inventory.iter().any(|i| matches!(&i.kind, ItemKind::Ammo { .. })),
             "emptied ammo box should be discarded");
+    }
+
+    /// A shock weapon's chain lightning arcs from the aimed enemy to the nearest
+    /// new one within range, up to the weapon's target cap; nobody is hit twice
+    /// and the shooter is never hit.
+    #[test]
+    fn chain_lightning_arcs_to_nearby_enemies_up_to_the_weapon_cap() {
+        let mut world = World::new_test();
+        assert!(world.create_player(Point { x: 50, y: 50 }, Direction::Up, "Player".into()).is_ok());
+        let pid = world.player_id.unwrap();
+
+        let mut carbine = Item::shock_carbine();
+        carbine.id = 1;
+        let player = world.get_player_mut().unwrap();
+        assert!(player.body.equip(carbine).is_ok());
+        let slot = player.body.item_slots.iter()
+            .find(|s| s.item.as_ref().map_or(false, |i| i.id == 1))
+            .map(|s| s.slot_type)
+            .expect("carbine should occupy a hand slot");
+
+        // Six zombies east of the player, two tiles apart; the carbine chains to 4.
+        for i in 0..6usize {
+            assert!(create_zombie(&mut world, Point { x: 52 + (i * 2) as i32, y: 50 }, Direction::Up, format!("Z{}", i), AI::None).is_ok());
+        }
+
+        // Aim at the nearest zombie (entity 1) and fire.
+        world.entities[pid].intent = crate::intent::Intent {
+            phase: crate::intent::ExecutionPhase::Attack,
+            data: crate::intent::IntentData::TargetWithEquipment { slot, target: world.entities[1].position },
+            action: crate::actions::chain_fire_action,
+        };
+        let player = &world.entities[pid];
+        let effects = crate::actions::chain_fire_action(player, &world.map, &world.entities);
+
+        // One battery spent per shot, however many enemies the arc reached.
+        let consumed: u32 = effects.iter().filter_map(|e| match e {
+            Effect::ConsumeAmmo { entity_id, shots, .. } if *entity_id == pid => Some(*shots),
+            _ => None,
+        }).sum();
+        assert_eq!(consumed, 1, "a chain shot spends exactly one battery");
+
+        // The four zombies nearest the aim point are hit on every body part once;
+        // the two beyond the cap are untouched, and the shooter is never hit.
+        let parts = world.entities[1].body.parts.len();
+        for id in 1..=4usize {
+            let hits = effects.iter().filter(|e| matches!(e, Effect::Damage { entity_id, .. } if *entity_id == id)).count();
+            assert_eq!(hits, parts, "zombie {} should be hit on every body part once", id);
+        }
+        for id in 5..=6usize {
+            let hits = effects.iter().filter(|e| matches!(e, Effect::Damage { entity_id, .. } if *entity_id == id)).count();
+            assert_eq!(hits, 0, "zombie {} is beyond the chain cap and must not be hit", id);
+        }
+        let self_hits = effects.iter().filter(|e| matches!(e, Effect::Damage { entity_id, .. } if *entity_id == pid)).count();
+        assert_eq!(self_hits, 0, "the arc must never return to the shooter");
     }
 
     /// Advance one status-resolution round (heal/burn ticks + duration decay), the

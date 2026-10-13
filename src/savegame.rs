@@ -11,7 +11,7 @@ use crate::{World, GameLog};
 const SAVE_PATH: &str = "savegame.dat";
 const MAGIC: &[u8; 4] = b"DRSV";
 /// Bump when the saved layout changes; saves from other versions are refused.
-const FORMAT_VERSION: u32 = 2; // 2: log entries carry a LogKind tint
+const FORMAT_VERSION: u32 = 3; // 2: log entries carry a LogKind tint; 3: firearms carry chain_targets
 const SCRAMBLE_KEY: u64 = 0x5EED_D1E5_E1D0_6E75;
 
 /// Everything a run needs to continue, beyond what the world itself holds.
