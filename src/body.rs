@@ -216,8 +216,8 @@ impl Body {
             base_max_damage: 100,
             max_damage: 100,
             damage: 0,
-            armor: Armor::zero(),
-            innate_armor: Armor::zero(),
+            armor: Armor::new(20, 0.50, 10, 0.50, 100, 100.0),
+            innate_armor: Armor::new(20, 0.50, 10, 0.50, 100, 100.0),
             abilities: vec!()
         });
 
