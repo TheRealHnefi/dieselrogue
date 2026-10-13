@@ -50,7 +50,7 @@ pub const ALL_ITEMS: &[MakeItem] = &[
     Item::flamethrower, Item::rocket_launcher, Item::multi_rocket_launcher,
     Item::ammo_bullets, Item::ammo_rockets, Item::ammo_batteries, Item::ammo_fuel,
     Item::medkit, Item::large_medkit, Item::elixir, Item::stimpack,
-    Item::grenade, Item::fire_grenade, Item::shock_grenade, Item::flashbang, Item::knife,
+    Item::grenade, Item::fire_grenade, Item::shock_grenade, Item::flashbang, Item::knife, Item::shock_prod,
     Item::bulletproof_vest, Item::helmet, Item::heavy_helmet, Item::riot_armor, Item::riot_pants,
     Item::heavy_combat_suit, Item::light_kevlar_pants, Item::tactical_helmet, Item::rocket_boots,
     Item::jetpack, Item::mounted_cannon, Item::corpse, Item::rubble,
@@ -291,6 +291,24 @@ impl Item {
             equip_actions: vec![],
             equip_slots: vec![SlotType::SecondaryHand],
             kind: ItemKind::MeleeWeapon { damage: Damage::new(20, 0, 0, 0) },
+            proxy: false,
+            locked: false,
+            active: false,
+        }
+    }
+
+    /// A one-handed melee weapon dealing electrical damage; hits that get
+    /// through armor also Shock the victim (see `World::resolve_effects`).
+    pub fn shock_prod() -> Self {
+        let rarity = 1;
+        Item {
+            id: 0, rarity: rarity,
+            renderable: Renderable::new_colored_char('|', Item::rarity_to_color(rarity)),
+            name: String::from("Shock prod"),
+            inventory_actions: vec![Item::equip_action(), Item::drop_action()],
+            equip_actions: vec![],
+            equip_slots: vec![SlotType::SecondaryHand],
+            kind: ItemKind::MeleeWeapon { damage: Damage::new(0, 5, 0, 0) },
             proxy: false,
             locked: false,
             active: false,

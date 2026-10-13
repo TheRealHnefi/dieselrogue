@@ -120,9 +120,9 @@ pub fn create_spawn_map(map: &Map, start_pos: usize) -> SpawnMap {
 }
 
 pub fn spawn_loot(world: &mut World, spawn_map: &SpawnMap, rng: &mut RandomNumberGenerator) {
-    let starting_pool: &[MakeItem] = &[Item::pistol, Item::flare_gun, Item::knife, Item::grenade];
+    let starting_pool: &[MakeItem] = &[Item::pistol, Item::flare_gun, Item::knife, Item::shock_prod, Item::grenade];
     let equipment_pool: &[MakeItem] = &[
-        Item::pistol, Item::flare_gun, Item::knife,
+        Item::pistol, Item::flare_gun, Item::knife, Item::shock_prod,
         Item::revolver, Item::shock_pistol, Item::submachine_gun,
         Item::grenade, Item::fire_grenade, Item::flashbang,
         Item::bolt_action_rifle, Item::semi_auto_rifle,
