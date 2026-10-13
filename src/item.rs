@@ -142,7 +142,7 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Assault rifle",        glyph: 'A', fire_mode: FireMode::SingleAndBurst, two_handed: true,  ammo: 25,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(10,  0,  0, 0), range: 10, rarity: 2 })
     }
     pub fn sniper_rifle() -> Self {
-        Item::make_firearm(FirearmDef { name: "Sniper rifle",        glyph: 'R', fire_mode: FireMode::SingleScoped,    two_handed: true,  ammo: 5,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 10), range: 35, rarity: 2 })
+        Item::make_firearm(FirearmDef { name: "Sniper rifle",        glyph: 'Γ', fire_mode: FireMode::SingleScoped,    two_handed: true,  ammo: 5,   ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 10), range: 35, rarity: 2 })
     }
     pub fn machinegun() -> Self {
         Item::make_firearm(FirearmDef { name: "Machine gun",          glyph: 'M', fire_mode: FireMode::Burst,          two_handed: true,  ammo: 30,  ammo_kind: AmmoKind::Bullets,   damage: Damage::new(15,  0,  0, 0), range: 10, rarity: 2 })
@@ -163,22 +163,22 @@ impl Item {
         Item::make_firearm(FirearmDef { name: "Rocket launcher",      glyph: 'R', fire_mode: FireMode::Rocket,         two_handed: true,  ammo: 1,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(100, 0, 50, 10), range: 25, rarity: 3 })
     }
     pub fn multi_rocket_launcher() -> Self {
-        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'M', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(50, 0,  25, 5), range: 17, rarity: 3 })
+        Item::make_firearm(FirearmDef { name: "Multi-rocket launcher", glyph: 'W', fire_mode: FireMode::Rocket,        two_handed: true,  ammo: 4,   ammo_kind: AmmoKind::Rockets,   damage: Damage::new(50, 0,  25, 5), range: 17, rarity: 3 })
     }
 
     // ---- Ammunition -------------------------------------------------------
 
     pub fn ammo_bullets() -> Self {
-        Item::make_ammo(AmmoKind::Bullets,   "Bullets",   crate::RGB::from_f32(0.85, 0.70, 0.20), 30)
+        Item::make_ammo(AmmoKind::Bullets,   "Bullets",   '=', crate::RGB::from_f32(0.85, 0.70, 0.20), 30)
     }
     pub fn ammo_rockets() -> Self {
-        Item::make_ammo(AmmoKind::Rockets,   "Rockets",   crate::RGB::from_f32(0.80, 0.20, 0.10),  3)
+        Item::make_ammo(AmmoKind::Rockets,   "Rockets",   'o', crate::RGB::from_f32(0.80, 0.20, 0.10),  3)
     }
     pub fn ammo_batteries() -> Self {
-        Item::make_ammo(AmmoKind::Batteries, "Batteries", crate::RGB::from_f32(0.20, 0.80, 0.90), 12)
+        Item::make_ammo(AmmoKind::Batteries, "Batteries", '≡', crate::RGB::from_f32(0.20, 0.80, 0.90), 12)
     }
     pub fn ammo_fuel() -> Self {
-        Item::make_ammo(AmmoKind::Fuel,      "Fuel",      crate::RGB::from_f32(0.90, 0.50, 0.10), 5)
+        Item::make_ammo(AmmoKind::Fuel,      "Fuel",      'δ', crate::RGB::from_f32(0.90, 0.50, 0.10), 5)
     }
 
     // ---- Healing ----------------------------------------------------------
@@ -193,7 +193,7 @@ impl Item {
     }
     /// Regenerates every body part for 10 turns.
     pub fn elixir() -> Self {
-        Item::make_healing("Elixir", '!', crate::RGB::from_f32(0.8, 0.2, 0.9), 10, true, 2)
+        Item::make_healing("Elixir", 'Ω', crate::RGB::from_f32(0.8, 0.2, 0.9), 10, true, 2)
     }
 
     /// Instantly restores 50 energy.
@@ -251,7 +251,7 @@ impl Item {
         let rarity = 2;
         Item {
             id: 0, rarity: rarity,
-            renderable: Renderable::new_colored_char('g', Item::rarity_to_color(rarity)),
+            renderable: Renderable::new_colored_char('z', Item::rarity_to_color(rarity)),
             name: String::from("Shock grenade"),
             inventory_actions: vec![Item::prime_action(), Item::throw_action(), Item::drop_action()],
             equip_actions: vec![],
@@ -340,7 +340,7 @@ impl Item {
             Armor::new(4, 0.25, 0, 0.0, 0, 0.0), 1)
     }
     pub fn heavy_helmet() -> Self {
-        Item::make_wearable("Heavy helmet", '^', vec![SlotType::Headwear],
+        Item::make_wearable("Heavy helmet", 'H', vec![SlotType::Headwear],
             Armor::new(7, 0.25, 1, 0.25, 1, 0.25), 2)
     }
     pub fn riot_armor() -> Self {
@@ -349,7 +349,7 @@ impl Item {
             Armor::new(3, 0.15, 4, 0.25, 3, 0.25), 2)
     }
     pub fn riot_pants() -> Self {
-        Item::make_wearable("Riot pants", ']', vec![SlotType::Legwear],
+        Item::make_wearable("Riot pants", 'π', vec![SlotType::Legwear],
             Armor::new(3, 0.15, 4, 0.25, 3, 0.25), 1)
     }
     pub fn heavy_combat_suit() -> Self {
@@ -358,7 +358,7 @@ impl Item {
             Armor::new(10, 0.5, 3, 0.20, 2, 0.20), 3)
     }
     pub fn light_kevlar_pants() -> Self {
-        Item::make_wearable("Light kevlar pants", ']', vec![SlotType::Legwear],
+        Item::make_wearable("Light kevlar pants", 'π', vec![SlotType::Legwear],
             Armor::new(5, 0.25, 1, 0.0, 0, 0.0), 0)
     }
 
@@ -555,11 +555,11 @@ impl Item {
         }
     }
 
-    fn make_ammo(kind: AmmoKind, name: &str, color: crate::RGB, charges: u32) -> Item {
+    fn make_ammo(kind: AmmoKind, name: &str, glyph: char, color: crate::RGB, charges: u32) -> Item {
         Item {
             id: 0,
             rarity: 0,
-            renderable: Renderable::new_colored_char('=', color),
+            renderable: Renderable::new_colored_char(glyph, color),
             name: name.to_string(),
             inventory_actions: vec![Item::reload_from_ammo_action(), Item::drop_action()],
             equip_actions: vec![],
@@ -787,5 +787,25 @@ pub fn precondition_is_aiming(self_ref: &Entity, _map: &Map, item: Option<&Item>
     match item {
         Some(i2) => aimed_item_id == i2.id,
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Color carries rarity, so (rarity, glyph) must uniquely identify an item:
+    /// within one rarity, no two items may share a glyph. Keys are exempt —
+    /// their color is their identity, so they all use 'k'.
+    #[test]
+    fn item_glyphs_are_unique_within_a_rarity() {
+        let mut seen: Vec<(u8, u8)> = vec![];
+        for make in ALL_ITEMS {
+            let item = make();
+            let key = (item.rarity, item.renderable.glyph);
+            assert!(!seen.contains(&key),
+                "{} reuses glyph {} at rarity {}", item.name, key.1, item.rarity);
+            seen.push(key);
+        }
     }
 }
