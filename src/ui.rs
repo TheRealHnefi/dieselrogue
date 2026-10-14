@@ -60,6 +60,8 @@ const PHYS_COLOR: crate::RGB = RGB {r: 0.8, g: 0.8, b: 0.8};
 const FIRE_COLOR: crate::RGB = RGB {r: 0.8, g: 0.1, b: 0.1};
 const ELEC_COLOR: crate::RGB = RGB {r: 0.1, g: 0.1, b: 0.8};
 const ENERGY_COLOR: crate::RGB = RGB {r: 0.0, g: 0.8, b: 0.8};
+/// Selection cursor for targeting/look mode, in the electric accent family.
+const CURSOR_COLOR: crate::RGB = RGB {r: 0.0, g: 0.85, b: 1.0};
 const HEALTH_COLOR: crate::RGB = RGB {r: 0.85, g: 0.15, b: 0.15};
 const ENEMY_LOG_COLOR: crate::RGB = RGB {r: 1.0, g: 0.35, b: 0.35};
 const XP_COLOR: crate::RGB = RGB {r: 0.9, g: 0.8, b: 0.1};
@@ -269,7 +271,7 @@ fn draw_main_ui(state: &mut State, viewport: Rect, context: &mut Context, blink:
                 not_visible || out_of_range
             } else { false }
         }).unwrap_or(false);
-        let cursor_color = if invalid_target { RGB::named(crate::RED) } else { RGB::named(crate::PINK) };
+        let cursor_color = if invalid_target { RGB::named(crate::RED) } else { CURSOR_COLOR };
         context.set(state.cursor_pos.x - viewport.x1, state.cursor_pos.y - viewport.y1, cursor_color, RGB::named(crate::BLACK), crate::to_cp437('█'));
     }
     draw_targeting_range(state, viewport, context);

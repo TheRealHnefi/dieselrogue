@@ -677,7 +677,8 @@ impl<RowType> Menu for MenuPanel<RowType> where RowType: MenuRow {
                 RGB::named(crate::DARKGRAY)
             };
             if show_cursor && self.selected_row == i && !self.no_selectable_exists() {
-                context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(crate::MAGENTA), row.get_text());
+                // Same selector scheme as the main menu: inverted row.
+                context.print_color(self.x + 2, self.y + 1 + i as i32, RGB::named(crate::BLACK), RGB::named(crate::WHITE), row.get_text());
             } else {
                 context.print_color(self.x + 2, self.y + 1 + i as i32, fg, RGB::named(crate::BLACK), row.get_text());
             }
