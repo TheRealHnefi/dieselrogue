@@ -279,7 +279,7 @@ impl Settings {
             move_up_right:   parse_binding(b, "move_up_right",   VirtualKeyCode::Numpad9),
             move_down_right: parse_binding(b, "move_down_right", VirtualKeyCode::Numpad3),
             move_down_left:  parse_binding(b, "move_down_left",  VirtualKeyCode::Numpad1),
-            strafe:          parse_binding(b, "strafe",          VirtualKeyCode::LShift),
+            strafe:          parse_binding(b, "strafe",          VirtualKeyCode::LControl),
         };
         Settings { font_size, fullscreen, bindings }
     }
