@@ -65,6 +65,8 @@ const CURSOR_COLOR: crate::RGB = RGB {r: 0.0, g: 0.85, b: 1.0};
 const HEALTH_COLOR: crate::RGB = RGB {r: 0.85, g: 0.15, b: 0.15};
 const ENEMY_LOG_COLOR: crate::RGB = RGB {r: 1.0, g: 0.35, b: 0.35};
 const XP_COLOR: crate::RGB = RGB {r: 0.9, g: 0.8, b: 0.1};
+/// Grenade/explosive item names in the inventory lists.
+const GRENADE_COLOR: crate::RGB = RGB {r: 0.35, g: 0.55, b: 1.0};
 
 const WALL_COLOR: crate::RGB = RGB {r: 0.7, g: 0.6, b: 0.4};
 const GROUND_COLOR: crate::RGB = RGB {r: 0.3, g: 0.6, b: 0.1};
@@ -604,11 +606,24 @@ fn print_triple(context: &mut Context, mut x: usize, y: usize, p: u32, e: u32, f
     print_num(context, x, y, FIRE_COLOR, f)
 }
 
+/// Item-name color by category: orange weapons, white ammo, green armor, blue
+/// grenades, red medkits/stimpaks. Anything else stays plain white.
+fn item_name_color(item: &Item) -> crate::RGB {
+    match &item.kind {
+        ItemKind::Firearm { .. } | ItemKind::MeleeWeapon { .. } => RGB::named(crate::ORANGE),
+        ItemKind::Ammo { .. }                                   => LABEL_COLOR,
+        ItemKind::Wearable { .. }                               => RGB::named(crate::GREEN),
+        ItemKind::FusedExplosive { .. }                         => GRENADE_COLOR,
+        ItemKind::Healing { .. } | ItemKind::Stimpack { .. }    => RGB::named(crate::RED),
+        _                                                       => LABEL_COLOR,
+    }
+}
+
 fn print_item_info(context: &mut Context, item: &Item, offset_x: usize, offset_y: usize) {
     let mut x = offset_x;
     // Truncate the name so it can never run into the stats column.
     let name: String = item.name.chars().take(INVENTORY_NAME_COLUMN_WIDTH - 1).collect();
-    context.print_color(x, offset_y, LABEL_COLOR, BG_COLOR, &name);
+    context.print_color(x, offset_y, item_name_color(item), BG_COLOR, &name);
     x += INVENTORY_NAME_COLUMN_WIDTH;
     match &item.kind {
         ItemKind::Firearm{ammo, max_ammo, damage, range, ..} => {
