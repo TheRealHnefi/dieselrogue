@@ -43,6 +43,10 @@ pub struct World {
     found_exceptional: Vec<String>,
     pub debug_mode: bool,
     pub parallel_ai: bool,
+    /// Where the player died, so the camera can stay there through the death
+    /// animations and the "you are dead" prompt. None while the player lives.
+    #[serde(default)]
+    pub player_death_pos: Option<Point>,
 }
 
 
@@ -72,6 +76,7 @@ impl World {
             found_exceptional: vec![],
             debug_mode: false,
             parallel_ai: true,
+            player_death_pos: None,
         };
 
         let player_pos = Point {x: (world.map.width / 2) as i32, y: (world.map.height / 2) as i32};
@@ -126,6 +131,7 @@ impl World {
             found_exceptional: vec![],
             debug_mode: false,
             parallel_ai: false,
+            player_death_pos: None,
         }
     }
 
@@ -174,6 +180,7 @@ impl World {
             found_exceptional: vec![],
             debug_mode: false,
             parallel_ai: false,
+            player_death_pos: None,
         };
 
         let center = Point { x: (dim / 2) as i32, y: (dim / 2) as i32 };
@@ -1439,6 +1446,16 @@ impl World {
             }
         }
 
+        // The player died: remember where, so the camera can stay on the death
+        // site through the rest of the turn and the "you are dead" prompt.
+        // (Runs after the vehicle-eject loop, so an ejected pilot's own position
+        // is used when they died with their vehicle.)
+        if let Some(id) = self.player_id {
+            if deathlist.contains(&id) {
+                self.player_death_pos = Some(self.entities[id].center());
+            }
+        }
+
         // Run-over moves execute: the casualties' pawns are gone, so the vehicle
         // takes the ground it cleared — unless someone solid still stands there.
         // (Entity indices are still pre-remap here, matching the effect's ids.)
@@ -1858,6 +1875,21 @@ mod tests {
         world.post_resolve(vec![1], vec![]);
         assert!(aim_target(&world, 0).is_none());
         assert!(matches!(alert_of(&world, 0), AlertLevel::Alert { .. }));
+    }
+
+    #[test]
+    fn player_death_records_death_position() {
+        let mut world = World::new_test();
+        let pos = Point {x: 10, y: 10};
+        assert!(world.create_player(pos, Direction::Up, String::from("Player")).is_ok());
+        let center = world.get_player().unwrap().center();
+        assert!(world.player_death_pos.is_none());
+
+        // The player dies through the normal death pipeline.
+        world.post_resolve(vec![0], vec![]);
+
+        assert!(world.player_id.is_none());
+        assert_eq!(world.player_death_pos, Some(center));
     }
 
     #[test]

@@ -52,7 +52,7 @@ impl Default for Bindings {
             move_up_right:   VirtualKeyCode::U,
             move_down_right: VirtualKeyCode::N,
             move_down_left:  VirtualKeyCode::B,
-            strafe:          VirtualKeyCode::LShift,
+            strafe:          VirtualKeyCode::LControl,
         }
     }
 }

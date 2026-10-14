@@ -37,6 +37,9 @@ pub enum RunState {
     RenderAnimations(ExecutionPhase),
     ResolveStatusEffects,
     GameOver,
+    /// The player died: the last turn's animations have finished and the game
+    /// view lingers behind a "you are dead" prompt until a key is pressed.
+    PlayerDead,
     Victory,
     HelpScreen,
 }
@@ -403,6 +406,14 @@ impl GameState for State {
             RunState::ResolveStatusEffects => {
                 self.resolve_status_effects();
             }
+            RunState::PlayerDead => {
+                // The final turn (and its animations) is over: keep the game
+                // view on screen behind the prompt until a key is pressed.
+                draw_you_are_dead(context);
+                if self.last_input.take().is_some() {
+                    self.run_state = RunState::GameOver;
+                }
+            }
             RunState::WelcomeScreen | RunState::WelcomeSplash | RunState::GameOver | RunState::Victory | RunState::HelpScreen => unreachable!(),
         }
     }
@@ -415,7 +426,10 @@ impl State {
         } else {
             match self.world.get_player() {
                 Ok(player) => player.center(),
-                Err(_) => Point{x: width / 2, y: height / 2}
+                // The player is gone (death): keep the camera on the death site
+                // so the remaining animations and the death prompt stay in view.
+                Err(_) => self.world.player_death_pos
+                    .unwrap_or(Point{x: width / 2, y: height / 2})
             }
         };
 
@@ -495,7 +509,10 @@ impl State {
 
         if self.world.get_player().is_err() {
             self.discard_save();
-            self.run_state = RunState::GameOver;
+            self.run_state = RunState::PlayerDead;
+            // Drop any key buffered during the death animations so the
+            // "you are dead" prompt waits for a fresh key press.
+            self.last_input = None;
             return;
         }
 

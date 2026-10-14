@@ -180,6 +180,21 @@ pub fn draw_game_over_screen(context: &mut Context) {
     context.print_color_centered(mid + 4, INACTIVE_COLOR, BG_COLOR, "Press any key to return to the main menu...");
 }
 
+/// "You are dead" prompt drawn over the frozen game view once the final turn's
+/// animations have played out. Centered on the viewport, not the whole screen.
+pub fn draw_you_are_dead(context: &mut Context) {
+    context.set_active_console(MAIN_CONSOLE_INDEX);
+
+    let mid_y = VIEWPORT_HEIGHT as i32 / 2;
+    let center_x = VIEWPORT_WIDTH as i32 / 2;
+    let mut print_viewport_centered = |y: i32, color: crate::RGB, text: &str| {
+        context.print_color(center_x - text.len() as i32 / 2, y, color, BG_COLOR, text);
+    };
+
+    print_viewport_centered(mid_y - 1, FIRE_COLOR, "YOU ARE DEAD");
+    print_viewport_centered(mid_y + 1, INACTIVE_COLOR, "PRESS ANY KEY");
+}
+
 pub fn draw_victory_screen(context: &mut Context) {
     context.set_active_console(MAIN_CONSOLE_INDEX);
     context.cls();
